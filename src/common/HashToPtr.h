@@ -23,7 +23,6 @@ typedef struct _MAP_SUBTABLE
 typedef struct _MAP_HASH_TO_PTR
 {
     size_t KeyLength;                           // Length of the hash key
-    size_t HashShift;                           // Bit shift of the hash to get the index
     size_t TableSize;
     size_t ItemCount;                           // Number of items in the map
     size_t MemberOffset;                        // Bit shift of the hash to get the index
