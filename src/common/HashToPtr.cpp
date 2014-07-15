@@ -137,6 +137,7 @@ bool MapHashToPtr_InsertObject(PMAP_HASH_TO_PTR pMap, LPBYTE pbNewHash)
 
         // Insert at that position
         pMap->HashTable[dwHashIndex] = pbNewHash;
+        pMap->ItemCount++;
         return true;
     }
 
