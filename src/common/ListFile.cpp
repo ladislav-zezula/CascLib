@@ -75,7 +75,7 @@ static DWORD ReloadListFileCache(TListFileCache * pCache)
 
         // Load the next data chunk to the cache
         // If we didn't read anything, it might mean that the block
-        // of the file is not available (in case of partial MPQs).
+        // of the file is not available
         // We stop reading the file at this point, because the rest
         // of the listfile is unreliable
         if(!pCache->pfnReloadCache(pCache->pvCacheContext, pCache->Buffer, dwBytesToRead))

@@ -194,7 +194,7 @@ struct TFileStream
 
 struct TBlockStream : public TFileStream
 {
-    STREAM_DOWNLOAD_CALLBACK pfnCallback;    // Callback for downloading
+    STREAM_DOWNLOAD_CALLBACK pfnCallback;   // Callback for downloading
     void * FileBitmap;                      // Array of bits for file blocks
     void * UserData;                        // User data to be passed to the download callback
     DWORD BitmapSize;                       // Size of the file bitmap (in bytes)
@@ -207,11 +207,11 @@ struct TBlockStream : public TFileStream
 //-----------------------------------------------------------------------------
 // Structure for encrypted stream
 
-#define MPQE_CHUNK_SIZE 0x40                // Size of one chunk to be decrypted
+#define ENCRYPTED_CHUNK_SIZE 0x40           // Size of one chunk to be decrypted
 
 struct TEncryptedStream : public TBlockStream
 {
-    BYTE Key[MPQE_CHUNK_SIZE];              // File key
+    BYTE Key[ENCRYPTED_CHUNK_SIZE];         // File key
 };
 
 //-----------------------------------------------------------------------------

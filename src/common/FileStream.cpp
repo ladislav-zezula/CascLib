@@ -602,7 +602,7 @@ static bool BaseHttp_Open(TFileStream * pStream, const TCHAR * szFileName, DWORD
     // Initiate the connection to the internet
     if(nError == ERROR_SUCCESS)
     {
-        pStream->Base.Http.hInternet = InternetOpen(_T("CascLib HTTP MPQ reader"),
+        pStream->Base.Http.hInternet = InternetOpen(_T("CascLib HTTP archive reader"),
                                                     INTERNET_OPEN_TYPE_PRECONFIG,
                                                     NULL,
                                                     NULL,
@@ -645,7 +645,7 @@ static bool BaseHttp_Open(TFileStream * pStream, const TCHAR * szFileName, DWORD
                 DWORD dwDataSize;
                 DWORD dwIndex = 0;
 
-                // Check if the MPQ has Last Modified field
+                // Check if the archive has Last Modified field
                 dwDataSize = sizeof(ULONGLONG);
                 if(HttpQueryInfo(hRequest, HTTP_QUERY_LAST_MODIFIED | HTTP_QUERY_FLAG_SYSTEMTIME, &FileTime, &dwDataSize, &dwIndex))
                     pStream->Base.Http.FileTime = FileTime;
@@ -1801,7 +1801,7 @@ static TFileStream * PartStream_Open(const TCHAR * szFileName, DWORD dwStreamFla
 }
 
 //-----------------------------------------------------------------------------
-// Local functions - MPQE stream support
+// Local functions - encrypted stream support
 
 static const char * szKeyTemplate = "expand 32-byte k000000000000000000000000000000000000000000000000";
 
@@ -1870,7 +1870,7 @@ static void CreateKeyFromAuthCode(
     LPDWORD KeyPosition = (LPDWORD)(pbKeyBuffer + 0x10);
     LPDWORD AuthCode32 = (LPDWORD)szAuthCode;
 
-    memcpy(pbKeyBuffer, szKeyTemplate, MPQE_CHUNK_SIZE);
+    memcpy(pbKeyBuffer, szKeyTemplate, ENCRYPTED_CHUNK_SIZE);
     KeyPosition[0x00] = AuthCode32[0x03];
     KeyPosition[0x02] = AuthCode32[0x07];
     KeyPosition[0x03] = AuthCode32[0x02];
@@ -1879,11 +1879,11 @@ static void CreateKeyFromAuthCode(
     KeyPosition[0x08] = AuthCode32[0x05];
     KeyPosition[0x09] = AuthCode32[0x00];
     KeyPosition[0x0B] = AuthCode32[0x04];
-    BSWAP_ARRAY32_UNSIGNED(pbKeyBuffer, MPQE_CHUNK_SIZE);
+    BSWAP_ARRAY32_UNSIGNED(pbKeyBuffer, ENCRYPTED_CHUNK_SIZE);
 }
 
 static void DecryptFileChunk(
-    DWORD * MpqData,
+    DWORD * ChunkData,
     LPBYTE pbKey,
     ULONGLONG ByteOffset,
     DWORD dwLength)
@@ -1894,13 +1894,13 @@ static void DecryptFileChunk(
     DWORD RoundCount = 0x14;
 
     // Prepare the key
-    ChunkOffset = ByteOffset / MPQE_CHUNK_SIZE;
-    memcpy(KeyMirror, pbKey, MPQE_CHUNK_SIZE);
-    BSWAP_ARRAY32_UNSIGNED(KeyMirror, MPQE_CHUNK_SIZE);
+    ChunkOffset = ByteOffset / ENCRYPTED_CHUNK_SIZE;
+    memcpy(KeyMirror, pbKey, ENCRYPTED_CHUNK_SIZE);
+    BSWAP_ARRAY32_UNSIGNED(KeyMirror, ENCRYPTED_CHUNK_SIZE);
     KeyMirror[0x05] = (DWORD)(ChunkOffset >> 32);
     KeyMirror[0x08] = (DWORD)(ChunkOffset);
 
-    while(dwLength >= MPQE_CHUNK_SIZE)
+    while(dwLength >= ENCRYPTED_CHUNK_SIZE)
     {
         // Shuffle the key - part 1
         KeyShuffled[0x0E] = KeyMirror[0x00];
@@ -1965,24 +1965,24 @@ static void DecryptFileChunk(
         }
 
         // Decrypt one data chunk
-        BSWAP_ARRAY32_UNSIGNED(MpqData, MPQE_CHUNK_SIZE);
-        MpqData[0x00] = MpqData[0x00] ^ (KeyShuffled[0x0E] + KeyMirror[0x00]);
-        MpqData[0x01] = MpqData[0x01] ^ (KeyShuffled[0x04] + KeyMirror[0x0D]);
-        MpqData[0x02] = MpqData[0x02] ^ (KeyShuffled[0x08] + KeyMirror[0x0A]);
-        MpqData[0x03] = MpqData[0x03] ^ (KeyShuffled[0x09] + KeyMirror[0x07]);
-        MpqData[0x04] = MpqData[0x04] ^ (KeyShuffled[0x0A] + KeyMirror[0x04]);
-        MpqData[0x05] = MpqData[0x05] ^ (KeyShuffled[0x0C] + KeyMirror[0x01]);
-        MpqData[0x06] = MpqData[0x06] ^ (KeyShuffled[0x01] + KeyMirror[0x0E]);
-        MpqData[0x07] = MpqData[0x07] ^ (KeyShuffled[0x0D] + KeyMirror[0x0B]);
-        MpqData[0x08] = MpqData[0x08] ^ (KeyShuffled[0x03] + KeyMirror[0x08]);
-        MpqData[0x09] = MpqData[0x09] ^ (KeyShuffled[0x07] + KeyMirror[0x05]);
-        MpqData[0x0A] = MpqData[0x0A] ^ (KeyShuffled[0x05] + KeyMirror[0x02]);
-        MpqData[0x0B] = MpqData[0x0B] ^ (KeyShuffled[0x00] + KeyMirror[0x0F]);
-        MpqData[0x0C] = MpqData[0x0C] ^ (KeyShuffled[0x02] + KeyMirror[0x0C]);
-        MpqData[0x0D] = MpqData[0x0D] ^ (KeyShuffled[0x06] + KeyMirror[0x09]);
-        MpqData[0x0E] = MpqData[0x0E] ^ (KeyShuffled[0x0B] + KeyMirror[0x06]);
-        MpqData[0x0F] = MpqData[0x0F] ^ (KeyShuffled[0x0F] + KeyMirror[0x03]);
-        BSWAP_ARRAY32_UNSIGNED(MpqData, MPQE_CHUNK_SIZE);
+        BSWAP_ARRAY32_UNSIGNED(ChunkData, ENCRYPTED_CHUNK_SIZE);
+        ChunkData[0x00] = ChunkData[0x00] ^ (KeyShuffled[0x0E] + KeyMirror[0x00]);
+        ChunkData[0x01] = ChunkData[0x01] ^ (KeyShuffled[0x04] + KeyMirror[0x0D]);
+        ChunkData[0x02] = ChunkData[0x02] ^ (KeyShuffled[0x08] + KeyMirror[0x0A]);
+        ChunkData[0x03] = ChunkData[0x03] ^ (KeyShuffled[0x09] + KeyMirror[0x07]);
+        ChunkData[0x04] = ChunkData[0x04] ^ (KeyShuffled[0x0A] + KeyMirror[0x04]);
+        ChunkData[0x05] = ChunkData[0x05] ^ (KeyShuffled[0x0C] + KeyMirror[0x01]);
+        ChunkData[0x06] = ChunkData[0x06] ^ (KeyShuffled[0x01] + KeyMirror[0x0E]);
+        ChunkData[0x07] = ChunkData[0x07] ^ (KeyShuffled[0x0D] + KeyMirror[0x0B]);
+        ChunkData[0x08] = ChunkData[0x08] ^ (KeyShuffled[0x03] + KeyMirror[0x08]);
+        ChunkData[0x09] = ChunkData[0x09] ^ (KeyShuffled[0x07] + KeyMirror[0x05]);
+        ChunkData[0x0A] = ChunkData[0x0A] ^ (KeyShuffled[0x05] + KeyMirror[0x02]);
+        ChunkData[0x0B] = ChunkData[0x0B] ^ (KeyShuffled[0x00] + KeyMirror[0x0F]);
+        ChunkData[0x0C] = ChunkData[0x0C] ^ (KeyShuffled[0x02] + KeyMirror[0x0C]);
+        ChunkData[0x0D] = ChunkData[0x0D] ^ (KeyShuffled[0x06] + KeyMirror[0x09]);
+        ChunkData[0x0E] = ChunkData[0x0E] ^ (KeyShuffled[0x0B] + KeyMirror[0x06]);
+        ChunkData[0x0F] = ChunkData[0x0F] ^ (KeyShuffled[0x0F] + KeyMirror[0x03]);
+        BSWAP_ARRAY32_UNSIGNED(ChunkData, ENCRYPTED_CHUNK_SIZE);
 
         // Update byte offset in the key
         KeyMirror[0x08]++;
@@ -1990,16 +1990,16 @@ static void DecryptFileChunk(
             KeyMirror[0x05]++;
 
         // Move pointers and decrease number of bytes to decrypt
-        MpqData  += (MPQE_CHUNK_SIZE / sizeof(DWORD));
-        dwLength -= MPQE_CHUNK_SIZE;
+        ChunkData += (ENCRYPTED_CHUNK_SIZE / sizeof(DWORD));
+        dwLength -= ENCRYPTED_CHUNK_SIZE;
     }
 }
 
-static bool MpqeStream_DetectFileKey(TEncryptedStream * pStream)
+static bool EncrStream_DetectFileKey(TEncryptedStream * pStream)
 {
     ULONGLONG ByteOffset = 0;
-    BYTE EncryptedHeader[MPQE_CHUNK_SIZE];
-    BYTE FileHeader[MPQE_CHUNK_SIZE];
+    BYTE EncryptedHeader[ENCRYPTED_CHUNK_SIZE];
+    BYTE FileHeader[ENCRYPTED_CHUNK_SIZE];
 
     // Read the first file chunk
     if(pStream->BaseRead(pStream, &ByteOffset, EncryptedHeader, sizeof(EncryptedHeader)))
@@ -2011,20 +2011,20 @@ static bool MpqeStream_DetectFileKey(TEncryptedStream * pStream)
             CreateKeyFromAuthCode(pStream->Key, AuthCodeArray[i]);
 
             // Try to decrypt with the given key 
-            memcpy(FileHeader, EncryptedHeader, MPQE_CHUNK_SIZE);
-            DecryptFileChunk((LPDWORD)FileHeader, pStream->Key, ByteOffset, MPQE_CHUNK_SIZE);
+            memcpy(FileHeader, EncryptedHeader, ENCRYPTED_CHUNK_SIZE);
+            DecryptFileChunk((LPDWORD)FileHeader, pStream->Key, ByteOffset, ENCRYPTED_CHUNK_SIZE);
 
             // We check the decrypted data
-            // All known encrypted MPQs have header at the begin of the file,
-            // so we check for MPQ signature there.
+            // All known encrypted archives have header at the begin of the file,
+            // so we check for archive signature there.
             if(FileHeader[0] == 'M' && FileHeader[1] == 'P' && FileHeader[2] == 'Q')
             {
                 // Update the stream size
                 pStream->StreamSize = pStream->Base.File.FileSize;
 
                 // Fill the block information
-                pStream->BlockSize  = MPQE_CHUNK_SIZE;
-                pStream->BlockCount = (DWORD)(pStream->Base.File.FileSize + MPQE_CHUNK_SIZE - 1) / MPQE_CHUNK_SIZE;
+                pStream->BlockSize  = ENCRYPTED_CHUNK_SIZE;
+                pStream->BlockCount = (DWORD)(pStream->Base.File.FileSize + ENCRYPTED_CHUNK_SIZE - 1) / ENCRYPTED_CHUNK_SIZE;
                 pStream->IsComplete = 1;
                 return true;
             }
@@ -2035,7 +2035,7 @@ static bool MpqeStream_DetectFileKey(TEncryptedStream * pStream)
     return false;
 }
 
-static bool MpqeStream_BlockRead(
+static bool EncrStream_BlockRead(
     TEncryptedStream * pStream,
     ULONGLONG StartOffset,
     ULONGLONG EndOffset,
@@ -2058,12 +2058,12 @@ static bool MpqeStream_BlockRead(
         return false;
 
     // Decrypt the data
-    dwBytesToRead = (dwBytesToRead + MPQE_CHUNK_SIZE - 1) & ~(MPQE_CHUNK_SIZE - 1);
+    dwBytesToRead = (dwBytesToRead + ENCRYPTED_CHUNK_SIZE - 1) & ~(ENCRYPTED_CHUNK_SIZE - 1);
     DecryptFileChunk((LPDWORD)BlockBuffer, pStream->Key, StartOffset, dwBytesToRead);
     return true;
 }
 
-static TFileStream * MpqeStream_Open(const TCHAR * szFileName, DWORD dwStreamFlags)
+static TFileStream * EncrStream_Open(const TCHAR * szFileName, DWORD dwStreamFlags)
 {
     TEncryptedStream * pStream;
 
@@ -2077,8 +2077,8 @@ static TFileStream * MpqeStream_Open(const TCHAR * szFileName, DWORD dwStreamFla
     if(!pStream->BaseOpen(pStream, pStream->szFileName, dwStreamFlags))
         return NULL;
 
-    // Determine the encryption key for the MPQ
-    if(MpqeStream_DetectFileKey(pStream))
+    // Determine the encryption key for the archive
+    if(EncrStream_DetectFileKey(pStream))
     {
         // Set the stream position and size
         assert(pStream->StreamSize != 0);
@@ -2092,7 +2092,7 @@ static TFileStream * MpqeStream_Open(const TCHAR * szFileName, DWORD dwStreamFla
         pStream->StreamClose   = pStream->BaseClose;
 
         // Supply the block functions
-        pStream->BlockRead     = (BLOCK_READ)MpqeStream_BlockRead;
+        pStream->BlockRead     = (BLOCK_READ)EncrStream_BlockRead;
         return pStream;
     }
 
@@ -2402,8 +2402,8 @@ TFileStream * FileStream_OpenFile(
         case STREAM_PROVIDER_PARTIAL:
             return PartStream_Open(szFileName, dwStreamFlags);
 
-        case STREAM_PROVIDER_MPQE:
-            return MpqeStream_Open(szFileName, dwStreamFlags);
+        case STREAM_PROVIDER_ENCRYPTED:
+            return EncrStream_Open(szFileName, dwStreamFlags);
 
         case STREAM_PROVIDER_BLOCK4:
             return Block4Stream_Open(szFileName, dwStreamFlags);
@@ -2458,7 +2458,7 @@ size_t FileStream_Prefix(const TCHAR * szFileName, DWORD * pdwProvider)
 
         else if(!_tcsnicmp(szFileName, _T("mpqe-"), 5))
         {
-            dwProvider |= STREAM_PROVIDER_MPQE;
+            dwProvider |= STREAM_PROVIDER_ENCRYPTED;
             nPrefixLength1 = 5;
         }
 
@@ -2649,9 +2649,9 @@ bool FileStream_GetFlags(TFileStream * pStream, LPDWORD pdwStreamFlags)
  * Switches a stream with another. Used for final phase of archive compacting.
  * Performs these steps:
  *
- * 1) Closes the handle to the existing MPQ
- * 2) Renames the temporary MPQ to the original MPQ, overwrites existing one
- * 3) Opens the MPQ stores the handle and stream position to the new stream structure
+ * 1) Closes the handle to the existing file
+ * 2) Renames the temporary file to the original file, overwrites existing one
+ * 3) Opens the file stores the handle and stream position to the new stream structure
  *
  * \a pStream Pointer to an open stream
  * \a pNewStream Temporary ("working") stream (created during archive compacting)
@@ -2719,51 +2719,3 @@ void FileStream_Close(TFileStream * pStream)
         CASC_FREE(pStream);
     }
 }
-
-//-----------------------------------------------------------------------------
-// main - for testing purposes
-
-#ifdef __STREAM_TEST__
-int FileStream_Test(const TCHAR * szFileName, DWORD dwStreamFlags)
-{
-    TFileStream * pStream;
-    TMPQHeader MpqHeader;
-    ULONGLONG FilePos;
-    TMPQBlock * pBlock;
-    TMPQHash * pHash;
-
-    InitializeMpqCryptography();
-
-    pStream = FileStream_OpenFile(szFileName, dwStreamFlags);
-    if(pStream == NULL)
-        return GetLastError();
-
-    // Read the MPQ header
-    FileStream_Read(pStream, NULL, &MpqHeader, MPQ_HEADER_SIZE_V2);
-    if(MpqHeader.dwID != ID_MPQ)
-        return ERROR_FILE_CORRUPT;
-
-    // Read the hash table
-    pHash = CASC_ALLOC(TMPQHash, MpqHeader.dwHashTableSize);
-    if(pHash != NULL)
-    {
-        FilePos = MpqHeader.dwHashTablePos;
-        FileStream_Read(pStream, &FilePos, pHash, MpqHeader.dwHashTableSize * sizeof(TMPQHash));
-        DecryptMpqBlock(pHash, MpqHeader.dwHashTableSize * sizeof(TMPQHash), MPQ_KEY_HASH_TABLE);
-        CASC_FREE(pHash);
-    }
-
-    // Read the block table
-    pBlock = CASC_ALLOC(TMPQBlock, MpqHeader.dwBlockTableSize);
-    if(pBlock != NULL)
-    {
-        FilePos = MpqHeader.dwBlockTablePos;
-        FileStream_Read(pStream, &FilePos, pBlock, MpqHeader.dwBlockTableSize * sizeof(TMPQBlock));
-        DecryptMpqBlock(pBlock, MpqHeader.dwBlockTableSize * sizeof(TMPQBlock), MPQ_KEY_BLOCK_TABLE);
-        CASC_FREE(pBlock);
-    }
-
-    FileStream_Close(pStream);
-    return ERROR_SUCCESS;
-}
-#endif

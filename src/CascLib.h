@@ -94,7 +94,7 @@ extern "C" {
 
 #define STREAM_PROVIDER_FLAT        0x00000000  // Stream is linear with no offset mapping
 #define STREAM_PROVIDER_PARTIAL     0x00000010  // Stream is partial file (.part)
-#define STREAM_PROVIDER_MPQE        0x00000020  // Stream is an encrypted MPQ
+#define STREAM_PROVIDER_ENCRYPTED   0x00000020  // Stream is an encrypted archive
 #define STREAM_PROVIDER_BLOCK4      0x00000030  // 0x4000 per block, text MD5 after each block, max 0x2000 blocks per file
 #define STREAM_PROVIDER_MASK        0x000000F0  // Mask for stream provider value
 

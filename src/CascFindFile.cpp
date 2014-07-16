@@ -294,7 +294,7 @@ HANDLE WINAPI CascFindFirstFile(
     if(szMask == NULL || pFindData == NULL)
         nError = ERROR_INVALID_PARAMETER;
     
-    // Allocate the structure for MPQ search
+    // Allocate the structure for archive search
     if(nError == ERROR_SUCCESS)
     {
         // Clear the entire search structure
