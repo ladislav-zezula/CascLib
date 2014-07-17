@@ -261,7 +261,7 @@ static LPBYTE VerifyLocaleBlock(PROOT_BLOCK_INFO pBlockInfo, LPBYTE pbFilePointe
 
 static int InitializeCascDirectories(TCascStorage * hs, const TCHAR * szDataPath)
 {
-    TCHAR * szLastPathPart = NULL;
+    TCHAR * szLastPathPart;
 
     // Save the game data directory
     hs->szDataPath  = NewStr(szDataPath, 0);
@@ -270,6 +270,7 @@ static int InitializeCascDirectories(TCascStorage * hs, const TCHAR * szDataPath
     hs->szRootPath  = NewStr(szDataPath, 0);
 
     // Find the last part
+    szLastPathPart = hs->szRootPath;
     for(size_t i = 0; hs->szRootPath[i] != 0; i++)
     {
         if(hs->szRootPath[i] == '\\' || hs->szRootPath[i] == '/')  

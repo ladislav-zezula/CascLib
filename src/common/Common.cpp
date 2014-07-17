@@ -217,7 +217,8 @@ TCHAR * CombinePath(const TCHAR * szDirectory, const TCHAR * szSubDir)
         if(szSubDir != NULL && nLength2 != 0)
         {
             // Append backslash to the previous one
-            *szPathPtr++ = _T(PATH_SEPARATOR);
+            if(szPathPtr > szFullPath)
+                *szPathPtr++ = _T(PATH_SEPARATOR);
 
             // Copy the string
             memcpy(szPathPtr, szSubDir, (nLength2 * sizeof(TCHAR)));

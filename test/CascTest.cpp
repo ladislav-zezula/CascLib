@@ -312,7 +312,7 @@ int main(int argc, char * argv[])
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/30414/HeroesData"));
 
     if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/18125/Data"), _T("e:\\Ladik\\AppDir\\CascLib\\listfile\\listfile-wow6.txt"));
+        nError = TestOpenStorage_EnumFiles(_T("Data"), _T("e:\\Ladik\\AppDir\\CascLib\\listfile\\listfile-wow6.txt"));
 
     // Extracting the complete storage
 //  if(nError == ERROR_SUCCESS && argc == 3)
