@@ -5,6 +5,7 @@ set(SRC_FILES
     src/common/Common.cpp
     src/common/Directory.cpp
     src/common/FileStream.cpp
+    src/common/HashToPtr.cpp
     src/common/ListFile.cpp
     src/jenkins/lookup3.c
     src/CascBuildCfg.cpp
