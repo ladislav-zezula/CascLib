@@ -1081,7 +1081,7 @@ static bool FlatStream_LoadBitmap(TBlockStream * pStream)
         if(pStream->BaseRead(pStream, &ByteOffset, &Footer, sizeof(FILE_BITMAP_FOOTER)))
         {
             // Make sure that the array is properly BSWAP-ed
-            BSWAP_ARRAY32_UNSIGNED((LPDWORD)(&Footer), sizeof(FILE_BITMAP_FOOTER));
+            BSWAP_ARRAY32_UNSIGNED((PDWORD)(&Footer), sizeof(FILE_BITMAP_FOOTER));
 
             // Verify if there is actually a footer
             if(Footer.Signature == ID_FILE_BITMAP_FOOTER && Footer.Version == 0x03)
@@ -1867,8 +1867,8 @@ static void CreateKeyFromAuthCode(
     LPBYTE pbKeyBuffer,
     const char * szAuthCode)
 {
-    LPDWORD KeyPosition = (LPDWORD)(pbKeyBuffer + 0x10);
-    LPDWORD AuthCode32 = (LPDWORD)szAuthCode;
+    PDWORD KeyPosition = (PDWORD)(pbKeyBuffer + 0x10);
+    PDWORD AuthCode32 = (PDWORD)szAuthCode;
 
     memcpy(pbKeyBuffer, szKeyTemplate, ENCRYPTED_CHUNK_SIZE);
     KeyPosition[0x00] = AuthCode32[0x03];
@@ -2012,7 +2012,7 @@ static bool EncrStream_DetectFileKey(TEncryptedStream * pStream)
 
             // Try to decrypt with the given key 
             memcpy(FileHeader, EncryptedHeader, ENCRYPTED_CHUNK_SIZE);
-            DecryptFileChunk((LPDWORD)FileHeader, pStream->Key, ByteOffset, ENCRYPTED_CHUNK_SIZE);
+            DecryptFileChunk((PDWORD)FileHeader, pStream->Key, ByteOffset, ENCRYPTED_CHUNK_SIZE);
 
             // We check the decrypted data
             // All known encrypted archives have header at the begin of the file,
@@ -2059,7 +2059,7 @@ static bool EncrStream_BlockRead(
 
     // Decrypt the data
     dwBytesToRead = (dwBytesToRead + ENCRYPTED_CHUNK_SIZE - 1) & ~(ENCRYPTED_CHUNK_SIZE - 1);
-    DecryptFileChunk((LPDWORD)BlockBuffer, pStream->Key, StartOffset, dwBytesToRead);
+    DecryptFileChunk((PDWORD)BlockBuffer, pStream->Key, StartOffset, dwBytesToRead);
     return true;
 }
 
@@ -2639,7 +2639,7 @@ bool FileStream_GetTime(TFileStream * pStream, ULONGLONG * pFileTime)
  * \a pStream Pointer to an open stream
  * \a pdwStreamFlags Pointer where to store the stream flags
  */
-bool FileStream_GetFlags(TFileStream * pStream, LPDWORD pdwStreamFlags)
+bool FileStream_GetFlags(TFileStream * pStream, PDWORD pdwStreamFlags)
 {
     *pdwStreamFlags = pStream->dwFlags;
     return true;

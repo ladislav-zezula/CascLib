@@ -41,8 +41,8 @@ bool DirectoryExists(const TCHAR * szDirectory)
 int ScanIndexDirectory(
     const TCHAR * szIndexPath,
     INDEX_FILE_FOUND pfnOnFileFound,
-    LPDWORD MainIndexes,
-    LPDWORD OldIndexArray,
+    PDWORD MainIndexes,
+    PDWORD OldIndexArray,
     void * pvContext)
 {
 #ifdef PLATFORM_WINDOWS

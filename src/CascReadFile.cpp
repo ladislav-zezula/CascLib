@@ -239,7 +239,7 @@ static PCASC_FILE_FRAME FindFileFrame(TCascFile * hf, DWORD FilePointer)
 //-----------------------------------------------------------------------------
 // Public functions
 
-DWORD WINAPI CascGetFileSize(HANDLE hFile, LPDWORD pdwFileSizeHigh)
+DWORD WINAPI CascGetFileSize(HANDLE hFile, PDWORD pdwFileSizeHigh)
 {
     TCascFile * hf;
 
@@ -322,7 +322,7 @@ DWORD WINAPI CascSetFilePointer(HANDLE hFile, LONG lFilePos, LONG * plFilePosHig
     return hf->FilePointer;
 }
 
-bool WINAPI CascReadFile(HANDLE hFile, void * pvBuffer, DWORD dwBytesToRead, LPDWORD pdwBytesRead)
+bool WINAPI CascReadFile(HANDLE hFile, void * pvBuffer, DWORD dwBytesToRead, PDWORD pdwBytesRead)
 {
     PCASC_FILE_FRAME pFrame = NULL;
     ULONGLONG FileOffset;

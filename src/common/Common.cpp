@@ -249,7 +249,7 @@ void NormalizeFileName_LowerSlash(char * szFileName)
     }
 }
 
-int ConvertDigitToInt32(const TCHAR * szString, LPDWORD PtrValue)
+int ConvertDigitToInt32(const TCHAR * szString, PDWORD PtrValue)
 {
     BYTE Digit;
 
@@ -261,7 +261,7 @@ int ConvertDigitToInt32(const TCHAR * szString, LPDWORD PtrValue)
     return (Digit > 0x0F) ? ERROR_BAD_FORMAT : ERROR_SUCCESS;
 }
 
-int ConvertStringToInt32(const TCHAR * szString, size_t nMaxDigits, LPDWORD PtrValue)
+int ConvertStringToInt32(const TCHAR * szString, size_t nMaxDigits, PDWORD PtrValue)
 {
     // The number of digits must be even
     assert((nMaxDigits & 0x01) == 0);

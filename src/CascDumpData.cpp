@@ -279,33 +279,52 @@ static void DumpRootEntries(FILE * fp, TCascStorage * hs, char ** FileNameArray)
 //-----------------------------------------------------------------------------
 // Public functions
 
-void CascDumpDatabase(const char * szFileName, void * pMarFile)
+void CascDumpMndxNameTable(const char * szFileName, void * pMarFile)
 {
     TFileNameDatabase * pDB = ((PMAR_FILE)pMarFile)->pDatabasePtr->pDB;
     FILE * fp;
 
     // Create the dump file
     fp = fopen(szFileName, "wt");
-    if(fp != NULL)
+    if(fp != NULL)                             
     {
-        PTRIPLET pTriplets = pDB->triplets_1F8.u.TRIPLETS.ItemArray;
-        const char * szNames = pDB->IndexStruct_174.NameFragments.u.CHARS.ItemArray;
-        DWORD dwEntries = pDB->triplets_1F8.u.TRIPLETS.ItemCount;
+        PNAME_ENTRY pNameTable = pDB->NameTable.Array.NameEntryPtr;
+        const char * szNames = pDB->IndexStruct_174.NameFragments.Array.CharPtr;
+        const char * szLastEntry;
+        char szMatchType[0x100];
 
-        for(DWORD i = 0; i < dwEntries; i++)
+        // Dump the table header
+        fprintf(fp, "Indx  ThisHash NextHash FragOffs\n");
+        fprintf(fp, "----  -------- -------- --------\n");
+
+        // Dump all name entries
+        for(DWORD i = 0; i < pDB->NameTable.ItemCount; i++)
         {
-            const char * szFragment = "";
-            char ch;
+            // Reset both match types
+            szMatchType[0] = 0;
+            szLastEntry = "";
 
-            if(pTriplets[i].Value3 < pDB->IndexStruct_174.NameFragments.u.CHARS.ItemCount)
-                szFragment = szNames + pTriplets[i].Value3;
+            // Only if the table entry is not empty
+            if(pNameTable->HashValue != 0xFFFFFFFF)
+            {
+                // Prepare the entry
+                if(pDB->NameTable.IsSingleCharMatch(i))
+                    sprintf(szMatchType, "SINGLE_CHAR (\'%c\')", (pNameTable->Distance & 0xFF));
+                else
+                    sprintf(szMatchType, "NAME_FRAGMT (\"%s\")", szNames + pNameTable->Distance);
 
-            ch = (0x20 <= i && i < 0x80) ? (char)i : 0x20;
-            fprintf(fp, "%02X (%C)  %08X  %08X   %08X   %s\n", i, ch,
-                                                          pTriplets[i].Value1,
-                                                          pTriplets[i].Value2,
-                                                          pTriplets[i].Value3,
-                                                          szFragment);
+                // Check if this is termination entry
+//              if(pDB->Struct68_68.BitArray_0.IsBitSet(pNameTable->HashValue))
+//                  szLastEntry = " <END>";
+            }
+
+            // Dump the entry
+            fprintf(fp, "0x%02X  %08x %08x %08x %s%s\n", i, pNameTable->HashValue,
+                                                            pNameTable->NextHash,
+                                                            pNameTable->Distance,
+                                                            szMatchType,
+                                                            szLastEntry);
+            pNameTable++;
         }
         fclose(fp);
     }

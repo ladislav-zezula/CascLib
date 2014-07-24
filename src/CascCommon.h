@@ -351,13 +351,13 @@ PCASC_ROOT_ENTRY     FindFirstRootEntry(TCascStorage * hs, const char * szFileNa
 PCASC_ENCODING_ENTRY FindEncodingEntry(TCascStorage * hs, PQUERY_KEY pEncodingKey, size_t * PtrIndex);
 PCASC_INDEX_ENTRY    FindIndexEntry(TCascStorage * hs, PQUERY_KEY pIndexKey);
 
-int CascDecompress(void * pvOutBuffer, LPDWORD pcbOutBuffer, void * pvInBuffer, DWORD cbInBuffer);
+int CascDecompress(void * pvOutBuffer, PDWORD pcbOutBuffer, void * pvInBuffer, DWORD cbInBuffer);
 
 //-----------------------------------------------------------------------------
 // Dump data
 
 #ifdef _DEBUG
-void CascDumpDatabase(const char * szFileName, void * pMarFile);
+void CascDumpMndxNameTable(const char * szFileName, void * pMarFile);
 void CascDumpMndxRoot(const char * szFileName, PCASC_MNDX_INFO pMndxInfo);
 void CascDumpIndexEntries(const char * szFileName, TCascStorage * hs);
 void CascDumpStorage(const char * szFileName, TCascStorage * hs, const TCHAR * szListFile);

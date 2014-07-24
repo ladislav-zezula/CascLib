@@ -100,7 +100,7 @@ typedef struct _FILE_ROOT_ENTRY
 typedef struct _ROOT_BLOCK_INFO
 {
     PFILE_LOCALE_BLOCK pLocaleBlockHdr;         // Pointer to the locale block
-    LPDWORD pInt32Array;                        // Pointer to the array of 32-bit integers
+    PDWORD pInt32Array;                         // Pointer to the array of 32-bit integers
     PFILE_ROOT_ENTRY pRootEntries;
 
 } ROOT_BLOCK_INFO, *PROOT_BLOCK_INFO;
@@ -244,7 +244,7 @@ static LPBYTE VerifyLocaleBlock(PROOT_BLOCK_INFO pBlockInfo, LPBYTE pbFilePointe
         return NULL;
 
     // Validate the array of 32-bit integers
-    pBlockInfo->pInt32Array = (LPDWORD)pbFilePointer;
+    pBlockInfo->pInt32Array = (PDWORD)pbFilePointer;
     pbFilePointer = (LPBYTE)(pBlockInfo->pInt32Array + pBlockInfo->pLocaleBlockHdr->NumberOfFiles);
     if(pbFilePointer >= pbFileEnd)
         return NULL;
@@ -285,8 +285,8 @@ static int InitializeCascDirectories(TCascStorage * hs, const TCHAR * szDataPath
 
 static bool IndexDirectory_OnFileFound(
     const TCHAR * szFileName,
-    LPDWORD IndexArray,
-    LPDWORD OldIndexArray,
+    PDWORD IndexArray,
+    PDWORD OldIndexArray,
     void * pvContext)
 {
     TCascStorage * hs = (TCascStorage *)pvContext;
@@ -484,7 +484,7 @@ static int VerifyAndParseKeyMapping_V2(PKEY_MAPPING_TABLE pKeyMapping, DWORD Key
     {
         for(int i = 0; i < 0x1F8; i += 0x18)
         {
-            LPDWORD PtrLastPart = (LPDWORD)pbLastPart;
+            PDWORD PtrLastPart = (PDWORD)pbLastPart;
             if(PtrLastPart[0] == 0)
                 return ERROR_SUCCESS;
 
@@ -691,7 +691,7 @@ static DWORD GetSizeOfEncodingFile(HANDLE hFile)
     return cbEncodingFile;
 }
 
-static LPBYTE LoadCascFile(HANDLE hFile, DWORD cbMaxSize, LPDWORD pcbFileData)
+static LPBYTE LoadCascFile(HANDLE hFile, DWORD cbMaxSize, PDWORD pcbFileData)
 {
     LPBYTE pbFileData = NULL;
     DWORD cbFileData;
@@ -944,7 +944,7 @@ static int LoadRootFile(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile)
 
 static int LoadRootFile(TCascStorage * hs)
 {
-    LPDWORD FileSignature;
+    PDWORD FileSignature;
     HANDLE hFile = NULL; 
     LPBYTE pbRootFile = NULL;
     DWORD cbRootFile = 0;
@@ -977,7 +977,7 @@ static int LoadRootFile(TCascStorage * hs)
     // Check if the file is a MNDX file
     if(nError == ERROR_SUCCESS)
     {
-        FileSignature = (LPDWORD)pbRootFile;
+        FileSignature = (PDWORD)pbRootFile;
         if(FileSignature[0] == CASC_MNDX_SIGNATURE)
         {
             nError = LoadMndxRootFile(hs, pbRootFile, cbRootFile);
@@ -1170,7 +1170,7 @@ bool WINAPI CascGetStorageInfo(
             }
 
             // Give the number of files
-            *(LPDWORD)pvStorageInfo = (DWORD)hs->pIndexEntryMap->ItemCount;
+            *(PDWORD)pvStorageInfo = (DWORD)hs->pIndexEntryMap->ItemCount;
             return true;
 
         case CascStorageFeatures:
@@ -1188,7 +1188,7 @@ bool WINAPI CascGetStorageInfo(
                 dwCascFeatures |= CASC_FEATURE_LISTFILE;
 
             // Give the number of files
-            *(LPDWORD)pvStorageInfo = dwCascFeatures;
+            *(PDWORD)pvStorageInfo = dwCascFeatures;
             return true;
 
         default:

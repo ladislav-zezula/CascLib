@@ -142,7 +142,7 @@
   typedef char           TCHAR;
   typedef unsigned int   LCID;
   typedef LONG         * PLONG;
-  typedef DWORD        * LPDWORD;
+  typedef DWORD        * PDWORD;
   typedef BYTE         * LPBYTE;
 
   #ifdef PLATFORM_32BIT

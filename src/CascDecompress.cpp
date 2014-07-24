@@ -15,7 +15,7 @@
 //-----------------------------------------------------------------------------
 // Local functions
 
-static int Decompress_ZLIB(LPBYTE pbOutBuffer, LPDWORD pcbOutBuffer, LPBYTE pbInBuffer, DWORD cbInBuffer)
+static int Decompress_ZLIB(LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBYTE pbInBuffer, DWORD cbInBuffer)
 {
     z_stream z;                        // Stream information for zlib
     int nResult;
@@ -48,7 +48,7 @@ static int Decompress_ZLIB(LPBYTE pbOutBuffer, LPDWORD pcbOutBuffer, LPBYTE pbIn
 //-----------------------------------------------------------------------------
 // Public functions
 
-int CascDecompress(void * pvOutBuffer, LPDWORD pcbOutBuffer, void * pvInBuffer, DWORD cbInBuffer)
+int CascDecompress(void * pvOutBuffer, PDWORD pcbOutBuffer, void * pvInBuffer, DWORD cbInBuffer)
 {
     LPBYTE pbOutBuffer = (LPBYTE)pvOutBuffer;
     LPBYTE pbInBuffer = (LPBYTE)pvInBuffer;
