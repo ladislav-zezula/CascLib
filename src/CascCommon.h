@@ -24,8 +24,8 @@
 #include "CascPort.h"
 #include "common/Common.h"
 #include "common/FileStream.h"
-#include "common/HashToPtr.h"
 #include "common/ListFile.h"
+#include "common/Map.h"
 
 // Headers from LibTomCrypt
 #include "libtomcrypt/src/headers/tomcrypt.h"
@@ -52,18 +52,13 @@
 #define CASCLIB_MAX(a, b) ((a > b) ? a : b)
 #define CASCLIB_UNUSED(p) ((void)(p))
 
+#define CASC_PACKAGE_BUFFER     0x1000
+
 //-----------------------------------------------------------------------------
 // Structures
 
 struct TFileStream;
 struct _MAR_FILE;
-
-typedef struct _DYNAMIC_BUFFER
-{
-    LPBYTE pbBuffer;                                // Pointer to the buffer
-    size_t cbBuffer;                                // Current size in pbBuffer
-    size_t cbBufferMax;                             // Total size in pbBuffer
-} DYNAMIC_BUFFER, *PDYNAMIC_BUFFER;
 
 typedef struct _CASC_INDEX_ENTRY
 {
@@ -72,7 +67,7 @@ typedef struct _CASC_INDEX_ENTRY
     BYTE FileSize[4];
 } CASC_INDEX_ENTRY, *PCASC_INDEX_ENTRY;
 
-typedef struct _KEY_MAPPING_TABLE
+typedef struct _CASC_MAPPING_TABLE
 {
     TCHAR * szFileName;                             // Name of the key mapping file
     LPBYTE  pbFileData;                             // Pointer to the file data
@@ -87,7 +82,7 @@ typedef struct _KEY_MAPPING_TABLE
     PCASC_INDEX_ENTRY pIndexEntries;                // Sorted array of index entries
     DWORD nIndexEntries;                            // Number of index entries
 
-} KEY_MAPPING_TABLE, *PKEY_MAPPING_TABLE;
+} CASC_MAPPING_TABLE, *PCASC_MAPPING_TABLE;
 
 typedef struct _CASC_FILE_FRAME
 {
@@ -182,12 +177,12 @@ typedef struct _CASC_MNDX_INFO
 
 } CASC_MNDX_INFO, *PCASC_MNDX_INFO;
 
-typedef struct _CASC_NAME_ENTRY
+typedef struct _CASC_PACKAGE
 {
     char * szFileName;                              // Pointer to file name
     size_t nLength;                                 // Length of the file name
 
-} CASC_NAME_ENTRY, *PCASC_NAME_ENTRY;
+} CASC_PACKAGE, *PCASC_PACKAGE;
 
 typedef struct _CASC_PACKAGES
 {
@@ -196,7 +191,7 @@ typedef struct _CASC_PACKAGES
     size_t NameBufferUsed;                          // Number of bytes used in the name buffer
     size_t NameBufferMax;                           // Total size of the name buffer
 
-    CASC_NAME_ENTRY Names[1];                       // List of name entries
+    CASC_PACKAGE Packages[1];                       // List of packages
 
 } CASC_PACKAGES, *PCASC_PACKAGES;
 
@@ -233,10 +228,10 @@ typedef struct _TCascStorage
     QUERY_KEY EncodingEKey;
     DWORD EncodingKeys;
 
-    TFileStream * DataFileArray[CASC_MAX_DATA_FILES];      // Data file handles
+    TFileStream * DataFileArray[CASC_MAX_DATA_FILES]; // Data file handles
 
-    KEY_MAPPING_TABLE KeyMapping[CASC_INDEX_COUNT]; // Key mapping
-    PMAP_HASH_TO_PTR pIndexEntryMap;                // Map of index entries
+    CASC_MAPPING_TABLE KeyMapping[CASC_INDEX_COUNT]; // Key mapping
+    PCASC_MAP pIndexEntryMap;                       // Map of index entries
 
     PCASC_ENCODING_HEADER pEncodingHeader;          // The encoding file
     PCASC_ENCODING_ENTRY * ppEncodingEntries;       // Map of encoding entries
@@ -247,7 +242,7 @@ typedef struct _TCascStorage
     size_t nRootEntries;                            // Number of root entries
 
     PCASC_MNDX_INFO pMndxInfo;                      // Used for storages which have MNDX/MAR file
-    PCASC_PACKAGES pPackages;                       // Name list for top level directories
+    PCASC_PACKAGES pPackages;                       // Linear list of present packages
 
 } TCascStorage;
 

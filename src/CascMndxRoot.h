@@ -346,8 +346,8 @@ typedef struct _MAR_FILE
 // CASC functions related to MNDX
 
 int  LoadMndxRootFile(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
-int  FindMndxPackageNumber(TCascStorage * hs, const char * szFileName, PDWORD pdwPackage);
-int  SearchMndxInfo(PCASC_MNDX_INFO pMndxInfo, const char * szFileName, DWORD dwDataAsset, PCASC_ROOT_KEY_INFO pFoundInfo);
+PCASC_PACKAGE FindMndxPackage(TCascStorage * hs, const char * szFileName);
+int  SearchMndxInfo(PCASC_MNDX_INFO pMndxInfo, const char * szFileName, DWORD dwPackage, PCASC_ROOT_KEY_INFO pFoundInfo);
 bool DoStorageSearch_MNDX(TCascSearch * pSearch, PCASC_FIND_DATA pFindData);
 void FreeMndxInfo(PCASC_MNDX_INFO pMndxInfo);
 

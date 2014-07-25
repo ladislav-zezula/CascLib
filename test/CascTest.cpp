@@ -306,7 +306,7 @@ int main(int argc, char * argv[])
 
     // List all files in CASC storage with MNDX info
     if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/29049/BNTData"));
+        nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/30509/HeroesData"));
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/30414/HeroesData"));

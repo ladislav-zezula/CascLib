@@ -2719,7 +2719,7 @@ static void MAR_FILE_Destructor(PMAR_FILE pMarFile)
 }
 
 //-----------------------------------------------------------------------------
-// Name list functions
+// Package functions
 
 // TODO: When working, increment these values to lower number of (re)allocations
 #define CASC_PACKAGES_INIT  0x10
@@ -2731,7 +2731,7 @@ static PCASC_PACKAGES AllocatePackages(size_t nNameEntries, size_t nNameBufferMa
     size_t cbToAllocate;
 
     // Allocate space
-    cbToAllocate = sizeof(CASC_PACKAGES) + (nNameEntries * sizeof(CASC_NAME_ENTRY)) + nNameBufferMax;
+    cbToAllocate = sizeof(CASC_PACKAGES) + (nNameEntries * sizeof(CASC_PACKAGE)) + nNameBufferMax;
     pPackages = (PCASC_PACKAGES)CASC_ALLOC(BYTE, cbToAllocate);
     if(pPackages != NULL)
     {
@@ -2739,7 +2739,7 @@ static PCASC_PACKAGES AllocatePackages(size_t nNameEntries, size_t nNameBufferMa
         memset(pPackages, 0, cbToAllocate);
 
         // Init the list entries
-        pPackages->szNameBuffer = (char *)(&pPackages->Names[nNameEntries]);
+        pPackages->szNameBuffer = (char *)(&pPackages->Packages[nNameEntries]);
         pPackages->NameEntries = nNameEntries;
         pPackages->NameBufferUsed = 0;
         pPackages->NameBufferMax = nNameBufferMax;
@@ -2771,23 +2771,23 @@ static PCASC_PACKAGES InsertToPackageList(
         PCASC_PACKAGES pOldPackages = pPackages;
 
         // Allocate new name list
-        cbToAllocate = sizeof(CASC_PACKAGES) + (nNewNameEntries * sizeof(CASC_NAME_ENTRY)) + nNewNameBufferMax;
+        cbToAllocate = sizeof(CASC_PACKAGES) + (nNewNameEntries * sizeof(CASC_PACKAGE)) + nNewNameBufferMax;
         pPackages = (PCASC_PACKAGES)CASC_ALLOC(BYTE, cbToAllocate);
         if(pPackages == NULL)
             return NULL;
 
         // Copy the old entries
         memset(pPackages, 0, cbToAllocate);
-        pPackages->szNameBuffer = szNameBuffer = (char *)(&pPackages->Names[nNewNameEntries]);
+        pPackages->szNameBuffer = szNameBuffer = (char *)(&pPackages->Packages[nNewNameEntries]);
         memcpy(pPackages->szNameBuffer, pOldPackages->szNameBuffer, pOldPackages->NameBufferUsed);
 
         // Copy the old entries
         for(size_t i = 0; i < pOldPackages->NameEntries; i++)
         {
-            if(pOldPackages->Names[i].szFileName != NULL)
+            if(pOldPackages->Packages[i].szFileName != NULL)
             {
-                pPackages->Names[i].szFileName = pPackages->szNameBuffer + (pOldPackages->Names[i].szFileName - pOldPackages->szNameBuffer);
-                pPackages->Names[i].nLength = pOldPackages->Names[i].nLength;
+                pPackages->Packages[i].szFileName = pPackages->szNameBuffer + (pOldPackages->Packages[i].szFileName - pOldPackages->szNameBuffer);
+                pPackages->Packages[i].nLength = pOldPackages->Packages[i].nLength;
             }
         }
 
@@ -2801,18 +2801,17 @@ static PCASC_PACKAGES InsertToPackageList(
     }
 
     // The slot is expected to be empty at the moment
-    assert(pPackages->Names[nPackageIndex].szFileName == NULL);
-    assert(pPackages->Names[nPackageIndex].nLength == 0);
+    assert(pPackages->Packages[nPackageIndex].szFileName == NULL);
+    assert(pPackages->Packages[nPackageIndex].nLength == 0);
 
     // Set the file name entry
     szNameBuffer = pPackages->szNameBuffer + pPackages->NameBufferUsed;
-    pPackages->Names[nPackageIndex].szFileName = szNameBuffer;
-    pPackages->Names[nPackageIndex].nLength = cchFileName;
+    pPackages->Packages[nPackageIndex].szFileName = szNameBuffer;
+    pPackages->Packages[nPackageIndex].nLength = cchFileName;
     memcpy(szNameBuffer, szFileName, cchFileName);
     pPackages->NameBufferUsed += (cchFileName + 1);
     return pPackages;
 }
-
 
 static int LoadPackageNames(TCascStorage * hs)
 {
@@ -2853,14 +2852,42 @@ static int LoadPackageNames(TCascStorage * hs)
     return ERROR_SUCCESS;
 }
 
+PCASC_PACKAGE FindMndxPackage(TCascStorage * hs, const char * szFileName)
+{
+    PCASC_PACKAGE pMatching = NULL;
+    PCASC_PACKAGE pPackage;
+    size_t nMaxLength = 0;
+    size_t nLength = strlen(szFileName);
+
+    // Packages must be loaded
+    assert(hs->pPackages != NULL);
+    pPackage = hs->pPackages->Packages;
+
+    // Find the longest matching name
+    for(size_t i = 0; i < hs->pPackages->NameEntries; i++, pPackage++)
+    {
+        if(pPackage->szFileName != NULL && pPackage->nLength < nLength && pPackage->nLength > nMaxLength)
+        {
+            // Compare the package name
+            if(!strncmp(szFileName, pPackage->szFileName, pPackage->nLength))
+            {
+                pMatching = pPackage;
+                nMaxLength = pPackage->nLength;
+            }
+        }
+    }
+
+    // Give the package pointer or NULL if not found
+    return pMatching;
+}
+
 static bool FillFindData(TCascSearch * pSearch, PCASC_FIND_DATA pFindData, TMndxFindResult * pStruct1C)
 {
-    PCASC_ENCODING_ENTRY pEncodingEntry;
-    PCASC_INDEX_ENTRY pIndexEntry;
+    CASC_ROOT_KEY_INFO RootKeyInfo;
     TCascStorage * hs = pSearch->hs;
-    QUERY_KEY EncodingKey;
-    QUERY_KEY IndexKey;
+    PCASC_PACKAGE pPackage;
     char * szStrippedName;
+    int nError;
 
     // Sanity check
     assert(pStruct1C->cchFoundPathName < MAX_PATH);
@@ -2869,6 +2896,22 @@ static bool FillFindData(TCascSearch * pSearch, PCASC_FIND_DATA pFindData, TMndx
     memcpy(pFindData->szFileName, pStruct1C->szFoundPathName, pStruct1C->cchFoundPathName);
     pFindData->szFileName[pStruct1C->cchFoundPathName] = 0;
     pFindData->dwFileSize = CASC_INVALID_SIZE;
+    
+    // Fill the file size
+    pPackage = FindMndxPackage(hs, pFindData->szFileName);
+    if(pPackage != NULL)
+    {
+        // Cut the package name off the full path
+        szStrippedName = pFindData->szFileName + pPackage->nLength;
+        while(szStrippedName[0] == '/')
+            szStrippedName++;
+
+        nError = SearchMndxInfo(hs->pMndxInfo, szStrippedName, (DWORD)(pPackage - hs->pPackages->Packages), &RootKeyInfo);
+        if(nError == ERROR_SUCCESS)
+        {
+            pFindData->dwFileSize = (DWORD)RootKeyInfo.FileSize;
+        }
+    }
     return true;
 }
 
@@ -3056,40 +3099,6 @@ int LoadMndxRootFile(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile)
     }
 
     return nError;
-}
-
-int FindMndxPackageNumber(TCascStorage * hs, const char * szFileName, PDWORD pdwPackage)
-{
-    PCASC_NAME_ENTRY pMatchingEntry = NULL;
-    PCASC_NAME_ENTRY pNameEntry;
-    size_t nMaxLength = 0;
-    size_t nLength = strlen(szFileName);
-
-    // Packages must be loaded
-    assert(hs->pPackages != NULL);
-    pNameEntry = hs->pPackages->Names;
-
-    // Find the longest matching name
-    for(size_t i = 0; i < hs->pPackages->NameEntries; i++, pNameEntry++)
-    {
-        if(pNameEntry->szFileName != NULL && pNameEntry->nLength < nLength && pNameEntry->nLength > nMaxLength)
-        {
-            // Compare the package name
-            if(!strncmp(szFileName, pNameEntry->szFileName, pNameEntry->nLength))
-            {
-                pMatchingEntry = pNameEntry;
-                nMaxLength = pNameEntry->nLength;
-            }
-        }
-    }
-
-    // Have we found something?
-    if(pMatchingEntry == NULL)
-        return ERROR_FILE_NOT_FOUND;
-
-    // Give the package number
-    pdwPackage[0] = (DWORD)(pMatchingEntry - hs->pPackages->Names);
-    return ERROR_SUCCESS;
 }
 
 int SearchMndxInfo(PCASC_MNDX_INFO pMndxInfo, const char * szFileName, DWORD dwPackage, PCASC_ROOT_KEY_INFO pFoundInfo)

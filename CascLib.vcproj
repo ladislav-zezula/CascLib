@@ -1130,19 +1130,19 @@
 					>
 				</File>
 				<File
-					RelativePath=".\src\common\HashToPtr.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\src\common\HashToPtr.h"
-					>
-				</File>
-				<File
 					RelativePath=".\src\common\ListFile.cpp"
 					>
 				</File>
 				<File
 					RelativePath=".\src\common\ListFile.h"
+					>
+				</File>
+				<File
+					RelativePath=".\src\common\Map.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\src\common\Map.h"
 					>
 				</File>
 			</Filter>

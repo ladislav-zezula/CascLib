@@ -229,7 +229,7 @@ static void DumpRootEntries(FILE * fp, TCascStorage * hs, char ** FileNameArray)
     {
         // Copy all pointers
         memcpy(ppEncodingEntries, hs->ppEncodingEntries, hs->nEncodingEntries * sizeof(PCASC_ENCODING_ENTRY));
-        MapHashToPtr_EnumObjects(hs->pIndexEntryMap, (void **)ppIndexEntries);
+        Map_EnumObjects(hs->pIndexEntryMap, (void **)ppIndexEntries);
 
         // Parse all entries
         for(size_t i = 0; i < hs->nRootEntries; i++)
@@ -370,7 +370,7 @@ void CascDumpIndexEntries(const char * szFileName, TCascStorage * hs)
         if(ppIndexEntries != NULL)
         {
             // Obtain the linear array of index entries
-            MapHashToPtr_EnumObjects(hs->pIndexEntryMap, (void **)ppIndexEntries);
+            Map_EnumObjects(hs->pIndexEntryMap, (void **)ppIndexEntries);
 
             // Sort the array by archive number and archive offset
             qsort_pointer_array((void **)ppIndexEntries, nIndexEntries, CompareIndexEntries_FilePos, NULL);

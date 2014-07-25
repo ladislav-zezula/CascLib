@@ -371,7 +371,7 @@ static TCHAR * CreateIndexFileName(TCascStorage * hs, DWORD IndexValue, DWORD In
     return CombinePath(hs->szIndexPath, szPlainName);
 }
 
-static int VerifyAndParseKeyMapping_V1(PKEY_MAPPING_TABLE pKeyMapping, DWORD KeyIndex)
+static int VerifyAndParseKeyMapping_V1(PCASC_MAPPING_TABLE pKeyMapping, DWORD KeyIndex)
 {
     PFILE_INDEX_HEADER_V1 pIndexHeader = (PFILE_INDEX_HEADER_V1)pKeyMapping->pbFileData;
     DWORD dwDataHash1;
@@ -412,7 +412,7 @@ static int VerifyAndParseKeyMapping_V1(PKEY_MAPPING_TABLE pKeyMapping, DWORD Key
     return ERROR_SUCCESS;
 }
 
-static int VerifyAndParseKeyMapping_V2(PKEY_MAPPING_TABLE pKeyMapping, DWORD KeyIndex)
+static int VerifyAndParseKeyMapping_V2(PCASC_MAPPING_TABLE pKeyMapping, DWORD KeyIndex)
 {
     PFILE_INDEX_HEADER_V2 pIndexHeader = (PFILE_INDEX_HEADER_V2)pKeyMapping->pbFileData;
     PBLOCK_SIZE_AND_HASH pSizeAndHash;
@@ -469,7 +469,7 @@ static int VerifyAndParseKeyMapping_V2(PKEY_MAPPING_TABLE pKeyMapping, DWORD Key
         return ERROR_BAD_FORMAT;
 
     // Align the data position up to next 0x1000
-    FilePosition = (FilePosition + 0xFFF) & 0xFFFFF000;
+    FilePosition = ALIGN_TO_SIZE(FilePosition, 0x1000);
     if(FilePosition > pKeyMapping->cbFileData)
         return ERROR_BAD_FORMAT;
     
@@ -499,7 +499,7 @@ static int VerifyAndParseKeyMapping_V2(PKEY_MAPPING_TABLE pKeyMapping, DWORD Key
     return ERROR_SUCCESS;
 }
 
-static int VerifyAndParseKeyMapping(PKEY_MAPPING_TABLE pKeyMapping, DWORD KeyIndex)
+static int VerifyAndParseKeyMapping(PCASC_MAPPING_TABLE pKeyMapping, DWORD KeyIndex)
 {
     // Sanity checks
     assert(pKeyMapping->pbFileData != NULL);
@@ -518,7 +518,7 @@ static int VerifyAndParseKeyMapping(PKEY_MAPPING_TABLE pKeyMapping, DWORD KeyInd
     return ERROR_BAD_FORMAT;
 }
 
-static int LoadKeyMapping(PKEY_MAPPING_TABLE pKeyMapping, DWORD KeyIndex)
+static int LoadKeyMapping(PCASC_MAPPING_TABLE pKeyMapping, DWORD KeyIndex)
 {
     TFileStream * pStream;
     ULONGLONG FileSize = 0;
@@ -568,7 +568,7 @@ static int LoadKeyMapping(PKEY_MAPPING_TABLE pKeyMapping, DWORD KeyIndex)
 
 static int CreateArrayOfIndexEntries(TCascStorage * hs)
 {
-    PMAP_HASH_TO_PTR pMap;
+    PCASC_MAP pMap;
     DWORD TotalCount = 0;
     int nError = ERROR_NOT_ENOUGH_MEMORY;
 
@@ -577,7 +577,7 @@ static int CreateArrayOfIndexEntries(TCascStorage * hs)
         TotalCount += hs->KeyMapping[i].nIndexEntries;
 
     // Create the map of all index entries
-    pMap = MapHashToPtr_Create(TotalCount, CASC_FILE_KEY_SIZE, FIELD_OFFSET(CASC_INDEX_ENTRY, IndexKey));
+    pMap = Map_Create(TotalCount, CASC_FILE_KEY_SIZE, FIELD_OFFSET(CASC_INDEX_ENTRY, IndexKey));
     if(pMap != NULL)
     {
         // Put all index entries in the map
@@ -595,7 +595,7 @@ static int CreateArrayOfIndexEntries(TCascStorage * hs)
                 // 9e dc a7 8f e2 09 ad d8 b7 (encoding file)
                 // f3 5e bb fb d1 2b 3f ef 8b
                 // c8 69 9f 18 a2 5e df 7e 52
-                MapHashToPtr_InsertObject(pMap, pIndexEntry->IndexKey);
+                Map_InsertObject(pMap, pIndexEntry->IndexKey);
 
                 // Move to the next entry
                 pIndexEntry++;
@@ -623,7 +623,6 @@ static int CreateMapOfEncodingKeys(TCascStorage * hs, PFILE_ENCODING_SEGMENT pEn
 
     // Calculate the largest eventual number of encodign entries
     nMaxEntries = (dwNumberOfSegments * CASC_ENCODING_SEGMENT_SIZE) / (sizeof(CASC_ENCODING_ENTRY) + MD5_HASH_SIZE);
-    assert(nMaxEntries >= hs->pIndexEntryMap->ItemCount);
 
     // Allocate the array of pointers to encoding entries
     hs->ppEncodingEntries = CASC_ALLOC(PCASC_ENCODING_ENTRY, nMaxEntries);
@@ -657,7 +656,6 @@ static int CreateMapOfEncodingKeys(TCascStorage * hs, PFILE_ENCODING_SEGMENT pEn
         }
 
         // Remember the total number of encoding entries
-        assert(nEntries >= hs->pIndexEntryMap->ItemCount);
         hs->nEncodingEntries = nEntries;
     }
     else
@@ -1015,7 +1013,7 @@ static TCascStorage * FreeCascStorage(TCascStorage * hs)
         if(hs->pEncodingHeader != NULL)
             CASC_FREE(hs->pEncodingHeader);
         if(hs->pIndexEntryMap != NULL)
-            MapHashToPtr_Free(hs->pIndexEntryMap);
+            Map_Free(hs->pIndexEntryMap);
 
         // Close all data files
         for(i = 0; i < CASC_MAX_DATA_FILES; i++)

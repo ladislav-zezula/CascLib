@@ -31,7 +31,7 @@ PCASC_INDEX_ENTRY FindIndexEntry(TCascStorage * hs, PQUERY_KEY pIndexKey)
     PCASC_INDEX_ENTRY pIndexEntry = NULL;
 
     if(hs->pIndexEntryMap != NULL)
-        pIndexEntry = (PCASC_INDEX_ENTRY)MapHashToPtr_FindObject(hs->pIndexEntryMap, pIndexKey->pbData);
+        pIndexEntry = (PCASC_INDEX_ENTRY)Map_FindObject(hs->pIndexEntryMap, pIndexKey->pbData);
 
     return pIndexEntry;
     
@@ -339,9 +339,9 @@ bool WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocal
 {
     CASC_ROOT_KEY_INFO EncodingKeyInfo;
     PCASC_ROOT_ENTRY pRootEntry;
+    PCASC_PACKAGE pPackage;
     TCascStorage * hs;
     QUERY_KEY EncodingKey;
-    DWORD dwPackage;
     char * szStrippedName;
     char * szFileName2;
     int nError = ERROR_SUCCESS;
@@ -372,21 +372,25 @@ bool WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocal
             NormalizeFileName_LowerSlash(szFileName2);
 
             // Find the package number
-            nError = FindMndxPackageNumber(hs, szFileName2, &dwPackage);
-            if(nError == ERROR_SUCCESS)
+            pPackage = FindMndxPackage(hs, szFileName2);
+            if(pPackage != NULL)
             {
                 // Cut the package name off the full path
-                szStrippedName = szFileName2 + hs->pPackages->Names[dwPackage].nLength;
+                szStrippedName = szFileName2 + pPackage->nLength;
                 while(szStrippedName[0] == '/')
                     szStrippedName++;
 
-                nError = SearchMndxInfo(hs->pMndxInfo, szStrippedName, dwPackage, &EncodingKeyInfo);
+                nError = SearchMndxInfo(hs->pMndxInfo, szStrippedName, (DWORD)(pPackage - hs->pPackages->Packages), &EncodingKeyInfo);
                 if(nError == ERROR_SUCCESS)
                 {
                     // Prepare the encoding key
                     EncodingKey.pbData = EncodingKeyInfo.EncodingKey;
                     EncodingKey.cbData = MD5_HASH_SIZE;
                 }
+            }
+            else
+            {
+                nError = ERROR_FILE_NOT_FOUND;
             }
         }
         else
