@@ -35,6 +35,9 @@
 *.vcxproj.filters
 *.vcxproj.user
 
+# KDevelop related files
+*.kdev4
+
 # Intermediate directory
 /casc.dir/
 /Win32/
