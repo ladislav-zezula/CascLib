@@ -1,5 +1,17 @@
-project(CascLib)
 cmake_minimum_required(VERSION 2.6)
+project(CascLib)
+
+
+set(HEADER_FILES
+    src/CascCommon.h
+    src/CascLib.h
+    src/CascMndxRoot.h
+    src/CascPort.h
+    src/common/Common.h
+    src/common/FileStream.h
+    src/common/ListFile.h
+    src/jenkins/lookup.h
+)
 
 set(SRC_FILES
     src/common/Common.cpp
@@ -18,6 +30,22 @@ set(SRC_FILES
     src/CascReadFile.cpp
 )
 
+set(TOMCRYPT_HEADERS
+    src/libtomcrypt/src/headers/tomcrypt.h
+    src/libtomcrypt/src/headers/tomcrypt_argchk.h
+    src/libtomcrypt/src/headers/tomcrypt_cfg.h
+    src/libtomcrypt/src/headers/tomcrypt_cipher.h
+    src/libtomcrypt/src/headers/tomcrypt_custom.h
+    src/libtomcrypt/src/headers/tomcrypt_hash.h
+    src/libtomcrypt/src/headers/tomcrypt_mac.h
+    src/libtomcrypt/src/headers/tomcrypt_macros.h
+    src/libtomcrypt/src/headers/tomcrypt_math.h
+    src/libtomcrypt/src/headers/tomcrypt_misc.h
+    src/libtomcrypt/src/headers/tomcrypt_pk.h
+    src/libtomcrypt/src/headers/tomcrypt_pkcs.h
+    src/libtomcrypt/src/headers/tomcrypt_prng.h
+)
+
 set(TOMCRYPT_FILES
     src/libtomcrypt/src/hashes/hash_memory.c
     src/libtomcrypt/src/hashes/md5.c
@@ -25,6 +53,17 @@ set(TOMCRYPT_FILES
     src/libtomcrypt/src/misc/crypt_hash_descriptor.c
     src/libtomcrypt/src/misc/crypt_hash_is_valid.c
     src/libtomcrypt/src/misc/crypt_libc.c
+)
+
+set(ZLIB_BZIP2_HEADERS
+    src/zlib/crc32.h
+    src/zlib/inffast.h
+    src/zlib/inffixed.h
+    src/zlib/inflate.h
+    src/zlib/inftrees.h
+    src/zlib/trees.h
+    src/zlib/zlib.h
+    src/zlib/zutil.h
 )
 
 set(ZLIB_BZIP2_FILES
@@ -45,6 +84,19 @@ add_definitions(-D_7ZIP_ST -DBZ_STRICT_ANSI)
 
 if(WIN32)
     if(MSVC)
+        # Lets generate a couple filters so that we can actually explore all
+        # participating files from the Solution Explorer.
+        #
+        # We will start with the headers
+        source_group("header" FILES ${HEADER_FILES})
+        source_group("header\\zlib" FILES ${ZLIB_BZIP2_HEADERS})
+        source_group("header\\tomcrypt" FILES ${TOMCRYPT_HEADERS})
+
+        # Then we sort out the actual sources
+        source_group("source" FILES ${SRC_FILES})
+        source_group("source\\zlib" FILES ${ZLIB_BZIP2_FILES})
+        source_group("source\\tomcrypt" FILES ${TOMCRYPT_FILES})
+
         message(STATUS "Using MSVC")
         add_definitions(-D_7ZIP_ST -DWIN32)
     else()
