@@ -88,11 +88,6 @@ class TGenericArray
     TGenericArray();
     ~TGenericArray();
 
-    DWORD IsBitSet(DWORD dwBitIndex)
-    {
-        return (Array.DwordPtr[dwBitIndex >> 0x05] & (1 << (dwBitIndex & 0x1F)));
-    }
-
     bool IsSingleCharMatch(DWORD ItemIndex)
     {
         return ((Array.NameEntryPtr[ItemIndex].Distance & 0xFFFFFF00) == 0xFFFFFF00);
@@ -217,7 +212,13 @@ class TStruct68
     int LoadFromStream(TByteStream & InStream);
     int LoadFromStream_Exchange(TByteStream & InStream);
 
-    DWORD GetExtraBitsIndex(DWORD Low8BitIndex);
+    // Returns true if the item at n-th position is present
+    DWORD IsItemPresent(DWORD ItemIndex)
+    {
+        return (ItemBits.Array.DwordPtr[ItemIndex >> 0x05] & (1 << (ItemIndex & 0x1F)));
+    }
+
+    DWORD GetItemValue(DWORD ItemIndex);
 
     TGenericArray ItemBits;             // Bit array for each item (1 = item is present)
     DWORD TotalItemCount;               // Number of items in the sparse array
@@ -296,15 +297,15 @@ class TFileNameDatabase
 
     // Retrieves the name fragment distance
     // HOTS: 19573D0/inlined
-    DWORD GetNameFragmentDistanceEx(DWORD Low8BitsIndex, DWORD ExtraBitsIndex)
+    DWORD GetNameFragmentDistanceEx(DWORD LoBitsIndex, DWORD HiBitsIndex)
     {
-        return (FrgmDist_HiBits.GetBitEntry(ExtraBitsIndex) << 0x08) | FrgmDist_LoBits.Array.BytePtr[Low8BitsIndex];
+        return (FrgmDist_HiBits.GetBitEntry(HiBitsIndex) << 0x08) | FrgmDist_LoBits.Array.BytePtr[LoBitsIndex];
     }
 
     // HOTS: 1957350, inlined
-    DWORD GetNameFragmentDistance(DWORD Low8BitsIndex)
+    DWORD GetNameFragmentDistance(DWORD LoBitsIndex)
     {
-        return GetNameFragmentDistanceEx(Low8BitsIndex, Struct68_D0.GetExtraBitsIndex(Low8BitsIndex));
+        return GetNameFragmentDistanceEx(LoBitsIndex, Struct68_D0.GetItemValue(LoBitsIndex));
     }
 
     bool sub_1957B80(TMndxFindResult * pStruct1C, DWORD dwKey);

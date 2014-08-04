@@ -25,9 +25,9 @@ TMndxFindResult ends
 TRIPLET         struc ; (sizeof=0xC)
 BitIndex        dd ?                    ; XREF: TFileNameDatabase__sub_1957970+39_r
 NextKey         dd ?                    ; XREF: TFileNameDatabase__sub_1957970+8C_r
-                                        ; GetExtraBitsIndex:loc_1959B8F_r ...
+                                        ; TStruct68_GetItemValue:loc_1959B8F_r ...
 Distance        dd ?                    ; XREF: TFileNameDatabase__sub_1957970+3E_r
-                                        ; GetExtraBitsIndex:loc_1959BBE_r ...
+                                        ; TStruct68_GetItemValue:loc_1959BBE_r ...
 TRIPLET         ends
 
 ; ---------------------------------------------------------------------------
@@ -367,7 +367,7 @@ operator_delete PROC
 operator_delete ENDP
 
 
-GetExtraBitsIndex     proc near               ; CODE XREF: sub_1957350+1A_p
+TStruct68_GetItemValue     proc near               ; CODE XREF: sub_1957350+1A_p
                                         ; TFileNameDatabase__sub_1957970+103_p ...
 
 arg_0           = dword ptr  8
@@ -398,7 +398,7 @@ loc_1959B8F:                            ; DATA XREF: .text:off_1959C90o
                 jmp     short loc_1959BDE
 ; ---------------------------------------------------------------------------
 
-loc_1959B97:                            ; CODE XREF: GetExtraBitsIndex+28_j
+loc_1959B97:                            ; CODE XREF: TStruct68_GetItemValue+28_j
                                         ; DATA XREF: .text:off_1959C90o
                 mov     edx, [eax+4] ; jumptable 01959B88 case 1
                 shr     edx, 7
@@ -407,7 +407,7 @@ loc_1959B97:                            ; CODE XREF: GetExtraBitsIndex+28_j
                 jmp     short loc_1959BE0 ; jumptable 01959B88 default case
 ; ---------------------------------------------------------------------------
 
-loc_1959BA7:                            ; CODE XREF: GetExtraBitsIndex+28_j
+loc_1959BA7:                            ; CODE XREF: TStruct68_GetItemValue+28_j
                                         ; DATA XREF: .text:off_1959C90o
                 mov     eax, [eax+4] ; jumptable 01959B88 case 2
                 shr     eax, 0Fh
@@ -415,7 +415,7 @@ loc_1959BA7:                            ; CODE XREF: GetExtraBitsIndex+28_j
                 jmp     short loc_1959BDE
 ; ---------------------------------------------------------------------------
 
-loc_1959BB4:                            ; CODE XREF: GetExtraBitsIndex+28_j
+loc_1959BB4:                            ; CODE XREF: TStruct68_GetItemValue+28_j
                                         ; DATA XREF: .text:off_1959C90o
                 mov     edx, [eax+4] ; jumptable 01959B88 case 3
                 shr     edx, 17h
@@ -423,13 +423,13 @@ loc_1959BB4:                            ; CODE XREF: GetExtraBitsIndex+28_j
                 jmp     short loc_1959BE0 ; jumptable 01959B88 default case
 ; ---------------------------------------------------------------------------
 
-loc_1959BBE:                            ; CODE XREF: GetExtraBitsIndex+28_j
+loc_1959BBE:                            ; CODE XREF: TStruct68_GetItemValue+28_j
                                         ; DATA XREF: .text:off_1959C90o
                 mov     eax, [eax+8]    ; jumptable 01959B88 case 4
                 jmp     short loc_1959BD9
 ; ---------------------------------------------------------------------------
 
-loc_1959BC3:                            ; CODE XREF: GetExtraBitsIndex+28_j
+loc_1959BC3:                            ; CODE XREF: TStruct68_GetItemValue+28_j
                                         ; DATA XREF: .text:off_1959C90o
                 mov     edx, [eax+8]    ; jumptable 01959B88 case 5
                 shr     edx, 9
@@ -438,20 +438,20 @@ loc_1959BC3:                            ; CODE XREF: GetExtraBitsIndex+28_j
                 jmp     short loc_1959BE0 ; jumptable 01959B88 default case
 ; ---------------------------------------------------------------------------
 
-loc_1959BD3:                            ; CODE XREF: GetExtraBitsIndex+28_j
+loc_1959BD3:                            ; CODE XREF: TStruct68_GetItemValue+28_j
                                         ; DATA XREF: .text:off_1959C90o
                 mov     eax, [eax+8]    ; jumptable 01959B88 case 6
                 shr     eax, 12h
 
-loc_1959BD9:                            ; CODE XREF: GetExtraBitsIndex+61_j
+loc_1959BD9:                            ; CODE XREF: TStruct68_GetItemValue+61_j
                 and     eax, 1FFh
 
-loc_1959BDE:                            ; CODE XREF: GetExtraBitsIndex+35_j
-                                        ; GetExtraBitsIndex+52_j
+loc_1959BDE:                            ; CODE XREF: TStruct68_GetItemValue+35_j
+                                        ; TStruct68_GetItemValue+52_j
                 add     esi, eax
 
-loc_1959BE0:                            ; CODE XREF: GetExtraBitsIndex+26_j
-                                        ; GetExtraBitsIndex+45_j ...
+loc_1959BE0:                            ; CODE XREF: TStruct68_GetItemValue+26_j
+                                        ; TStruct68_GetItemValue+45_j ...
                 mov     ebx, edi        ; jumptable 01959B88 default case
                 shr     ebx, 5
                 test    bl, 1
@@ -477,7 +477,7 @@ loc_1959BE0:                            ; CODE XREF: GetExtraBitsIndex+26_j
                 shr     eax, 18h
                 add     esi, eax
 
-loc_1959C31:                            ; CODE XREF: GetExtraBitsIndex+88_j
+loc_1959C31:                            ; CODE XREF: TStruct68_GetItemValue+88_j
                 mov     edx, [ecx+8]
                 mov     ecx, edi
                 and     ecx, 1Fh
@@ -510,7 +510,7 @@ loc_1959C31:                            ; CODE XREF: GetExtraBitsIndex+88_j
                 pop     ebp
                 retn    4
 
-off_1959C90     dd offset loc_1959B8F   ; DATA XREF: GetExtraBitsIndex+28_r
+off_1959C90     dd offset loc_1959B8F   ; DATA XREF: TStruct68_GetItemValue+28_r
                 dd offset loc_1959B97   ; jump table for switch statement
                 dd offset loc_1959BA7
                 dd offset loc_1959BB4
@@ -518,7 +518,7 @@ off_1959C90     dd offset loc_1959B8F   ; DATA XREF: GetExtraBitsIndex+28_r
                 dd offset loc_1959BC3
                 dd offset loc_1959BD3
 
-GetExtraBitsIndex     endp
+TStruct68_GetItemValue     endp
 
 ;------------------------------------------------------------------------------
 ; TArchiveDatabase__sub_1959CB0
@@ -922,7 +922,7 @@ arg_0           = dword ptr  8
                 push    eax
                 lea     ecx, [esi+0D0h]
                 add     ebx, eax
-                call    GetExtraBitsIndex
+                call    TStruct68_GetItemValue
                 mov     edi, [esi+168h]
                 mov     ecx, edi
                 imul    ecx, eax
@@ -1571,7 +1571,7 @@ loc_1957A41:                            ; CODE XREF: TFileNameDatabase__sub_1957
                 jnz     short loc_1957A7F
                 push    eax
                 lea     ecx, [esi+TFileNameDatabase.Struct68_D0]
-                call    GetExtraBitsIndex
+                call    TStruct68_GetItemValue
                 mov     ecx, eax
                 mov     [ebp+var_4], eax
                 jmp     short loc_1957A83
@@ -1737,7 +1737,7 @@ loc_1957F26:                            ; CODE XREF: TFileNameDatabase__FindFile
                 mov     edi, [edi+TStruct40.HashValue]
                 push    edi
                 add     ecx, TFileNameDatabase.Struct68_68
-                call    GetExtraBitsIndex
+                call    TStruct68_GetItemValue
                 pop     edi
                 mov     [esi+TMndxFindResult.MndxIndex], eax
                 pop     esi
@@ -2436,7 +2436,7 @@ loc_1958E8E:                            ; CODE XREF: sub_1958D70+30j
                 push    eax
                 lea     ecx, [edi+TFileNameDatabase.Struct68_D0]
                 add     ebx, eax
-                call    GetExtraBitsIndex
+                call    TStruct68_GetItemValue
                 mov     ecx, [edi+TFileNameDatabase.FrgmDist_HiBits.BitsPerEntry]
                 imul    ecx, eax
                 mov     eax, ecx
@@ -3369,7 +3369,7 @@ loc_1959147:                            ; CODE XREF: sub_1959010+31j
                 push    eax
                 lea     ecx, [edi+TFileNameDatabase.Struct68_D0]
                 add     ebx, eax
-                call    GetExtraBitsIndex
+                call    TStruct68_GetItemValue
                 mov     ecx, [edi+TFileNameDatabase.FrgmDist_HiBits.BitsPerEntry]
                 imul    ecx, eax
                 mov     eax, ecx
@@ -3751,7 +3751,7 @@ loc_1958C20:                            ; CODE XREF: TArchiveDatabase__sub_1958B
                 jnz     short loc_1958C5E
                 push    eax
                 lea     ecx, [esi+TFileNameDatabase.Struct68_D0]
-                call    GetExtraBitsIndex
+                call    TStruct68_GetItemValue
                 mov     ecx, eax
                 mov     [ebp+var_4], eax
                 jmp     short loc_1958C62
@@ -3950,7 +3950,7 @@ loc_19594B0:                            ; CODE XREF: TFileNameDatabase__sub_1959
                 mov     esi, [esi+TStruct40.HashValue]
                 push    esi
                 lea     ecx, [ebx+TFileNameDatabase.Struct68_68]
-                call    GetExtraBitsIndex
+                call    TStruct68_GetItemValue
                 mov     [edi+TMndxFindResult.MndxIndex], eax
                 pop     edi
                 pop     esi
@@ -4066,7 +4066,7 @@ loc_19595BD:                            ; CODE XREF: TFileNameDatabase__sub_1959
                 mov     eax, [edi+TStruct14.HashValue]
                 push    eax
                 lea     ecx, [ebx+TFileNameDatabase.Struct68_D0]
-                call    GetExtraBitsIndex
+                call    TStruct68_GetItemValue
                 jmp     short loc_1959630
 ; ---------------------------------------------------------------------------
 
@@ -4157,7 +4157,7 @@ loc_19596AE:                            ; CODE XREF: TFileNameDatabase__sub_1959
                 mov     ecx, [ebp+pThis]
                 push    eax
                 add     ecx, TFileNameDatabase.Struct68_68
-                call    GetExtraBitsIndex
+                call    TStruct68_GetItemValue
                 jmp     short loc_1959755
 ; ---------------------------------------------------------------------------
 
@@ -4316,21 +4316,21 @@ _sub_1958B00_x86 PROC
 _sub_1958B00_x86 ENDP
 
 ;
-; DWORD _cdecl GetExtraBitsIndex_x86(TStruct68 * pStruct, DWORD dwKey);
+; DWORD _cdecl GetItemValue_x86(TStruct68 * pStruct, DWORD dwKey);
 ;
 
-_GetExtraBitsIndex_x86 PROC
+_GetItemValue_x86 PROC
 
                 push    ebp
                 mov     ebp, esp
                 mov     ecx, [ebp+8]    ; pStruct68
                 push    [ebp+0Ch]       ; dwKey
-                call    GetExtraBitsIndex
+                call    TStruct68_GetItemValue
                 mov     esp, ebp
                 pop     ebp
                 ret
 
-_GetExtraBitsIndex_x86 ENDP
+_GetItemValue_x86 ENDP
 
 ;
 ; DWORD _cdecl sub_1959CB0_x86(TFileNameDatabase * pDB, DWORD dwKey);

@@ -970,7 +970,7 @@ int TStruct68::LoadFromStream_Exchange(TByteStream & InStream)
 }
 
 // HOTS: 1959B60
-DWORD TStruct68::GetExtraBitsIndex(DWORD Low8BitIndex)
+DWORD TStruct68::GetItemValue(DWORD Low8BitIndex)
 {
     PTRIPLET pTriplet;
     DWORD VarBitsValue = 0;
@@ -1101,7 +1101,7 @@ bool TNameIndexStruct::CheckNameFragment(TMndxFindResult * pStruct1C, DWORD dwDi
             pStruct40->CharIndex++;
 
             // Is it the end of the fragment or end of the path?
-            if(Struct68.ItemBits.IsBitSet(dwDistance++))
+            if(Struct68.IsItemPresent(dwDistance++))
                 return true;
             if(dwDistance >= pStruct1C->cchSearchMask)
                 return false;
@@ -1168,7 +1168,7 @@ bool TNameIndexStruct::CheckAndCopyNameFragment(TMndxFindResult * pStruct1C, DWO
             pStruct40->CharIndex++;
 
             // Keep going as long as the given bit is not set
-            if(Struct68.ItemBits.IsBitSet(dwDistance++))
+            if(Struct68.IsItemPresent(dwDistance++))
                 return true;
         }
 
@@ -1176,7 +1176,7 @@ bool TNameIndexStruct::CheckAndCopyNameFragment(TMndxFindResult * pStruct1C, DWO
         szPathFragment += dwDistance;
 
         // Now we need to copy the rest of the fragment
-        while(Struct68.ItemBits.IsBitSet(dwDistance++) == 0)
+        while(Struct68.IsItemPresent(dwDistance++) == 0)
         {
             // HOTS: 195A7A6
             pStruct40->array_00.InsertOneItem_CHAR(szPathFragment[0]);
@@ -1213,7 +1213,7 @@ void TNameIndexStruct::CopyNameFragment(TMndxFindResult * pStruct1C, DWORD dwDis
             pStruct40->array_00.InsertOneItem_CHAR(NameFragments.Array.CharPtr[dwDistance]);
 
             // Keep going as long as the given bit is not set
-            if(Struct68.ItemBits.IsBitSet(dwDistance++))
+            if(Struct68.IsItemPresent(dwDistance++))
                 break;
         }
     }
@@ -1857,35 +1857,11 @@ bool TFileNameDatabase::sub_1957970(TMndxFindResult * pStruct1C)
 
     // HOTS: 1957A0E
     BitIndex = sub_1959CB0(pStruct40->HashValue) + 1;
-    if(!Struct68_00.ItemBits.IsBitSet(BitIndex))
+    if(!Struct68_00.IsItemPresent(BitIndex))
         return false;
 
     pStruct40->HashValue = (BitIndex - pStruct40->HashValue - 1);
     ExtraBitsIndex = 0xFFFFFFFF;
-
-    //= Debug Code - Delete !!! ==================================
-/*
-    {
-        FILE * fp = fopen("E:\\extra_bits.txt", "wt");
-
-        for(HashValue = 0; HashValue < 0x80; HashValue++)
-        {
-            DWORD ExtraBitIndex = 0;
-            DWORD BitValue; 
-
-            BitValue = (Struct68_68.ItemBits.IsBitSet(HashValue) ? 1 : 0);
-            if(BitValue)
-            {
-                ExtraBitIndex = Struct68_68.GetExtraBitsIndex(HashValue);
-            }
-
-            fprintf(fp, "%02X  %02X  %04X\n", HashValue+1, BitValue, ExtraBitIndex);
-        }
-
-        fclose(fp);
-    }
-*/
-    //============================================================
 
     // HOTS: 1957A41:
     for(;;)
@@ -1893,12 +1869,12 @@ bool TFileNameDatabase::sub_1957970(TMndxFindResult * pStruct1C)
         // HOTS: 1957A41
         // Check if the low 8 bits if the fragment distance contain a single character
         // or an offset to a name fragment 
-        if(Struct68_D0.ItemBits.IsBitSet(pStruct40->HashValue))
+        if(Struct68_D0.IsItemPresent(pStruct40->HashValue))
         {
             if(ExtraBitsIndex == 0xFFFFFFFF)
             {
                 // HOTS: 1957A6C
-                ExtraBitsIndex = Struct68_D0.GetExtraBitsIndex(pStruct40->HashValue);
+                ExtraBitsIndex = Struct68_D0.GetItemValue(pStruct40->HashValue);
             }
             else
             {
@@ -1944,7 +1920,7 @@ bool TFileNameDatabase::sub_1957970(TMndxFindResult * pStruct1C)
         pStruct40->HashValue++;
         BitIndex++;
 
-        if(!Struct68_00.ItemBits.IsBitSet(BitIndex))
+        if(!Struct68_00.IsItemPresent(BitIndex))
             break;
     }
 
@@ -2003,7 +1979,7 @@ bool TFileNameDatabase::sub_1957B80(TMndxFindResult * pStruct1C, DWORD arg_4)
         else
         {
             // HOTS: 1957C30
-            if(Struct68_D0.ItemBits.IsBitSet(edi))
+            if(Struct68_D0.IsItemPresent(edi))
             {
                 // HOTS: 1957C4C
                 if(NextDB.pDB != NULL)
@@ -2083,7 +2059,7 @@ void TFileNameDatabase::sub_1958D70(TMndxFindResult * pStruct1C, DWORD arg_4)
         else
         {
             // HOTS: 1958E8E
-            if(Struct68_D0.ItemBits.IsBitSet(arg_4))
+            if(Struct68_D0.IsItemPresent(arg_4))
             {
                 DWORD Distance;
 
@@ -2160,7 +2136,7 @@ bool TFileNameDatabase::sub_1959010(TMndxFindResult * pStruct1C, DWORD arg_4)
         else
         {
             // HOTS: 1959147
-            if(Struct68_D0.ItemBits.IsBitSet(arg_4))
+            if(Struct68_D0.IsItemPresent(arg_4))
             {
                 DWORD Distance;
 
@@ -2240,11 +2216,11 @@ bool TFileNameDatabase::sub_1959460(TMndxFindResult * pStruct1C)
         pStruct40->PathStops.InsertOneItem_PATH_STOP(PathStop);
         pStruct40->ItemCount = 1;
 
-        if(Struct68_68.ItemBits.IsBitSet(pStruct40->HashValue))
+        if(Struct68_68.IsItemPresent(pStruct40->HashValue))
         {
             pStruct1C->szFoundPath  = (char *)pStruct40->array_00.FirstValid.CharPtr;
             pStruct1C->cchFoundPath = pStruct40->array_00.ItemCount;
-            pStruct1C->MndxIndex = Struct68_68.GetExtraBitsIndex(pStruct40->HashValue);
+            pStruct1C->MndxIndex = Struct68_68.GetItemValue(pStruct40->HashValue);
             return true;
         }
     }
@@ -2275,16 +2251,16 @@ bool TFileNameDatabase::sub_1959460(TMndxFindResult * pStruct1C)
         pPathStop = pStruct40->PathStops.FirstValid.PathStopPtr + pStruct40->ItemCount;
 
         // HOTS: 19595CC
-        if(Struct68_00.ItemBits.IsBitSet(pPathStop->field_4++))
+        if(Struct68_00.IsItemPresent(pPathStop->field_4++))
         {
             // HOTS: 19595F2
             pStruct40->ItemCount++;
 
-            if(Struct68_D0.ItemBits.IsBitSet(pPathStop->HashValue))
+            if(Struct68_D0.IsItemPresent(pPathStop->HashValue))
             {
                 // HOTS: 1959617
                 if(pPathStop->field_C == 0xFFFFFFFF)
-                    pPathStop->field_C = Struct68_D0.GetExtraBitsIndex(pPathStop->HashValue);
+                    pPathStop->field_C = Struct68_D0.GetItemValue(pPathStop->HashValue);
                 else
                     pPathStop->field_C++;
 
@@ -2312,13 +2288,13 @@ bool TFileNameDatabase::sub_1959460(TMndxFindResult * pStruct1C)
             pPathStop->field_8 = pStruct40->array_00.ItemCount;
 
             // HOTS: 19596b6
-            if(Struct68_68.ItemBits.IsBitSet(pPathStop->HashValue))
+            if(Struct68_68.IsItemPresent(pPathStop->HashValue))
             {
                 // HOTS: 19596D1
                 if(pPathStop->field_10 == 0xFFFFFFFF)
                 {
                     // HOTS: 19596D9
-                    pPathStop->field_10 = Struct68_68.GetExtraBitsIndex(pPathStop->HashValue);
+                    pPathStop->field_10 = Struct68_68.GetItemValue(pPathStop->HashValue);
                 }
                 else
                 {
@@ -2421,7 +2397,7 @@ bool TFileNameDatabase::sub_1958B00(TMndxFindResult * pStruct1C)
 
     // HOTS: 1958BE5
     BitIndex = sub_1959CB0(pStruct40->HashValue) + 1;
-    if(!Struct68_00.ItemBits.IsBitSet(BitIndex))
+    if(!Struct68_00.IsItemPresent(BitIndex))
         return false;
 
     pStruct40->HashValue = (BitIndex - pStruct40->HashValue - 1);
@@ -2430,13 +2406,13 @@ bool TFileNameDatabase::sub_1958B00(TMndxFindResult * pStruct1C)
     // HOTS: 1958C20
     for(;;)
     {
-        if(Struct68_D0.ItemBits.IsBitSet(pStruct40->HashValue))
+        if(Struct68_D0.IsItemPresent(pStruct40->HashValue))
         {
             // HOTS: 1958C0E
             if(var_4 == 0xFFFFFFFF)
             {
                 // HOTS: 1958C4B
-                var_4 = Struct68_D0.GetExtraBitsIndex(pStruct40->HashValue);
+                var_4 = Struct68_D0.GetItemValue(pStruct40->HashValue);
             }
             else
             {
@@ -2480,7 +2456,7 @@ bool TFileNameDatabase::sub_1958B00(TMndxFindResult * pStruct1C)
         pStruct40->HashValue++;
         BitIndex++;
 
-        if(!Struct68_00.ItemBits.IsBitSet(BitIndex))
+        if(!Struct68_00.IsItemPresent(BitIndex))
             break;
     }
 
@@ -2507,13 +2483,13 @@ bool TFileNameDatabase::FindFileInDatabase(TMndxFindResult * pStruct1C)
     }
 
     // HOTS: 1957F26
-    if(!Struct68_68.ItemBits.IsBitSet(pStruct40->HashValue))
+    if(!Struct68_68.IsItemPresent(pStruct40->HashValue))
         return false;
 
     pStruct1C->szFoundPath = pStruct1C->szSearchMask;
     pStruct1C->cchFoundPath = pStruct1C->cchSearchMask;
 
-    pStruct1C->MndxIndex = Struct68_68.GetExtraBitsIndex(pStruct40->HashValue);
+    pStruct1C->MndxIndex = Struct68_68.GetItemValue(pStruct40->HashValue);
     return true;
 }
 
@@ -3225,7 +3201,7 @@ extern "C" {
     DWORD _cdecl sub_19573D0_x86(TFileNameDatabase * pDB, DWORD arg_0, DWORD arg_4);
     DWORD _cdecl sub_1957EF0_x86(TFileNameDatabase * pDB, TMndxFindResult * pStruct1C);
     bool  _cdecl sub_1959460_x86(TFileNameDatabase * pDB, TMndxFindResult * pStruct1C);
-    DWORD _cdecl GetExtraBitsIndex_x86(TStruct68 * pStruct, DWORD dwKey);
+    DWORD _cdecl GetItemValue_x86(TStruct68 * pStruct, DWORD dwKey);
     DWORD _cdecl sub_1959CB0_x86(TFileNameDatabase * pDB, DWORD dwKey);
     DWORD _cdecl sub_1959F50_x86(TFileNameDatabase * pDB, DWORD arg_0);
 }
@@ -3418,11 +3394,11 @@ static void TestMndxFunctions(PMAR_FILE pMarFile)
         }
     }
 
-    // Exercise function GetExtraBitsIndex
+    // Exercise function GetItemValue
     for(DWORD i = 0; i < 0x10000; i++)
     {
-        DWORD dwResult1 = GetExtraBitsIndex_x86(&pDB->Struct68_D0, i);
-        DWORD dwResult2 = pDB->Struct68_D0.GetExtraBitsIndex(i);
+        DWORD dwResult1 = GetItemValue_x86(&pDB->Struct68_D0, i);
+        DWORD dwResult2 = pDB->Struct68_D0.GetItemValue(i);
   
         assert(dwResult1 == dwResult2);
     }
