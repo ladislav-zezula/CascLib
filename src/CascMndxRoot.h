@@ -198,12 +198,12 @@ class TMndxFindResult
 
     int SetSearchPath(const char * szNewSearchPath, size_t cchNewSearchPath);
 
-    const char * szSearchPath;
-    size_t cchSearchPath;
+    const char * szSearchMask;          // Search mask without wioldcards
+    size_t cchSearchMask;               // Length of the search mask
     DWORD field_8;
-    const char * szFoundPathName;
-    size_t cchFoundPathName;
-    DWORD MndxIndex;                                        // Index to the array of MNDX WSentries
+    const char * szFoundPath;           // Found path name
+    size_t cchFoundPath;                // Length of the found path name
+    DWORD MndxIndex;                    // Index to the array of MNDX WSentries
     TStruct40 * pStruct40;
 };
 
@@ -219,9 +219,9 @@ class TStruct68
 
     DWORD GetExtraBitsIndex(DWORD Low8BitIndex);
 
-    TGenericArray BitArray_0;
-    DWORD UsesTerminatorBits;                               // If nonzero, the name fragment termination bits are used instead of '\0' 
-    DWORD field_1C;
+    TGenericArray ItemBits;             // Bit array for each item (1 = item is present)
+    DWORD TotalItemCount;               // Number of items in the sparse array
+    DWORD PresentItems;                 // Number of items that are present
     TGenericArray ArrayTriplets_20;
     TGenericArray ArrayDwords_38;
     TGenericArray ArrayDwords_50;
