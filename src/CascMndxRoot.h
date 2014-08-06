@@ -88,11 +88,6 @@ class TGenericArray
     TGenericArray();
     ~TGenericArray();
 
-    DWORD IsBitSet(DWORD dwBitIndex)
-    {
-        return (Array.DwordPtr[dwBitIndex >> 0x05] & (1 << (dwBitIndex & 0x1F)));
-    }
-
     bool IsSingleCharMatch(DWORD ItemIndex)
     {
         return ((Array.NameEntryPtr[ItemIndex].Distance & 0xFFFFFF00) == 0xFFFFFF00);
@@ -176,7 +171,7 @@ class TStruct40
 
     TStruct40();
 
-    void sub_19586B0();
+    void InitSearchBuffers();
 
     TGenericArray array_00;
     TGenericArray PathStops;            // Array of path checkpoints
@@ -203,26 +198,32 @@ class TMndxFindResult
     DWORD field_8;
     const char * szFoundPath;           // Found path name
     size_t cchFoundPath;                // Length of the found path name
-    DWORD MndxIndex;                    // Index to the array of MNDX WSentries
+    DWORD FileNameIndex;                // Index of the file name
     TStruct40 * pStruct40;
 };
 
-class TStruct68
+class TSparseArray
 {
     public:
 
-    TStruct68();
+    TSparseArray();
 
-    void ExchangeWith(TStruct68 & TargetObject);
+    void ExchangeWith(TSparseArray & TargetObject);
     int LoadFromStream(TByteStream & InStream);
     int LoadFromStream_Exchange(TByteStream & InStream);
 
-    DWORD GetExtraBitsIndex(DWORD Low8BitIndex);
+    // Returns true if the item at n-th position is present
+    DWORD IsItemPresent(DWORD ItemIndex)
+    {
+        return (ItemBits.Array.DwordPtr[ItemIndex >> 0x05] & (1 << (ItemIndex & 0x1F)));
+    }
+
+    DWORD GetItemValue(DWORD ItemIndex);
 
     TGenericArray ItemBits;             // Bit array for each item (1 = item is present)
-    DWORD TotalItemCount;               // Number of items in the sparse array
-    DWORD PresentItems;                 // Number of items that are present
-    TGenericArray ArrayTriplets_20;
+    DWORD TotalItemCount;               // Total number of items in the array
+    DWORD ValidItemCount;               // Number of present items in the array
+    TGenericArray BaseValues;           // Array of base values for item indexes >= 0x200
     TGenericArray ArrayDwords_38;
     TGenericArray ArrayDwords_50;
 };
@@ -243,7 +244,7 @@ class TNameIndexStruct
     int LoadFromStream_Exchange(TByteStream & InStream);
 
     TGenericArray NameFragments;  
-    TStruct68 Struct68;  
+    TSparseArray Struct68;  
 };
 
 class TStruct10
@@ -274,7 +275,7 @@ class TFileNameDatabasePtr
     int FindFileInDatabase(TMndxFindResult * pStruct1C);
     int sub_1956CE0(TMndxFindResult * pStruct1C, bool * pbFindResult);
 
-    int GetStruct68_68_Field1C(PDWORD ptr_var_C);
+    int GetFileNameCount(PDWORD PtrFileNameCount);
     int CreateDatabase(LPBYTE pbMarData, DWORD cbMarData);
     int SetDatabase(TFileNameDatabase * pNewDB);
 
@@ -296,19 +297,19 @@ class TFileNameDatabase
 
     // Retrieves the name fragment distance
     // HOTS: 19573D0/inlined
-    DWORD GetNameFragmentDistanceEx(DWORD Low8BitsIndex, DWORD ExtraBitsIndex)
+    DWORD GetNameFragmentDistanceEx(DWORD LoBitsIndex, DWORD HiBitsIndex)
     {
-        return (FrgmDist_HiBits.GetBitEntry(ExtraBitsIndex) << 0x08) | FrgmDist_LoBits.Array.BytePtr[Low8BitsIndex];
+        return (FrgmDist_HiBits.GetBitEntry(HiBitsIndex) << 0x08) | FrgmDist_LoBits.Array.BytePtr[LoBitsIndex];
     }
 
     // HOTS: 1957350, inlined
-    DWORD GetNameFragmentDistance(DWORD Low8BitsIndex)
+    DWORD GetNameFragmentDistance(DWORD LoBitsIndex)
     {
-        return GetNameFragmentDistanceEx(Low8BitsIndex, Struct68_D0.GetExtraBitsIndex(Low8BitsIndex));
+        return GetNameFragmentDistanceEx(LoBitsIndex, Struct68_D0.GetItemValue(LoBitsIndex));
     }
 
     bool sub_1957B80(TMndxFindResult * pStruct1C, DWORD dwKey);
-    bool sub_1957970(TMndxFindResult * pStruct1C);
+    bool CheckNextPathFragment(TMndxFindResult * pStruct1C);
     bool FindFileInDatabase(TMndxFindResult * pStruct1C);
 
     void sub_1958D70(TMndxFindResult * pStruct1C, DWORD arg_4);
@@ -316,9 +317,9 @@ class TFileNameDatabase
     bool sub_1958B00(TMndxFindResult * pStruct1C);
     bool sub_1959460(TMndxFindResult * pStruct1C);
 
-    TStruct68 Struct68_00;
-    TStruct68 Struct68_68;
-    TStruct68 Struct68_D0;
+    TSparseArray Struct68_00;
+    TSparseArray FileNameIndexes;               // Array of file name indexes
+    TSparseArray Struct68_D0;
 
     // This pair of arrays serves for fast conversion from name hash to fragment offset
     TGenericArray  FrgmDist_LoBits;             // Array of lower 8 bits of name fragment offset
@@ -329,7 +330,7 @@ class TFileNameDatabase
 
     TGenericArray NameTable;
 
-    DWORD dwKeyMask;
+    DWORD ItemIndexMask;
     DWORD field_214;
     TStruct10 Struct10;
     TByteStream MarStream;

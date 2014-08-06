@@ -183,7 +183,7 @@ unsigned char table_1BA1818[0x800] =
 };
 
 //-----------------------------------------------------------------------------
-// Local functions - common
+// Local functions - Number of set bits in an integer
 
 // HOTS: inlined
 DWORD GetNumberOfSetBits(DWORD Value32)
@@ -194,6 +194,11 @@ DWORD GetNumberOfSetBits(DWORD Value32)
     
     return (Value32 * 0x01010101);
 }
+
+#define GetNumbrOfSetBits32(x)  (GetNumberOfSetBits(x) >> 0x18)
+
+//-----------------------------------------------------------------------------
+// Local functions - common
 
 static bool RootFileRead(LPBYTE pbFilePointer, LPBYTE pbFileEnd, void * pvBuffer, size_t dwBytesToRead)
 {
@@ -215,7 +220,7 @@ TMndxFindResult::TMndxFindResult()
     field_8 = 0;
     szFoundPath = NULL;
     cchFoundPath = 0;
-    MndxIndex = 0;
+    FileNameIndex = 0;
     pStruct40 = NULL;
 }
 
@@ -847,7 +852,7 @@ TStruct40::TStruct40()
 }
 
 // HOTS: 19586B0
-void TStruct40::sub_19586B0()
+void TStruct40::InitSearchBuffers()
 {
     DWORD NewMaxItemCount;
 
@@ -899,18 +904,18 @@ void TStruct40::sub_19586B0()
 }
 
 //-----------------------------------------------------------------------------
-// TStruct68 functions
+// TSparseArray functions
 
-TStruct68::TStruct68()
+TSparseArray::TSparseArray()
 {
     TotalItemCount = 0;
-    PresentItems = 0;
+    ValidItemCount = 0;
 }
 
 // HOTS: 1957DA0
-void TStruct68::ExchangeWith(TStruct68 & Target)
+void TSparseArray::ExchangeWith(TSparseArray & Target)
 {
-    TStruct68 WorkBuff;
+    TSparseArray WorkBuff;
 
     WorkBuff = *this;
     *this    = Target;
@@ -918,7 +923,7 @@ void TStruct68::ExchangeWith(TStruct68 & Target)
 }
 
 // HOTS: 1958630
-int TStruct68::LoadFromStream(TByteStream & InStream)
+int TSparseArray::LoadFromStream(TByteStream & InStream)
 {
     VARIANT_POINTER Pointer;
     int nError;
@@ -935,12 +940,12 @@ int TStruct68::LoadFromStream(TByteStream & InStream)
     nError = InStream.GetBytes(sizeof(DWORD), &Pointer);
     if(nError != ERROR_SUCCESS)
         return nError;
-    PresentItems = Pointer.DwordPtr[0];
+    ValidItemCount = Pointer.DwordPtr[0];
     
-    if(PresentItems > TotalItemCount)
+    if(ValidItemCount > TotalItemCount)
         return ERROR_FILE_CORRUPT;
 
-    nError = ArrayTriplets_20.LoadTripletsArray_Copy(InStream);
+    nError = BaseValues.LoadTripletsArray_Copy(InStream);
     if(nError != ERROR_SUCCESS)
         return nError;
 
@@ -956,9 +961,9 @@ int TStruct68::LoadFromStream(TByteStream & InStream)
 }
 
 // HOTS: 1959380
-int TStruct68::LoadFromStream_Exchange(TByteStream & InStream)
+int TSparseArray::LoadFromStream_Exchange(TByteStream & InStream)
 {
-    TStruct68 NewStruct68;
+    TSparseArray NewStruct68;
     int nError;
 
     nError = NewStruct68.LoadFromStream(InStream);
@@ -970,20 +975,19 @@ int TStruct68::LoadFromStream_Exchange(TByteStream & InStream)
 }
 
 // HOTS: 1959B60
-DWORD TStruct68::GetExtraBitsIndex(DWORD Low8BitIndex)
+DWORD TSparseArray::GetItemValue(DWORD ItemIndex)
 {
     PTRIPLET pTriplet;
-    DWORD VarBitsValue = 0;
     DWORD DwordIndex;
     DWORD BaseValue;
-    DWORD eax, ecx;
+    DWORD BitMask;
 
     // 
     // Divide the low-8-bits index to four parts:
     //
-    // |-----------------------|---|------|-----|
-    // |       A (23 bits)     | B |   C  |  D  |
-    // |-----------------------|---|------|-----|
+    // |-----------------------|---|------------|
+    // |       A (23 bits)     | B |      C     |
+    // |-----------------------|---|------------|
     //
     // A (23-bits): Index to the table (60 bits per entry)
     //
@@ -995,58 +999,61 @@ DWORD TStruct68::GetExtraBitsIndex(DWORD Low8BitIndex)
     //
     // B (3 bits) : Index of the variable-bit value in the array (val[#], see above)
     //
+    // C (32 bits): Number of bits to be checked (up to 0x3F bits).
+    //              Number of set bits is then added to the values obtained from A and B
     
     // Upper 23 bits contain index to the table
-    pTriplet = ArrayTriplets_20.Array.TripletPtr + (Low8BitIndex >> 0x09);
+    pTriplet = BaseValues.Array.TripletPtr + (ItemIndex >> 0x09);
+    BaseValue = pTriplet->BaseValue;
 
     // Next 3 bits contain the index to the VBR
-    switch(((Low8BitIndex >> 0x06) & 0x07) - 1)
+    switch(((ItemIndex >> 0x06) & 0x07) - 1)
     {
-        case 0:     // Take the 1st VBR value (7 bits)
-            VarBitsValue = (pTriplet->Value2 & 0x7F);
+        case 0:     // Add the 1st value (7 bits)
+            BaseValue += (pTriplet->Value2 & 0x7F);
             break;
 
-        case 1:     // Take the 2nd VBR value (8 bits)
-            VarBitsValue = (pTriplet->Value2 >> 0x07) & 0xFF;
+        case 1:     // Add the 2nd value (8 bits)
+            BaseValue += (pTriplet->Value2 >> 0x07) & 0xFF;
             break;
 
-        case 2:     // Take the 3rd VBR value (8 bits)
-            VarBitsValue = (pTriplet->Value2 >> 0x0F) & 0xFF;
+        case 2:     // Add the 3rd value (8 bits)
+            BaseValue += (pTriplet->Value2 >> 0x0F) & 0xFF;
             break;
 
-        case 3:     // Take the 4th VBR value (9 bits)
-            VarBitsValue = (pTriplet->Value2 >> 0x17);
+        case 3:     // Add the 4th value (9 bits)
+            BaseValue += (pTriplet->Value2 >> 0x17);
             break;
 
-        case 4:     // Take the 5th VBR value (9 bits)
-            VarBitsValue = (pTriplet->Value3 & 0x1FF);
+        case 4:     // Add the 5th value (9 bits)
+            BaseValue += (pTriplet->Value3 & 0x1FF);
             break;
 
-        case 5:     // Take the 6th VBR value (9 bits)
-            VarBitsValue = (pTriplet->Value3 >> 0x09) & 0x1FF;
+        case 5:     // Add the 6th value (9 bits)
+            BaseValue += (pTriplet->Value3 >> 0x09) & 0x1FF;
             break;
 
-        case 6:     // Take the 7th VBR value (9 bits)
-            VarBitsValue = (pTriplet->Value3 >> 0x12) & 0x1FF;
+        case 6:     // Add the 7th value (9 bits)
+            BaseValue += (pTriplet->Value3 >> 0x12) & 0x1FF;
             break;
     }
 
-    // Add the VBR value to the base
-    BaseValue = pTriplet->BaseValue + VarBitsValue;
+    //
+    // Take the upper 27 bits as an index to DWORD array, take lower 5 bits
+    // as number of bits to mask. Then calculate number of set bits in the value
+    // masked value.
+    //
 
-    // Get the DWORD index
-    DwordIndex = (Low8BitIndex >> 0x05);
+    // Get the index into the array of DWORDs
+    DwordIndex = (ItemIndex >> 0x05);
 
-    // If the DWORD index is odd, we need to add the number of set bits in the previous DWORD
-    if(DwordIndex & 0x01)
-        BaseValue += GetNumberOfSetBits(ItemBits.Array.DwordPtr[DwordIndex - 1]) >> 0x18;
+    // Add number of set bits in the masked value up to 0x3F bits
+    if(ItemIndex & 0x20)
+        BaseValue += GetNumbrOfSetBits32(ItemBits.Array.DwordPtr[DwordIndex - 1]);
 
-    // Calculate number of set bits in the value
-    ecx = ItemBits.Array.DwordPtr[DwordIndex] & ((1 << (Low8BitIndex & 0x1F)) - 1);
-    eax = GetNumberOfSetBits(ecx) >> 0x18;
-    return (BaseValue + eax);
+    BitMask = (1 << (ItemIndex & 0x1F)) - 1;
+    return BaseValue + GetNumbrOfSetBits32(ItemBits.Array.DwordPtr[DwordIndex] & BitMask);
 }
-
 
 //-----------------------------------------------------------------------------
 // TNameIndexStruct functions
@@ -1101,7 +1108,7 @@ bool TNameIndexStruct::CheckNameFragment(TMndxFindResult * pStruct1C, DWORD dwDi
             pStruct40->CharIndex++;
 
             // Is it the end of the fragment or end of the path?
-            if(Struct68.ItemBits.IsBitSet(dwDistance++))
+            if(Struct68.IsItemPresent(dwDistance++))
                 return true;
             if(dwDistance >= pStruct1C->cchSearchMask)
                 return false;
@@ -1168,7 +1175,7 @@ bool TNameIndexStruct::CheckAndCopyNameFragment(TMndxFindResult * pStruct1C, DWO
             pStruct40->CharIndex++;
 
             // Keep going as long as the given bit is not set
-            if(Struct68.ItemBits.IsBitSet(dwDistance++))
+            if(Struct68.IsItemPresent(dwDistance++))
                 return true;
         }
 
@@ -1176,7 +1183,7 @@ bool TNameIndexStruct::CheckAndCopyNameFragment(TMndxFindResult * pStruct1C, DWO
         szPathFragment += dwDistance;
 
         // Now we need to copy the rest of the fragment
-        while(Struct68.ItemBits.IsBitSet(dwDistance++) == 0)
+        while(Struct68.IsItemPresent(dwDistance++) == 0)
         {
             // HOTS: 195A7A6
             pStruct40->array_00.InsertOneItem_CHAR(szPathFragment[0]);
@@ -1213,7 +1220,7 @@ void TNameIndexStruct::CopyNameFragment(TMndxFindResult * pStruct1C, DWORD dwDis
             pStruct40->array_00.InsertOneItem_CHAR(NameFragments.Array.CharPtr[dwDistance]);
 
             // Keep going as long as the given bit is not set
-            if(Struct68.ItemBits.IsBitSet(dwDistance++))
+            if(Struct68.IsItemPresent(dwDistance++))
                 break;
         }
     }
@@ -1382,7 +1389,7 @@ int TStruct10::sub_1957800(DWORD dwBitMask)
 // HOTS: 01958730
 TFileNameDatabase::TFileNameDatabase()
 {
-    dwKeyMask = 0;
+    ItemIndexMask = 0;
     field_214 = 0;
 }
 
@@ -1393,7 +1400,7 @@ void TFileNameDatabase::ExchangeWith(TFileNameDatabase & Target)
     DWORD dwTemp;
 
     Struct68_00.ExchangeWith(Target.Struct68_00);
-    Struct68_68.ExchangeWith(Target.Struct68_68);
+    FileNameIndexes.ExchangeWith(Target.FileNameIndexes);
     Struct68_D0.ExchangeWith(Target.Struct68_D0);
 
     FrgmDist_LoBits.ExchangeWith(Target.FrgmDist_LoBits);
@@ -1407,9 +1414,9 @@ void TFileNameDatabase::ExchangeWith(TFileNameDatabase & Target)
 
     NameTable.ExchangeWith(Target.NameTable);
 
-    dwTemp = dwKeyMask;
-    dwKeyMask = Target.dwKeyMask;
-    Target.dwKeyMask = dwTemp;
+    dwTemp = ItemIndexMask;
+    ItemIndexMask = Target.ItemIndexMask;
+    Target.ItemIndexMask = dwTemp;
 
     dwTemp = field_214;
     field_214 = Target.field_214;
@@ -1437,7 +1444,7 @@ DWORD TFileNameDatabase::sub_1959CB0(DWORD dwHashValue)
     if((eax + 0x0A) >= esi)
     {
         // HOTS: 1959CF7
-        pTriplet = Struct68_00.ArrayTriplets_20.Array.TripletPtr + eax + 1;
+        pTriplet = Struct68_00.BaseValues.Array.TripletPtr + eax + 1;
         edi = (eax << 0x09);
         ebx = edi - pTriplet->BaseValue + 0x200;
         while(edx >= ebx)
@@ -1456,9 +1463,9 @@ DWORD TFileNameDatabase::sub_1959CB0(DWORD dwHashValue)
         while((eax + 1) < esi)
         {
             // HOTS: 1959D38
-            // ecx = Struct68_00.ArrayTriplets_20.Array.TripletPtr;
+            // ecx = Struct68_00.BaseValues.Array.TripletPtr;
             esi = (esi + eax) >> 1;
-            ebx = (esi << 0x09) - Struct68_00.ArrayTriplets_20.Array.TripletPtr[esi].BaseValue;
+            ebx = (esi << 0x09) - Struct68_00.BaseValues.Array.TripletPtr[esi].BaseValue;
             if(edx < ebx)
             {
                 // HOTS: 01959D4B
@@ -1474,7 +1481,7 @@ DWORD TFileNameDatabase::sub_1959CB0(DWORD dwHashValue)
     }
 
     // HOTS: 1959D5F
-    pTriplet = Struct68_00.ArrayTriplets_20.Array.TripletPtr + eax;
+    pTriplet = Struct68_00.BaseValues.Array.TripletPtr + eax;
     edx += pTriplet->BaseValue - (eax << 0x09);
     edi = (eax << 4);
 
@@ -1640,7 +1647,7 @@ DWORD TFileNameDatabase::sub_1959F50(DWORD arg_0)
     if((eax + 0x0A) > edi)
     {
         // HOTS: 01959F94
-        pTriplet = Struct68_00.ArrayTriplets_20.Array.TripletPtr + eax + 1;
+        pTriplet = Struct68_00.BaseValues.Array.TripletPtr + eax + 1;
         while(edx >= pTriplet->BaseValue)
         {
             // HOTS: 1959FA3
@@ -1656,7 +1663,7 @@ DWORD TFileNameDatabase::sub_1959F50(DWORD arg_0)
         {
             // HOTS: 1959FB4
             esi = (edi + eax) >> 1;
-            if(edx < Struct68_00.ArrayTriplets_20.Array.TripletPtr[esi].BaseValue)
+            if(edx < Struct68_00.BaseValues.Array.TripletPtr[esi].BaseValue)
             {
                 // HOTS: 1959FC4
                 edi = esi;
@@ -1670,7 +1677,7 @@ DWORD TFileNameDatabase::sub_1959F50(DWORD arg_0)
     }
 
     // HOTS: 1959FD4
-    pTriplet = Struct68_00.ArrayTriplets_20.Array.TripletPtr + eax;
+    pTriplet = Struct68_00.BaseValues.Array.TripletPtr + eax;
     edx = edx - pTriplet->BaseValue;
     edi = eax << 0x04;
     eax = pTriplet->Value2;
@@ -1808,26 +1815,23 @@ DWORD TFileNameDatabase::sub_1959F50(DWORD arg_0)
 }
 
 // HOTS: 1957970
-bool TFileNameDatabase::sub_1957970(TMndxFindResult * pStruct1C)
+bool TFileNameDatabase::CheckNextPathFragment(TMndxFindResult * pStruct1C)
 {
     TStruct40 * pStruct40 = pStruct1C->pStruct40;
     LPBYTE pbPathName = (LPBYTE)pStruct1C->szSearchMask;
-    DWORD ExtraBitsIndex;
     DWORD SaveCharIndex;
-    DWORD HashValue;
+    DWORD HiBitsIndex;
     DWORD ItemIndex;
     DWORD BitIndex;
     DWORD Distance;
 
-    // Calculate hash value and index to the hash table
-    HashValue = (pStruct40->HashValue << 0x05) ^ pStruct40->HashValue ^ pbPathName[pStruct40->CharIndex];
-    ItemIndex = HashValue & dwKeyMask;
+    // Calculate index to the table of name fragments
+    ItemIndex = ((pStruct40->HashValue << 0x05) ^ pStruct40->HashValue ^ pbPathName[pStruct40->CharIndex]) & ItemIndexMask;
     
     // Does the hash value match?
     if(pStruct40->HashValue == NameTable.Array.NameEntryPtr[ItemIndex].HashValue)
     {
-        // If the upper 24 bits are set, then we found a single character match
-        // and we move on to the next hash value
+        // Check if there is single character match
         if(NameTable.IsSingleCharMatch(ItemIndex))
         {
             pStruct40->HashValue = NameTable.Array.NameEntryPtr[ItemIndex].NextHash;
@@ -1835,7 +1839,7 @@ bool TFileNameDatabase::sub_1957970(TMndxFindResult * pStruct1C)
             return true;
         }
 
-        // If the upper 24 bits are not set, we found a fragment match
+        // Check if there is a name fragment match
         if(NextDB.pDB != NULL)
         {
             if(!NextDB.pDB->sub_1957B80(pStruct1C, NameTable.Array.NameEntryPtr[ItemIndex].Distance))
@@ -1857,60 +1861,39 @@ bool TFileNameDatabase::sub_1957970(TMndxFindResult * pStruct1C)
 
     // HOTS: 1957A0E
     BitIndex = sub_1959CB0(pStruct40->HashValue) + 1;
-    if(!Struct68_00.ItemBits.IsBitSet(BitIndex))
+    if(!Struct68_00.IsItemPresent(BitIndex))
         return false;
 
     pStruct40->HashValue = (BitIndex - pStruct40->HashValue - 1);
-    ExtraBitsIndex = 0xFFFFFFFF;
+    HiBitsIndex = 0xFFFFFFFF;
 
-    //= Debug Code - Delete !!! ==================================
-/*
-    {
-        FILE * fp = fopen("E:\\extra_bits.txt", "wt");
-
-        for(HashValue = 0; HashValue < 0x80; HashValue++)
-        {
-            DWORD ExtraBitIndex = 0;
-            DWORD BitValue; 
-
-            BitValue = (Struct68_68.ItemBits.IsBitSet(HashValue) ? 1 : 0);
-            if(BitValue)
-            {
-                ExtraBitIndex = Struct68_68.GetExtraBitsIndex(HashValue);
-            }
-
-            fprintf(fp, "%02X  %02X  %04X\n", HashValue+1, BitValue, ExtraBitIndex);
-        }
-
-        fclose(fp);
-    }
-*/
-    //============================================================
+//  CascDumpSparseArray("E:\\casc-array-68.txt", &FileNameIndexes);
+//  CascDumpSparseArray("E:\\casc-array-D0.txt", &Struct68_D0);
 
     // HOTS: 1957A41:
-    for(;;)
+    do
     {
         // HOTS: 1957A41
         // Check if the low 8 bits if the fragment distance contain a single character
         // or an offset to a name fragment 
-        if(Struct68_D0.ItemBits.IsBitSet(pStruct40->HashValue))
+        if(Struct68_D0.IsItemPresent(pStruct40->HashValue))
         {
-            if(ExtraBitsIndex == 0xFFFFFFFF)
+            if(HiBitsIndex == 0xFFFFFFFF)
             {
                 // HOTS: 1957A6C
-                ExtraBitsIndex = Struct68_D0.GetExtraBitsIndex(pStruct40->HashValue);
+                HiBitsIndex = Struct68_D0.GetItemValue(pStruct40->HashValue);
             }
             else
             {
                 // HOTS: 1957A7F
-                ExtraBitsIndex++;
+                HiBitsIndex++;
             }
 
             // HOTS: 1957A83
             SaveCharIndex = pStruct40->CharIndex;
             
             // Get the name fragment distance as combined value from lower 8 bits and upper bits
-            Distance = GetNameFragmentDistanceEx(pStruct40->HashValue, ExtraBitsIndex);
+            Distance = GetNameFragmentDistanceEx(pStruct40->HashValue, HiBitsIndex);
 
             // Compare the string with the fragment name database
             if(NextDB.pDB != NULL)
@@ -1927,6 +1910,7 @@ bool TFileNameDatabase::sub_1957970(TMndxFindResult * pStruct1C)
             }
 
             // HOTS: 1957B0E
+            // If there was partial match with the fragment, end the search
             if(pStruct40->CharIndex != SaveCharIndex)
                 return false;
         }
@@ -1943,11 +1927,8 @@ bool TFileNameDatabase::sub_1957970(TMndxFindResult * pStruct1C)
         // HOTS: 1957B32
         pStruct40->HashValue++;
         BitIndex++;
-
-        if(!Struct68_00.ItemBits.IsBitSet(BitIndex))
-            break;
     }
-
+    while(Struct68_00.IsItemPresent(BitIndex));
     return false;
 }
 
@@ -1964,7 +1945,7 @@ bool TFileNameDatabase::sub_1957B80(TMndxFindResult * pStruct1C, DWORD arg_4)
     // HOTS: 1957B95
     for(;;)
     {
-        pNameEntry = NameTable.Array.NameEntryPtr + (edi & dwKeyMask);
+        pNameEntry = NameTable.Array.NameEntryPtr + (edi & ItemIndexMask);
         if(edi == pNameEntry->NextHash)
         {
             // HOTS: 01957BB4
@@ -2003,7 +1984,7 @@ bool TFileNameDatabase::sub_1957B80(TMndxFindResult * pStruct1C, DWORD arg_4)
         else
         {
             // HOTS: 1957C30
-            if(Struct68_D0.ItemBits.IsBitSet(edi))
+            if(Struct68_D0.IsItemPresent(edi))
             {
                 // HOTS: 1957C4C
                 if(NextDB.pDB != NULL)
@@ -2052,7 +2033,7 @@ void TFileNameDatabase::sub_1958D70(TMndxFindResult * pStruct1C, DWORD arg_4)
     // HOTS: 1958D84
     for(;;)
     {
-        pNameEntry = NameTable.Array.NameEntryPtr + (arg_4 & dwKeyMask);
+        pNameEntry = NameTable.Array.NameEntryPtr + (arg_4 & ItemIndexMask);
         if(arg_4 == pNameEntry->NextHash)
         {
             // HOTS: 1958DA6
@@ -2083,7 +2064,7 @@ void TFileNameDatabase::sub_1958D70(TMndxFindResult * pStruct1C, DWORD arg_4)
         else
         {
             // HOTS: 1958E8E
-            if(Struct68_D0.ItemBits.IsBitSet(arg_4))
+            if(Struct68_D0.IsItemPresent(arg_4))
             {
                 DWORD Distance;
 
@@ -2123,7 +2104,7 @@ bool TFileNameDatabase::sub_1959010(TMndxFindResult * pStruct1C, DWORD arg_4)
     // HOTS: 1959024
     for(;;)
     {
-        pNameEntry = NameTable.Array.NameEntryPtr + (arg_4 & dwKeyMask);
+        pNameEntry = NameTable.Array.NameEntryPtr + (arg_4 & ItemIndexMask);
         if(arg_4 == pNameEntry->NextHash)
         {
             // HOTS: 1959047
@@ -2160,7 +2141,7 @@ bool TFileNameDatabase::sub_1959010(TMndxFindResult * pStruct1C, DWORD arg_4)
         else
         {
             // HOTS: 1959147
-            if(Struct68_D0.ItemBits.IsBitSet(arg_4))
+            if(Struct68_D0.IsItemPresent(arg_4))
             {
                 DWORD Distance;
 
@@ -2220,8 +2201,9 @@ bool TFileNameDatabase::sub_1959460(TMndxFindResult * pStruct1C)
     if(pStruct40->SearchPhase != CASC_SEARCH_SEARCHING)
     {
         // HOTS: 1959489
-        pStruct40->sub_19586B0();
+        pStruct40->InitSearchBuffers();
 
+        // If the caller passed a part of the search path, we need to find that one
         while(pStruct40->CharIndex < pStruct1C->cchSearchMask)
         {
             if(!sub_1958B00(pStruct1C))
@@ -2240,11 +2222,11 @@ bool TFileNameDatabase::sub_1959460(TMndxFindResult * pStruct1C)
         pStruct40->PathStops.InsertOneItem_PATH_STOP(PathStop);
         pStruct40->ItemCount = 1;
 
-        if(Struct68_68.ItemBits.IsBitSet(pStruct40->HashValue))
+        if(FileNameIndexes.IsItemPresent(pStruct40->HashValue))
         {
-            pStruct1C->szFoundPath  = (char *)pStruct40->array_00.FirstValid.CharPtr;
-            pStruct1C->cchFoundPath = pStruct40->array_00.ItemCount;
-            pStruct1C->MndxIndex = Struct68_68.GetExtraBitsIndex(pStruct40->HashValue);
+            pStruct1C->szFoundPath   = pStruct40->array_00.FirstValid.CharPtr;
+            pStruct1C->cchFoundPath  = pStruct40->array_00.ItemCount;
+            pStruct1C->FileNameIndex = FileNameIndexes.GetItemValue(pStruct40->HashValue);
             return true;
         }
     }
@@ -2275,16 +2257,16 @@ bool TFileNameDatabase::sub_1959460(TMndxFindResult * pStruct1C)
         pPathStop = pStruct40->PathStops.FirstValid.PathStopPtr + pStruct40->ItemCount;
 
         // HOTS: 19595CC
-        if(Struct68_00.ItemBits.IsBitSet(pPathStop->field_4++))
+        if(Struct68_00.IsItemPresent(pPathStop->field_4++))
         {
             // HOTS: 19595F2
             pStruct40->ItemCount++;
 
-            if(Struct68_D0.ItemBits.IsBitSet(pPathStop->HashValue))
+            if(Struct68_D0.IsItemPresent(pPathStop->HashValue))
             {
                 // HOTS: 1959617
                 if(pPathStop->field_C == 0xFFFFFFFF)
-                    pPathStop->field_C = Struct68_D0.GetExtraBitsIndex(pPathStop->HashValue);
+                    pPathStop->field_C = Struct68_D0.GetItemValue(pPathStop->HashValue);
                 else
                     pPathStop->field_C++;
 
@@ -2312,13 +2294,13 @@ bool TFileNameDatabase::sub_1959460(TMndxFindResult * pStruct1C)
             pPathStop->field_8 = pStruct40->array_00.ItemCount;
 
             // HOTS: 19596b6
-            if(Struct68_68.ItemBits.IsBitSet(pPathStop->HashValue))
+            if(FileNameIndexes.IsItemPresent(pPathStop->HashValue))
             {
                 // HOTS: 19596D1
                 if(pPathStop->field_10 == 0xFFFFFFFF)
                 {
                     // HOTS: 19596D9
-                    pPathStop->field_10 = Struct68_68.GetExtraBitsIndex(pPathStop->HashValue);
+                    pPathStop->field_10 = FileNameIndexes.GetItemValue(pPathStop->HashValue);
                 }
                 else
                 {
@@ -2328,7 +2310,7 @@ bool TFileNameDatabase::sub_1959460(TMndxFindResult * pStruct1C)
                 // HOTS: 1959755
                 pStruct1C->szFoundPath = pStruct40->array_00.FirstValid.CharPtr;
                 pStruct1C->cchFoundPath = pStruct40->array_00.ItemCount;
-                pStruct1C->MndxIndex = pPathStop->field_10;
+                pStruct1C->FileNameIndex = pPathStop->field_10;
                 return true;
             }
         }
@@ -2388,7 +2370,7 @@ bool TFileNameDatabase::sub_1958B00(TMndxFindResult * pStruct1C)
     DWORD var_4;
 
     HashValue = pbPathName[pStruct40->CharIndex] ^ (pStruct40->HashValue << 0x05) ^ pStruct40->HashValue;
-    HashValue = HashValue & dwKeyMask;
+    HashValue = HashValue & ItemIndexMask;
     if(pStruct40->HashValue == NameTable.Array.NameEntryPtr[HashValue].HashValue)
     {
         // HOTS: 1958B45
@@ -2421,7 +2403,7 @@ bool TFileNameDatabase::sub_1958B00(TMndxFindResult * pStruct1C)
 
     // HOTS: 1958BE5
     BitIndex = sub_1959CB0(pStruct40->HashValue) + 1;
-    if(!Struct68_00.ItemBits.IsBitSet(BitIndex))
+    if(!Struct68_00.IsItemPresent(BitIndex))
         return false;
 
     pStruct40->HashValue = (BitIndex - pStruct40->HashValue - 1);
@@ -2430,13 +2412,13 @@ bool TFileNameDatabase::sub_1958B00(TMndxFindResult * pStruct1C)
     // HOTS: 1958C20
     for(;;)
     {
-        if(Struct68_D0.ItemBits.IsBitSet(pStruct40->HashValue))
+        if(Struct68_D0.IsItemPresent(pStruct40->HashValue))
         {
             // HOTS: 1958C0E
             if(var_4 == 0xFFFFFFFF)
             {
                 // HOTS: 1958C4B
-                var_4 = Struct68_D0.GetExtraBitsIndex(pStruct40->HashValue);
+                var_4 = Struct68_D0.GetItemValue(pStruct40->HashValue);
             }
             else
             {
@@ -2480,7 +2462,7 @@ bool TFileNameDatabase::sub_1958B00(TMndxFindResult * pStruct1C)
         pStruct40->HashValue++;
         BitIndex++;
 
-        if(!Struct68_00.ItemBits.IsBitSet(BitIndex))
+        if(!Struct68_00.IsItemPresent(BitIndex))
             break;
     }
 
@@ -2501,19 +2483,18 @@ bool TFileNameDatabase::FindFileInDatabase(TMndxFindResult * pStruct1C)
         while(pStruct40->CharIndex < pStruct1C->cchSearchMask)
         {
             // HOTS: 01957F12
-            if(!sub_1957970(pStruct1C))
+            if(!CheckNextPathFragment(pStruct1C))
                 return false;
         }
     }
 
     // HOTS: 1957F26
-    if(!Struct68_68.ItemBits.IsBitSet(pStruct40->HashValue))
+    if(!FileNameIndexes.IsItemPresent(pStruct40->HashValue))
         return false;
 
-    pStruct1C->szFoundPath = pStruct1C->szSearchMask;
-    pStruct1C->cchFoundPath = pStruct1C->cchSearchMask;
-
-    pStruct1C->MndxIndex = Struct68_68.GetExtraBitsIndex(pStruct40->HashValue);
+    pStruct1C->szFoundPath   = pStruct1C->szSearchMask;
+    pStruct1C->cchFoundPath  = pStruct1C->cchSearchMask;
+    pStruct1C->FileNameIndex = FileNameIndexes.GetItemValue(pStruct40->HashValue);
     return true;
 }
 
@@ -2527,7 +2508,7 @@ int TFileNameDatabase::LoadFromStream(TByteStream & InStream)
     if(nError != ERROR_SUCCESS)
         return nError;
 
-    nError = Struct68_68.LoadFromStream_Exchange(InStream);
+    nError = FileNameIndexes.LoadFromStream_Exchange(InStream);
     if(nError != ERROR_SUCCESS)
         return nError;
 
@@ -2550,7 +2531,7 @@ int TFileNameDatabase::LoadFromStream(TByteStream & InStream)
         return nError;
 
     // HOTS: 0195980A
-    if(Struct68_D0.PresentItems != 0 && IndexStruct_174.NameFragments.ItemCount == 0)
+    if(Struct68_D0.ValidItemCount != 0 && IndexStruct_174.NameFragments.ItemCount == 0)
     {
         TFileNameDatabase * pNextDB = new TFileNameDatabase;
 
@@ -2571,7 +2552,7 @@ int TFileNameDatabase::LoadFromStream(TByteStream & InStream)
     if(nError != ERROR_SUCCESS)
         return nError;
 
-    dwKeyMask = NameTable.ItemCount - 1;
+    ItemIndexMask = NameTable.ItemCount - 1;
 
     nError = InStream.GetValue_DWORD(field_214);
     if(nError != ERROR_SUCCESS)
@@ -2665,12 +2646,12 @@ int TFileNameDatabasePtr::sub_1956CE0(TMndxFindResult * pStruct1C, bool * pbFind
 }
 
 // HOTS: 1956D20
-int TFileNameDatabasePtr::GetStruct68_68_Field1C(PDWORD ptr_var_C)
+int TFileNameDatabasePtr::GetFileNameCount(PDWORD PtrFileNameCount)
 {
     if(pDB == NULL)
         return ERROR_INVALID_PARAMETER;
 
-    *ptr_var_C = pDB->Struct68_68.PresentItems;
+    PtrFileNameCount[0] = pDB->FileNameIndexes.ValidItemCount;
     return ERROR_SUCCESS;
 }
 
@@ -2866,7 +2847,7 @@ static int LoadPackageNames(TCascStorage * hs)
             break;
 
         // Insert the found name to the top level directory list
-        pPackages = InsertToPackageList(pPackages, Struct1C.szFoundPath, Struct1C.cchFoundPath, Struct1C.MndxIndex);
+        pPackages = InsertToPackageList(pPackages, Struct1C.szFoundPath, Struct1C.cchFoundPath, Struct1C.FileNameIndex);
         if(pPackages == NULL)
             return ERROR_NOT_ENOUGH_MEMORY;
     }
@@ -3042,10 +3023,10 @@ int LoadMndxRootFile(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile)
     if(nError == ERROR_SUCCESS)
     {
         TFileNameDatabasePtr * pDbPtr = pMndxInfo->pMarFile2->pDatabasePtr;
-        DWORD var_C;
+        DWORD FileNameCount;
 
-        nError = pDbPtr->GetStruct68_68_Field1C(&var_C);
-        if(nError == ERROR_SUCCESS && var_C == pMndxInfo->MndxEntriesValid)
+        nError = pDbPtr->GetFileNameCount(&FileNameCount);
+        if(nError == ERROR_SUCCESS && FileNameCount == pMndxInfo->MndxEntriesValid)
         {
             cbToAllocate = pMndxInfo->MndxEntriesTotal * pMndxInfo->MndxEntrySize;
             pMndxInfo->pMndxEntries = (PCASC_MNDX_ENTRY)CASC_ALLOC(BYTE, cbToAllocate);
@@ -3107,7 +3088,8 @@ int LoadMndxRootFile(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile)
         pMndxInfo = NULL;
 
 #if defined(_DEBUG) && defined(_X86_) && defined(CASCLIB_TEST)
-//      CascDumpMndxNameTable("E:\\mndx-packages.txt", hs->pMndxInfo->pMarFile1);
+//      CascDumpMndxNameTable("E:\\casc-name-table.txt", hs->pMndxInfo->pMarFile1);
+//      CascDumpFileNames("E:\\casc-listfile.txt", hs->pMndxInfo->pMarFile1);
         TestMndxRootFile(hs->pMndxInfo);
 #endif
         // Load the top level entries
@@ -3140,10 +3122,10 @@ int SearchMndxInfo(PCASC_MNDX_INFO pMndxInfo, const char * szFileName, DWORD dwP
             return ERROR_FILE_NOT_FOUND;
 
         // The found MNDX index must fall into range of valid MNDX entries
-        if(Struct1C.MndxIndex < pMndxInfo->MndxEntriesValid)
+        if(Struct1C.FileNameIndex < pMndxInfo->MndxEntriesValid)
         {
             // HOTS: E945F4
-            pMndxEntry = pMndxInfo->ppValidEntries[Struct1C.MndxIndex];
+            pMndxEntry = pMndxInfo->ppValidEntries[Struct1C.FileNameIndex];
             while((pMndxEntry->Flags & 0x00FFFFFF) != dwPackage)
             {
                 // The highest bit serves as a terminator if set
@@ -3225,7 +3207,7 @@ extern "C" {
     DWORD _cdecl sub_19573D0_x86(TFileNameDatabase * pDB, DWORD arg_0, DWORD arg_4);
     DWORD _cdecl sub_1957EF0_x86(TFileNameDatabase * pDB, TMndxFindResult * pStruct1C);
     bool  _cdecl sub_1959460_x86(TFileNameDatabase * pDB, TMndxFindResult * pStruct1C);
-    DWORD _cdecl GetExtraBitsIndex_x86(TStruct68 * pStruct, DWORD dwKey);
+    DWORD _cdecl GetItemValue_x86(TSparseArray * pStruct, DWORD dwKey);
     DWORD _cdecl sub_1959CB0_x86(TFileNameDatabase * pDB, DWORD dwKey);
     DWORD _cdecl sub_1959F50_x86(TFileNameDatabase * pDB, DWORD arg_0);
 }
@@ -3293,7 +3275,7 @@ static void TestFileSearch_SubStrings(PMAR_FILE pMarFile, char * szFileName, siz
             // Check the result
             assert(bFindResult1 == bFindResult2);
             assert(Struct1C_1.cchFoundPath == Struct1C_1.cchFoundPath);
-            assert(Struct1C_1.MndxIndex == Struct1C_2.MndxIndex);
+            assert(Struct1C_1.FileNameIndex == Struct1C_2.FileNameIndex);
             assert(strncmp(Struct1C_1.szFoundPath, Struct1C_2.szFoundPath, Struct1C_1.cchFoundPath) == 0);
             assert(Struct1C_1.cchFoundPath < MAX_PATH);
 
@@ -3346,7 +3328,7 @@ static void TestFileSearch(PMAR_FILE pMarFile, const char * szFileName)
 
         assert(bFindResult1 == bFindResult2);
         assert(Struct1C_1.cchFoundPath == Struct1C_1.cchFoundPath);
-        assert(Struct1C_1.MndxIndex == Struct1C_2.MndxIndex);
+        assert(Struct1C_1.FileNameIndex == Struct1C_2.FileNameIndex);
         assert(strncmp(Struct1C_1.szFoundPath, Struct1C_2.szFoundPath, Struct1C_1.cchFoundPath) == 0);
         assert(Struct1C_1.cchFoundPath < MAX_PATH);
 
@@ -3371,8 +3353,8 @@ static void TestFileSearch(PMAR_FILE pMarFile, const char * szFileName)
 static void TestMarFile(PMAR_FILE pMarFile, const char * szFileName, size_t nLength)
 {
     TFileNameDatabase * pDB = pMarFile->pDatabasePtr->pDB;
-    DWORD dwMndxIndex1 = 0xFFFFFFFF;
-    DWORD dwMndxIndex2 = 0xFFFFFFFF;
+    DWORD dwFileNameIndex1 = 0xFFFFFFFF;
+    DWORD dwFileNameIndex2 = 0xFFFFFFFF;
 
     // Perform the search using original HOTS code
     {
@@ -3383,7 +3365,7 @@ static void TestMarFile(PMAR_FILE pMarFile, const char * szFileName, size_t nLen
 
         // Call the original HOTS function
         sub_1957EF0_x86(pDB, &Struct1C);
-        dwMndxIndex1 = Struct1C.MndxIndex;
+        dwFileNameIndex1 = Struct1C.FileNameIndex;
     }
 
     // Perform the search using our code
@@ -3395,11 +3377,11 @@ static void TestMarFile(PMAR_FILE pMarFile, const char * szFileName, size_t nLen
 
         // Call our function
         pDB->FindFileInDatabase(&Struct1C);
-        dwMndxIndex2 = Struct1C.MndxIndex;
+        dwFileNameIndex2 = Struct1C.FileNameIndex;
     }
 
     // Compare both
-    assert(dwMndxIndex1 == dwMndxIndex2);
+    assert(dwFileNameIndex1 == dwFileNameIndex2);
 }
 
 static void TestMndxFunctions(PMAR_FILE pMarFile)
@@ -3418,11 +3400,11 @@ static void TestMndxFunctions(PMAR_FILE pMarFile)
         }
     }
 
-    // Exercise function GetExtraBitsIndex
+    // Exercise function GetItemValue
     for(DWORD i = 0; i < 0x10000; i++)
     {
-        DWORD dwResult1 = GetExtraBitsIndex_x86(&pDB->Struct68_D0, i);
-        DWORD dwResult2 = pDB->Struct68_D0.GetExtraBitsIndex(i);
+        DWORD dwResult1 = GetItemValue_x86(&pDB->Struct68_D0, i);
+        DWORD dwResult2 = pDB->Struct68_D0.GetItemValue(i);
   
         assert(dwResult1 == dwResult2);
     }
@@ -3460,9 +3442,9 @@ void TestMndxRootFile(PCASC_MNDX_INFO pMndxInfo)
 
     // Find a "mods" in the package array
     TestFindPackage(pMndxInfo->pMarFile1, "mods/heroes.stormmod/base.stormmaps/maps/heroes/builtin/startingexperience/practicemode01.stormmap/dede.stormdata");
-
+                                           
     // Search the package MAR file aith a path shorter than a fragment
-    TestFileSearch(pMndxInfo->pMarFile1, "mods/heroes.s");
+//  TestFileSearch(pMndxInfo->pMarFile1, "mods/heroes.s");
 
     // Test the file search
     TestFileSearch(pMndxInfo->pMarFile1, "");

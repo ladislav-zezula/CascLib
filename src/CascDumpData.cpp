@@ -279,6 +279,38 @@ static void DumpRootEntries(FILE * fp, TCascStorage * hs, char ** FileNameArray)
 //-----------------------------------------------------------------------------
 // Public functions
 
+void CascDumpSparseArray(const char * szFileName, void * pvSparseArray)
+{
+    TSparseArray * pSparseArray = (TSparseArray *)pvSparseArray;
+    FILE * fp;
+
+    // Create the dump file
+    fp = fopen(szFileName, "wt");
+    if(fp != NULL)                             
+    {
+        // Write header
+        fprintf(fp, "##   Value\n--   -----\n");
+                          
+        // Write the values
+        for(DWORD i = 0; i < pSparseArray->TotalItemCount; i++)
+        {
+            DWORD Value = 0;
+
+            if(pSparseArray->IsItemPresent(i))
+            {
+                Value = pSparseArray->GetItemValue(i);
+                fprintf(fp, "%02X    %02X\n", i, Value);
+            }
+            else
+            {
+                fprintf(fp, "%02X    --\n", i);
+            }
+        }
+
+        fclose(fp);
+    }
+}
+
 void CascDumpMndxNameTable(const char * szFileName, void * pMarFile)
 {
     TFileNameDatabase * pDB = ((PMAR_FILE)pMarFile)->pDatabasePtr->pDB;
@@ -312,10 +344,6 @@ void CascDumpMndxNameTable(const char * szFileName, void * pMarFile)
                     sprintf(szMatchType, "SINGLE_CHAR (\'%c\')", (pNameTable->Distance & 0xFF));
                 else
                     sprintf(szMatchType, "NAME_FRAGMT (\"%s\")", szNames + pNameTable->Distance);
-
-                // Check if this is termination entry
-//              if(pDB->Struct68_68.BitArray_0.IsBitSet(pNameTable->HashValue))
-//                  szLastEntry = " <END>";
             }
 
             // Dump the entry
@@ -328,6 +356,44 @@ void CascDumpMndxNameTable(const char * szFileName, void * pMarFile)
         }
         fclose(fp);
     }
+}
+
+void CascDumpFileNames(const char * szFileName, void * pvMarFile)
+{
+    TMndxFindResult Struct1C;
+    PMAR_FILE pMarFile = (PMAR_FILE)pvMarFile;
+    FILE * fp;
+    char szNameBuff[0x200];
+    bool bFindResult;
+
+    // Create the dump file
+    fp = fopen(szFileName, "wt");
+    if(fp != NULL)
+    {
+        // Set an empty path as search mask (?)
+        Struct1C.SetSearchPath("", 0);
+
+        // Keep searching
+        for(;;)
+        {
+            // Search the next file name
+            pMarFile->pDatabasePtr->sub_1956CE0(&Struct1C, &bFindResult);
+
+            // Stop the search in case of failure
+            if(!bFindResult)
+                break;
+
+            // Printf the found file name
+            memcpy(szNameBuff, Struct1C.szFoundPath, Struct1C.cchFoundPath);
+            szNameBuff[Struct1C.cchFoundPath] = 0;
+            fprintf(fp, "%s\n", szNameBuff);
+        }
+
+        fclose(fp);
+    }
+
+    // Free the search structures
+    Struct1C.FreeStruct40();
 }
 
 void CascDumpMndxRoot(const char * szFileName, PCASC_MNDX_INFO pMndxInfo)
