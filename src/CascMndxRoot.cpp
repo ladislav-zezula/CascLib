@@ -2193,7 +2193,7 @@ bool TFileNameDatabase::sub_1959460(TMndxFindResult * pStruct1C)
     PATH_STOP PathStop;
     DWORD NewMaxItemCount;
     DWORD FragOffs;
-    DWORD ebx, edi;
+    DWORD edi;
 
     if(pStruct40->SearchPhase == CASC_SEARCH_FINISHED)
         return false;
@@ -2241,12 +2241,11 @@ bool TFileNameDatabase::sub_1959460(TMndxFindResult * pStruct1C)
             DWORD CollisionIndex;
             
             pLastStop = pStruct40->PathStops.FirstValid.PathStopPtr + pStruct40->PathStops.ItemCount - 1;
-            CollisionIndex = sub_1959CB0(pLastStop->ItemIndex);
-            ebx = CollisionIndex - pLastStop->ItemIndex;
+            CollisionIndex = sub_1959CB0(pLastStop->ItemIndex) + 1;
 
             // Insert a new structure
-            PathStop.ItemIndex = ebx;
-            PathStop.field_4   = CollisionIndex + 1;
+            PathStop.ItemIndex = CollisionIndex - pLastStop->ItemIndex - 1;;
+            PathStop.field_4   = CollisionIndex;
             PathStop.field_8   = 0;
             PathStop.field_C   = 0xFFFFFFFF;
             PathStop.field_10  = 0xFFFFFFFF;
