@@ -37,6 +37,56 @@ static void FreeCascBlob(PQUERY_KEY pBlob)
     }
 }
 
+static bool IsInfoVariable(const char * szLineBegin, const char * szLineEnd, const char * szVarName, const char * szVarType)
+{
+    size_t nLength;
+
+    // Check the variable name
+    nLength = strlen(szVarName);
+    if((size_t)(szLineEnd - szLineBegin) > nLength)
+    {
+        // Check the variable name
+        if(!_strnicmp(szLineBegin, szVarName, nLength))
+        {
+            // Skip variable name and the exclamation mark
+            szLineBegin += nLength;
+            if(szLineBegin < szLineEnd && szLineBegin[0] == '!')
+            {
+                // Skip the exclamation mark
+                szLineBegin++;
+
+                // Check the variable type
+                nLength = strlen(szVarType);
+                if((size_t)(szLineEnd - szLineBegin) > nLength)
+                {
+                    // Check the variable name
+                    if(!_strnicmp(szLineBegin, szVarType, nLength))
+                    {
+                        // Skip variable type and the doublecolon
+                        szLineBegin += nLength;
+                        return (szLineBegin < szLineEnd && szLineBegin[0] == ':');
+                    }
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
+static const char * SkipInfoVariable(const char * szLineBegin, const char * szLineEnd)
+{
+    while(szLineBegin < szLineEnd)
+    {
+        if(szLineBegin[0] == '|')
+            return szLineBegin + 1;
+
+        szLineBegin++;
+    }
+
+    return NULL;
+}
+
 static TCHAR * CheckForIndexDirectory(TCascStorage * hs, const TCHAR * szSubDir)
 {
     TCHAR * szIndexPath;
@@ -197,6 +247,41 @@ static LPBYTE CheckLineVariable(LPBYTE pbLineBegin, LPBYTE pbLineEnd, const char
 
     return NULL;
 }
+
+static int LoadInfoVariable(PQUERY_KEY pVarBlob, const char * szLineBegin, const char * szLineEnd, bool bHexaValue)
+{
+    const char * szLinePtr = szLineBegin;
+
+    // Sanity checks
+    assert(pVarBlob->pbData == NULL);
+    assert(pVarBlob->cbData == 0);
+
+    // Check length of the variable
+    while(szLinePtr < szLineEnd && szLinePtr[0] != '|')
+        szLinePtr++;
+
+    // Allocate space for the blob
+    if(bHexaValue)
+    {
+        // Initialize the blob
+        pVarBlob->pbData = CASC_ALLOC(BYTE, (szLinePtr - szLineBegin) / 2);
+        return StringBlobToBinaryBlob(pVarBlob, (LPBYTE)szLineBegin, (LPBYTE)szLinePtr);
+    }
+
+    // Initialize the blob
+    pVarBlob->pbData = CASC_ALLOC(BYTE, (szLinePtr - szLineBegin) + 1);
+    pVarBlob->cbData = (size_t)(szLinePtr - szLineBegin);
+
+    // Check for success
+    if(pVarBlob->pbData == NULL)
+        return ERROR_NOT_ENOUGH_MEMORY;
+
+    // Copy the string
+    memcpy(pVarBlob->pbData, szLineBegin, pVarBlob->cbData);
+    pVarBlob->pbData[pVarBlob->cbData] = 0;
+    return ERROR_SUCCESS;
+}
+
 
 static void AppendConfigFilePath(TCHAR * szFileName, PQUERY_KEY pFileKey)
 {
@@ -457,6 +542,93 @@ static int FetchAndVerifyConfigFile(TCascStorage * hs, PQUERY_KEY pFileKey, PQUE
     return nError;
 }
 
+static int ParseInfoFile(TCascStorage * hs, PQUERY_KEY pFileBlob)
+{
+    QUERY_KEY CdnHost = {NULL, 0};
+    QUERY_KEY CdnPath = {NULL, 0};
+    const char * szLineBegin1 = NULL;
+    const char * szLineBegin2 = NULL;
+    const char * szLineEnd1 = NULL;
+    const char * szLineEnd2 = NULL;
+    const char * szFileEnd = (const char *)(pFileBlob->pbData + pFileBlob->cbData);
+    const char * szFilePtr = (const char *)pFileBlob->pbData;
+    int nError = ERROR_BAD_FORMAT;
+
+    // Find the first line
+    szLineBegin1 = szFilePtr;
+    while(szFilePtr < szFileEnd)
+    {
+        // Check for the end of the line
+        if(szFilePtr[0] == 0x0D || szFilePtr[0] == 0x0A)
+        {
+            szLineEnd1 = szFilePtr;
+            break;
+        }
+
+        szFilePtr++;
+    }
+
+    // Skip the newline character(s)
+    while(szFilePtr < szFileEnd && (szFilePtr[0] == 0x0D || szFilePtr[0] == 0x0A))
+        szFilePtr++;
+
+    // Find the second line
+    szLineBegin2 = szFilePtr;
+    while(szFilePtr < szFileEnd)
+    {
+        // Check for the end of the line
+        if(szFilePtr[0] == 0x0D || szFilePtr[0] == 0x0A)
+        {
+            szLineEnd2 = szFilePtr;
+            break;
+        }
+
+        szFilePtr++;
+    }
+
+    // Find the build key, CDN config key and the URL path
+    while(szLineBegin1 < szLineEnd1)
+    {
+        // Check for variables we need
+        if(IsInfoVariable(szLineBegin1, szLineEnd1, "Build Key", "HEX"))
+            LoadInfoVariable(&hs->CdnBuildKey, szLineBegin2, szLineEnd2, true);
+        if(IsInfoVariable(szLineBegin1, szLineEnd1, "CDN Key", "HEX"))
+            LoadInfoVariable(&hs->CdnConfigKey, szLineBegin2, szLineEnd2, true);
+        if(IsInfoVariable(szLineBegin1, szLineEnd1, "CDN Hosts", "STRING"))
+            LoadInfoVariable(&CdnHost, szLineBegin2, szLineEnd2, false);
+        if(IsInfoVariable(szLineBegin1, szLineEnd1, "CDN Path", "STRING"))
+            LoadInfoVariable(&CdnPath, szLineBegin2, szLineEnd2, false);
+
+        // Move both line pointers
+        szLineBegin1 = SkipInfoVariable(szLineBegin1, szLineEnd1);
+        if(szLineBegin1 == NULL)
+            break;
+
+        szLineBegin2 = SkipInfoVariable(szLineBegin2, szLineEnd2);
+        if(szLineBegin2 == NULL)
+            break;
+    }
+
+    // All four must be present
+    if(hs->CdnBuildKey.pbData != NULL &&
+       hs->CdnConfigKey.pbData != NULL &&
+       CdnHost.pbData != NULL &&
+       CdnPath.pbData != NULL)
+    {
+        // Merge the CDN host and CDN path
+        hs->szUrlPath = CASC_ALLOC(TCHAR, CdnHost.cbData + CdnPath.cbData + 1);
+        if(hs->szUrlPath != NULL)
+        {
+            CopyString(hs->szUrlPath, (char *)CdnHost.pbData, CdnHost.cbData);
+            CopyString(hs->szUrlPath + CdnHost.cbData, (char *)CdnPath.pbData, CdnPath.cbData);
+            nError = ERROR_SUCCESS;
+        }
+    }
+
+    FreeCascBlob(&CdnHost);
+    FreeCascBlob(&CdnPath);
+    return nError;
+}
 
 static int ParseAgentFile(TCascStorage * hs, PQUERY_KEY pFileBlob)
 {
@@ -656,23 +828,58 @@ static int LoadCdnBuildFile(TCascStorage * hs, PQUERY_KEY pFileBlob)
 
 int LoadBuildConfiguration(TCascStorage * hs)
 {
-    QUERY_KEY FileData;
+    QUERY_KEY InfoFile = {NULL, 0};
+    QUERY_KEY FileData = {NULL, 0};
     TCHAR * szAgentFile;
+    TCHAR * szInfoFile;
+    bool bBuildConfigComplete = false;
     int nError = ERROR_SUCCESS;
 
-    // Create the agent DB file name and load it
-    szAgentFile = CombinePath(hs->szRootPath, _T(".build.db"));
-    if(szAgentFile != NULL)
+    // Since HOTS build 30027, the game uses build.info file for storage info
+    if(bBuildConfigComplete == false)
     {
-        nError = LoadTextFile(szAgentFile, &FileData);
-        CASC_FREE(szAgentFile);
+        szInfoFile = CombinePath(hs->szRootPath, _T(".build.info"));
+        if(szInfoFile != NULL)
+        {
+            nError = LoadTextFile(szInfoFile, &InfoFile);
+            if(nError == ERROR_SUCCESS)
+            {
+                // Parse the info file
+                nError = ParseInfoFile(hs, &InfoFile);
+                if(nError == ERROR_SUCCESS)
+                    bBuildConfigComplete = true;
+                
+                // Free the loaded blob
+                FreeCascBlob(&InfoFile);
+            }
+
+            CASC_FREE(szInfoFile);
+        }
     }
 
-    // Retrieve the two config keys
-    if(nError == ERROR_SUCCESS)
+    // If the info file has not been loaded, try the legacy .build.db
+    if(bBuildConfigComplete == false)
     {
-        nError = ParseAgentFile(hs, &FileData);
-        FreeCascBlob(&FileData);
+        szAgentFile = CombinePath(hs->szRootPath, _T(".build.db"));
+        if(szAgentFile != NULL)
+        {
+            nError = LoadTextFile(szAgentFile, &FileData);
+            if(nError == ERROR_SUCCESS)
+            {
+                nError = ParseAgentFile(hs, &FileData);
+                if(nError == ERROR_SUCCESS)
+                    bBuildConfigComplete = true;
+
+                FreeCascBlob(&FileData);
+            }
+            CASC_FREE(szAgentFile);
+        }
+    }
+
+    // If the .build.info and .build.db file hasn't been loaded, 
+    if(nError == ERROR_SUCCESS && bBuildConfigComplete == false)
+    {
+        nError = ERROR_FILE_CORRUPT;
     }
 
     // Load the configuration file

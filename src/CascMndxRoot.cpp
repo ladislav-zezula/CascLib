@@ -288,13 +288,13 @@ void TByteStream::ExchangeWith(TByteStream & Target)
 }                                      
                                        
 // HOTS: 19599F0                       
-int TByteStream::GetBytes(DWORD cbByteCount, PVARIANT_POINTER PtrArray)
+int TByteStream::GetBytes(DWORD cbByteCount, PARRAY_POINTER PtrArray)
 {                                      
     if(cbByteData < cbByteCount)       
         return ERROR_BAD_FORMAT;
 
     // Give the buffer to the caller
-    PtrArray->BytePtr = pbByteData;
+    PtrArray->Bytes = pbByteData;
 
     // Move pointers
     pbByteData += cbByteCount;
@@ -303,7 +303,7 @@ int TByteStream::GetBytes(DWORD cbByteCount, PVARIANT_POINTER PtrArray)
 }
 
 // HOTS: 1957190
-int TByteStream::GetArray_DWORDs(PVARIANT_POINTER PtrArray, DWORD ItemCount)
+int TByteStream::GetArray_DWORDs(PARRAY_POINTER PtrArray, DWORD ItemCount)
 {
     if(PtrArray == NULL && ItemCount != 0)
         return ERROR_INVALID_PARAMETER;
@@ -314,7 +314,7 @@ int TByteStream::GetArray_DWORDs(PVARIANT_POINTER PtrArray, DWORD ItemCount)
 }
 
 // HOTS: 19571E0
-int TByteStream::GetArray_Triplets(PVARIANT_POINTER PtrArray, DWORD ItemCount)
+int TByteStream::GetArray_Triplets(PARRAY_POINTER PtrArray, DWORD ItemCount)
 {
     if(PtrArray == NULL && ItemCount != 0)
         return ERROR_INVALID_PARAMETER;
@@ -325,7 +325,7 @@ int TByteStream::GetArray_Triplets(PVARIANT_POINTER PtrArray, DWORD ItemCount)
 }
 
 // HOTS: 1957230
-int TByteStream::GetArray_BYTES(PVARIANT_POINTER PtrArray, DWORD ItemCount)
+int TByteStream::GetArray_BYTES(PARRAY_POINTER PtrArray, DWORD ItemCount)
 {
     if(PtrArray == NULL && ItemCount != 0)
         return ERROR_INVALID_PARAMETER;
@@ -336,20 +336,20 @@ int TByteStream::GetArray_BYTES(PVARIANT_POINTER PtrArray, DWORD ItemCount)
 }
 
 // HOTS: 1957280
-int TByteStream::GetArray_NameTable(PVARIANT_POINTER PtrArray, DWORD ItemCount)
+int TByteStream::GetArray_NameTable(PARRAY_POINTER PtrArray, DWORD ItemCount)
 {
     if(PtrArray == NULL && ItemCount != 0)
         return ERROR_INVALID_PARAMETER;
-    if(ItemCount > CASC_MAX_ENTRIES(NAME_ENTRY))
+    if(ItemCount > CASC_MAX_ENTRIES(NAME_FRAG))
         return ERROR_NOT_ENOUGH_MEMORY;
 
-    return GetBytes(ItemCount * sizeof(NAME_ENTRY), PtrArray);
+    return GetBytes(ItemCount * sizeof(NAME_FRAG), PtrArray);
 }
 
 // HOTS: 1959A60
 int TByteStream::SkipBytes(DWORD cbByteCount)
 {
-    VARIANT_POINTER Dummy;
+    ARRAY_POINTER Dummy;
 
     return GetBytes(cbByteCount, &Dummy);
 }
@@ -371,20 +371,20 @@ int TByteStream::SetByteBuffer(LPBYTE pbNewByteData, DWORD cbNewByteData)
 // HOTS: 1957160
 int TByteStream::GetValue_DWORD(DWORD & Value)
 {
-    VARIANT_POINTER Pointer;
+    ARRAY_POINTER Pointer;
     int nError;
 
     nError = GetBytes(sizeof(DWORD), &Pointer);
     if(nError != ERROR_SUCCESS)
         return nError;
 
-    Value = Pointer.DwordPtr[0];
+    Value = Pointer.Uint32s[0];
     return ERROR_SUCCESS;
 }
 
 int TByteStream::GetValue_ItemCount(DWORD & NumberOfBytes, DWORD & ItemCount, DWORD ItemSize)
 {
-    VARIANT_POINTER Pointer;
+    ARRAY_POINTER Pointer;
     ULONGLONG ByteCount;
     int nError;
 
@@ -409,9 +409,9 @@ int TByteStream::GetValue_ItemCount(DWORD & NumberOfBytes, DWORD & ItemCount, DW
 
 TGenericArray::TGenericArray()
 {
-    DataBuffer.BytePtr = NULL;
-    FirstValid.BytePtr = NULL;
-    Array.BytePtr = NULL;
+    DataBuffer.Bytes = NULL;
+    FirstValid.Bytes = NULL;
+    ArrayPointer.Bytes = NULL;
     ItemCount = 0;
     MaxItemCount = 0;
     bIsValidArray = false;
@@ -419,8 +419,8 @@ TGenericArray::TGenericArray()
 
 TGenericArray::~TGenericArray()
 {
-    if(DataBuffer.CharPtr != NULL)
-        CASC_FREE(DataBuffer.CharPtr);
+    if(DataBuffer.Bytes != NULL)
+        CASC_FREE(DataBuffer.Bytes);
 }
 
 // HOTS: inlined
@@ -436,8 +436,8 @@ void TGenericArray::ExchangeWith(TGenericArray & Target)
 // HOTS: Inlined
 void TGenericArray::CopyFrom(TGenericArray & Source)
 {
-    if(DataBuffer.BytePtr != NULL)
-        CASC_FREE(DataBuffer.BytePtr);
+    if(DataBuffer.Bytes != NULL)
+        CASC_FREE(DataBuffer.Bytes);
     *this = Source;
 }
 
@@ -458,32 +458,32 @@ int TGenericArray::SetArrayValid()
 // HOTS: 19575A0
 void TGenericArray::SetMaxItems_CHARS(DWORD NewMaxItemCount)
 {
-    VARIANT_POINTER OldDataBuffer = DataBuffer;
-    VARIANT_POINTER NewDataBuffer;
+    ARRAY_POINTER OldDataBuffer = DataBuffer;
+    ARRAY_POINTER NewDataBuffer;
 
     // Allocate new data buffer
-    NewDataBuffer.CharPtr = CASC_ALLOC(char, NewMaxItemCount);
-    if(NewDataBuffer.CharPtr != NULL)
+    NewDataBuffer.Chars = CASC_ALLOC(char, NewMaxItemCount);
+    if(NewDataBuffer.Chars != NULL)
     {
         // Copy the old items to the buffer
         for(DWORD i = 0; i < ItemCount; i++)
         {
-            NewDataBuffer.CharPtr[i] = FirstValid.CharPtr[i];
+            NewDataBuffer.Chars[i] = FirstValid.Chars[i];
         }
     }
 
     DataBuffer = NewDataBuffer;
     FirstValid = NewDataBuffer;
-    Array = NewDataBuffer;
+    ArrayPointer = NewDataBuffer;
     MaxItemCount = NewMaxItemCount;
-    CASC_FREE(OldDataBuffer.CharPtr);
+    CASC_FREE(OldDataBuffer.Chars);
 }
 
 // HOTS: 1957600
 void TGenericArray::SetMaxItems_PATH_STOP(DWORD NewMaxItemCount)
 {
-    VARIANT_POINTER OldDataBuffer = DataBuffer;
-    VARIANT_POINTER NewDataBuffer;
+    ARRAY_POINTER OldDataBuffer = DataBuffer;
+    ARRAY_POINTER NewDataBuffer;
 
     // Allocate new data buffer
     NewDataBuffer.PathStopPtr = CASC_ALLOC(PATH_STOP, NewMaxItemCount);
@@ -498,7 +498,7 @@ void TGenericArray::SetMaxItems_PATH_STOP(DWORD NewMaxItemCount)
 
     DataBuffer = NewDataBuffer;
     FirstValid = NewDataBuffer;
-    Array = NewDataBuffer;
+    ArrayPointer = NewDataBuffer;
     MaxItemCount = NewMaxItemCount;
     CASC_FREE(OldDataBuffer.PathStopPtr);
 }
@@ -526,7 +526,7 @@ void TGenericArray::InsertOneItem_CHAR(char NewItem)
     }
 
     // Put the character to the slot that has been reserved
-    FirstValid.CharPtr[ItemCount++] = NewItem;
+    FirstValid.Chars[ItemCount++] = NewItem;
 }
 
 // HOTS: 1958330, inline
@@ -578,7 +578,7 @@ void TGenericArray::sub_19583A0(DWORD NewItemCount)
     // Initialize the newly inserted items
     for(DWORD i = OldMaxItemCount; i < NewItemCount; i++)
     {
-        FirstValid.PathStopPtr[i].HashValue = 0;
+        FirstValid.PathStopPtr[i].ItemIndex = 0;
         FirstValid.PathStopPtr[i].field_4   = 0;
         FirstValid.PathStopPtr[i].field_8   = 0;
         FirstValid.PathStopPtr[i].field_C   = 0xFFFFFFFF;
@@ -599,7 +599,7 @@ int TGenericArray::LoadDwordsArray(TByteStream & InStream)
     if(nError != ERROR_SUCCESS)
         return nError;
 
-    nError = InStream.GetArray_DWORDs(&Array, ItemCount);
+    nError = InStream.GetArray_DWORDs(&ArrayPointer, ItemCount);
     if(nError != ERROR_SUCCESS)
         return nError;
 
@@ -621,7 +621,7 @@ int TGenericArray::LoadTripletsArray(TByteStream & InStream)
     if(nError != ERROR_SUCCESS)
         return nError;
 
-    nError = InStream.GetArray_Triplets(&Array, ItemCount);
+    nError = InStream.GetArray_Triplets(&ArrayPointer, ItemCount);
     if(nError != ERROR_SUCCESS)
         return nError;
 
@@ -643,7 +643,7 @@ int TGenericArray::LoadByteArray(TByteStream & InStream)
     if(nError != ERROR_SUCCESS)
         return nError;
 
-    nError = InStream.GetArray_BYTES(&Array, ItemCount);
+    nError = InStream.GetArray_BYTES(&ArrayPointer, ItemCount);
     if(nError != ERROR_SUCCESS)
         return nError;
     
@@ -661,11 +661,11 @@ int TGenericArray::LoadFragmentInfos(TByteStream & InStream)
     int nError;
 
     // Get and verify the number of items
-    nError = InStream.GetValue_ItemCount(NumberOfBytes, ItemCount, sizeof(NAME_ENTRY));
+    nError = InStream.GetValue_ItemCount(NumberOfBytes, ItemCount, sizeof(NAME_FRAG));
     if(nError != ERROR_SUCCESS)
         return nError;
 
-    nError = InStream.GetArray_NameTable(&Array, ItemCount);
+    nError = InStream.GetArray_NameTable(&ArrayPointer, ItemCount);
     if(nError != ERROR_SUCCESS)
         return nError;
 
@@ -687,7 +687,7 @@ int TGenericArray::LoadStrings(TByteStream & InStream)
     if(nError != ERROR_SUCCESS)
         return nError;
 
-    nError = InStream.GetArray_BYTES(&Array, ItemCount);
+    nError = InStream.GetArray_BYTES(&ArrayPointer, ItemCount);
     if(nError != ERROR_SUCCESS)
         return nError;
     
@@ -794,7 +794,7 @@ void TBitEntryArray::ExchangeWith(TBitEntryArray & Target)
 // HOTS: 1958580
 int TBitEntryArray::LoadFromStream(TByteStream & InStream)
 {
-    VARIANT_POINTER Pointer;
+    ARRAY_POINTER Pointer;
     ULONGLONG Value = 0;
     int nError;
 
@@ -806,14 +806,14 @@ int TBitEntryArray::LoadFromStream(TByteStream & InStream)
     if(nError != ERROR_SUCCESS)
         return nError;
     
-    BitsPerEntry = Pointer.DwordPtr[0];
+    BitsPerEntry = Pointer.Uint32s[0];
     if(BitsPerEntry > 0x20)
         return ERROR_BAD_FORMAT;
 
     nError = InStream.GetBytes(sizeof(DWORD), &Pointer);
     if(nError != ERROR_SUCCESS)
         return nError;
-    EntryBitMask = Pointer.DwordPtr[0];
+    EntryBitMask = Pointer.Uint32s[0];
 
     nError = InStream.GetBytes(sizeof(ULONGLONG), &Pointer);
     if(nError == ERROR_SUCCESS)
@@ -845,7 +845,7 @@ int TBitEntryArray::LoadFromStream_Exchange(TByteStream & InStream)
 
 TStruct40::TStruct40()
 {
-    HashValue   = 0;
+    ItemIndex   = 0;
     CharIndex   = 0;
     ItemCount   = 0;
     SearchPhase = CASC_SEARCH_INITIALIZING;
@@ -897,7 +897,7 @@ void TStruct40::InitSearchBuffers()
         PathStops.SetMaxItems_PATH_STOP(NewMaxItemCount);
     }
 
-    HashValue = 0;
+    ItemIndex = 0;
     CharIndex = 0;
     ItemCount = 0;
     SearchPhase = CASC_SEARCH_SEARCHING;
@@ -925,7 +925,7 @@ void TSparseArray::ExchangeWith(TSparseArray & Target)
 // HOTS: 1958630
 int TSparseArray::LoadFromStream(TByteStream & InStream)
 {
-    VARIANT_POINTER Pointer;
+    ARRAY_POINTER Pointer;
     int nError;
 
     nError = ItemBits.LoadDwordsArray_Copy(InStream);
@@ -935,12 +935,12 @@ int TSparseArray::LoadFromStream(TByteStream & InStream)
     nError = InStream.GetBytes(sizeof(DWORD), &Pointer);
     if(nError != ERROR_SUCCESS)
         return nError;
-    TotalItemCount = Pointer.DwordPtr[0];
+    TotalItemCount = Pointer.Uint32s[0];
 
     nError = InStream.GetBytes(sizeof(DWORD), &Pointer);
     if(nError != ERROR_SUCCESS)
         return nError;
-    ValidItemCount = Pointer.DwordPtr[0];
+    ValidItemCount = Pointer.Uint32s[0];
     
     if(ValidItemCount > TotalItemCount)
         return ERROR_FILE_CORRUPT;
@@ -1003,7 +1003,7 @@ DWORD TSparseArray::GetItemValue(DWORD ItemIndex)
     //              Number of set bits is then added to the values obtained from A and B
     
     // Upper 23 bits contain index to the table
-    pTriplet = BaseValues.Array.TripletPtr + (ItemIndex >> 0x09);
+    pTriplet = BaseValues.TripletArray + (ItemIndex >> 0x09);
     BaseValue = pTriplet->BaseValue;
 
     // Next 3 bits contain the index to the VBR
@@ -1049,10 +1049,10 @@ DWORD TSparseArray::GetItemValue(DWORD ItemIndex)
 
     // Add number of set bits in the masked value up to 0x3F bits
     if(ItemIndex & 0x20)
-        BaseValue += GetNumbrOfSetBits32(ItemBits.Array.DwordPtr[DwordIndex - 1]);
+        BaseValue += GetNumbrOfSetBits32(ItemBits.Uint32Array[DwordIndex - 1]);
 
     BitMask = (1 << (ItemIndex & 0x1F)) - 1;
-    return BaseValue + GetNumbrOfSetBits32(ItemBits.Array.DwordPtr[DwordIndex] & BitMask);
+    return BaseValue + GetNumbrOfSetBits32(ItemBits.Uint32Array[DwordIndex] & BitMask);
 }
 
 //-----------------------------------------------------------------------------
@@ -1067,7 +1067,7 @@ TNameIndexStruct::~TNameIndexStruct()
 {}
 
 // HOTS: 195A180
-bool TNameIndexStruct::CheckNameFragment(TMndxFindResult * pStruct1C, DWORD dwDistance)
+bool TNameIndexStruct::CheckNameFragment(TMndxFindResult * pStruct1C, DWORD dwFragOffs)
 {
     TStruct40 * pStruct40 = pStruct1C->pStruct40;
     const char * szPathFragment;
@@ -1077,7 +1077,7 @@ bool TNameIndexStruct::CheckNameFragment(TMndxFindResult * pStruct1C, DWORD dwDi
     {
         // Get the offset of the fragment to compare. For convenience with pStruct40->CharIndex,
         // subtract the CharIndex from the fragment offset
-        szPathFragment = (const char *)(NameFragments.Array.CharPtr + dwDistance - pStruct40->CharIndex);
+        szPathFragment = (NameFragments.CharArray + dwFragOffs - pStruct40->CharIndex);
         szSearchMask = pStruct1C->szSearchMask;
 
         // Keep searching as long as the name matches with the fragment
@@ -1098,19 +1098,19 @@ bool TNameIndexStruct::CheckNameFragment(TMndxFindResult * pStruct1C, DWORD dwDi
     else
     {
         // Get the offset of the fragment to compare.
-        szPathFragment = (const char *)(NameFragments.Array.CharPtr);
+        szPathFragment = (const char *)(NameFragments.CharArray);
         szSearchMask = pStruct1C->szSearchMask;
 
         // Keep searching as long as the name matches with the fragment
-        while(szPathFragment[dwDistance] == szSearchMask[pStruct40->CharIndex])
+        while(szPathFragment[dwFragOffs] == szSearchMask[pStruct40->CharIndex])
         {
             // Move to the next character
             pStruct40->CharIndex++;
 
             // Is it the end of the fragment or end of the path?
-            if(Struct68.IsItemPresent(dwDistance++))
+            if(Struct68.IsItemPresent(dwFragOffs++))
                 return true;
-            if(dwDistance >= pStruct1C->cchSearchMask)
+            if(dwFragOffs >= pStruct1C->cchSearchMask)
                 return false;
         }
         
@@ -1119,7 +1119,7 @@ bool TNameIndexStruct::CheckNameFragment(TMndxFindResult * pStruct1C, DWORD dwDi
 }
 
 // HOTS: 195A570
-bool TNameIndexStruct::CheckAndCopyNameFragment(TMndxFindResult * pStruct1C, DWORD dwDistance)
+bool TNameIndexStruct::CheckAndCopyNameFragment(TMndxFindResult * pStruct1C, DWORD dwFragOffs)
 {
     TStruct40 * pStruct40 = pStruct1C->pStruct40;
     const char * szPathFragment;
@@ -1129,7 +1129,7 @@ bool TNameIndexStruct::CheckAndCopyNameFragment(TMndxFindResult * pStruct1C, DWO
     {
         // Get the offset of the fragment to compare. For convenience with pStruct40->CharIndex,
         // subtract the CharIndex from the fragment offset
-        szPathFragment = (const char *)(NameFragments.Array.CharPtr + dwDistance - pStruct40->CharIndex);
+        szPathFragment = (const char *)(NameFragments.CharArray + dwFragOffs - pStruct40->CharIndex);
         szSearchMask = pStruct1C->szSearchMask;
 
         // Keep copying as long as we don't reach the end of the search mask
@@ -1162,28 +1162,28 @@ bool TNameIndexStruct::CheckAndCopyNameFragment(TMndxFindResult * pStruct1C, DWO
     {
         // Get the offset of the fragment to compare
         // HOTS: 195A6B7
-        szPathFragment = NameFragments.Array.CharPtr;
+        szPathFragment = NameFragments.CharArray;
         szSearchMask = pStruct1C->szSearchMask;
 
         // Keep copying as long as we don't reach the end of the search mask
-        while(dwDistance < pStruct1C->cchSearchMask)
+        while(dwFragOffs < pStruct1C->cchSearchMask)
         {
-            if(szPathFragment[dwDistance] != szSearchMask[pStruct40->CharIndex])
+            if(szPathFragment[dwFragOffs] != szSearchMask[pStruct40->CharIndex])
                 return false;
 
-            pStruct40->array_00.InsertOneItem_CHAR(szPathFragment[dwDistance]);
+            pStruct40->array_00.InsertOneItem_CHAR(szPathFragment[dwFragOffs]);
             pStruct40->CharIndex++;
 
             // Keep going as long as the given bit is not set
-            if(Struct68.IsItemPresent(dwDistance++))
+            if(Struct68.IsItemPresent(dwFragOffs++))
                 return true;
         }
 
         // Fixup the address of the fragment
-        szPathFragment += dwDistance;
+        szPathFragment += dwFragOffs;
 
         // Now we need to copy the rest of the fragment
-        while(Struct68.IsItemPresent(dwDistance++) == 0)
+        while(Struct68.IsItemPresent(dwFragOffs++) == 0)
         {
             // HOTS: 195A7A6
             pStruct40->array_00.InsertOneItem_CHAR(szPathFragment[0]);
@@ -1195,7 +1195,7 @@ bool TNameIndexStruct::CheckAndCopyNameFragment(TMndxFindResult * pStruct1C, DWO
 }
 
 // HOTS: 195A3F0
-void TNameIndexStruct::CopyNameFragment(TMndxFindResult * pStruct1C, DWORD dwDistance)
+void TNameIndexStruct::CopyNameFragment(TMndxFindResult * pStruct1C, DWORD dwFragOffs)
 {
     TStruct40 * pStruct40 = pStruct1C->pStruct40;
     const char * szPathFragment;
@@ -1204,7 +1204,7 @@ void TNameIndexStruct::CopyNameFragment(TMndxFindResult * pStruct1C, DWORD dwDis
     if(!Struct68.TotalItemCount)
     {
         // HOTS: 195A40C
-        szPathFragment = NameFragments.Array.CharPtr + dwDistance;
+        szPathFragment = NameFragments.CharArray + dwFragOffs;
         while(szPathFragment[0] != 0)
         {
             // Insert the character to the path being built
@@ -1217,10 +1217,10 @@ void TNameIndexStruct::CopyNameFragment(TMndxFindResult * pStruct1C, DWORD dwDis
         for(;;)
         {
             // Insert the character to the path being built
-            pStruct40->array_00.InsertOneItem_CHAR(NameFragments.Array.CharPtr[dwDistance]);
+            pStruct40->array_00.InsertOneItem_CHAR(NameFragments.CharArray[dwFragOffs]);
 
             // Keep going as long as the given bit is not set
-            if(Struct68.IsItemPresent(dwDistance++))
+            if(Struct68.IsItemPresent(dwFragOffs++))
                 break;
         }
     }
@@ -1389,7 +1389,7 @@ int TStruct10::sub_1957800(DWORD dwBitMask)
 // HOTS: 01958730
 TFileNameDatabase::TFileNameDatabase()
 {
-    ItemIndexMask = 0;
+    NameFragIndexMask = 0;
     field_214 = 0;
 }
 
@@ -1412,11 +1412,11 @@ void TFileNameDatabase::ExchangeWith(TFileNameDatabase & Target)
     NextDB = Target.NextDB;
     Target.NextDB = TempPtr;
 
-    NameTable.ExchangeWith(Target.NameTable);
+    NameFragTable.ExchangeWith(Target.NameFragTable);
 
-    dwTemp = ItemIndexMask;
-    ItemIndexMask = Target.ItemIndexMask;
-    Target.ItemIndexMask = dwTemp;
+    dwTemp = NameFragIndexMask;
+    NameFragIndexMask = Target.NameFragIndexMask;
+    Target.NameFragIndexMask = dwTemp;
 
     dwTemp = field_214;
     field_214 = Target.field_214;
@@ -1426,25 +1426,25 @@ void TFileNameDatabase::ExchangeWith(TFileNameDatabase & Target)
 }
 
 // HOTS: 1959CB0
-DWORD TFileNameDatabase::sub_1959CB0(DWORD dwHashValue)
+DWORD TFileNameDatabase::sub_1959CB0(DWORD dwItemIndex)
 {
     PTRIPLET pTriplet;
-    DWORD dwKeyShifted = (dwHashValue >> 9);
+    DWORD dwKeyShifted = (dwItemIndex >> 9);
     DWORD eax, ebx, ecx, edx, esi, edi;
 
     // If lower 9 is zero
-    edx = dwHashValue;
+    edx = dwItemIndex;
     if((edx & 0x1FF) == 0)
-        return Struct68_00.ArrayDwords_38.Array.DwordPtr[dwKeyShifted];
+        return Struct68_00.ArrayDwords_38.Uint32Array[dwKeyShifted];
 
-    eax = Struct68_00.ArrayDwords_38.Array.DwordPtr[dwKeyShifted] >> 9;
-    esi = (Struct68_00.ArrayDwords_38.Array.DwordPtr[dwKeyShifted + 1] + 0x1FF) >> 9;
-    dwHashValue = esi;
+    eax = Struct68_00.ArrayDwords_38.Uint32Array[dwKeyShifted] >> 9;
+    esi = (Struct68_00.ArrayDwords_38.Uint32Array[dwKeyShifted + 1] + 0x1FF) >> 9;
+    dwItemIndex = esi;
     
     if((eax + 0x0A) >= esi)
     {
         // HOTS: 1959CF7
-        pTriplet = Struct68_00.BaseValues.Array.TripletPtr + eax + 1;
+        pTriplet = Struct68_00.BaseValues.TripletArray + eax + 1;
         edi = (eax << 0x09);
         ebx = edi - pTriplet->BaseValue + 0x200;
         while(edx >= ebx)
@@ -1463,25 +1463,25 @@ DWORD TFileNameDatabase::sub_1959CB0(DWORD dwHashValue)
         while((eax + 1) < esi)
         {
             // HOTS: 1959D38
-            // ecx = Struct68_00.BaseValues.Array.TripletPtr;
+            // ecx = Struct68_00.BaseValues.TripletArray;
             esi = (esi + eax) >> 1;
-            ebx = (esi << 0x09) - Struct68_00.BaseValues.Array.TripletPtr[esi].BaseValue;
+            ebx = (esi << 0x09) - Struct68_00.BaseValues.TripletArray[esi].BaseValue;
             if(edx < ebx)
             {
                 // HOTS: 01959D4B
-                dwHashValue = esi;
+                dwItemIndex = esi;
             }
             else
             {
                 // HOTS: 1959D50
                 eax = esi;
-                esi = dwHashValue;
+                esi = dwItemIndex;
             }
         }
     }
 
     // HOTS: 1959D5F
-    pTriplet = Struct68_00.BaseValues.Array.TripletPtr + eax;
+    pTriplet = Struct68_00.BaseValues.TripletArray + eax;
     edx += pTriplet->BaseValue - (eax << 0x09);
     edi = (eax << 4);
 
@@ -1570,14 +1570,14 @@ DWORD TFileNameDatabase::sub_1959CB0(DWORD dwHashValue)
 
     // HOTS: 1959E53:
     // Calculate the number of bits set in the value of "ecx"
-    ecx = ~Struct68_00.ItemBits.Array.DwordPtr[edi];
+    ecx = ~Struct68_00.ItemBits.Uint32Array[edi];
     eax = GetNumberOfSetBits(ecx);
     esi = eax >> 0x18;
 
     if(edx >= esi)
     {
         // HOTS: 1959ea4
-        ecx = ~Struct68_00.ItemBits.Array.DwordPtr[++edi];
+        ecx = ~Struct68_00.ItemBits.Uint32Array[++edi];
         edx = edx - esi;
         eax = GetNumberOfSetBits(ecx);
     }
@@ -1622,7 +1622,7 @@ DWORD TFileNameDatabase::sub_1959CB0(DWORD dwHashValue)
     edx = edx << 0x08;
     ecx = ecx & 0xFF;
 
-    // BUGBUG: Possible buffer overflow here. Happens when dwHashValue >= 0x9C.
+    // BUGBUG: Possible buffer overflow here. Happens when dwItemIndex >= 0x9C.
     // The same happens in Heroes of the Storm (build 29049), so I am not sure
     // if this is a bug or a case that never happens
     assert((ecx + edx) < sizeof(table_1BA1818));
@@ -1638,16 +1638,16 @@ DWORD TFileNameDatabase::sub_1959F50(DWORD arg_0)
     edx = arg_0;
     eax = arg_0 >> 0x09;
     if((arg_0 & 0x1FF) == 0)
-        return Struct68_00.ArrayDwords_50.Array.DwordPtr[eax];
+        return Struct68_00.ArrayDwords_50.Uint32Array[eax];
 
-    ItemArray = Struct68_00.ArrayDwords_50.Array.DwordPtr + eax;
+    ItemArray = Struct68_00.ArrayDwords_50.Uint32Array + eax;
     eax = (ItemArray[0] >> 0x09);
     edi = (ItemArray[1] + 0x1FF) >> 0x09;
     
     if((eax + 0x0A) > edi)
     {
         // HOTS: 01959F94
-        pTriplet = Struct68_00.BaseValues.Array.TripletPtr + eax + 1;
+        pTriplet = Struct68_00.BaseValues.TripletArray + eax + 1;
         while(edx >= pTriplet->BaseValue)
         {
             // HOTS: 1959FA3
@@ -1663,7 +1663,7 @@ DWORD TFileNameDatabase::sub_1959F50(DWORD arg_0)
         {
             // HOTS: 1959FB4
             esi = (edi + eax) >> 1;
-            if(edx < Struct68_00.BaseValues.Array.TripletPtr[esi].BaseValue)
+            if(edx < Struct68_00.BaseValues.TripletArray[esi].BaseValue)
             {
                 // HOTS: 1959FC4
                 edi = esi;
@@ -1677,7 +1677,7 @@ DWORD TFileNameDatabase::sub_1959F50(DWORD arg_0)
     }
 
     // HOTS: 1959FD4
-    pTriplet = Struct68_00.BaseValues.Array.TripletPtr + eax;
+    pTriplet = Struct68_00.BaseValues.TripletArray + eax;
     edx = edx - pTriplet->BaseValue;
     edi = eax << 0x04;
     eax = pTriplet->Value2;
@@ -1757,14 +1757,14 @@ DWORD TFileNameDatabase::sub_1959F50(DWORD arg_0)
     }
 
     // HOTS: 195A066
-    esi = Struct68_00.ItemBits.Array.DwordPtr[edi];
+    esi = Struct68_00.ItemBits.Uint32Array[edi];
     eax = GetNumberOfSetBits(esi);
     ecx = eax >> 0x18;
 
     if(edx >= ecx)
     {
         // HOTS: 195A0B2
-        esi = Struct68_00.ItemBits.Array.DwordPtr[++edi];
+        esi = Struct68_00.ItemBits.Uint32Array[++edi];
         edx = edx - ecx;
         eax = GetNumberOfSetBits(esi);
     }
@@ -1819,22 +1819,22 @@ bool TFileNameDatabase::CheckNextPathFragment(TMndxFindResult * pStruct1C)
 {
     TStruct40 * pStruct40 = pStruct1C->pStruct40;
     LPBYTE pbPathName = (LPBYTE)pStruct1C->szSearchMask;
+    DWORD CollisionIndex;
+    DWORD NameFragIndex;
     DWORD SaveCharIndex;
     DWORD HiBitsIndex;
-    DWORD ItemIndex;
-    DWORD BitIndex;
-    DWORD Distance;
+    DWORD FragOffs;
 
-    // Calculate index to the table of name fragments
-    ItemIndex = ((pStruct40->HashValue << 0x05) ^ pStruct40->HashValue ^ pbPathName[pStruct40->CharIndex]) & ItemIndexMask;
+    // Calculate index of the next name fragment in the name fragment table
+    NameFragIndex = ((pStruct40->ItemIndex << 0x05) ^ pStruct40->ItemIndex ^ pbPathName[pStruct40->CharIndex]) & NameFragIndexMask;
     
     // Does the hash value match?
-    if(pStruct40->HashValue == NameTable.Array.NameEntryPtr[ItemIndex].HashValue)
+    if(NameFragTable.NameFragArray[NameFragIndex].ItemIndex == pStruct40->ItemIndex)
     {
         // Check if there is single character match
-        if(NameTable.IsSingleCharMatch(ItemIndex))
+        if(IS_SINGLE_CHAR_MATCH(NameFragTable, NameFragIndex))
         {
-            pStruct40->HashValue = NameTable.Array.NameEntryPtr[ItemIndex].NextHash;
+            pStruct40->ItemIndex = NameFragTable.NameFragArray[NameFragIndex].NextIndex;
             pStruct40->CharIndex++;
             return true;
         }
@@ -1842,16 +1842,16 @@ bool TFileNameDatabase::CheckNextPathFragment(TMndxFindResult * pStruct1C)
         // Check if there is a name fragment match
         if(NextDB.pDB != NULL)
         {
-            if(!NextDB.pDB->sub_1957B80(pStruct1C, NameTable.Array.NameEntryPtr[ItemIndex].Distance))
+            if(!NextDB.pDB->sub_1957B80(pStruct1C, NameFragTable.NameFragArray[NameFragIndex].FragOffs))
                 return false;
         }
         else
         {
-            if(!IndexStruct_174.CheckNameFragment(pStruct1C, NameTable.Array.NameEntryPtr[ItemIndex].Distance))
+            if(!IndexStruct_174.CheckNameFragment(pStruct1C, NameFragTable.NameFragArray[NameFragIndex].FragOffs))
                 return false;
         }
 
-        pStruct40->HashValue = NameTable.Array.NameEntryPtr[ItemIndex].NextHash;
+        pStruct40->ItemIndex = NameFragTable.NameFragArray[NameFragIndex].NextIndex;
         return true;
     }
 
@@ -1860,11 +1860,11 @@ bool TFileNameDatabase::CheckNextPathFragment(TMndxFindResult * pStruct1C)
     //
 
     // HOTS: 1957A0E
-    BitIndex = sub_1959CB0(pStruct40->HashValue) + 1;
-    if(!Struct68_00.IsItemPresent(BitIndex))
+    CollisionIndex = sub_1959CB0(pStruct40->ItemIndex) + 1;
+    if(!Struct68_00.IsItemPresent(CollisionIndex))
         return false;
 
-    pStruct40->HashValue = (BitIndex - pStruct40->HashValue - 1);
+    pStruct40->ItemIndex = (CollisionIndex - pStruct40->ItemIndex - 1);
     HiBitsIndex = 0xFFFFFFFF;
 
 //  CascDumpSparseArray("E:\\casc-array-68.txt", &FileNameIndexes);
@@ -1874,14 +1874,14 @@ bool TFileNameDatabase::CheckNextPathFragment(TMndxFindResult * pStruct1C)
     do
     {
         // HOTS: 1957A41
-        // Check if the low 8 bits if the fragment distance contain a single character
+        // Check if the low 8 bits if the fragment offset contain a single character
         // or an offset to a name fragment 
-        if(Struct68_D0.IsItemPresent(pStruct40->HashValue))
+        if(Struct68_D0.IsItemPresent(pStruct40->ItemIndex))
         {
             if(HiBitsIndex == 0xFFFFFFFF)
             {
                 // HOTS: 1957A6C
-                HiBitsIndex = Struct68_D0.GetItemValue(pStruct40->HashValue);
+                HiBitsIndex = Struct68_D0.GetItemValue(pStruct40->ItemIndex);
             }
             else
             {
@@ -1892,20 +1892,20 @@ bool TFileNameDatabase::CheckNextPathFragment(TMndxFindResult * pStruct1C)
             // HOTS: 1957A83
             SaveCharIndex = pStruct40->CharIndex;
             
-            // Get the name fragment distance as combined value from lower 8 bits and upper bits
-            Distance = GetNameFragmentDistanceEx(pStruct40->HashValue, HiBitsIndex);
+            // Get the name fragment offset as combined value from lower 8 bits and upper bits
+            FragOffs = GetNameFragmentOffsetEx(pStruct40->ItemIndex, HiBitsIndex);
 
             // Compare the string with the fragment name database
             if(NextDB.pDB != NULL)
             {
                 // HOTS: 1957AEC
-                if(NextDB.pDB->sub_1957B80(pStruct1C, Distance))
+                if(NextDB.pDB->sub_1957B80(pStruct1C, FragOffs))
                     return true;
             }
             else
             {
                 // HOTS: 1957AF7
-                if(IndexStruct_174.CheckNameFragment(pStruct1C, Distance))
+                if(IndexStruct_174.CheckNameFragment(pStruct1C, FragOffs))
                     return true;
             }
 
@@ -1917,7 +1917,7 @@ bool TFileNameDatabase::CheckNextPathFragment(TMndxFindResult * pStruct1C)
         else
         {
             // HOTS: 1957B1C
-            if(FrgmDist_LoBits.Array.BytePtr[pStruct40->HashValue] == pStruct1C->szSearchMask[pStruct40->CharIndex])
+            if(FrgmDist_LoBits.ByteArray[pStruct40->ItemIndex] == pStruct1C->szSearchMask[pStruct40->CharIndex])
             {
                 pStruct40->CharIndex++;
                 return true;
@@ -1925,10 +1925,10 @@ bool TFileNameDatabase::CheckNextPathFragment(TMndxFindResult * pStruct1C)
         }
 
         // HOTS: 1957B32
-        pStruct40->HashValue++;
-        BitIndex++;
+        pStruct40->ItemIndex++;
+        CollisionIndex++;
     }
-    while(Struct68_00.IsItemPresent(BitIndex));
+    while(Struct68_00.IsItemPresent(CollisionIndex));
     return false;
 }
 
@@ -1936,8 +1936,8 @@ bool TFileNameDatabase::CheckNextPathFragment(TMndxFindResult * pStruct1C)
 bool TFileNameDatabase::sub_1957B80(TMndxFindResult * pStruct1C, DWORD arg_4)
 {
     TStruct40 * pStruct40 = pStruct1C->pStruct40;
-    PNAME_ENTRY pNameEntry;
-    DWORD Distance;
+    PNAME_FRAG pNameEntry;
+    DWORD FragOffs;
     DWORD eax, edi;
 
     edi = arg_4;
@@ -1945,36 +1945,36 @@ bool TFileNameDatabase::sub_1957B80(TMndxFindResult * pStruct1C, DWORD arg_4)
     // HOTS: 1957B95
     for(;;)
     {
-        pNameEntry = NameTable.Array.NameEntryPtr + (edi & ItemIndexMask);
-        if(edi == pNameEntry->NextHash)
+        pNameEntry = NameFragTable.NameFragArray + (edi & NameFragIndexMask);
+        if(edi == pNameEntry->NextIndex)
         {
             // HOTS: 01957BB4
-            if((pNameEntry->Distance & 0xFFFFFF00) != 0xFFFFFF00)
+            if((pNameEntry->FragOffs & 0xFFFFFF00) != 0xFFFFFF00)
             {
                 // HOTS: 1957BC7
                 if(NextDB.pDB != NULL)
                 {
                     // HOTS: 1957BD3
-                    if(!NextDB.pDB->sub_1957B80(pStruct1C, pNameEntry->Distance))
+                    if(!NextDB.pDB->sub_1957B80(pStruct1C, pNameEntry->FragOffs))
                         return false;
                 }
                 else
                 {
                     // HOTS: 1957BE0
-                    if(!IndexStruct_174.CheckNameFragment(pStruct1C, pNameEntry->Distance))
+                    if(!IndexStruct_174.CheckNameFragment(pStruct1C, pNameEntry->FragOffs))
                         return false;
                 }
             }
             else
             {
                 // HOTS: 1957BEE
-                if(pStruct1C->szSearchMask[pStruct40->CharIndex] != (char)pNameEntry->Distance)
+                if(pStruct1C->szSearchMask[pStruct40->CharIndex] != (char)pNameEntry->FragOffs)
                     return false;
                 pStruct40->CharIndex++;
             }
 
             // HOTS: 1957C05
-            edi = pNameEntry->HashValue;
+            edi = pNameEntry->ItemIndex;
             if(edi == 0) 
                 return true;
 
@@ -1990,22 +1990,22 @@ bool TFileNameDatabase::sub_1957B80(TMndxFindResult * pStruct1C, DWORD arg_4)
                 if(NextDB.pDB != NULL)
                 {
                     // HOTS: 1957C58
-                    Distance = GetNameFragmentDistance(edi);
-                    if(!NextDB.pDB->sub_1957B80(pStruct1C, Distance))
+                    FragOffs = GetNameFragmentOffset(edi);
+                    if(!NextDB.pDB->sub_1957B80(pStruct1C, FragOffs))
                         return false;
                 }
                 else
                 {
                     // HOTS: 1957350
-                    Distance = GetNameFragmentDistance(edi);
-                    if(!IndexStruct_174.CheckNameFragment(pStruct1C, Distance))
+                    FragOffs = GetNameFragmentOffset(edi);
+                    if(!IndexStruct_174.CheckNameFragment(pStruct1C, FragOffs))
                         return false;
                 }
             }
             else
             {
                 // HOTS: 1957C8E
-                if(FrgmDist_LoBits.Array.BytePtr[edi] != pStruct1C->szSearchMask[pStruct40->CharIndex])
+                if(FrgmDist_LoBits.ByteArray[edi] != pStruct1C->szSearchMask[pStruct40->CharIndex])
                     return false;
 
                 pStruct40->CharIndex++;
@@ -2028,36 +2028,36 @@ bool TFileNameDatabase::sub_1957B80(TMndxFindResult * pStruct1C, DWORD arg_4)
 void TFileNameDatabase::sub_1958D70(TMndxFindResult * pStruct1C, DWORD arg_4)
 {
     TStruct40 * pStruct40 = pStruct1C->pStruct40;
-    PNAME_ENTRY pNameEntry;
+    PNAME_FRAG pNameEntry;
 
     // HOTS: 1958D84
     for(;;)
     {
-        pNameEntry = NameTable.Array.NameEntryPtr + (arg_4 & ItemIndexMask);
-        if(arg_4 == pNameEntry->NextHash)
+        pNameEntry = NameFragTable.NameFragArray + (arg_4 & NameFragIndexMask);
+        if(arg_4 == pNameEntry->NextIndex)
         {
             // HOTS: 1958DA6
-            if((pNameEntry->Distance & 0xFFFFFF00) != 0xFFFFFF00)
+            if((pNameEntry->FragOffs & 0xFFFFFF00) != 0xFFFFFF00)
             {
                 // HOTS: 1958DBA
                 if(NextDB.pDB != NULL)
                 {
-                    NextDB.pDB->sub_1958D70(pStruct1C, pNameEntry->Distance);
+                    NextDB.pDB->sub_1958D70(pStruct1C, pNameEntry->FragOffs);
                 }
                 else
                 {
-                    IndexStruct_174.CopyNameFragment(pStruct1C, pNameEntry->Distance);
+                    IndexStruct_174.CopyNameFragment(pStruct1C, pNameEntry->FragOffs);
                 }
             }
             else
             {
                 // HOTS: 1958DE7
                 // Insert the low 8 bits to the path being built
-                pStruct40->array_00.InsertOneItem_CHAR((char)(pNameEntry->Distance & 0xFF));
+                pStruct40->array_00.InsertOneItem_CHAR((char)(pNameEntry->FragOffs & 0xFF));
             }
 
             // HOTS: 1958E71
-            arg_4 = pNameEntry->HashValue;
+            arg_4 = pNameEntry->ItemIndex;
             if(arg_4 == 0)
                 return;
         }
@@ -2066,24 +2066,24 @@ void TFileNameDatabase::sub_1958D70(TMndxFindResult * pStruct1C, DWORD arg_4)
             // HOTS: 1958E8E
             if(Struct68_D0.IsItemPresent(arg_4))
             {
-                DWORD Distance;
+                DWORD FragOffs;
 
                 // HOTS: 1958EAF
-                Distance = GetNameFragmentDistance(arg_4);
+                FragOffs = GetNameFragmentOffset(arg_4);
                 if(NextDB.pDB != NULL)
                 {
-                    NextDB.pDB->sub_1958D70(pStruct1C, Distance);
+                    NextDB.pDB->sub_1958D70(pStruct1C, FragOffs);
                 }
                 else
                 {
-                    IndexStruct_174.CopyNameFragment(pStruct1C, Distance);
+                    IndexStruct_174.CopyNameFragment(pStruct1C, FragOffs);
                 }
             }
             else
             {
                 // HOTS: 1958F50
                 // Insert one character to the path being built
-                pStruct40->array_00.InsertOneItem_CHAR(FrgmDist_LoBits.Array.CharPtr[arg_4]);
+                pStruct40->array_00.InsertOneItem_CHAR(FrgmDist_LoBits.CharArray[arg_4]);
             }
 
             // HOTS: 1958FDE
@@ -2099,42 +2099,42 @@ void TFileNameDatabase::sub_1958D70(TMndxFindResult * pStruct1C, DWORD arg_4)
 bool TFileNameDatabase::sub_1959010(TMndxFindResult * pStruct1C, DWORD arg_4)
 {
     TStruct40 * pStruct40 = pStruct1C->pStruct40;
-    PNAME_ENTRY pNameEntry;
+    PNAME_FRAG pNameEntry;
 
     // HOTS: 1959024
     for(;;)
     {
-        pNameEntry = NameTable.Array.NameEntryPtr + (arg_4 & ItemIndexMask);
-        if(arg_4 == pNameEntry->NextHash)
+        pNameEntry = NameFragTable.NameFragArray + (arg_4 & NameFragIndexMask);
+        if(arg_4 == pNameEntry->NextIndex)
         {
             // HOTS: 1959047
-            if((pNameEntry->Distance & 0xFFFFFF00) != 0xFFFFFF00)
+            if((pNameEntry->FragOffs & 0xFFFFFF00) != 0xFFFFFF00)
             {
                 // HOTS: 195905A
                 if(NextDB.pDB != NULL)
                 {
-                    if(!NextDB.pDB->sub_1959010(pStruct1C, pNameEntry->Distance))
+                    if(!NextDB.pDB->sub_1959010(pStruct1C, pNameEntry->FragOffs))
                         return false;
                 }
                 else
                 {
-                    if(!IndexStruct_174.CheckAndCopyNameFragment(pStruct1C, pNameEntry->Distance))
+                    if(!IndexStruct_174.CheckAndCopyNameFragment(pStruct1C, pNameEntry->FragOffs))
                         return false;
                 }
             }
             else
             {
                 // HOTS: 1959092
-                if((char)(pNameEntry->Distance & 0xFF) != pStruct1C->szSearchMask[pStruct40->CharIndex])
+                if((char)(pNameEntry->FragOffs & 0xFF) != pStruct1C->szSearchMask[pStruct40->CharIndex])
                     return false;
 
                 // Insert the low 8 bits to the path being built
-                pStruct40->array_00.InsertOneItem_CHAR((char)(pNameEntry->Distance & 0xFF));
+                pStruct40->array_00.InsertOneItem_CHAR((char)(pNameEntry->FragOffs & 0xFF));
                 pStruct40->CharIndex++;
             }
 
             // HOTS: 195912E
-            arg_4 = pNameEntry->HashValue;
+            arg_4 = pNameEntry->ItemIndex;
             if(arg_4 == 0)
                 return true;
         }
@@ -2143,29 +2143,29 @@ bool TFileNameDatabase::sub_1959010(TMndxFindResult * pStruct1C, DWORD arg_4)
             // HOTS: 1959147
             if(Struct68_D0.IsItemPresent(arg_4))
             {
-                DWORD Distance;
+                DWORD FragOffs;
 
                 // HOTS: 195917C
-                Distance = GetNameFragmentDistance(arg_4);
+                FragOffs = GetNameFragmentOffset(arg_4);
                 if(NextDB.pDB != NULL)
                 {
-                    if(!NextDB.pDB->sub_1959010(pStruct1C, Distance))
+                    if(!NextDB.pDB->sub_1959010(pStruct1C, FragOffs))
                         return false;
                 }
                 else
                 {
-                    if(!IndexStruct_174.CheckAndCopyNameFragment(pStruct1C, Distance))
+                    if(!IndexStruct_174.CheckAndCopyNameFragment(pStruct1C, FragOffs))
                         return false;
                 }
             }
             else
             {
                 // HOTS: 195920E
-                if(FrgmDist_LoBits.Array.CharPtr[arg_4] != pStruct1C->szSearchMask[pStruct40->CharIndex])
+                if(FrgmDist_LoBits.CharArray[arg_4] != pStruct1C->szSearchMask[pStruct40->CharIndex])
                     return false;
 
                 // Insert one character to the path being built
-                pStruct40->array_00.InsertOneItem_CHAR(FrgmDist_LoBits.Array.CharPtr[arg_4]);
+                pStruct40->array_00.InsertOneItem_CHAR(FrgmDist_LoBits.CharArray[arg_4]);
                 pStruct40->CharIndex++;
             }
 
@@ -2192,7 +2192,7 @@ bool TFileNameDatabase::sub_1959460(TMndxFindResult * pStruct1C)
     PPATH_STOP pPathStop;
     PATH_STOP PathStop;
     DWORD NewMaxItemCount;
-    DWORD Distance;
+    DWORD FragOffs;
     DWORD ebx, edi;
 
     if(pStruct40->SearchPhase == CASC_SEARCH_FINISHED)
@@ -2214,7 +2214,7 @@ bool TFileNameDatabase::sub_1959460(TMndxFindResult * pStruct1C)
         }
 
         // HOTS: 19594b0
-        PathStop.HashValue = pStruct40->HashValue;
+        PathStop.ItemIndex = pStruct40->ItemIndex;
         PathStop.field_4   = 0;
         PathStop.field_8   = pStruct40->array_00.ItemCount;
         PathStop.field_C   = 0xFFFFFFFF;
@@ -2222,11 +2222,11 @@ bool TFileNameDatabase::sub_1959460(TMndxFindResult * pStruct1C)
         pStruct40->PathStops.InsertOneItem_PATH_STOP(PathStop);
         pStruct40->ItemCount = 1;
 
-        if(FileNameIndexes.IsItemPresent(pStruct40->HashValue))
+        if(FileNameIndexes.IsItemPresent(pStruct40->ItemIndex))
         {
-            pStruct1C->szFoundPath   = pStruct40->array_00.FirstValid.CharPtr;
+            pStruct1C->szFoundPath   = pStruct40->array_00.FirstValid.Chars;
             pStruct1C->cchFoundPath  = pStruct40->array_00.ItemCount;
-            pStruct1C->FileNameIndex = FileNameIndexes.GetItemValue(pStruct40->HashValue);
+            pStruct1C->FileNameIndex = FileNameIndexes.GetItemValue(pStruct40->ItemIndex);
             return true;
         }
     }
@@ -2238,15 +2238,15 @@ bool TFileNameDatabase::sub_1959460(TMndxFindResult * pStruct1C)
         if(pStruct40->ItemCount == pStruct40->PathStops.ItemCount)
         {
             PPATH_STOP pLastStop;
-            DWORD field_4;
+            DWORD CollisionIndex;
             
             pLastStop = pStruct40->PathStops.FirstValid.PathStopPtr + pStruct40->PathStops.ItemCount - 1;
-            field_4 = sub_1959CB0(pLastStop->HashValue) + 1;
-            ebx = field_4 - pLastStop->HashValue - 1;
+            CollisionIndex = sub_1959CB0(pLastStop->ItemIndex);
+            ebx = CollisionIndex - pLastStop->ItemIndex;
 
             // Insert a new structure
-            PathStop.HashValue = ebx;
-            PathStop.field_4   = field_4;
+            PathStop.ItemIndex = ebx;
+            PathStop.field_4   = CollisionIndex + 1;
             PathStop.field_8   = 0;
             PathStop.field_C   = 0xFFFFFFFF;
             PathStop.field_10  = 0xFFFFFFFF;
@@ -2262,45 +2262,45 @@ bool TFileNameDatabase::sub_1959460(TMndxFindResult * pStruct1C)
             // HOTS: 19595F2
             pStruct40->ItemCount++;
 
-            if(Struct68_D0.IsItemPresent(pPathStop->HashValue))
+            if(Struct68_D0.IsItemPresent(pPathStop->ItemIndex))
             {
                 // HOTS: 1959617
                 if(pPathStop->field_C == 0xFFFFFFFF)
-                    pPathStop->field_C = Struct68_D0.GetItemValue(pPathStop->HashValue);
+                    pPathStop->field_C = Struct68_D0.GetItemValue(pPathStop->ItemIndex);
                 else
                     pPathStop->field_C++;
 
                 // HOTS: 1959630
-                Distance = GetNameFragmentDistanceEx(pPathStop->HashValue, pPathStop->field_C);
+                FragOffs = GetNameFragmentOffsetEx(pPathStop->ItemIndex, pPathStop->field_C);
                 if(NextDB.pDB != NULL)
                 {
                     // HOTS: 1959649
-                    NextDB.pDB->sub_1958D70(pStruct1C, Distance);
+                    NextDB.pDB->sub_1958D70(pStruct1C, FragOffs);
                 }
                 else
                 {
                     // HOTS: 1959654
-                    IndexStruct_174.CopyNameFragment(pStruct1C, Distance);
+                    IndexStruct_174.CopyNameFragment(pStruct1C, FragOffs);
                 }
             }
             else
             {
                 // HOTS: 1959665
                 // Insert one character to the path being built
-                pStruct40->array_00.InsertOneItem_CHAR(FrgmDist_LoBits.Array.CharPtr[pPathStop->HashValue]);
+                pStruct40->array_00.InsertOneItem_CHAR(FrgmDist_LoBits.CharArray[pPathStop->ItemIndex]);
             }
 
             // HOTS: 19596AE
             pPathStop->field_8 = pStruct40->array_00.ItemCount;
 
             // HOTS: 19596b6
-            if(FileNameIndexes.IsItemPresent(pPathStop->HashValue))
+            if(FileNameIndexes.IsItemPresent(pPathStop->ItemIndex))
             {
                 // HOTS: 19596D1
                 if(pPathStop->field_10 == 0xFFFFFFFF)
                 {
                     // HOTS: 19596D9
-                    pPathStop->field_10 = FileNameIndexes.GetItemValue(pPathStop->HashValue);
+                    pPathStop->field_10 = FileNameIndexes.GetItemValue(pPathStop->ItemIndex);
                 }
                 else
                 {
@@ -2308,7 +2308,7 @@ bool TFileNameDatabase::sub_1959460(TMndxFindResult * pStruct1C)
                 }
 
                 // HOTS: 1959755
-                pStruct1C->szFoundPath = pStruct40->array_00.FirstValid.CharPtr;
+                pStruct1C->szFoundPath = pStruct40->array_00.FirstValid.Chars;
                 pStruct1C->cchFoundPath = pStruct40->array_00.ItemCount;
                 pStruct1C->FileNameIndex = pPathStop->field_10;
                 return true;
@@ -2325,7 +2325,7 @@ bool TFileNameDatabase::sub_1959460(TMndxFindResult * pStruct1C)
 
             // HOTS: 19596F5
             pPathStop = pStruct40->PathStops.FirstValid.PathStopPtr + pStruct40->ItemCount - 1;
-            pPathStop->HashValue++;
+            pPathStop->ItemIndex++;
 
             pPathStop = pStruct40->PathStops.FirstValid.PathStopPtr + pStruct40->ItemCount - 2;
             edi = pPathStop->field_8;
@@ -2362,24 +2362,24 @@ bool TFileNameDatabase::sub_1958B00(TMndxFindResult * pStruct1C)
 {
     TStruct40 * pStruct40 = pStruct1C->pStruct40;
     LPBYTE pbPathName = (LPBYTE)pStruct1C->szSearchMask;
+    DWORD CollisionIndex;
     DWORD FragmentOffset;
     DWORD SaveCharIndex;
-    DWORD HashValue;
-    DWORD Distance;
-    DWORD BitIndex;
+    DWORD ItemIndex;
+    DWORD FragOffs;
     DWORD var_4;
 
-    HashValue = pbPathName[pStruct40->CharIndex] ^ (pStruct40->HashValue << 0x05) ^ pStruct40->HashValue;
-    HashValue = HashValue & ItemIndexMask;
-    if(pStruct40->HashValue == NameTable.Array.NameEntryPtr[HashValue].HashValue)
+    ItemIndex = pbPathName[pStruct40->CharIndex] ^ (pStruct40->ItemIndex << 0x05) ^ pStruct40->ItemIndex;
+    ItemIndex = ItemIndex & NameFragIndexMask;
+    if(pStruct40->ItemIndex == NameFragTable.NameFragArray[ItemIndex].ItemIndex)
     {
         // HOTS: 1958B45
-        FragmentOffset = NameTable.Array.NameEntryPtr[HashValue].Distance;
+        FragmentOffset = NameFragTable.NameFragArray[ItemIndex].FragOffs;
         if((FragmentOffset & 0xFFFFFF00) == 0xFFFFFF00)
         {
             // HOTS: 1958B88
             pStruct40->array_00.InsertOneItem_CHAR((char)FragmentOffset);
-            pStruct40->HashValue = NameTable.Array.NameEntryPtr[HashValue].NextHash;
+            pStruct40->ItemIndex = NameFragTable.NameFragArray[ItemIndex].NextIndex;
             pStruct40->CharIndex++;
             return true;
         }
@@ -2397,28 +2397,28 @@ bool TFileNameDatabase::sub_1958B00(TMndxFindResult * pStruct1C)
         }
 
         // HOTS: 1958BCA
-        pStruct40->HashValue = NameTable.Array.NameEntryPtr[HashValue].NextHash;
+        pStruct40->ItemIndex = NameFragTable.NameFragArray[ItemIndex].NextIndex;
         return true;
     }
 
     // HOTS: 1958BE5
-    BitIndex = sub_1959CB0(pStruct40->HashValue) + 1;
-    if(!Struct68_00.IsItemPresent(BitIndex))
+    CollisionIndex = sub_1959CB0(pStruct40->ItemIndex) + 1;
+    if(!Struct68_00.IsItemPresent(CollisionIndex))
         return false;
 
-    pStruct40->HashValue = (BitIndex - pStruct40->HashValue - 1);
+    pStruct40->ItemIndex = (CollisionIndex - pStruct40->ItemIndex - 1);
     var_4 = 0xFFFFFFFF;
 
     // HOTS: 1958C20
     for(;;)
     {
-        if(Struct68_D0.IsItemPresent(pStruct40->HashValue))
+        if(Struct68_D0.IsItemPresent(pStruct40->ItemIndex))
         {
             // HOTS: 1958C0E
             if(var_4 == 0xFFFFFFFF)
             {
                 // HOTS: 1958C4B
-                var_4 = Struct68_D0.GetItemValue(pStruct40->HashValue);
+                var_4 = Struct68_D0.GetItemValue(pStruct40->ItemIndex);
             }
             else
             {
@@ -2428,17 +2428,17 @@ bool TFileNameDatabase::sub_1958B00(TMndxFindResult * pStruct1C)
             // HOTS: 1958C62
             SaveCharIndex = pStruct40->CharIndex;
             
-            Distance = GetNameFragmentDistanceEx(pStruct40->HashValue, var_4);
+            FragOffs = GetNameFragmentOffsetEx(pStruct40->ItemIndex, var_4);
             if(NextDB.pDB != NULL)
             {
                 // HOTS: 1958CCB
-                if(NextDB.pDB->sub_1959010(pStruct1C, Distance))
+                if(NextDB.pDB->sub_1959010(pStruct1C, FragOffs))
                     return true;
             }
             else
             {
                 // HOTS: 1958CD6
-                if(IndexStruct_174.CheckAndCopyNameFragment(pStruct1C, Distance))
+                if(IndexStruct_174.CheckAndCopyNameFragment(pStruct1C, FragOffs))
                     return true;
             }
 
@@ -2449,20 +2449,20 @@ bool TFileNameDatabase::sub_1958B00(TMndxFindResult * pStruct1C)
         else
         {
             // HOTS: 1958CFB
-            if(FrgmDist_LoBits.Array.BytePtr[pStruct40->HashValue] == pStruct1C->szSearchMask[pStruct40->CharIndex])
+            if(FrgmDist_LoBits.ByteArray[pStruct40->ItemIndex] == pStruct1C->szSearchMask[pStruct40->CharIndex])
             {
                 // HOTS: 1958D11
-                pStruct40->array_00.InsertOneItem_CHAR(FrgmDist_LoBits.Array.BytePtr[pStruct40->HashValue]);
+                pStruct40->array_00.InsertOneItem_CHAR(FrgmDist_LoBits.ByteArray[pStruct40->ItemIndex]);
                 pStruct40->CharIndex++;
                 return true;
             }
         }
 
         // HOTS: 1958D11
-        pStruct40->HashValue++;
-        BitIndex++;
+        pStruct40->ItemIndex++;
+        CollisionIndex++;
 
-        if(!Struct68_00.IsItemPresent(BitIndex))
+        if(!Struct68_00.IsItemPresent(CollisionIndex))
             break;
     }
 
@@ -2474,7 +2474,7 @@ bool TFileNameDatabase::FindFileInDatabase(TMndxFindResult * pStruct1C)
 {
     TStruct40 * pStruct40 = pStruct1C->pStruct40;
 
-    pStruct40->HashValue = 0;
+    pStruct40->ItemIndex = 0;
     pStruct40->CharIndex = 0;
     pStruct40->SearchPhase = CASC_SEARCH_INITIALIZING;
 
@@ -2489,12 +2489,12 @@ bool TFileNameDatabase::FindFileInDatabase(TMndxFindResult * pStruct1C)
     }
 
     // HOTS: 1957F26
-    if(!FileNameIndexes.IsItemPresent(pStruct40->HashValue))
+    if(!FileNameIndexes.IsItemPresent(pStruct40->ItemIndex))
         return false;
 
     pStruct1C->szFoundPath   = pStruct1C->szSearchMask;
     pStruct1C->cchFoundPath  = pStruct1C->cchSearchMask;
-    pStruct1C->FileNameIndex = FileNameIndexes.GetItemValue(pStruct40->HashValue);
+    pStruct1C->FileNameIndex = FileNameIndexes.GetItemValue(pStruct40->ItemIndex);
     return true;
 }
 
@@ -2548,11 +2548,11 @@ int TFileNameDatabase::LoadFromStream(TByteStream & InStream)
     }
 
     // HOTS: 0195986B
-    nError = NameTable.LoadFragmentInfos_Copy(InStream);
+    nError = NameFragTable.LoadFragmentInfos_Copy(InStream);
     if(nError != ERROR_SUCCESS)
         return nError;
 
-    ItemIndexMask = NameTable.ItemCount - 1;
+    NameFragIndexMask = NameFragTable.ItemCount - 1;
 
     nError = InStream.GetValue_DWORD(field_214);
     if(nError != ERROR_SUCCESS)
@@ -2569,7 +2569,7 @@ int TFileNameDatabase::LoadFromStream(TByteStream & InStream)
 int TFileNameDatabase::LoadFromStream_Exchange(TByteStream & InStream)
 {
     TFileNameDatabase TempDatabase;
-    VARIANT_POINTER Pointer;
+    ARRAY_POINTER Pointer;
     DWORD dwSignature;
     int nError;
 
@@ -2579,7 +2579,7 @@ int TFileNameDatabase::LoadFromStream_Exchange(TByteStream & InStream)
         return nError;
     
     // Verify the signature
-    dwSignature = Pointer.DwordPtr[0];
+    dwSignature = Pointer.Uint32s[0];
     if(dwSignature != CASC_MAR_SIGNATURE)
         return ERROR_BAD_FORMAT;
 
@@ -3088,7 +3088,7 @@ int LoadMndxRootFile(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile)
         pMndxInfo = NULL;
 
 #if defined(_DEBUG) && defined(_X86_) && defined(CASCLIB_TEST)
-//      CascDumpMndxNameTable("E:\\casc-name-table.txt", hs->pMndxInfo->pMarFile1);
+//      CascDumpNameFragTable("E:\\casc-name-fragment-table.txt", hs->pMndxInfo->pMarFile1);
 //      CascDumpFileNames("E:\\casc-listfile.txt", hs->pMndxInfo->pMarFile1);
         TestMndxRootFile(hs->pMndxInfo);
 #endif
@@ -3394,7 +3394,7 @@ static void TestMndxFunctions(PMAR_FILE pMarFile)
         for(DWORD arg_4 = 0; arg_4 < 0x100; arg_4++)
         {
             DWORD dwResult1 = sub_19573D0_x86(pDB, arg_0, arg_4);
-            DWORD dwResult2 = pDB->GetNameFragmentDistanceEx(arg_0, arg_4);
+            DWORD dwResult2 = pDB->GetNameFragmentOffsetEx(arg_0, arg_4);
   
             assert(dwResult1 == dwResult2);
         }
@@ -3441,10 +3441,11 @@ void TestMndxRootFile(PCASC_MNDX_INFO pMndxInfo)
     TestMndxFunctions(pMndxInfo->pMarFile3);
 
     // Find a "mods" in the package array
-    TestFindPackage(pMndxInfo->pMarFile1, "mods/heroes.stormmod/base.stormmaps/maps/heroes/builtin/startingexperience/practicemode01.stormmap/dede.stormdata");
+    TestFindPackage(pMndxInfo->pMarFile3, "mods/heroes.stormmod/base.stormassets/assets/textures/glow_green2.dds");
+    TestMarFile(pMndxInfo->pMarFile3, "mods/heroes.stormmod/base.stormassets/assets/textures/glow_green2.dds", 69);
                                            
     // Search the package MAR file aith a path shorter than a fragment
-//  TestFileSearch(pMndxInfo->pMarFile1, "mods/heroes.s");
+    TestFileSearch(pMndxInfo->pMarFile1, "mods/heroes.s");
 
     // Test the file search
     TestFileSearch(pMndxInfo->pMarFile1, "");

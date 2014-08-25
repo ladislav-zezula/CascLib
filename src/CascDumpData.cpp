@@ -311,7 +311,7 @@ void CascDumpSparseArray(const char * szFileName, void * pvSparseArray)
     }
 }
 
-void CascDumpMndxNameTable(const char * szFileName, void * pMarFile)
+void CascDumpNameFragTable(const char * szFileName, void * pMarFile)
 {
     TFileNameDatabase * pDB = ((PMAR_FILE)pMarFile)->pDatabasePtr->pDB;
     FILE * fp;
@@ -320,8 +320,8 @@ void CascDumpMndxNameTable(const char * szFileName, void * pMarFile)
     fp = fopen(szFileName, "wt");
     if(fp != NULL)                             
     {
-        PNAME_ENTRY pNameTable = pDB->NameTable.Array.NameEntryPtr;
-        const char * szNames = pDB->IndexStruct_174.NameFragments.Array.CharPtr;
+        PNAME_FRAG pNameTable = pDB->NameFragTable.NameFragArray;
+        const char * szNames = pDB->IndexStruct_174.NameFragments.CharArray;
         const char * szLastEntry;
         char szMatchType[0x100];
 
@@ -330,26 +330,26 @@ void CascDumpMndxNameTable(const char * szFileName, void * pMarFile)
         fprintf(fp, "----  -------- -------- --------\n");
 
         // Dump all name entries
-        for(DWORD i = 0; i < pDB->NameTable.ItemCount; i++)
+        for(DWORD i = 0; i < pDB->NameFragTable.ItemCount; i++)
         {
             // Reset both match types
             szMatchType[0] = 0;
             szLastEntry = "";
 
             // Only if the table entry is not empty
-            if(pNameTable->HashValue != 0xFFFFFFFF)
+            if(pNameTable->ItemIndex != 0xFFFFFFFF)
             {
                 // Prepare the entry
-                if(pDB->NameTable.IsSingleCharMatch(i))
-                    sprintf(szMatchType, "SINGLE_CHAR (\'%c\')", (pNameTable->Distance & 0xFF));
+                if(IS_SINGLE_CHAR_MATCH(pDB->NameFragTable, i))
+                    sprintf(szMatchType, "SINGLE_CHAR (\'%c\')", (pNameTable->FragOffs & 0xFF));
                 else
-                    sprintf(szMatchType, "NAME_FRAGMT (\"%s\")", szNames + pNameTable->Distance);
+                    sprintf(szMatchType, "NAME_FRAGMT (\"%s\")", szNames + pNameTable->FragOffs);
             }
 
             // Dump the entry
-            fprintf(fp, "0x%02X  %08x %08x %08x %s%s\n", i, pNameTable->HashValue,
-                                                            pNameTable->NextHash,
-                                                            pNameTable->Distance,
+            fprintf(fp, "0x%02X  %08x %08x %08x %s%s\n", i, pNameTable->ItemIndex,
+                                                            pNameTable->NextIndex,
+                                                            pNameTable->FragOffs,
                                                             szMatchType,
                                                             szLastEntry);
             pNameTable++;

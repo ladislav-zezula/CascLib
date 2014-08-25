@@ -26,35 +26,41 @@ typedef struct _TRIPLET
     DWORD Value3;
 } TRIPLET, *PTRIPLET;
 
-typedef struct _NAME_ENTRY
+typedef struct _NAME_FRAG
 {
-    DWORD HashValue;                                // Expected value of the hash seed for the current search.
-                                                    // Zero means that the entry's is a starting entry for a name search
-    DWORD NextHash;                                 // Hash seed for the next search
-    DWORD Distance;                                 // Higher 24 bits are set  --> A single matching character
-                                                    // Higher 24 bits are zero --> Offset to the name fragment table
-} NAME_ENTRY, *PNAME_ENTRY;
+    DWORD ItemIndex;                                // Back index to various tables
+    DWORD NextIndex;                                // The following item index
+    DWORD FragOffs;                                 // Higher 24 bits are 0xFFFFFF00 --> A single matching character
+                                                    // Otherwise --> Offset to the name fragment table
+} NAME_FRAG, *PNAME_FRAG;
 
 typedef struct _PATH_STOP
 {
-    DWORD HashValue;
+    DWORD ItemIndex;
     DWORD field_4;
     DWORD field_8;
     DWORD field_C;
     DWORD field_10;
 } PATH_STOP, *PPATH_STOP;
 
-typedef union _VARIANT_POINTER
+typedef union _ARRAY_POINTER
 {
-    LPBYTE BytePtr;                                 // Pointer to an octet
-    char * CharPtr;                                 // Pointer to a character
-    PDWORD DwordPtr;                                // Pointer to a DWORD
-    PTRIPLET TripletPtr;                            // Pointer to TRIPLET
-    PNAME_ENTRY NameEntryPtr;                       // Pointer to name entry
+    LPBYTE Bytes;                                   // Pointer to an octet
+    char * Chars;                                   // Pointer to a character
+    PDWORD Uint32s;                                 // Pointer to a DWORD
+    PTRIPLET Triplets;                              // Pointer to TRIPLET
+    PNAME_FRAG NameFrags;                           // Pointer to name fragment entry
     PPATH_STOP PathStopPtr;                         // Pointer to path checkpoint
     PULONGLONG Int64Ptr;                            // Pointer to 64-bit integer
 
-} VARIANT_POINTER, *PVARIANT_POINTER;
+} ARRAY_POINTER, *PARRAY_POINTER;
+
+// Simple access to various tables within TGenericArray
+#define ByteArray     ArrayPointer.Bytes  
+#define CharArray     ArrayPointer.Chars  
+#define Uint32Array   ArrayPointer.Uint32s
+#define TripletArray  ArrayPointer.Triplets
+#define NameFragArray ArrayPointer.NameFrags
 
 class TByteStream
 {
@@ -63,15 +69,15 @@ class TByteStream
     TByteStream();
 
     void ExchangeWith(TByteStream & Target);
-    int GetBytes(DWORD cbByteCount, PVARIANT_POINTER PtrArray);
+    int GetBytes(DWORD cbByteCount, PARRAY_POINTER PtrArray);
     int SkipBytes(DWORD cbByteCount);
     int SetByteBuffer(LPBYTE pbNewMarData, DWORD cbNewMarData);
     int GetValue_DWORD(DWORD & Value);
     int GetValue_ItemCount(DWORD & NumberOfBytes, DWORD & ItemCount, DWORD ItemSize);
-    int GetArray_DWORDs(PVARIANT_POINTER PtrArray, DWORD ItemCount);
-    int GetArray_Triplets(PVARIANT_POINTER PtrArray, DWORD ItemCount);
-    int GetArray_NameTable(PVARIANT_POINTER PtrArray, DWORD ItemCount);
-    int GetArray_BYTES(PVARIANT_POINTER PtrArray, DWORD ItemCount);
+    int GetArray_DWORDs(PARRAY_POINTER PtrArray, DWORD ItemCount);
+    int GetArray_Triplets(PARRAY_POINTER PtrArray, DWORD ItemCount);
+    int GetArray_NameTable(PARRAY_POINTER PtrArray, DWORD ItemCount);
+    int GetArray_BYTES(PARRAY_POINTER PtrArray, DWORD ItemCount);
 
     LPBYTE pbByteData;
     void * pvMappedFile;
@@ -87,11 +93,6 @@ class TGenericArray
 
     TGenericArray();
     ~TGenericArray();
-
-    bool IsSingleCharMatch(DWORD ItemIndex)
-    {
-        return ((Array.NameEntryPtr[ItemIndex].Distance & 0xFFFFFF00) == 0xFFFFFF00);
-    }
 
     int SetArrayValid();
 
@@ -118,10 +119,10 @@ class TGenericArray
     int LoadFragmentInfos_Copy(TByteStream & InStream);
     int LoadStringsWithCopy(TByteStream & InStream);
 
-    VARIANT_POINTER DataBuffer;
-    VARIANT_POINTER FirstValid;
+    ARRAY_POINTER DataBuffer;
+    ARRAY_POINTER FirstValid;
 
-    VARIANT_POINTER Array;
+    ARRAY_POINTER ArrayPointer;
     DWORD ItemCount;                    // Number of items in the array
     DWORD MaxItemCount;                 // Capacity of the array
     bool  bIsValidArray;
@@ -145,11 +146,11 @@ class TBitEntryArray : public TGenericArray
         // we also need to load from the next 32-bit item
         if(dwEndBit > 0x20)
         {
-            dwResult = (Array.DwordPtr[dwItemIndex + 1] << (0x20 - dwStartBit)) | (Array.DwordPtr[dwItemIndex] >> dwStartBit);
+            dwResult = (Uint32Array[dwItemIndex + 1] << (0x20 - dwStartBit)) | (Uint32Array[dwItemIndex] >> dwStartBit);
         }
         else
         {
-            dwResult = Array.DwordPtr[dwItemIndex] >> dwStartBit;
+            dwResult = Uint32Array[dwItemIndex] >> dwStartBit;
         }
 
         // Now we also need to mask the result by the bit mask
@@ -175,7 +176,7 @@ class TStruct40
 
     TGenericArray array_00;
     TGenericArray PathStops;            // Array of path checkpoints
-    DWORD HashValue;                    // Name hash value from the previous iteration; 0 on begin
+    DWORD ItemIndex;                    // Current name fragment: Index to various tables
     DWORD CharIndex;
     DWORD ItemCount;
     DWORD SearchPhase;                  // 0 = initializing, 2 = searching, 4 = finished
@@ -215,7 +216,7 @@ class TSparseArray
     // Returns true if the item at n-th position is present
     DWORD IsItemPresent(DWORD ItemIndex)
     {
-        return (ItemBits.Array.DwordPtr[ItemIndex >> 0x05] & (1 << (ItemIndex & 0x1F)));
+        return (ItemBits.Uint32Array[ItemIndex >> 0x05] & (1 << (ItemIndex & 0x1F)));
     }
 
     DWORD GetItemValue(DWORD ItemIndex);
@@ -235,9 +236,9 @@ class TNameIndexStruct
     TNameIndexStruct();
     ~TNameIndexStruct();
 
-    bool CheckNameFragment(TMndxFindResult * pStruct1C, DWORD dwDistance);
-    bool CheckAndCopyNameFragment(TMndxFindResult * pStruct1C, DWORD dwDistance);
-    void CopyNameFragment(TMndxFindResult * pStruct1C, DWORD dwDistance);
+    bool CheckNameFragment(TMndxFindResult * pStruct1C, DWORD dwFragOffs);
+    bool CheckAndCopyNameFragment(TMndxFindResult * pStruct1C, DWORD dwFragOffs);
+    void CopyNameFragment(TMndxFindResult * pStruct1C, DWORD dwFragOffs);
 
     void ExchangeWith(TNameIndexStruct & Target);
     int LoadFromStream(TByteStream & InStream);
@@ -297,15 +298,15 @@ class TFileNameDatabase
 
     // Retrieves the name fragment distance
     // HOTS: 19573D0/inlined
-    DWORD GetNameFragmentDistanceEx(DWORD LoBitsIndex, DWORD HiBitsIndex)
+    DWORD GetNameFragmentOffsetEx(DWORD LoBitsIndex, DWORD HiBitsIndex)
     {
-        return (FrgmDist_HiBits.GetBitEntry(HiBitsIndex) << 0x08) | FrgmDist_LoBits.Array.BytePtr[LoBitsIndex];
+        return (FrgmDist_HiBits.GetBitEntry(HiBitsIndex) << 0x08) | FrgmDist_LoBits.ByteArray[LoBitsIndex];
     }
 
     // HOTS: 1957350, inlined
-    DWORD GetNameFragmentDistance(DWORD LoBitsIndex)
+    DWORD GetNameFragmentOffset(DWORD LoBitsIndex)
     {
-        return GetNameFragmentDistanceEx(LoBitsIndex, Struct68_D0.GetItemValue(LoBitsIndex));
+        return GetNameFragmentOffsetEx(LoBitsIndex, Struct68_D0.GetItemValue(LoBitsIndex));
     }
 
     bool sub_1957B80(TMndxFindResult * pStruct1C, DWORD dwKey);
@@ -328,9 +329,9 @@ class TFileNameDatabase
     TNameIndexStruct IndexStruct_174;
     TFileNameDatabasePtr NextDB;
 
-    TGenericArray NameTable;
+    TGenericArray NameFragTable;
 
-    DWORD ItemIndexMask;
+    DWORD NameFragIndexMask;
     DWORD field_214;
     TStruct10 Struct10;
     TByteStream MarStream;
@@ -342,6 +343,15 @@ typedef struct _MAR_FILE
     LPBYTE pbMarData;
     DWORD cbMarData;
 } MAR_FILE, *PMAR_FILE;
+
+//-----------------------------------------------------------------------------
+// Macros
+
+// Returns nonzero if the name fragment match is a single-char match
+inline bool IS_SINGLE_CHAR_MATCH(TGenericArray & Table, DWORD ItemIndex)
+{
+    return ((Table.NameFragArray[ItemIndex].FragOffs & 0xFFFFFF00) == 0xFFFFFF00);
+}
 
 //-----------------------------------------------------------------------------
 // CASC functions related to MNDX

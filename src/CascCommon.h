@@ -353,7 +353,7 @@ int CascDecompress(void * pvOutBuffer, PDWORD pcbOutBuffer, void * pvInBuffer, D
 
 #ifdef _DEBUG
 void CascDumpSparseArray(const char * szFileName, void * pvSparseArray);
-void CascDumpMndxNameTable(const char * szFileName, void * pvMarFile);
+void CascDumpNameFragTable(const char * szFileName, void * pvMarFile);
 void CascDumpFileNames(const char * szFileName, void * pvMarFile);
 void CascDumpMndxRoot(const char * szFileName, PCASC_MNDX_INFO pMndxInfo);
 void CascDumpIndexEntries(const char * szFileName, TCascStorage * hs);
@@ -361,7 +361,7 @@ void CascDumpStorage(const char * szFileName, TCascStorage * hs, const TCHAR * s
 void CascDumpFile(const char * szFileName, HANDLE hFile);
 #else   // _DEBUG
 #define CascDumpSparseArray(n,a)    /* */
-#define CascDumpMndxNameTable(n, m) /* */
+#define CascDumpNameFragTable(n, m) /* */
 #define CascDumpFileNames(n, m)     /* */
 #define CascDumpMndxRoot(n,i)       /* */
 #define CascDumpIndexEntries(n,h)   /* */

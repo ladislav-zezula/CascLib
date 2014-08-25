@@ -298,8 +298,8 @@ int main(int argc, char * argv[])
 #endif  // defined(_MSC_VER) && defined(_DEBUG)
 
     // Test open CASC storage for HOTS
-    if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - Heroes of the Storm/29049/BNTData"), "mods/heroes.stormmod/base.stormmaps/maps/heroes/builtin/startingexperience/practicemode01.stormmap/dede.stormdata/localizeddata/gamestrings.txt");
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - Heroes of the Storm/29049/BNTData"), "mods/heroes.stormmod/base.stormmaps/maps/heroes/builtin/startingexperience/practicemode01.stormmap/dede.stormdata/localizeddata/gamestrings.txt");
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/18125/Data"), "Cameras\\Abyssal_Maw_CameraFly_01.M2");
@@ -319,8 +319,8 @@ int main(int argc, char * argv[])
 //      nError = TestOpenStorage_ExtractFilesArgs(argv[1], argv[2]);
 
     // Test extracting the complete storage
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2014 - Heroes of the Storm/30414/HeroesData"), MAKE_PATH("Work"), NULL);
+    if(nError == ERROR_SUCCESS)
+        nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2014 - Heroes of the Storm/30414/HeroesData"), MAKE_PATH("Work"), NULL);
 
 #ifdef _MSC_VER
     _CrtDumpMemoryLeaks();

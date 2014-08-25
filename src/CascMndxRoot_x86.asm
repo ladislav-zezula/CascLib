@@ -9,7 +9,7 @@ szSearchMask    dd ?                    ; XREF: TMndxFindResult__SetPath+2D_w
                                         ; TMndxFindResult__Constructor+4_w ...
 cchSearchMask   dd ?                    ; XREF: TMndxFindResult__SetPath:loc_1956E9A_w
                                         ; TMndxFindResult__Constructor+6_w ...
-field_8x        dd ?                    ; XREF: TMndxFindResult__Constructor+9_w
+field_8         dd ?                    ; XREF: TMndxFindResult__Constructor+9_w
 szFoundPath     dd ?                    ; XREF: TMndxFindResult__Constructor+C_w
                                         ; TFileNameDatabase__FindFileInDatabase+55_w
 cchFoundPath    dd ?                    ; XREF: TMndxFindResult__Constructor+F_w
@@ -230,12 +230,12 @@ IndexStruct_174 TNameIndexStruct <>     ; XREF: TFileNameDatabase__Destructor+28
                 db ? ; undefined
 NextDB          TFileNameDatabasePtr <> ; XREF: TFileNameDatabase__Destructor+1D_o
                                         ; TFileNameDatabase__CheckNextPathFragment+52_r ...
-NameTable       TGenericArray <>        ; XREF: TFileNameDatabase__Destructor+E_r
+NameFragTable   TGenericArray <>        ; XREF: TFileNameDatabase__Destructor+E_r
                                         ; TFileNameDatabase__CheckNextPathFragment+2F_r ...
                 db ? ; undefined
                 db ? ; undefined
                 db ? ; undefined
-ItemIndexMask   dd ?                    ; XREF: TFileNameDatabase__CheckNextPathFragment+26_r
+NameFragIndexMask dd ?                  ; XREF: TFileNameDatabase__CheckNextPathFragment+26_r
                                         ; sub_1957B80:loc_1957B95_r ...
 field_214       dd ?                    ; XREF: TFileNameDatabase__Constructor+20E_w
                                         ; TFileNameDatabase__LoadFromStream+110_w
@@ -1243,10 +1243,10 @@ arg_4           = dword ptr  0Ch
 
 loc_1957B95:                            ; CODE XREF: sub_1957B80+9Fj
                                         ; sub_1957B80+156j
-                mov     eax, [esi+TFileNameDatabase.ItemIndexMask]
+                mov     eax, [esi+TFileNameDatabase.NameFragIndexMask]
                 and     eax, edi
                 lea     ecx, [eax+eax*2]
-                mov     eax, [esi+TFileNameDatabase.NameTable.ItemArray]
+                mov     eax, [esi+TFileNameDatabase.NameFragTable.ItemArray]
                 add     ecx, ecx
                 add     ecx, ecx
                 add     eax, ecx
@@ -1454,7 +1454,7 @@ sub_19573D0     endp
 TFileNameDatabase__CheckNextPathFragment proc near ; CODE XREF: TFileNameDatabase__FindFileInDatabase+25p
 
 var_C           = dword ptr -0Ch
-BitIndex        = dword ptr -8
+CollisionIndex  = dword ptr -8
 var_4           = dword ptr -4
 pStruct1C       = dword ptr  8
 
@@ -1475,9 +1475,9 @@ pStruct1C       = dword ptr  8
                 shl     ebx, 5
                 xor     eax, ebx
                 xor     eax, ecx
-                and     eax, [esi+TFileNameDatabase.ItemIndexMask] ; (000000ff) - Mask value
+                and     eax, [esi+TFileNameDatabase.NameFragIndexMask] ; (000000ff) - Mask value
                 lea     ebx, [eax+eax*2]
-                mov     eax, [esi+TFileNameDatabase.NameTable.ItemArray] ; (7f3ae128) - Array of 256 triplets
+                mov     eax, [esi+TFileNameDatabase.NameFragTable.ItemArray] ; (7f3ae128) - Array of 256 triplets
                 add     ebx, ebx
                 add     ebx, ebx        ; EBX = Offset of the triplet we want to know
                 cmp     ecx, [eax+ebx+TRIPLET.BitIndex]
@@ -1521,7 +1521,7 @@ loc_19579EF:                            ; CODE XREF: TFileNameDatabase__CheckNex
                 mov     [edi+TStruct40.CharIndex], eax
 
 loc_19579F6:                            ; CODE XREF: TFileNameDatabase__CheckNextPathFragment+72_j
-                mov     edx, [esi+TFileNameDatabase.NameTable.ItemArray] ; EDX = pTripletArray
+                mov     edx, [esi+TFileNameDatabase.NameFragTable.ItemArray] ; EDX = pTripletArray
                 mov     eax, [edx+ebx+TRIPLET.NextKey]
                 mov     [edi+TStruct40.HashValue], eax
 
@@ -1547,7 +1547,7 @@ loc_1957A0E:                            ; CODE XREF: TFileNameDatabase__CheckNex
                 shl     edx, cl
                 mov     ecx, eax
                 shr     ecx, 5
-                mov     [ebp+BitIndex], eax
+                mov     [ebp+CollisionIndex], eax
                 test    [ebx+ecx*4], edx
                 jz      short loc_19579E4
                 sub     eax, [edi+TStruct40.HashValue]
@@ -1653,7 +1653,7 @@ loc_1957B1C:                            ; CODE XREF: TFileNameDatabase__CheckNex
                 jz      short loc_1957B62
 
 loc_1957B32:                            ; CODE XREF: TFileNameDatabase__CheckNextPathFragment+1AA_j
-                mov     eax, [ebp+BitIndex]
+                mov     eax, [ebp+CollisionIndex]
                 inc     [edi+TStruct40.HashValue]
                 inc     eax
                 mov     ecx, eax
@@ -1661,7 +1661,7 @@ loc_1957B32:                            ; CODE XREF: TFileNameDatabase__CheckNex
                 mov     edx, 1
                 shl     edx, cl
                 mov     ecx, [esi+TFileNameDatabase.Struct68_00.ItemIsPresent.ItemArray]
-                mov     [ebp+BitIndex], eax
+                mov     [ebp+CollisionIndex], eax
                 shr     eax, 5
                 test    [ecx+eax*4], edx
                 jnz     loc_1957A41
@@ -2305,10 +2305,10 @@ arg_4           = dword ptr  0Ch
 
 loc_1958D84:                            ; CODE XREF: sub_1958D70+10Fj
                                         ; sub_1958D70+28Fj
-                mov     eax, [edi+TFileNameDatabase.ItemIndexMask]
+                mov     eax, [edi+TFileNameDatabase.NameFragIndexMask]
                 and     eax, ecx
                 lea     ebx, [eax+eax*2]
-                mov     eax, [edi+TFileNameDatabase.NameTable.ItemArray]
+                mov     eax, [edi+TFileNameDatabase.NameFragTable.ItemArray]
                 add     ebx, ebx
                 add     ebx, ebx
                 mov     [ebp+var_C], ebx
@@ -2407,7 +2407,7 @@ loc_1958E6E:                            ; CODE XREF: sub_1958D70+F7j
 
 loc_1958E71:                            ; CODE XREF: sub_1958D70+5Ej
                                         ; sub_1958D70+72j
-                mov     edx, [edi+TFileNameDatabase.NameTable.ItemArray]
+                mov     edx, [edi+TFileNameDatabase.NameFragTable.ItemArray]
                 mov     ecx, [ebx+edx]
                 mov     [ebp+arg_4], ecx
                 test    ecx, ecx
@@ -3226,10 +3226,10 @@ arg_4           = dword ptr  0Ch
                 mov     ecx, [ebp+arg_4]
 
 loc_1959024:                            ; CODE XREF: sub_1959010+2CEj
-                mov     eax, [edi+TFileNameDatabase.ItemIndexMask]
+                mov     eax, [edi+TFileNameDatabase.NameFragIndexMask]
                 and     eax, ecx
                 lea     ebx, [eax+eax*2]
-                mov     eax, [edi+TFileNameDatabase.NameTable.ItemArray]
+                mov     eax, [edi+TFileNameDatabase.NameFragTable.ItemArray]
                 add     ebx, ebx
                 add     ebx, ebx
                 add     eax, ebx
@@ -3347,7 +3347,7 @@ loc_1959123:                            ; CODE XREF: sub_1959010+10Fj
                 add     [esi+TStruct40.CharIndex], eax
 
 loc_195912E:                            ; CODE XREF: sub_1959010+71j
-                mov     eax, [edi+TFileNameDatabase.NameTable.ItemArray]
+                mov     eax, [edi+TFileNameDatabase.NameFragTable.ItemArray]
                 mov     ecx, [ebx+eax]
                 mov     [ebp+arg_4], ecx
                 test    ecx, ecx
@@ -3618,9 +3618,9 @@ arg_0           = dword ptr  8
                 mov     ebx, ecx
                 shl     ebx, 5
                 xor     eax, ebx
-                mov     ebx, [esi+TFileNameDatabase.NameTable.ItemArray]
+                mov     ebx, [esi+TFileNameDatabase.NameFragTable.ItemArray]
                 xor     eax, ecx
-                and     eax, [esi+TFileNameDatabase.ItemIndexMask]
+                and     eax, [esi+TFileNameDatabase.NameFragIndexMask]
                 lea     eax, [eax+eax*2]
                 add     eax, eax
                 add     eax, eax
@@ -3699,7 +3699,7 @@ loc_1958BBF:                            ; CODE XREF: TArchiveDatabase__sub_1958B
                 add     [edi+TStruct40.CharIndex], eax
 
 loc_1958BCA:                            ; CODE XREF: TArchiveDatabase__sub_1958B00+7Bj
-                mov     ecx, [esi+TFileNameDatabase.NameTable.ItemArray]
+                mov     ecx, [esi+TFileNameDatabase.NameFragTable.ItemArray]
                 mov     edx, [ebp+ItemArrayOffset]
                 mov     eax, [ecx+edx+NAME_ENTRY.NextHashModifier]
                 mov     [edi+TStruct40.HashValue], eax
