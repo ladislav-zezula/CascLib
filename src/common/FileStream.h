@@ -230,7 +230,7 @@ bool FileStream_SetSize(TFileStream * pStream, ULONGLONG NewFileSize);
 bool FileStream_GetSize(TFileStream * pStream, ULONGLONG * pFileSize);
 bool FileStream_GetPos(TFileStream * pStream, ULONGLONG * pByteOffset);
 bool FileStream_GetTime(TFileStream * pStream, ULONGLONG * pFT);
-bool FileStream_GetFlags(TFileStream * pStream, LPDWORD pdwStreamFlags);
+bool FileStream_GetFlags(TFileStream * pStream, PDWORD pdwStreamFlags);
 bool FileStream_Replace(TFileStream * pStream, TFileStream * pNewStream);
 void FileStream_Close(TFileStream * pStream);
 

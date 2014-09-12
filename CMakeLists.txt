@@ -1,5 +1,16 @@
-project(CascLib)
 cmake_minimum_required(VERSION 2.6)
+project(CascLib)
+
+set(HEADER_FILES
+    src/CascCommon.h
+    src/CascLib.h
+    src/CascMndxRoot.h
+    src/CascPort.h
+    src/common/Common.h
+    src/common/FileStream.h
+    src/common/ListFile.h
+    src/jenkins/lookup.h
+)
 
 set(SRC_FILES
     src/common/Common.cpp
@@ -50,14 +61,14 @@ if(WIN32)
     else()
         message(STATUS "Using mingw")
     endif()
-    set(SRC_ADDITIONAL_FILES ${ZLIB_BZIP2_FILES} ${TOMCRYPT_FILES} ${TOMMATH_FILES})
+    set(SRC_ADDITIONAL_FILES ${ZLIB_BZIP2_FILES} ${TOMCRYPT_FILES})
     set(LINK_LIBS wininet)
 endif()
 
 if(APPLE)
     message(STATUS "Using Mac OS X port")
     set(LINK_LIBS z bz2)
-    set(SRC_ADDITIONAL_FILES ${TOMCRYPT_FILES} ${TOMMATH_FILES})
+    set(SRC_ADDITIONAL_FILES ${TOMCRYPT_FILES})
 endif()
 
 if (${CMAKE_SYSTEM_NAME} STREQUAL Linux)
@@ -67,7 +78,7 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL Linux)
         set(LINK_LIBS z bz2 tomcrypt)
     else()
         set(LINK_LIBS z bz2)
-        set(SRC_ADDITIONAL_FILES ${TOMCRYPT_FILES} ${TOMMATH_FILES})
+        set(SRC_ADDITIONAL_FILES ${TOMCRYPT_FILES})
     endif()
 endif()
 

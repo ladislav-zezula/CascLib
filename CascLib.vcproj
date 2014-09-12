@@ -1102,10 +1102,6 @@
 				RelativePath=".\src\CascReadFile.cpp"
 				>
 			</File>
-			<File
-				RelativePath=".\test\CascTest.cpp"
-				>
-			</File>
 			<Filter
 				Name="common"
 				>

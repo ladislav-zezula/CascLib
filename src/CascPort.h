@@ -35,6 +35,8 @@
   #include <stdio.h>
   #include <windows.h>
   #include <wininet.h>
+  #include <sys/types.h>
+  #include <dirent.h>
   #define PLATFORM_LITTLE_ENDIAN
 
   #ifdef WIN64
@@ -85,6 +87,7 @@
   #define PLATFORM_MAC
   #define PLATFORM_DEFINED                  // The platform is known now
 
+  #define FIELD_OFFSET(t,f) offsetof(t,f)
 #endif
 
 //-----------------------------------------------------------------------------
@@ -98,6 +101,7 @@
   #include <fcntl.h>
   #include <dirent.h>
   #include <unistd.h>
+  #include <stddef.h>
   #include <stdint.h>
   #include <stdlib.h>
   #include <stdio.h>
@@ -114,6 +118,7 @@
   #define PLATFORM_LINUX
   #define PLATFORM_DEFINED
 
+  #define FIELD_OFFSET(t,f) offsetof(t,f)
 #endif
 
 //-----------------------------------------------------------------------------

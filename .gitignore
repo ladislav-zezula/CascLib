@@ -19,3 +19,23 @@
 *.exe
 *.out
 *.app
+
+# CMake related files
+/CMakeFiles/
+/CMakeCache.txt
+/*.cmake
+
+# Visual Studio related files
+*.opensdf
+*.ncb
+*.sdf
+*.suo
+*.vcxproj.user
+
+# KDevelop related files
+*.kdev4
+
+# Intermediate directory
+/casc.dir/
+/Win32/
+/Debug/
