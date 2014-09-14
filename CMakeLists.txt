@@ -57,8 +57,13 @@ SET(TOMCRYPT_FILES
 
 SET(ZLIB_BZIP2_FILES
     src/zlib/adler32.c
+    src/zlib/compress.c
     src/zlib/crc32.c
     src/zlib/deflate.c
+    src/zlib/gzclose.c
+    src/zlib/gzlib.c
+    src/zlib/gzread.c
+    src/zlib/gzwrite.c
     src/zlib/infback.c
     src/zlib/inffast.c
     src/zlib/inflate.c
@@ -91,7 +96,7 @@ IF(WIN32)
         SOURCE_GROUP("source\\zlib" FILES ${ZLIB_BZIP2_FILES})
         SOURCE_GROUP("source\\tomcrypt" FILES ${TOMCRYPT_FILES})
         
-        ADD_DEFINITIONS(-DWIN32 -DZ_SOLO)
+        ADD_DEFINITIONS(-DWIN32)
         IF(CMAKE_SIZEOF_VOID_P EQUAL 8)
             ADD_DEFINITIONS(-DWIN64)
         ENDIF()
