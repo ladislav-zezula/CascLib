@@ -155,7 +155,7 @@ static bool IsIndexFileName_V2(const TCHAR * szFileName)
 {
     // Check if the name looks like a valid index file
     return (_tcslen(szFileName) == 14 && 
-            _tcsspn(szFileName, _T("0123456789aAbBcCdDeEfF")) == 0x0A &&
+            _tcsspn(szFileName, szAllowedHexChars) == 0x0A &&
             _tcsicmp(szFileName + 0x0A, _T(".idx")) == 0);
 }
 

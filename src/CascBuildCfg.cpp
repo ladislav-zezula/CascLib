@@ -270,7 +270,7 @@ static int LoadInfoVariable(PQUERY_KEY pVarBlob, const char * szLineBegin, const
 
     // Initialize the blob
     pVarBlob->pbData = CASC_ALLOC(BYTE, (szLinePtr - szLineBegin) + 1);
-    pVarBlob->cbData = (size_t)(szLinePtr - szLineBegin);
+    pVarBlob->cbData = static_cast<DWORD>(szLinePtr - szLineBegin);
 
     // Check for success
     if(pVarBlob->pbData == NULL)

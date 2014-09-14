@@ -188,26 +188,26 @@ typedef void (WINAPI * STREAM_DOWNLOAD_CALLBACK)(void * pvUserData, ULONGLONG By
 //-----------------------------------------------------------------------------
 // We have our own qsort implementation, optimized for sorting array of pointers
 
-void qsort_pointer_array(void ** base, size_t num, int (*compare)(const void *, const void *, const void *), const void * context);
+CASCLIB_EXTERN void qsort_pointer_array(void ** base, size_t num, int(*compare)(const void *, const void *, const void *), const void * context);
 
 //-----------------------------------------------------------------------------
 // Functions for storage manipulation
 
-bool  WINAPI CascOpenStorage(const TCHAR * szDataPath, DWORD dwFlags, HANDLE * phStorage);
-bool  WINAPI CascGetStorageInfo(HANDLE hStorage, CASC_STORAGE_INFO_CLASS InfoClass, void * pvStorageInfo, size_t cbStorageInfo, size_t * pcbLengthNeeded);
-bool  WINAPI CascCloseStorage(HANDLE hStorage);
+CASCLIB_EXTERN bool  WINAPI CascOpenStorage(const TCHAR * szDataPath, DWORD dwFlags, HANDLE * phStorage);
+CASCLIB_EXTERN bool  WINAPI CascGetStorageInfo(HANDLE hStorage, CASC_STORAGE_INFO_CLASS InfoClass, void * pvStorageInfo, size_t cbStorageInfo, size_t * pcbLengthNeeded);
+CASCLIB_EXTERN bool  WINAPI CascCloseStorage(HANDLE hStorage);
 
-bool  WINAPI CascOpenFileByIndexKey(HANDLE hStorage, PQUERY_KEY pIndexKey, DWORD dwFlags, HANDLE * phFile);
-bool  WINAPI CascOpenFileByEncodingKey(HANDLE hStorage, PQUERY_KEY pEncodingKey, DWORD dwFlags, HANDLE * phFile);
-bool  WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocale, DWORD dwFlags, HANDLE * phFile);
-DWORD WINAPI CascGetFileSize(HANDLE hFile, PDWORD pdwFileSizeHigh);
-DWORD WINAPI CascSetFilePointer(HANDLE hFile, LONG lFilePos, LONG * plFilePosHigh, DWORD dwMoveMethod);
-bool  WINAPI CascReadFile(HANDLE hFile, void * lpBuffer, DWORD dwToRead, PDWORD pdwRead);
-bool  WINAPI CascCloseFile(HANDLE hFile);
+CASCLIB_EXTERN bool  WINAPI CascOpenFileByIndexKey(HANDLE hStorage, PQUERY_KEY pIndexKey, DWORD dwFlags, HANDLE * phFile);
+CASCLIB_EXTERN bool  WINAPI CascOpenFileByEncodingKey(HANDLE hStorage, PQUERY_KEY pEncodingKey, DWORD dwFlags, HANDLE * phFile);
+CASCLIB_EXTERN bool  WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocale, DWORD dwFlags, HANDLE * phFile);
+CASCLIB_EXTERN DWORD WINAPI CascGetFileSize(HANDLE hFile, PDWORD pdwFileSizeHigh);
+CASCLIB_EXTERN DWORD WINAPI CascSetFilePointer(HANDLE hFile, LONG lFilePos, LONG * plFilePosHigh, DWORD dwMoveMethod);
+CASCLIB_EXTERN bool  WINAPI CascReadFile(HANDLE hFile, void * lpBuffer, DWORD dwToRead, PDWORD pdwRead);
+CASCLIB_EXTERN bool  WINAPI CascCloseFile(HANDLE hFile);
 
-HANDLE WINAPI CascFindFirstFile(HANDLE hStorage, const char * szMask, PCASC_FIND_DATA pFindData, const TCHAR * szListFile);
-bool  WINAPI CascFindNextFile(HANDLE hFind, PCASC_FIND_DATA pFindData);
-bool  WINAPI CascFindClose(HANDLE hFind);
+CASCLIB_EXTERN HANDLE WINAPI CascFindFirstFile(HANDLE hStorage, const char * szMask, PCASC_FIND_DATA pFindData, const TCHAR * szListFile);
+CASCLIB_EXTERN bool  WINAPI CascFindNextFile(HANDLE hFind, PCASC_FIND_DATA pFindData);
+CASCLIB_EXTERN bool  WINAPI CascFindClose(HANDLE hFind);
 
 #ifdef __cplusplus
 }   // extern "C"
