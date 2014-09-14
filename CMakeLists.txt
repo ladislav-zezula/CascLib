@@ -60,10 +60,6 @@ SET(ZLIB_BZIP2_FILES
     src/zlib/compress.c
     src/zlib/crc32.c
     src/zlib/deflate.c
-    src/zlib/gzclose.c
-    src/zlib/gzlib.c
-    src/zlib/gzread.c
-    src/zlib/gzwrite.c
     src/zlib/infback.c
     src/zlib/inffast.c
     src/zlib/inflate.c
