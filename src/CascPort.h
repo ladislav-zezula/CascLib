@@ -36,13 +36,27 @@
   #include <windows.h>
   #include <wininet.h>
   #include <sys/types.h>
-  #include <dirent.h>
+
+  #if !defined(_MSC_VER)
+    #include <dirent.h>
+  #endif
+
   #define PLATFORM_LITTLE_ENDIAN
 
   #ifdef WIN64
     #define PLATFORM_64BIT
   #else
     #define PLATFORM_32BIT
+  #endif
+
+  #ifdef _MSC_VER
+    #ifdef __CASCLIB_SELF__
+      #define CASCLIB_EXTERN __declspec(dllexport)
+    #else
+      #define CASCLIB_EXTERN
+    #endif
+  #else
+    #define CASCLIB_EXTERN
   #endif
 
   #define PATH_SEPARATOR     '\\'
@@ -81,6 +95,8 @@
     #define PLATFORM_LITTLE_ENDIAN
   #endif
 
+  #define CASCLIB_EXTERN
+
   #define PATH_SEPARATOR     '/'
   #define CREATE_DIRECTORY(name)    mkdir(name, 0755)
 
@@ -110,6 +126,8 @@
   #include <ctype.h>
   #include <assert.h>
   #include <errno.h>
+
+  #define CASCLIB_EXTERN
 
   #define PATH_SEPARATOR     '/'
   #define CREATE_DIRECTORY(name)    mkdir(name, 0755)
