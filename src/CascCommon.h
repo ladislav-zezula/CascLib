@@ -46,6 +46,8 @@
 #define CASC_MAX_MAR_FILES           3          // Maximum of 3 MAR files are supported
 #define CASC_MNDX_SIGNATURE 0x58444E4D          // 'MNDX'
 
+#define CASC_SEARCH_HAVE_NAME   0x0001          // Indicated that previous search found a name
+
 // Prevent problems with CRT "min" and "max" functions,
 // as they are not defined on all platforms
 #define CASCLIB_MIN(a, b) ((a < b) ? a : b)
@@ -282,8 +284,8 @@ typedef struct _TCascSearch
     char * szMask;
     char szFileName[MAX_PATH];                      // Buffer for the file name
     char szNormName[MAX_PATH];                      // Buffer for normalized file name
-    ULONGLONG PrevNameHash;                         // Previous value of the file name hash
-    size_t PrevRootIndex;                           // Root index of the previously found item
+    ULONGLONG FileNameHash;                         // Name hash being searched right now
+    size_t RootIndex;                               // Root index of the previously found item
     DWORD dwState;                                  // Pointer to the state (0 = listfile, 1 = nameless, 2 = done)
     BYTE BitArray[1];                               // Bit array of already-reported files
 
@@ -343,7 +345,6 @@ TCascStorage * IsValidStorageHandle(HANDLE hStorage);
 TCascFile * IsValidFileHandle(HANDLE hFile);
 
 PCASC_ROOT_ENTRY     FindFirstRootEntry(TCascStorage * hs, const char * szFileName, size_t * PtrIndex);
-PCASC_ROOT_ENTRY     FindRootEntryLocale(TCascStorage * hs, char * szFileName, DWORD Locale);
 PCASC_ENCODING_ENTRY FindEncodingEntry(TCascStorage * hs, PQUERY_KEY pEncodingKey, size_t * PtrIndex);
 PCASC_INDEX_ENTRY    FindIndexEntry(TCascStorage * hs, PQUERY_KEY pIndexKey);
 

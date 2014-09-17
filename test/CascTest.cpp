@@ -192,6 +192,8 @@ static int TestOpenStorage_EnumFiles(const TCHAR * szStorage, const TCHAR * szLi
     CASC_FIND_DATA FindData;
     HANDLE hStorage;
     HANDLE hFind;
+    DWORD dwTotalFiles = 0;
+    DWORD dwFoundFiles = 0;
     bool bFileFound = true;
     int nError = ERROR_SUCCESS;
 
@@ -204,6 +206,10 @@ static int TestOpenStorage_EnumFiles(const TCHAR * szStorage, const TCHAR * szLi
 
     if(nError == ERROR_SUCCESS)
     {
+        // Retrieve the total number of files
+        CascGetStorageInfo(hStorage, CascStorageFileCount, &dwTotalFiles, sizeof(dwTotalFiles), NULL);
+
+        // Start finding
         hFind = CascFindFirstFile(hStorage, "*", &FindData, szListFile);
         if(hFind != NULL)
         {
@@ -211,6 +217,7 @@ static int TestOpenStorage_EnumFiles(const TCHAR * szStorage, const TCHAR * szLi
             {
                 // Extract the file
 //              printf("%s\n", FindData.szFileName);
+                dwFoundFiles++;
 
                 // Find the next file in CASC
                 bFileFound = CascFindNextFile(hFind, &FindData);

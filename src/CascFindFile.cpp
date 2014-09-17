@@ -47,12 +47,11 @@ static void FreeSearchHandle(TCascSearch * pSearch)
     pSearch->szClassName = NULL;
     CASC_FREE(pSearch);
 }
-
+/*
 DWORD dwRootEntries = 0;
-DWORD dwRootEntriesWithDiffLocale = 0;
 DWORD dwEncoEntries = 0;
 DWORD dwIndexEntries = 0;
-
+*/
 static bool VerifyRootEntry(TCascSearch * pSearch, PCASC_ROOT_ENTRY pRootEntry, PCASC_FIND_DATA pFindData, size_t nRootIndex)
 {
     PCASC_ENCODING_ENTRY pEncodingEntry;
@@ -70,7 +69,7 @@ static bool VerifyRootEntry(TCascSearch * pSearch, PCASC_ROOT_ENTRY pRootEntry, 
     pSearch->BitArray[dwByteIndex] |= (1 << dwBitIndex);
 
     // Increment the number of root entries
-    dwRootEntries++;
+//  dwRootEntries++;
 
     // Now try to find that encoding key in the array of encoding keys
     QueryKey.pbData = pRootEntry->EncodingKey;
@@ -79,7 +78,7 @@ static bool VerifyRootEntry(TCascSearch * pSearch, PCASC_ROOT_ENTRY pRootEntry, 
     if(pEncodingEntry == NULL)
         return false;
 
-    dwEncoEntries++;
+//  dwEncoEntries++;
 
     // Now try to find the index entry. Note that we take the first key
     QueryKey.pbData = pEncodingEntry->EncodingKey + MD5_HASH_SIZE;
@@ -88,7 +87,7 @@ static bool VerifyRootEntry(TCascSearch * pSearch, PCASC_ROOT_ENTRY pRootEntry, 
     if(pIndexEntry == NULL)
         return false;
 
-    dwIndexEntries++;
+//  dwIndexEntries++;
 
     // Fill the name hash and the MD5
     memcpy(pFindData->EncodingKey, pRootEntry->EncodingKey, MD5_HASH_SIZE);
@@ -96,10 +95,6 @@ static bool VerifyRootEntry(TCascSearch * pSearch, PCASC_ROOT_ENTRY pRootEntry, 
     pFindData->dwPackageIndex = 0;
     pFindData->dwLocaleFlags = pRootEntry->Locales;
     pFindData->dwFileSize = ConvertBytesToInteger_4(pEncodingEntry->FileSizeBytes);
-
-    // Remember the previously found name hash
-    pSearch->PrevRootIndex = nRootIndex;
-    pSearch->PrevNameHash = pRootEntry->FileNameHash;
     return true;
 }
 
@@ -152,48 +147,53 @@ static bool DoStorageSearch_ListFile(TCascSearch * pSearch, PCASC_FIND_DATA pFin
 {
     PCASC_ROOT_ENTRY pRootEntry;
     TCascStorage * hs = pSearch->hs;
-    size_t nRootIndex = pSearch->PrevRootIndex + 1;
+    size_t RootIndex;
 
-    // Check if there is more files with the same name hash
-    if(nRootIndex < hs->nRootEntries && hs->ppRootEntries[nRootIndex]->FileNameHash == pSearch->PrevNameHash)
-    {
-        // Get the pointer to the root entry
-        pRootEntry = hs->ppRootEntries[nRootIndex];
-
-        // Verify if that root entry exists in the CASC storage
-        // Note that the file name will be there from the previous search
-        if(VerifyRootEntry(pSearch, pRootEntry, pFindData, nRootIndex))
-        {
-            dwRootEntriesWithDiffLocale++;
-            return true;
-        }
-    }
-    
-    // Get the next listfile line until we find a match
     for(;;)
     {
-        // Try to get next file from the listfile
-        if(!ListFile_GetNext(pSearch->pCache, pSearch->szMask, pSearch->szFileName, MAX_PATH))
-            break;
-
-        // Normalize the file name
-        strcpy(pSearch->szNormName, pSearch->szFileName);
-        NormalizeFileName_UpperBkSlash(pSearch->szNormName);
-
-        // Try to match it with a file in the storage
-        pRootEntry = FindRootEntryLocale(pSearch->hs, pSearch->szNormName, 0);
-        if(pRootEntry != NULL)
+        // Shall we get a new file name from the listfile?
+        if(pSearch->FileNameHash == 0)
         {
-            // Verify the existence of that file in the storage
-            nRootIndex = (size_t)(pRootEntry - hs->pRootEntries);
-            if(VerifyRootEntry(pSearch, pRootEntry, pFindData, nRootIndex))
+            // Try to get next file from the listfile
+            if(!ListFile_GetNext(pSearch->pCache, pSearch->szMask, pSearch->szFileName, MAX_PATH))
+                break;
+
+            // Normalize the file name
+            strcpy(pSearch->szNormName, pSearch->szFileName);
+            NormalizeFileName_UpperBkSlash(pSearch->szNormName);
+
+//          if(!_stricmp(pSearch->szFileName, "Interface\\GlueXML\\GlueFonts.xml"))
+//              DebugBreak();
+            
+            // Find the first root entry belonging to this file name
+            pRootEntry = FindFirstRootEntry(pSearch->hs, pSearch->szNormName, &RootIndex);
+            if(pRootEntry == NULL)
+                continue;
+
+            // We have the name now, search all locales
+            pSearch->FileNameHash = pRootEntry->FileNameHash;
+            pSearch->RootIndex = RootIndex;
+        }
+
+        // Is the root index in range?
+        while(pSearch->RootIndex < hs->nRootEntries)
+        {
+            // Get the next root entry. If name mismatches, stop searching
+            pRootEntry = hs->ppRootEntries[pSearch->RootIndex];
+            if(pRootEntry->FileNameHash != pSearch->FileNameHash)
+                break;
+
+            // Verify whether the file exists in the storage
+            if(VerifyRootEntry(pSearch, pRootEntry, pFindData, pSearch->RootIndex++))
             {
-                // If the file has been found to exist, fill-in the name
                 strcpy(pFindData->szFileName, pSearch->szFileName);
                 pFindData->szPlainName = (char *)GetPlainFileName(pFindData->szFileName);
                 return true;
             }
         }
+
+        // Reset the name hash and root index and retry search
+        pSearch->FileNameHash = 0;
     }
 
     // Listfile search ended
@@ -204,17 +204,16 @@ static bool DoStorageSearch_Hash(TCascSearch * pSearch, PCASC_FIND_DATA pFindDat
 {
     PCASC_ROOT_ENTRY pRootEntry;
     TCascStorage * hs = pSearch->hs;
-    size_t nRootIndex = pSearch->PrevRootIndex + 1;
 
     // Check if there is more files with the same name hash
-    while(nRootIndex < hs->nRootEntries)
+    while(pSearch->RootIndex < hs->nRootEntries)
     {
         // Get the pointer to the root entry
-        pRootEntry = hs->ppRootEntries[nRootIndex];
+        pRootEntry = hs->ppRootEntries[pSearch->RootIndex];
 
         // Verify if that root entry exists in the CASC storage
         // Note that the file name will be there from the previous search
-        if(VerifyRootEntry(pSearch, pRootEntry, pFindData, nRootIndex))
+        if(VerifyRootEntry(pSearch, pRootEntry, pFindData, pSearch->RootIndex))
         {
             pFindData->szFileName[0] = 0;
             pFindData->szPlainName = NULL;
@@ -222,7 +221,7 @@ static bool DoStorageSearch_Hash(TCascSearch * pSearch, PCASC_FIND_DATA pFindDat
         }
 
         // Move to the next entry
-        nRootIndex++;
+        pSearch->RootIndex++;
     }
     
     // Nameless search ended
@@ -243,7 +242,8 @@ static bool DoStorageSearch(TCascSearch * pSearch, PCASC_FIND_DATA pFindData)
             pSearch->pCache = ListFile_OpenExternal(pSearch->szListFile);
         
         // Move the search phase to the listfile searching
-        pSearch->PrevRootIndex = (size_t)-1;
+        pSearch->FileNameHash = 0;
+        pSearch->RootIndex = 0;
         pSearch->dwState++;
 
         // If either file stream or listfile cache are invalid,
@@ -259,7 +259,7 @@ static bool DoStorageSearch(TCascSearch * pSearch, PCASC_FIND_DATA pFindData)
             return true;
 
         // Move to the nameless search state
-        pSearch->PrevRootIndex = (size_t)-1;
+        pSearch->RootIndex = 0;
         pSearch->dwState++;
     }
 

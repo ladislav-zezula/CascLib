@@ -34,37 +34,6 @@ PCASC_INDEX_ENTRY FindIndexEntry(TCascStorage * hs, PQUERY_KEY pIndexKey)
         pIndexEntry = (PCASC_INDEX_ENTRY)Map_FindObject(hs->pIndexEntryMap, pIndexKey->pbData);
 
     return pIndexEntry;
-    
-/*
-    PCASC_INDEX_ENTRY pIndexEntry;
-    size_t StartEntry = 0;
-    size_t MidlEntry;
-    size_t EndEntry = hs->nIndexEntries;
-    int nResult;
-
-    // Perform binary search
-    while(StartEntry < EndEntry)
-    {
-        // Calculate the middle of the interval
-        MidlEntry = StartEntry + ((EndEntry - StartEntry) / 2);
-        pIndexEntry = hs->ppIndexEntries[MidlEntry];
-
-        // Did we find it?
-        nResult = memcmp(pIndexKey->pbData, pIndexEntry->IndexKey, CASC_FILE_KEY_SIZE);
-        if(nResult == 0)
-        {
-            if(PtrIndex != NULL)
-                PtrIndex[0] = MidlEntry;
-            return pIndexEntry;
-        }
-
-        // Move the interval to the left or right
-        (nResult < 0) ? EndEntry = MidlEntry : StartEntry = MidlEntry + 1;
-    }
-
-    // Not found, sorry
-    return NULL;
-*/
 }
 
 PCASC_ENCODING_ENTRY FindEncodingEntry(TCascStorage * hs, PQUERY_KEY pEncodingKey, size_t * PtrIndex)
