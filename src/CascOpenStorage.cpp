@@ -907,6 +907,9 @@ static int LoadRootFile(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile)
                 pTrgEntry->Locales = BlockInfo.pLocaleBlockHdr->Locales;
                 pTrgEntry->Flags = BlockInfo.pLocaleBlockHdr->Flags;
 
+//              if(pTrgEntry->FileNameHash == 0x5ddb88608673f698ULL)
+//                  DebugBreak();
+
                 // Insert the CASC root entry to the linear array of pointers
                 hs->ppRootEntries[nRootIndex++] = pTrgEntry;
 
@@ -1120,7 +1123,7 @@ bool WINAPI CascOpenStorage(const TCHAR * szDataPath, DWORD dwFlags, HANDLE * ph
 #ifdef _DEBUG
 //  if(nError == ERROR_SUCCESS)
 //  {
-//      CascDumpStorage("E:\\casc_storage.txt", hs, _T("e:\\Ladik\\Appdir\\CascLib\\listfile\\listfile-wow6.txt"));
+//      CascDumpStorage("E:\\casc_dump.txt", hs, _T("e:\\Ladik\\Appdir\\CascLib\\listfile\\listfile-wow6.txt"));
 //      CascDumpIndexEntries("E:\\casc_index.txt", hs);
 //  }
 #endif

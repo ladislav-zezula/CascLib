@@ -176,7 +176,7 @@ static void DumpEncodingEntry(
         // Dump all encoding keys
         for(DWORD j = 0; j < pEncodingEntry->KeyCount; j++)
         {
-            fprintf(fp, "  IndexKey: %s\n", StringFromMD5(pbEncodingKey, szMd5));
+            fprintf(fp, "  Index Key: %s\n", StringFromMD5(pbEncodingKey, szMd5));
             DumpIndexKey(fp, hs, pbEncodingKey, ppIndexEntries);
             pbEncodingKey += MD5_HASH_SIZE;
         }

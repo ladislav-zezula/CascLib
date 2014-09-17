@@ -302,7 +302,7 @@ int main(int argc, char * argv[])
 //      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - Heroes of the Storm/29049/BNTData"), "mods/heroes.stormmod/base.stormmaps/maps/heroes/builtin/startingexperience/practicemode01.stormmap/dede.stormdata/localizeddata/gamestrings.txt");
 
     if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/18865/Data"), "Interface\\GlueXML\\GlueFonts.xml");
+        nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/18125/Data"), "Interface\\GlueXML\\GlueFonts.xml");
 
     // List all files in CASC storage with MNDX info
 //  if(nError == ERROR_SUCCESS)

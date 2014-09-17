@@ -159,9 +159,11 @@ static PCASC_ROOT_ENTRY FindRootEntryLocale(TCascStorage * hs, char * szFileName
     PCASC_ROOT_ENTRY pEndEntry = NULL;
     PCASC_ROOT_ENTRY pRootEntry = NULL;
     ULONGLONG FileNameHash;
+    size_t EntryIndex = 0;
+    size_t EndEntry = hs->nRootEntries;
 
     // Find a root entry with the given name hash
-    pRootEntry = FindFirstRootEntry(hs, szFileName, NULL);
+    pRootEntry = FindFirstRootEntry(hs, szFileName, &EntryIndex);
     if(pRootEntry != NULL)
     {
         // Rememeber the file name hash
@@ -169,8 +171,13 @@ static PCASC_ROOT_ENTRY FindRootEntryLocale(TCascStorage * hs, char * szFileName
         FileNameHash = pRootEntry->FileNameHash;
 
         // Find all suitable root entries
-        while(pRootEntry < pEndEntry && pRootEntry->FileNameHash == FileNameHash)
+        while(EntryIndex < EndEntry)
         {
+            // Get the root entry
+            pRootEntry = hs->ppRootEntries[EntryIndex++];
+            if(pRootEntry->FileNameHash != FileNameHash)
+                break;
+
             // If a locale has been given, check it
             if(pThatEntry == NULL && Locale != 0 && (Locale & pRootEntry->Locales))
                 pThatEntry = pRootEntry;
