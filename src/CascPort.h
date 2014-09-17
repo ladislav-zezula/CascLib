@@ -36,7 +36,6 @@
   #include <windows.h>
   #include <wininet.h>
   #include <sys/types.h>
-  #include <dirent.h>
   #define PLATFORM_LITTLE_ENDIAN
 
   #ifdef WIN64
@@ -65,6 +64,7 @@
   #include <unistd.h>
   #include <fcntl.h>
   #include <stdlib.h>
+  #include <dirent.h>
   #include <errno.h>
 
   // Support for PowerPC on Max OS X
