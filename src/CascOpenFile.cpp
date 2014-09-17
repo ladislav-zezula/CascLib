@@ -150,7 +150,7 @@ PCASC_ROOT_ENTRY FindFirstRootEntry(TCascStorage * hs, const char * szFileName, 
 }
 
 // Check the root directory for that hash
-static PCASC_ROOT_ENTRY FindRootEntryLocale(TCascStorage * hs, char * szFileName, DWORD Locale)
+PCASC_ROOT_ENTRY FindRootEntryLocale(TCascStorage * hs, char * szFileName, DWORD Locale)
 {
     PCASC_ROOT_ENTRY pThatEntry = NULL;
     PCASC_ROOT_ENTRY pENUSEntry = NULL;

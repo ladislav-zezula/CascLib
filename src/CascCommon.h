@@ -343,6 +343,7 @@ TCascStorage * IsValidStorageHandle(HANDLE hStorage);
 TCascFile * IsValidFileHandle(HANDLE hFile);
 
 PCASC_ROOT_ENTRY     FindFirstRootEntry(TCascStorage * hs, const char * szFileName, size_t * PtrIndex);
+PCASC_ROOT_ENTRY     FindRootEntryLocale(TCascStorage * hs, char * szFileName, DWORD Locale);
 PCASC_ENCODING_ENTRY FindEncodingEntry(TCascStorage * hs, PQUERY_KEY pEncodingKey, size_t * PtrIndex);
 PCASC_INDEX_ENTRY    FindIndexEntry(TCascStorage * hs, PQUERY_KEY pIndexKey);
 

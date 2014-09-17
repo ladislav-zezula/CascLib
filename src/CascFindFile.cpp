@@ -181,10 +181,11 @@ static bool DoStorageSearch_ListFile(TCascSearch * pSearch, PCASC_FIND_DATA pFin
         NormalizeFileName_UpperBkSlash(pSearch->szNormName);
 
         // Try to match it with a file in the storage
-        pRootEntry = FindFirstRootEntry(pSearch->hs, pSearch->szNormName, &nRootIndex);
+        pRootEntry = FindRootEntryLocale(pSearch->hs, pSearch->szNormName, 0);
         if(pRootEntry != NULL)
         {
             // Verify the existence of that file in the storage
+            nRootIndex = (size_t)(pRootEntry - hs->pRootEntries);
             if(VerifyRootEntry(pSearch, pRootEntry, pFindData, nRootIndex))
             {
                 // If the file has been found to exist, fill-in the name
