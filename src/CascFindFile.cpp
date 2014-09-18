@@ -158,13 +158,13 @@ static bool DoStorageSearch_ListFile(TCascSearch * pSearch, PCASC_FIND_DATA pFin
             if(!ListFile_GetNext(pSearch->pCache, pSearch->szMask, pSearch->szFileName, MAX_PATH))
                 break;
 
+//          if(!_stricmp(pSearch->szFileName, "Interface\\Glues\\MODELS\\UI_MainMenu_Warlords\\Caustic_MedFreq.blp"))
+//              DebugBreak();
+
             // Normalize the file name
             strcpy(pSearch->szNormName, pSearch->szFileName);
             NormalizeFileName_UpperBkSlash(pSearch->szNormName);
 
-//          if(!_stricmp(pSearch->szFileName, "Interface\\GlueXML\\GlueFonts.xml"))
-//              DebugBreak();
-            
             // Find the first root entry belonging to this file name
             pRootEntry = FindFirstRootEntry(pSearch->hs, pSearch->szNormName, &RootIndex);
             if(pRootEntry == NULL)

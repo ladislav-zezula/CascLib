@@ -246,7 +246,11 @@ static bool OpenFileByEncodingKey(TCascStorage * hs, PQUERY_KEY pEncodingKey, DW
         nError = ERROR_FILE_NOT_FOUND;
 
     // Prepare the file index and open the file by index
-    IndexKey.pbData = pEncodingEntry->EncodingKey + (MD5_HASH_SIZE * pEncodingEntry->KeyCount);
+    // Note: We don't know what to do if there is more than just one index key
+    // We always take the first file present. Is that correct?
+//  IndexKey.pbData = pEncodingEntry->EncodingKey + (MD5_HASH_SIZE * pEncodingEntry->KeyCount);
+//  assert(pEncodingEntry->KeyCount == 1);
+    IndexKey.pbData = pEncodingEntry->EncodingKey + MD5_HASH_SIZE;
     IndexKey.cbData = MD5_HASH_SIZE;
     if(OpenFileByIndexKey(hs, &IndexKey, dwFlags, phFile))
     {
