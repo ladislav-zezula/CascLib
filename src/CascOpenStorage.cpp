@@ -533,7 +533,7 @@ static int LoadKeyMapping(PCASC_MAPPING_TABLE pKeyMapping, DWORD KeyIndex)
     {
         // Retrieve the file size
         FileStream_GetSize(pStream, &FileSize);
-        if(0 < FileSize && FileSize <= 0x90000)
+        if(0 < FileSize && FileSize <= 0x100000)
         {
             // WoW6 actually reads THE ENTIRE file to memory
             // Verified on Mac build (x64)
