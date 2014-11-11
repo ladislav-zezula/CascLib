@@ -9,6 +9,7 @@ set(HEADER_FILES
     src/common/Common.h
     src/common/FileStream.h
     src/common/ListFile.h
+    src/common/Map.h
     src/jenkins/lookup.h
 )
 
@@ -17,6 +18,7 @@ set(SRC_FILES
     src/common/Directory.cpp
     src/common/FileStream.cpp
     src/common/ListFile.cpp
+    src/common/Map.cpp
     src/jenkins/lookup3.c
     src/CascBuildCfg.cpp
     src/CascCommon.cpp
