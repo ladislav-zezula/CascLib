@@ -850,6 +850,10 @@
 			Name="Doc Files"
 			>
 			<File
+				RelativePath=".\doc\History.txt"
+				>
+			</File>
+			<File
 				RelativePath=".\doc\Lookup.txt"
 				>
 			</File>

@@ -202,6 +202,11 @@ DWORD GetNumberOfSetBits(DWORD Value32)
 
 static bool RootFileRead(LPBYTE pbFilePointer, LPBYTE pbFileEnd, void * pvBuffer, size_t dwBytesToRead)
 {
+    // False if the file pointer is beyond the end
+    if(pbFilePointer > pbFileEnd)
+        return false;
+
+    // False if there is not enough bytes available
     if((size_t)(pbFileEnd - pbFilePointer) < dwBytesToRead)
         return false;
 
@@ -2899,6 +2904,7 @@ static bool FillFindData(TCascSearch * pSearch, PCASC_FIND_DATA pFindData, TMndx
     // Fill the file name
     memcpy(pFindData->szFileName, pStruct1C->szFoundPath, pStruct1C->cchFoundPath);
     pFindData->szFileName[pStruct1C->cchFoundPath] = 0;
+    pFindData->szPlainName = (char *)GetPlainFileName(pFindData->szFileName);
     pFindData->dwFileSize = CASC_INVALID_SIZE;
     
     // Fill the file size
@@ -3213,14 +3219,18 @@ extern "C" {
 
 extern "C" void * allocate_zeroed_memory_x86(size_t bytes)
 {
-    return calloc(bytes, 1);
+    void * ptr = CASC_ALLOC(BYTE, bytes);
+
+    if(ptr != NULL)
+        memset(ptr, 0, bytes);
+    return ptr;
 }
 
 extern "C" void free_memory_x86(void * ptr)
 {
     if(ptr != NULL)
     {
-        free(ptr);
+        CASC_FREE(ptr);
     }
 }
 

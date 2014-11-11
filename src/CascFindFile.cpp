@@ -94,7 +94,9 @@ static bool VerifyRootEntry(TCascSearch * pSearch, PCASC_ROOT_ENTRY pRootEntry, 
     pFindData->FileNameHash = pRootEntry->FileNameHash;
     pFindData->dwPackageIndex = 0;
     pFindData->dwLocaleFlags = pRootEntry->Locales;
-    pFindData->dwFileSize = ConvertBytesToInteger_4(pEncodingEntry->FileSizeBytes);
+    
+    // TODO: This is not a file size!!!!
+    pFindData->dwFileSize = ConvertBytesToInteger_4(pEncodingEntry->ArchivedSizeBytes);
     return true;
 }
 
@@ -157,13 +159,13 @@ static bool DoStorageSearch_ListFile(TCascSearch * pSearch, PCASC_FIND_DATA pFin
             // Try to get next file from the listfile
             if(!ListFile_GetNext(pSearch->pCache, pSearch->szMask, pSearch->szFileName, MAX_PATH))
                 break;
-
-//          if(!_stricmp(pSearch->szFileName, "Interface\\Glues\\MODELS\\UI_MainMenu_Warlords\\Caustic_MedFreq.blp"))
+#ifdef _DEBUG
+//          if(!_stricmp(pSearch->szFileName, "Character\\Goblin\\Male\\GoblinMale.M2"))
 //              DebugBreak();
+#endif
 
             // Normalize the file name
-            strcpy(pSearch->szNormName, pSearch->szFileName);
-            NormalizeFileName_UpperBkSlash(pSearch->szNormName);
+            NormalizeFileName_UpperBkSlash(pSearch->szFileName, pSearch->szNormName);
 
             // Find the first root entry belonging to this file name
             pRootEntry = FindFirstRootEntry(pSearch->hs, pSearch->szNormName, &RootIndex);

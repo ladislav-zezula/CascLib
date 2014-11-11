@@ -23,9 +23,9 @@
 
 #include "CascPort.h"
 #include "common/Common.h"
+#include "common/Map.h"
 #include "common/FileStream.h"
 #include "common/ListFile.h"
-#include "common/Map.h"
 
 // Headers from LibTomCrypt
 #include "libtomcrypt/src/headers/tomcrypt.h"
@@ -48,6 +48,20 @@
 
 #define CASC_SEARCH_HAVE_NAME   0x0001          // Indicated that previous search found a name
 
+#define BLTE_HEADER_SIGNATURE   0x45544C42      // 'BLTE' header in the data files
+#define BLTE_HEADER_DELTA       0x1E            // Distance of BLTE header from begin of the header area
+#define MAX_HEADER_AREA_SIZE    0x2A            // Length of the file header area
+
+// File header area in the data.xxx:
+//  BYTE  HeaderHash[MD5_HASH_SIZE];            // MD5 of the frame array
+//  DWORD dwFileSize;                           // Size of the file
+//  BYTE  SomeSize[4];                          // Some size (big endian)
+//  BYTE  Padding[6];                           // Padding (?)
+//  DWORD dwSignature;                          // Must be "BLTE"
+//  BYTE  HeaderSizeAsBytes[4];                 // Header size in bytes (big endian)
+//  BYTE  MustBe0F;                             // Must be 0x0F. Optional, only if HeaderSizeAsBytes != 0
+//  BYTE  FrameCount[3];                        // Frame count (big endian). Optional, only if HeaderSizeAsBytes != 0
+
 // Prevent problems with CRT "min" and "max" functions,
 // as they are not defined on all platforms
 #define CASCLIB_MIN(a, b) ((a < b) ? a : b)
@@ -57,7 +71,36 @@
 #define CASC_PACKAGE_BUFFER     0x1000
 
 //-----------------------------------------------------------------------------
-// Structures
+// On-disk structures
+
+typedef struct _FILE_LOCALE_BLOCK
+{
+    DWORD NumberOfFiles;                        // Number of entries
+    DWORD Flags;
+    DWORD Locales;                              // File locale mask (CASC_LOCALE_XXX)
+
+    // Followed by a block of 32-bit integers (count: NumberOfFiles)
+    // Followed by the MD5 and file name hash (count: NumberOfFiles)
+
+} FILE_LOCALE_BLOCK, *PFILE_LOCALE_BLOCK;
+
+typedef struct _FILE_ROOT_ENTRY
+{
+    BYTE EncodingKey[MD5_HASH_SIZE];            // MD5 of the file
+    ULONGLONG FileNameHash;                     // Jenkins hash of the file name
+
+} FILE_ROOT_ENTRY, *PFILE_ROOT_ENTRY;
+
+typedef struct _ROOT_BLOCK_INFO
+{
+    PFILE_LOCALE_BLOCK pLocaleBlockHdr;         // Pointer to the locale block
+    PDWORD pInt32Array;                         // Pointer to the array of 32-bit integers
+    PFILE_ROOT_ENTRY pRootEntries;
+
+} ROOT_BLOCK_INFO, *PROOT_BLOCK_INFO;
+
+//-----------------------------------------------------------------------------
+// In-memory structures
 
 struct TFileStream;
 struct _MAR_FILE;
@@ -65,8 +108,8 @@ struct _MAR_FILE;
 typedef struct _CASC_INDEX_ENTRY
 {
     BYTE IndexKey[CASC_FILE_KEY_SIZE];              // The first 9 bytes of the encoding key
-    BYTE FileOffset[5];                             // 
-    BYTE FileSize[4];
+    BYTE FileOffset[5];                             // data.### index and file offset
+    BYTE FileSize[4];                               // Size occupied in the data.???
 } CASC_INDEX_ENTRY, *PCASC_INDEX_ENTRY;
 
 typedef struct _CASC_MAPPING_TABLE
@@ -113,7 +156,7 @@ typedef struct _CASC_ENCODING_HEADER
 typedef struct _CASC_ENCODING_ENTRY
 {
     USHORT KeyCount;                                // Number of subitems
-    BYTE FileSizeBytes[4];                          // File size as bytes (big-endian)
+    BYTE ArchivedSizeBytes[4];                      // Size of (header area + frame headers + compressed frames) in bytes
     BYTE EncodingKey[MD5_HASH_SIZE];                // File encoding key
 
     // Followed by the index keys
@@ -208,6 +251,7 @@ typedef struct _TCascStorage
     DWORD dwRefCount;                               // Number of references
     DWORD dwGameInfo;                               // Game type
     DWORD dwBuildNumber;                            // Game build number
+    DWORD dwFileBeginDelta;                         // This is number of bytes to shift back from archive offset (from index entry) to actual begin of file data
     
     QUERY_KEY CdnConfigKey;
     QUERY_KEY CdnBuildKey;
@@ -258,9 +302,11 @@ typedef struct _TCascFile
 
     DWORD ArchiveIndex;                             // Index of the archive (data.###)
     DWORD HeaderOffset;                             // Offset of the BLTE header, relative to the begin of the archive
+    DWORD HeaderSize;                               // Length of the BLTE header
     DWORD FramesOffset;                             // Offset of the frame data, relative to the begin of the archive
     DWORD CompressedSize;                           // Compressed size of the file (in bytes)
     DWORD FileSize;                                 // Size of file, in bytes
+    BYTE FrameArrayHash[MD5_HASH_SIZE];             // MD5 hash of the frame array
 
     PCASC_FILE_FRAME pFrames;                       // Array of file frames
     DWORD FrameCount;                               // Number of the file frames
@@ -305,17 +351,10 @@ typedef struct _TCascSearch
 //
 
 #if defined(_MSC_VER) && defined(_DEBUG)
-/*
-void * DbgRealloc(void * ptr, size_t nSize);
 
-#define CASC_REALLOC(type, ptr, count) (type *)DbgRealloc(ptr, ((count) * sizeof(type)))
+#define CASC_REALLOC(type, ptr, count) (type *)HeapReAlloc(GetProcessHeap(), 0, ptr, ((count) * sizeof(type)))
 #define CASC_ALLOC(type, count)        (type *)HeapAlloc(GetProcessHeap(), 0, ((count) * sizeof(type)))
 #define CASC_FREE(ptr)                 HeapFree(GetProcessHeap(), 0, ptr)
-*/
-
-#define CASC_REALLOC(type, ptr, count) (type *)realloc(ptr, (count) * sizeof(type))
-#define CASC_ALLOC(type, count)        (type *)malloc((count) * sizeof(type))
-#define CASC_FREE(ptr)                 free(ptr)
 
 #else
 
@@ -336,7 +375,7 @@ ULONGLONG ConvertBytesToInteger_5(LPBYTE ValueAsBytes);
 //-----------------------------------------------------------------------------
 // Build configuration reading
 
-int LoadBuildConfiguration(TCascStorage * hs);
+int LoadBuildInfo(TCascStorage * hs);
 
 //-----------------------------------------------------------------------------
 // Internal file functions
@@ -351,24 +390,16 @@ PCASC_INDEX_ENTRY    FindIndexEntry(TCascStorage * hs, PQUERY_KEY pIndexKey);
 int CascDecompress(void * pvOutBuffer, PDWORD pcbOutBuffer, void * pvInBuffer, DWORD cbInBuffer);
 
 //-----------------------------------------------------------------------------
-// Dump data
+// Dumping CASC data structures
 
 #ifdef _DEBUG
 void CascDumpSparseArray(const char * szFileName, void * pvSparseArray);
 void CascDumpNameFragTable(const char * szFileName, void * pvMarFile);
 void CascDumpFileNames(const char * szFileName, void * pvMarFile);
-void CascDumpMndxRoot(const char * szFileName, PCASC_MNDX_INFO pMndxInfo);
 void CascDumpIndexEntries(const char * szFileName, TCascStorage * hs);
-void CascDumpStorage(const char * szFileName, TCascStorage * hs, const TCHAR * szListFile);
+void CascDumpMndxRoot(const char * szFileName, PCASC_MNDX_INFO pMndxInfo);
+void CascDumpRootFile(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile, const char * szFormat, const TCHAR * szListFile, int nDumpLevel);
 void CascDumpFile(const char * szFileName, HANDLE hFile);
-#else   // _DEBUG
-#define CascDumpSparseArray(n,a)    /* */
-#define CascDumpNameFragTable(n, m) /* */
-#define CascDumpFileNames(n, m)     /* */
-#define CascDumpMndxRoot(n,i)       /* */
-#define CascDumpIndexEntries(n,h)   /* */
-#define CascDumpStorage(n,h)        /* */
-#define CascDumpFile(n,h)           /* */
 #endif  // _DEBUG
 
 #endif // __CASCCOMMON_H__

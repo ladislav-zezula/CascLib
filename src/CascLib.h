@@ -155,6 +155,8 @@ typedef enum _CASC_STORAGE_INFO_CLASS
 {
     CascStorageFileCount,
     CascStorageFeatures,
+    CascStorageGameInfo,
+    CascStorageGameBuild,
     CascStorageInfoClassMax
 
 } CASC_STORAGE_INFO_CLASS, *PCASC_STORAGE_INFO_CLASS;

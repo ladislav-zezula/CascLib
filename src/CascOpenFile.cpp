@@ -191,12 +191,7 @@ static TCascFile * CreateFileHandle(TCascStorage * hs, PCASC_INDEX_ENTRY pIndexE
         hf->szClassName = "TCascFile";
         
         // Copy the compressed file size
-        hf->CompressedSize = ConvertBytesToInteger_4_LE(pIndexEntry->FileSize) - 0x1E;
-
-        // For now, we set the file size to be equal to compressed size
-        // This is used when loading the "encoding" file, which does not
-        // have entry in the encoding itself
-        hf->FileSize = hf->CompressedSize;
+        hf->CompressedSize = ConvertBytesToInteger_4_LE(pIndexEntry->FileSize) - BLTE_HEADER_DELTA;
 
         // Increment the number of references to the archive
         hs->dwRefCount++;
@@ -237,13 +232,15 @@ static bool OpenFileByEncodingKey(TCascStorage * hs, PQUERY_KEY pEncodingKey, DW
 {
     PCASC_ENCODING_ENTRY pEncodingEntry;
     QUERY_KEY IndexKey;
-    TCascFile * hf = NULL;
     int nError = ERROR_SUCCESS;
 
     // Find the encoding entry
     pEncodingEntry = FindEncodingEntry(hs, pEncodingKey, NULL);
     if(pEncodingEntry == NULL)
-        nError = ERROR_FILE_NOT_FOUND;
+    {
+        SetLastError(ERROR_FILE_NOT_FOUND);
+        return false;
+    }
 
     // Prepare the file index and open the file by index
     // Note: We don't know what to do if there is more than just one index key
@@ -252,18 +249,7 @@ static bool OpenFileByEncodingKey(TCascStorage * hs, PQUERY_KEY pEncodingKey, DW
 //  assert(pEncodingEntry->KeyCount == 1);
     IndexKey.pbData = pEncodingEntry->EncodingKey + MD5_HASH_SIZE;
     IndexKey.cbData = MD5_HASH_SIZE;
-    if(OpenFileByIndexKey(hs, &IndexKey, dwFlags, phFile))
-    {
-        // Fix the file size from the encoding key
-        hf = IsValidFileHandle(*phFile);
-        if(hf != NULL)
-        {
-            hf->FileSize = ConvertBytesToInteger_4(pEncodingEntry->FileSizeBytes);
-            return true;
-        }
-    }
-
-    return false;
+    return OpenFileByIndexKey(hs, &IndexKey, dwFlags, phFile);
 }
 
 //-----------------------------------------------------------------------------
@@ -376,7 +362,7 @@ bool WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocal
         else
         {
             // Convert the file name to lowercase + slashes
-            NormalizeFileName_UpperBkSlash(szFileName2);
+            NormalizeFileName_UpperBkSlash(szFileName2, szFileName2);
 
             // Check the root directory for that hash
             pRootEntry = FindRootEntryLocale(hs, szFileName2, dwLocale);
@@ -400,7 +386,7 @@ bool WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocal
         }
 
         // Delete the file name copy
-        delete [] szFileName2;
+        CASC_FREE(szFileName2);
     }
     else
         nError = ERROR_NOT_ENOUGH_MEMORY;
