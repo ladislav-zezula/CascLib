@@ -98,8 +98,13 @@ static int LoadFileFrames(TCascFile * hf)
         else
             nError = GetLastError();
 
-        // Supply the file size
-        hf->FileSize = FileSize;
+        // Note: Do not take the FileSize from the sum of frames.
+        // This value is invalid when loading the ENCODING file.
+//      hf->FileSize = FileSize;
+
+#ifdef CASCLIB_TEST
+        hf->FileSize_FrameSum = FileSize;
+#endif
 
         // Free the array
         CASC_FREE(pFileFrames);
@@ -116,6 +121,7 @@ static int EnsureHeaderAreaIsLoaded(TCascFile * hf)
     ULONGLONG FileOffset = hf->HeaderOffset;
     LPBYTE pbHeaderArea;
     DWORD FileSignature;
+    DWORD FileSize;
     BYTE HeaderArea[MAX_HEADER_AREA_SIZE];
     int nError;
 
@@ -148,13 +154,12 @@ static int EnsureHeaderAreaIsLoaded(TCascFile * hf)
         if(!FileStream_Read(hf->pStream, &FileOffset, HeaderArea, sizeof(HeaderArea)))
             return ERROR_FILE_CORRUPT;
 
-        // Get informations from the file data
+        // Copy the MD5 hash of the frame array
         memcpy(hf->FrameArrayHash, HeaderArea, MD5_HASH_SIZE);
         pbHeaderArea = HeaderArea + MD5_HASH_SIZE;
 
-        // Store the file size
-        assert(hf->FileSize == 0);
-        hf->FileSize = ConvertBytesToInteger_4_LE(pbHeaderArea);
+        // Copy the file size
+        FileSize = ConvertBytesToInteger_4_LE(pbHeaderArea);
         pbHeaderArea += 0x0E;
 
         // Verify the BLTE signature
@@ -162,23 +167,30 @@ static int EnsureHeaderAreaIsLoaded(TCascFile * hf)
             return ERROR_BAD_FORMAT;
         pbHeaderArea += sizeof(DWORD);
 
+        // Load the size of the frame headers
+        hf->HeaderSize = ConvertBytesToInteger_4(pbHeaderArea);
+        pbHeaderArea += sizeof(DWORD);
+
         // Read the header size
         assert(hs->dwFileBeginDelta <= BLTE_HEADER_DELTA);
         hf->HeaderOffset += (BLTE_HEADER_DELTA - hs->dwFileBeginDelta);
-        hf->HeaderSize = ConvertBytesToInteger_4(pbHeaderArea);
         hf->FrameCount = 1;
 
         // Retrieve the frame count, if different from 1
         if(hf->HeaderSize != 0)
         {
             // The next byte must be 0x0F
-            if(pbHeaderArea[sizeof(DWORD)] != 0x0F)
+            if(pbHeaderArea[0] != 0x0F)
                 return ERROR_BAD_FORMAT;
-            pbHeaderArea += sizeof(DWORD) + 1;
+            pbHeaderArea++;
 
-            // Get the frame count
+            // Next three bytes form number of frames
             hf->FrameCount = ConvertBytesToInteger_3(pbHeaderArea);
         }
+
+#ifdef CASCLIB_TEST
+        hf->FileSize_HdrArea = FileSize;
+#endif
     }
 
     return ERROR_SUCCESS;
@@ -192,10 +204,6 @@ static int EnsureFrameHeadersLoaded(TCascFile * hf)
     nError = EnsureHeaderAreaIsLoaded(hf);
     if(nError != ERROR_SUCCESS)
         return nError;
-
-    // Sanity check
-    assert(hf->pStream != NULL);
-    assert(hf->FileSize != 0xFFFFFFFF);
 
     // If the frame headers are not loaded yet, do it
     if(hf->pFrames == NULL)
@@ -256,6 +264,23 @@ static PCASC_FILE_FRAME FindFileFrame(TCascFile * hf, DWORD FilePointer)
 
 //-----------------------------------------------------------------------------
 // Public functions
+
+//
+// THE FILE SIZE PROBLEM
+//
+// There are members called "FileSize" in many CASC-related structure
+// For various files, these variables have different meaning.
+//
+// Storage      FileName  FileSize     FrameSum    HdrArea     IdxEntry    EncEntry    RootEntry
+// -----------  --------  ----------   --------    --------    --------    --------    ---------
+// HotS(29049)  ENCODING  0x0024BA45 - 0x0024b98a  0x0024BA45  0x0024BA45  n/a         n/a
+// HotS(29049)  ROOT      0x00193340 - 0x00193340  0x0010db65  0x0010db65  0x00193340  n/a
+// HotS(29049)  (other)   0x00001080 - 0x00001080  0x000008eb  0x000008eb  0x00001080  0x00001080
+//
+// WoW(18888)   ENCODING  0x030d487b - 0x030dee79  0x030d487b  0x030d487b  n/a         n/a
+// WoW(18888)   ROOT      0x016a9800 - n/a         0x0131313d  0x0131313d  0x016a9800  n/a
+// WoW(18888)   (other)   0x000007d0 - 0x000007d0  0x00000397  0x00000397  0x000007d0  n/a
+//
 
 DWORD WINAPI CascGetFileSize(HANDLE hFile, PDWORD pdwFileSizeHigh)
 {

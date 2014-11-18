@@ -95,8 +95,8 @@ static bool VerifyRootEntry(TCascSearch * pSearch, PCASC_ROOT_ENTRY pRootEntry, 
     pFindData->dwPackageIndex = 0;
     pFindData->dwLocaleFlags = pRootEntry->Locales;
     
-    // TODO: This is not a file size!!!!
-    pFindData->dwFileSize = ConvertBytesToInteger_4(pEncodingEntry->ArchivedSizeBytes);
+    // Fill-in the file size
+    pFindData->dwFileSize = ConvertBytesToInteger_4(pEncodingEntry->FileSizeBE);
     return true;
 }
 

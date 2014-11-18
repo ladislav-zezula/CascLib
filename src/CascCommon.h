@@ -54,7 +54,7 @@
 
 // File header area in the data.xxx:
 //  BYTE  HeaderHash[MD5_HASH_SIZE];            // MD5 of the frame array
-//  DWORD dwFileSize;                           // Size of the file
+//  DWORD dwFileSize;                           // Size of the file (see comment before CascGetFileSize for details)
 //  BYTE  SomeSize[4];                          // Some size (big endian)
 //  BYTE  Padding[6];                           // Padding (?)
 //  DWORD dwSignature;                          // Must be "BLTE"
@@ -102,14 +102,15 @@ typedef struct _ROOT_BLOCK_INFO
 //-----------------------------------------------------------------------------
 // In-memory structures
 
+class TMndxFindResult;
 struct TFileStream;
 struct _MAR_FILE;
 
 typedef struct _CASC_INDEX_ENTRY
 {
     BYTE IndexKey[CASC_FILE_KEY_SIZE];              // The first 9 bytes of the encoding key
-    BYTE FileOffset[5];                             // data.### index and file offset
-    BYTE FileSize[4];                               // Size occupied in the data.???
+    BYTE FileOffsetBE[5];                           // Index of data file and offset within (big endian).
+    BYTE FileSizeLE[4];                             // Size occupied in the storage file (data.###). See comment before CascGetFileSize for details
 } CASC_INDEX_ENTRY, *PCASC_INDEX_ENTRY;
 
 typedef struct _CASC_MAPPING_TABLE
@@ -156,7 +157,7 @@ typedef struct _CASC_ENCODING_HEADER
 typedef struct _CASC_ENCODING_ENTRY
 {
     USHORT KeyCount;                                // Number of subitems
-    BYTE ArchivedSizeBytes[4];                      // Size of (header area + frame headers + compressed frames) in bytes
+    BYTE FileSizeBE[4];                          // Compressed file size (header area + frame headers + compressed frames), in bytes
     BYTE EncodingKey[MD5_HASH_SIZE];                // File encoding key
 
     // Followed by the index keys
@@ -175,6 +176,18 @@ typedef struct _CASC_ROOT_LOCALE_BLOCK
 
 } CASC_ROOT_LOCALE_BLOCK, *PCASC_ROOT_LOCALE_BLOCK;
 
+// Root file entry for CASC storages with MNDX root file (Heroes of the Storm)
+// Corresponds to the in-file structure
+typedef struct _CASC_ROOT_ENTRY_MNDX
+{
+    DWORD Flags;                                    // High 8 bits: Flags, low 24 bits: package index
+    BYTE  EncodingKey[MD5_HASH_SIZE];               // Encoding key for the file
+    DWORD FileSize;                                 // Uncompressed file size, in bytes
+
+} CASC_ROOT_ENTRY_MNDX, *PCASC_ROOT_ENTRY_MNDX;
+
+// Root file entry for CASC storages without MNDX root file (World of Warcraft 6.0+)
+// Does not match to the in-file structure of the root entry
 typedef struct _CASC_ROOT_ENTRY
 {
     BYTE EncodingKey[MD5_HASH_SIZE];                // File encoding key (MD5)
@@ -183,21 +196,6 @@ typedef struct _CASC_ROOT_ENTRY
     DWORD Flags;                                    // File flags
 
 } CASC_ROOT_ENTRY, *PCASC_ROOT_ENTRY;
-
-typedef struct _CASC_ROOT_KEY_INFO
-{
-    BYTE EncodingKey[MD5_HASH_SIZE];                // Encoding key for the file, obtained from root info
-    ULONGLONG FileSize;                             // Size of the file, in bytes
-    BYTE Flags;                                     // File flags
-} CASC_ROOT_KEY_INFO, *PCASC_ROOT_KEY_INFO;
-
-typedef struct _CASC_MNDX_ENTRY
-{
-    DWORD Flags;                                    // High 8 bits: Flags, low 24 bits: package index
-    BYTE  EncodingKey[MD5_HASH_SIZE];               // Encoding key for the file
-    DWORD FileSize;                                 // Size of the file, in bytes
-
-} CASC_MNDX_ENTRY, *PCASC_MNDX_ENTRY;
 
 typedef struct _CASC_MNDX_INFO
 {
@@ -217,8 +215,8 @@ typedef struct _CASC_MNDX_INFO
     struct _MAR_FILE * pMarFile1;                   // File name list for the packages
     struct _MAR_FILE * pMarFile2;                   // File name list for names stripped of package names
     struct _MAR_FILE * pMarFile3;                   // File name list for complete names
-    PCASC_MNDX_ENTRY pMndxEntries;
-    PCASC_MNDX_ENTRY * ppValidEntries;
+    PCASC_ROOT_ENTRY_MNDX pMndxEntries;
+    PCASC_ROOT_ENTRY_MNDX * ppValidEntries;
 
 } CASC_MNDX_INFO, *PCASC_MNDX_INFO;
 
@@ -316,9 +314,15 @@ typedef struct _TCascFile
     DWORD CacheStart;                               // Starting offset in the cache
     DWORD CacheEnd;                                 // Ending offset in the cache
 
-} TCascFile;
+#ifdef CASCLIB_TEST     // Extra fields for analyzing the file size problem
+    DWORD FileSize_RootEntry;                       // File size, from the root entry
+    DWORD FileSize_EncEntry;                        // File size, from the encoding entry
+    DWORD FileSize_IdxEntry;                        // File size, from the index entry
+    DWORD FileSize_HdrArea;                         // File size, as stated in the file header area
+    DWORD FileSize_FrameSum;                        // File size as sum of frame sizes
+#endif
 
-class TMndxFindResult;
+} TCascFile;
 
 typedef struct _TCascSearch
 {

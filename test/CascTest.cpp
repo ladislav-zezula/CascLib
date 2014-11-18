@@ -146,6 +146,21 @@ static int ExtractFile(HANDLE hStorage, const char * szFileName, const TCHAR * s
         }
     }
 
+    // Log the file sizes
+#ifdef CASCLIB_TEST
+//  if(nError == ERROR_SUCCESS)
+//  {
+//      TCascFile * hf = IsValidFileHandle(hFile);
+//
+//      fprintf(fp, "%8u %8u %8u %8u %8u %s\n", hf->FileSize_RootEntry,
+//                                              hf->FileSize_EncEntry,
+//                                              hf->FileSize_IdxEntry,
+//                                              hf->FileSize_HdrArea,
+//                                              hf->FileSize_FrameSum,
+//                                              szFileName);
+//  }
+#endif
+
     // Close handles
 //  if(pStream != NULL)
 //      FileStream_Close(pStream);
@@ -276,6 +291,7 @@ static int TestOpenStorage_ExtractFiles(const TCHAR * szStorage, const TCHAR * s
         hFind = CascFindFirstFile(hStorage, "*", &FindData, szListFile);
         if(hFind != INVALID_HANDLE_VALUE)
         {
+            // Search the storage
             while(bFileFound)
             {
                 // Extract the file
@@ -363,8 +379,8 @@ int main(int argc, char * argv[])
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/29049/BNTData"), NULL);
 
-    if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_EnumFiles(_T("c:\\Hry\\Heroes of the Storm\\HeroesData"), NULL);
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_EnumFiles(_T("c:\\Hry\\Heroes of the Storm\\HeroesData"), NULL);
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/18865/Data"), szListFile);
@@ -373,14 +389,14 @@ int main(int argc, char * argv[])
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/18888/Data"), szListFile);
 
     // Test extracting the complete storage
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2014 - Heroes of the Storm/29049/BNTData"), _T("Work"), NULL);
+    if(nError == ERROR_SUCCESS)
+        nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2014 - Heroes of the Storm/29049/BNTData"), _T("Work"), NULL);
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2014 - WoW/18865/Data"), _T("Work"), szListFile);
 
-    if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2014 - WoW/18888/Data"), _T("Work"), szListFile);
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2014 - WoW/18888/Data"), _T("Work"), szListFile);
 
 #ifdef _MSC_VER
     _CrtDumpMemoryLeaks();

@@ -27,8 +27,8 @@ static int CompareIndexEntries_FilePos(const void *, const void * pvIndexEntry1,
 {
     PCASC_INDEX_ENTRY pIndexEntry1 = (PCASC_INDEX_ENTRY)pvIndexEntry1;
     PCASC_INDEX_ENTRY pIndexEntry2 = (PCASC_INDEX_ENTRY)pvIndexEntry2;
-    ULONGLONG FileOffset1 = ConvertBytesToInteger_5(pIndexEntry1->FileOffset);
-    ULONGLONG FileOffset2 = ConvertBytesToInteger_5(pIndexEntry2->FileOffset);
+    ULONGLONG FileOffset1 = ConvertBytesToInteger_5(pIndexEntry1->FileOffsetBE);
+    ULONGLONG FileOffset2 = ConvertBytesToInteger_5(pIndexEntry2->FileOffsetBE);
     DWORD ArchIndex1 = (DWORD)(FileOffset1 >> 0x1E);
     DWORD ArchIndex2 = (DWORD)(FileOffset2 >> 0x1E);
 
@@ -131,9 +131,9 @@ static void DumpIndexKey(
     pIndexEntry = FindIndexEntry(hs, &QueryKey);
     if(pIndexEntry != NULL)
     {
-        ULONGLONG FileOffset = ConvertBytesToInteger_5(pIndexEntry->FileOffset);
+        ULONGLONG FileOffset = ConvertBytesToInteger_5(pIndexEntry->FileOffsetBE);
         DWORD ArchIndex = (DWORD)(FileOffset >> 0x1E);
-        DWORD FileSize = *(PDWORD)pIndexEntry->FileSize;
+        DWORD FileSize = ConvertBytesToInteger_4_LE(pIndexEntry->FileSizeLE);
 
         // Mask the file offset
         FileOffset &= 0x3FFFFFFF;
@@ -184,7 +184,7 @@ static void DumpEncodingEntry(
     if(pEncodingEntry != NULL)
     {
         fprintf(fp, "  Size %lx Key Count: %u\n",
-                    ConvertBytesToInteger_4(pEncodingEntry->ArchivedSizeBytes),
+                    ConvertBytesToInteger_4(pEncodingEntry->FileSizeBE),
                     pEncodingEntry->KeyCount);
 
         // Dump all index keys
@@ -325,7 +325,7 @@ void CascDumpFileNames(const char * szFileName, void * pvMarFile)
 
 void CascDumpMndxRoot(const char * szFileName, PCASC_MNDX_INFO pMndxInfo)
 {
-    PCASC_MNDX_ENTRY pMndxEntry;
+    PCASC_ROOT_ENTRY_MNDX pRootEntry;
     FILE * fp;
     char szMd5[MD5_STRING_SIZE];
 
@@ -336,12 +336,12 @@ void CascDumpMndxRoot(const char * szFileName, PCASC_MNDX_INFO pMndxInfo)
         fprintf(fp, "Indx Fl+Asset EncodingKey                      FileSize\n==== ======== ================================ ========\n");
         for(DWORD i = 0; i < pMndxInfo->MndxEntriesValid; i++)
         {
-            pMndxEntry = pMndxInfo->ppValidEntries[i];
+            pRootEntry = pMndxInfo->ppValidEntries[i];
 
             fprintf(fp, "%04X %08X %s %08X\n", i,
-                                               pMndxEntry->Flags,
-                                               StringFromMD5(pMndxEntry->EncodingKey, szMd5),
-                                               pMndxEntry->FileSize);
+                                               pRootEntry->Flags,
+                                               StringFromMD5(pRootEntry->EncodingKey, szMd5),
+                                               pRootEntry->FileSize);
         }
         fclose(fp);
     }
@@ -373,11 +373,11 @@ void CascDumpIndexEntries(const char * szFileName, TCascStorage * hs)
             for(size_t i = 0; i < nIndexEntries; i++)
             {
                 PCASC_INDEX_ENTRY pIndexEntry = ppIndexEntries[i];
-                ULONGLONG ArchOffset = ConvertBytesToInteger_5(pIndexEntry->FileOffset);
+                ULONGLONG ArchOffset = ConvertBytesToInteger_5(pIndexEntry->FileOffsetBE);
                 DWORD ArchIndex = (DWORD)(ArchOffset >> 0x1E);
                 DWORD FileSize;
 
-                FileSize = ConvertBytesToInteger_4_LE(pIndexEntry->FileSize);
+                FileSize = ConvertBytesToInteger_4_LE(pIndexEntry->FileSizeLE);
                 ArchOffset &= 0x3FFFFFFF;
                 
                 fprintf(fp, " %02X  %08X %08X %s\n", ArchIndex, ArchOffset, FileSize, StringFromBinary(pIndexEntry->IndexKey, CASC_FILE_KEY_SIZE, szIndexKey));

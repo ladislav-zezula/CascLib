@@ -645,104 +645,6 @@ static int CreateMapOfEncodingKeys(TCascStorage * hs, PFILE_ENCODING_SEGMENT pEn
     return nError;
 }
 
-static DWORD GetSizeOfEncodingFile(HANDLE hFile)
-{
-    CASC_ENCODING_HEADER EncodingHeader;
-    DWORD cbEncodingFile = 0;
-    DWORD dwSegmentPos;
-    DWORD dwNumSegments;
-    DWORD dwBytesRead;
-
-    // Read the encoding header
-    CascReadFile(hFile, &EncodingHeader, sizeof(CASC_ENCODING_HEADER), &dwBytesRead);
-    if(dwBytesRead == sizeof(CASC_ENCODING_HEADER))
-    {
-        dwNumSegments = ConvertBytesToInteger_4(EncodingHeader.NumSegments);
-        dwSegmentPos = ConvertBytesToInteger_4(EncodingHeader.SegmentsPos);
-
-        cbEncodingFile = sizeof(CASC_ENCODING_HEADER) +
-                         dwSegmentPos +
-                         dwNumSegments * (sizeof(FILE_ENCODING_SEGMENT) + CASC_ENCODING_SEGMENT_SIZE);
-    }
-
-    // Reset the position back
-    CascSetFilePointer(hFile, 0, NULL, FILE_BEGIN);
-    return cbEncodingFile;
-}
-
-static LPBYTE LoadCascFile(HANDLE hFile, DWORD cbMaxSize, PDWORD pcbFileData)
-{
-    TCascFile * hf;
-    LPBYTE pbFileData = NULL;
-    DWORD dwBytesRead0 = 0;
-    DWORD dwBytesRead = 0;
-    DWORD cbFileData = 0;
-    BYTE StartOfFile[0x10];
-    int nError = ERROR_SUCCESS;
-
-    // Retrieve the size of the file. Note that CascGetFileSize
-    // is unreliable for this - commonly, size of the file is way bigger than
-    // stored in the intdex entry. We have to parse the file frames
-    // to get accurate size. Use CascReadFile to trigger loading all frames
-    if((hf = IsValidFileHandle(hFile)) == NULL)
-        return NULL;
-
-    // Load some bytes in order to get the frame headers loaded
-    CascReadFile(hFile, StartOfFile, sizeof(StartOfFile), &dwBytesRead0);
-    if(hf->pFrames == NULL)
-    {
-        assert(hf->pFrames != NULL);
-        assert(false);
-        return NULL;
-    }
-
-    // Parse the frames to get the file size
-    for(DWORD i = 0; i < hf->FrameCount; i++)
-        cbFileData += hf->pFrames[i].FrameSize;
-
-    // If we have a nonzero size, load the file
-    if(cbFileData != 0 && cbFileData != CASC_INVALID_SIZE)
-    {
-        // Trim the size to the maximum
-        cbFileData = CASCLIB_MIN(cbMaxSize, cbFileData);
-
-        // Allocate the buffer that will hold the entire file
-        pbFileData = CASC_ALLOC(BYTE, cbFileData);
-        if(pbFileData != NULL)
-        {
-            // Copy the initial loaded block
-            memcpy(pbFileData, StartOfFile, dwBytesRead0);
-
-            // Read the rest of file to memory
-            CascReadFile(hFile, pbFileData + dwBytesRead0, cbFileData - dwBytesRead0, &dwBytesRead);
-            if((dwBytesRead0 + dwBytesRead) != cbFileData)
-                nError = ERROR_FILE_CORRUPT;
-        }
-        else
-            nError = ERROR_NOT_ENOUGH_MEMORY;
-    }
-    else
-        nError = ERROR_FILE_CORRUPT;
-
-    // If something failed, clean-up the buffers
-    if(nError != ERROR_SUCCESS)
-    {
-        // Clear the file data
-        if(pbFileData != NULL)
-            CASC_FREE(pbFileData);
-        pbFileData = NULL;
-        cbFileData = 0;
-
-        // Set the last error value
-        SetLastError(nError);
-    }
-
-    // Return what we got
-    if(pcbFileData != NULL)
-        *pcbFileData = cbFileData;
-    return pbFileData;
-}
-
 static int LoadIndexFiles(TCascStorage * hs)
 {
     DWORD IndexArray[CASC_INDEX_COUNT];
@@ -778,6 +680,113 @@ static int LoadIndexFiles(TCascStorage * hs)
     return nError;
 }
 
+static LPBYTE LoadEncodingFileToMemory(HANDLE hFile, DWORD * pcbEncodingFile)
+{
+    CASC_ENCODING_HEADER EncodingHeader;
+    LPBYTE pbEncodingFile = NULL;
+    DWORD cbEncodingFile = 0;
+    DWORD dwSegmentPos = 0;
+    DWORD dwNumSegments = 0;
+    DWORD dwBytesRead;
+    int nError = ERROR_BAD_FORMAT;
+
+    // Read the encoding header
+    CascReadFile(hFile, &EncodingHeader, sizeof(CASC_ENCODING_HEADER), &dwBytesRead);
+    if(dwBytesRead == sizeof(CASC_ENCODING_HEADER))
+    {
+        dwNumSegments = ConvertBytesToInteger_4(EncodingHeader.NumSegments);
+        dwSegmentPos = ConvertBytesToInteger_4(EncodingHeader.SegmentsPos);
+        if(EncodingHeader.Magic[0] == 'E' && EncodingHeader.Magic[1] == 'N' && dwSegmentPos != 0 && dwNumSegments != 0)
+            nError = ERROR_SUCCESS;
+    }
+
+    // Calculate and allocate space for the entire file
+    if(nError == ERROR_SUCCESS)
+    {
+        cbEncodingFile = sizeof(CASC_ENCODING_HEADER) +
+                         dwSegmentPos +
+                         dwNumSegments * (sizeof(FILE_ENCODING_SEGMENT) + CASC_ENCODING_SEGMENT_SIZE);
+        pbEncodingFile = CASC_ALLOC(BYTE, cbEncodingFile);
+        if(pbEncodingFile == NULL)
+            nError = ERROR_NOT_ENOUGH_MEMORY;
+    }
+
+    // If all went OK, we load the entire file to memory
+    if(nError == ERROR_SUCCESS)
+    {
+        // Copy the header itself
+        memcpy(pbEncodingFile, &EncodingHeader, sizeof(CASC_ENCODING_HEADER));
+
+        // Read the rest of the data
+        CascReadFile(hFile, pbEncodingFile + sizeof(CASC_ENCODING_HEADER), cbEncodingFile - sizeof(CASC_ENCODING_HEADER), &dwBytesRead);
+        if(dwBytesRead != (cbEncodingFile - sizeof(CASC_ENCODING_HEADER)))
+            nError = ERROR_FILE_CORRUPT;
+    }
+
+    // Give the loaded file length
+    if(pcbEncodingFile != NULL)
+        *pcbEncodingFile = cbEncodingFile;
+    return pbEncodingFile;
+}
+
+static LPBYTE LoadRootFileToMemory(HANDLE hFile, DWORD * pcbRootFile)
+{
+    TCascFile * hf;
+    LPBYTE pbRootFile = NULL;
+    DWORD cbRootFile = 0;
+    DWORD dwBytesRead;
+    BYTE StartOfFile[0x10];
+    int nError = ERROR_SUCCESS;
+
+    // Dummy read the first 16 bytes
+    CascReadFile(hFile, &StartOfFile, sizeof(StartOfFile), &dwBytesRead);
+    if(dwBytesRead != sizeof(StartOfFile))
+        nError = ERROR_BAD_FORMAT;
+
+    // Calculate and allocate space for the entire file
+    if(nError == ERROR_SUCCESS)
+    {
+        // Convert the file handle to pointer to TCascFile
+        hf = IsValidFileHandle(hFile);
+        if(hf != NULL)
+        {
+            // Parse the frames to get the file size
+            for(DWORD i = 0; i < hf->FrameCount; i++)
+            {
+                cbRootFile += hf->pFrames[i].FrameSize;
+            }
+        }
+
+        // Evaluate the error
+        nError = (cbRootFile != 0) ? ERROR_SUCCESS : ERROR_FILE_CORRUPT;
+    }
+
+    // Allocate space for the entire file
+    if(nError == ERROR_SUCCESS)
+    {
+        pbRootFile = CASC_ALLOC(BYTE, cbRootFile);
+        if(pbRootFile == NULL)
+            nError = ERROR_NOT_ENOUGH_MEMORY;
+    }
+
+    // If all went OK, we load the entire file to memory
+    if(nError == ERROR_SUCCESS)
+    {
+        // Copy the header itself
+        memcpy(pbRootFile, StartOfFile, sizeof(StartOfFile));
+
+        // Read the rest of the data
+        CascReadFile(hFile, pbRootFile + sizeof(StartOfFile), cbRootFile - sizeof(StartOfFile), &dwBytesRead);
+        if(dwBytesRead != (cbRootFile - sizeof(StartOfFile)))
+            nError = ERROR_FILE_CORRUPT;
+    }
+
+    // Give the loaded file length
+    if(pcbRootFile != NULL)
+        *pcbRootFile = cbRootFile;
+    return pbRootFile;
+}
+
 static int LoadEncodingFile(TCascStorage * hs)
 {
     PFILE_ENCODING_SEGMENT pEncodingSegment;
@@ -794,18 +803,15 @@ static int LoadEncodingFile(TCascStorage * hs)
     if(!CascOpenFileByIndexKey((HANDLE)hs, &hs->EncodingEKey, 0, &hFile))
         nError = GetLastError();
 
-    // Load the encoding file to memory
+    // Load the entire ENCODING file to memory
     if(nError == ERROR_SUCCESS)
     {
-        // Retrieve the CASC header. We do not usually need to load
-        // the entire file, but we need to know how big part of it we need
-        cbEncodingFile = GetSizeOfEncodingFile(hFile);
-
-        // Load the entire file to memory
-        pbEncodingFile = LoadCascFile(hFile, cbEncodingFile, &cbEncodingFile);
+        // Load the necessary part of the ENCODING file to memory
+        pbEncodingFile = LoadEncodingFileToMemory(hFile, &cbEncodingFile);
         if(pbEncodingFile == NULL || cbEncodingFile <= sizeof(CASC_ENCODING_HEADER))
             nError = ERROR_FILE_CORRUPT;
 
+        // Close the encoding file
         CascCloseFile(hFile);
     }
 
@@ -967,15 +973,15 @@ static int LoadRootFile(TCascStorage * hs)
     if(!CascOpenFileByEncodingKey((HANDLE)hs, &hs->RootKey, 0, &hFile))
         nError = GetLastError();
 
-    // Load ther entire root file to memory
+    // Load the entire ROOT file to memory
     if(nError == ERROR_SUCCESS)
     {
-        // Load the entire root file to memory
-        pbRootFile = LoadCascFile(hFile, 0xFFFFFFFF, &cbRootFile);
-        if(pbRootFile == NULL || cbRootFile == 0)
+        // Load the necessary part of the ENCODING file to memory
+        pbRootFile = LoadRootFileToMemory(hFile, &cbRootFile);
+        if(pbRootFile == NULL || cbRootFile <= sizeof(PFILE_LOCALE_BLOCK))
             nError = ERROR_FILE_CORRUPT;
 
-        // Close the root file
+        // Close the encoding file
         CascCloseFile(hFile);
     }
 
