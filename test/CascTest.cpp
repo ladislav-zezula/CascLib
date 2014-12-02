@@ -363,6 +363,7 @@ int main(int argc, char * argv[])
     int nError = ERROR_SUCCESS;
 
     // Keep compiler happy
+    szListFile = szListFile;
     argc = argc;
     argv = argv;
 
@@ -370,11 +371,17 @@ int main(int argc, char * argv[])
     _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif  // defined(_MSC_VER) && defined(_DEBUG)
 
-    if(nError == ERROR_SUCCESS)
-        nError = Hack();
+//  if(nError == ERROR_SUCCESS)
+//      nError = Hack();
+
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/18865/Data"), "SPELLS\\T_VFX_BLOOD06B.BLP");
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/18888/Data"), "SPELLS\\T_VFX_BLOOD06B.BLP");
+
+    if(nError == ERROR_SUCCESS)
+        nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/19116/Data"), "Character\\Scourge\\Male\\ScourgeMale_HD00.skin");
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/29049/BNTData"), NULL);
@@ -389,8 +396,8 @@ int main(int argc, char * argv[])
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/18888/Data"), szListFile);
 
     // Test extracting the complete storage
-    if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2014 - Heroes of the Storm/29049/BNTData"), _T("Work"), NULL);
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2014 - Heroes of the Storm/29049/BNTData"), _T("Work"), NULL);
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2014 - WoW/18865/Data"), _T("Work"), szListFile);
@@ -398,7 +405,10 @@ int main(int argc, char * argv[])
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2014 - WoW/18888/Data"), _T("Work"), szListFile);
 
-#ifdef _MSC_VER
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2014 - WoW/19116/Data"), _T("Work"), szListFile);
+
+#ifdef _MSC_VER                                                          
     _CrtDumpMemoryLeaks();
 #endif  // _MSC_VER
 

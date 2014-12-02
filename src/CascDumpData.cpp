@@ -429,11 +429,11 @@ void CascDumpRootFile(
                 break;
 
             // Dump the locale block
-            fprintf(fp, "NumberOfFiles: %u  Flags: %08X  Locales: %08X\n"
+            fprintf(fp, "Flags: %08X  Locales: %08X  NumberOfFiles: %u\n"
                         "=========================================================\n",
-                        BlockInfo.pLocaleBlockHdr->NumberOfFiles, 
                         BlockInfo.pLocaleBlockHdr->Flags, 
-                        BlockInfo.pLocaleBlockHdr->Locales);
+                        BlockInfo.pLocaleBlockHdr->Locales,
+                        BlockInfo.pLocaleBlockHdr->NumberOfFiles);
 
             // Dump the hashes and encoding keys
             for(i = 0; i < BlockInfo.pLocaleBlockHdr->NumberOfFiles; i++)

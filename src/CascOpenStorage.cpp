@@ -17,7 +17,7 @@
 // Dumping options
 
 #ifdef _DEBUG
-#define CASC_DUMP_ROOT_FILE  3              // The root file will be dumped (level 2)
+#define CASC_DUMP_ROOT_FILE  2              // The root file will be dumped (level 2)
 #endif
 
 //-----------------------------------------------------------------------------
@@ -884,12 +884,12 @@ static int LoadRootFile(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile)
 
     // Dump the root file, if needed
 #ifdef CASC_DUMP_ROOT_FILE
-//  CascDumpRootFile(hs,
-//                   pbRootFile,
-//                   cbRootFile,
-//                   "\\casc_root_%build%.txt",
-//                   _T("\\Ladik\\Appdir\\CascLib\\listfile\\listfile-wow6.txt"),
-//                   CASC_DUMP_ROOT_FILE);
+    //CascDumpRootFile(hs,
+    //                 pbRootFile,
+    //                 cbRootFile,
+    //                 "\\casc_root_%build%.txt",
+    //                 _T("\\Ladik\\Appdir\\CascLib\\listfile\\listfile-wow6.txt"),
+    //                 CASC_DUMP_ROOT_FILE);
 #endif
 
     // Calculate the root entries
@@ -900,8 +900,9 @@ static int LoadRootFile(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile)
         if(pbFilePointer == NULL)
             break;
 
-        // Add the number of entries
-        nRootEntries = nRootEntries + BlockInfo.pLocaleBlockHdr->NumberOfFiles;
+        // Skip block with flags set to 0x80
+        if((BlockInfo.pLocaleBlockHdr->Flags & 0x80) == 0)
+            nRootEntries = nRootEntries + BlockInfo.pLocaleBlockHdr->NumberOfFiles;
     }
 
     // Create a linear array of the root entries and sort it
@@ -917,27 +918,31 @@ static int LoadRootFile(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile)
             if(pbFilePointer == NULL)
                 break;
 
-            // Get the pointer to the first root entry
-            pSrcEntry = (PFILE_ROOT_ENTRY)BlockInfo.pRootEntries;
-
-            // Convert all entries
-            for(DWORD i = 0; i < BlockInfo.pLocaleBlockHdr->NumberOfFiles; i++)
+            // Skip block with flags set to 0x80
+            if((BlockInfo.pLocaleBlockHdr->Flags & 0x80) == 0)
             {
-                // Copy the root entry
-                CopyFileKey(pTrgEntry->EncodingKey, pSrcEntry->EncodingKey);
-                pTrgEntry->FileNameHash = pSrcEntry->FileNameHash;
-                pTrgEntry->Locales = BlockInfo.pLocaleBlockHdr->Locales;
-                pTrgEntry->Flags = BlockInfo.pLocaleBlockHdr->Flags;
+                // Get the pointer to the first root entry
+                pSrcEntry = (PFILE_ROOT_ENTRY)BlockInfo.pRootEntries;
 
-//              if(pTrgEntry->FileNameHash == 0x5ddb88608673f698ULL)
-//                  DebugBreak();
+                // Convert all entries
+                for(DWORD i = 0; i < BlockInfo.pLocaleBlockHdr->NumberOfFiles; i++)
+                {
+                    // Copy the root entry
+                    CopyFileKey(pTrgEntry->EncodingKey, pSrcEntry->EncodingKey);
+                    pTrgEntry->FileNameHash = pSrcEntry->FileNameHash;
+                    pTrgEntry->Locales = BlockInfo.pLocaleBlockHdr->Locales;
+                    pTrgEntry->Flags = BlockInfo.pLocaleBlockHdr->Flags;
 
-                // Insert the CASC root entry to the linear array of pointers
-                hs->ppRootEntries[nRootIndex++] = pTrgEntry;
+//                  if(pTrgEntry->FileNameHash == 0x4548C346A9F091A2ULL)
+//                      DebugBreak();
 
-                // Move to the next root entry
-                pSrcEntry++;
-                pTrgEntry++;
+                    // Insert the CASC root entry to the linear array of pointers
+                    hs->ppRootEntries[nRootIndex++] = pTrgEntry;
+
+                    // Move to the next root entry
+                    pSrcEntry++;
+                    pTrgEntry++;
+                }
             }
         }
 
