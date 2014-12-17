@@ -443,13 +443,13 @@ void CascDumpRootFile(
                             (DWORD)(BlockInfo.pInt32Array[i]),
                             (DWORD)(BlockInfo.pRootEntries[i].FileNameHash >> 0x20),
                             (DWORD)(BlockInfo.pRootEntries[i].FileNameHash),
-                            StringFromMD5(BlockInfo.pRootEntries[i].EncodingKey, szOneLine),
+                            StringFromMD5((LPBYTE)BlockInfo.pRootEntries[i].EncodingKey, szOneLine),
                             ListFile_FindName(pListMap, BlockInfo.pRootEntries[i].FileNameHash));
 
                 // Find the encoding entry in the encoding table
                 if(nDumpLevel > 1)
                 {
-                    EncodingKey.pbData = BlockInfo.pRootEntries[i].EncodingKey;
+                    EncodingKey.pbData = (LPBYTE)BlockInfo.pRootEntries[i].EncodingKey;
                     EncodingKey.cbData = MD5_HASH_SIZE;
                     pEncodingEntry = FindEncodingEntry(hs, &EncodingKey, NULL);
                     DumpEncodingEntry(fp, hs, pEncodingEntry, nDumpLevel);

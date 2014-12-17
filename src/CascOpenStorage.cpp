@@ -2,6 +2,8 @@
 /* CascOpenStorage.cpp                    Copyright (c) Ladislav Zezula 2014 */
 /*---------------------------------------------------------------------------*/
 /* Storage functions for CASC                                                */
+/* Note: WoW6 offsets refer to WoW.exe 6.0.3.19116 (32-bit)                  */
+/* SHA1: c10e9ffb7d040a37a356b96042657e1a0c95c0dd                            */
 /*---------------------------------------------------------------------------*/
 /*   Date    Ver   Who  Comment                                              */
 /* --------  ----  ---  -------                                              */
@@ -23,7 +25,8 @@
 //-----------------------------------------------------------------------------
 // Local structures
 
-#define CASC_ENCODING_SEGMENT_SIZE  0x1000
+#define CASC_INITIAL_ROOT_TABLE_SIZE    0x00100000
+#define CASC_ENCODING_SEGMENT_SIZE      0x1000
 
 typedef struct _BLOCK_SIZE_AND_HASH
 {
@@ -162,19 +165,6 @@ static void QUERY_KEY_FreeArray(PQUERY_KEY pBlobArray)
     CASC_FREE(pBlobArray);
 }
 
-static int CompareRootEntries(const void *, const void * pvKeyEntry1, const void * pvKeyEntry2)
-{
-    PCASC_ROOT_ENTRY pRootEntry1 = (PCASC_ROOT_ENTRY)pvKeyEntry1;
-    PCASC_ROOT_ENTRY pRootEntry2 = (PCASC_ROOT_ENTRY)pvKeyEntry2;
-
-    // Compare name hash first
-    if(pRootEntry1->FileNameHash < pRootEntry2->FileNameHash)
-        return -1;
-    if(pRootEntry1->FileNameHash > pRootEntry2->FileNameHash)
-        return +1;
-    return 0;
-}
-
 static bool IsCascIndexHeader_V1(LPBYTE pbFileData, DWORD cbFileData)
 {
     PFILE_INDEX_HEADER_V1 pIndexHeader = (PFILE_INDEX_HEADER_V1)pbFileData;
@@ -218,16 +208,16 @@ static bool IsCascIndexHeader_V2(LPBYTE pbFileData, DWORD cbFileData)
 
 LPBYTE VerifyLocaleBlock(PROOT_BLOCK_INFO pBlockInfo, LPBYTE pbFilePointer, LPBYTE pbFileEnd)
 {
-    // Validate the locale header
+    // Validate the file locale block
     pBlockInfo->pLocaleBlockHdr = (PFILE_LOCALE_BLOCK)pbFilePointer;
-    pbFilePointer += sizeof(FILE_LOCALE_BLOCK);
-    if(pbFilePointer >= pbFileEnd)
+    pbFilePointer = (LPBYTE)(pBlockInfo->pLocaleBlockHdr + 1);
+    if(pbFilePointer > pbFileEnd)
         return NULL;
 
     // Validate the array of 32-bit integers
     pBlockInfo->pInt32Array = (PDWORD)pbFilePointer;
     pbFilePointer = (LPBYTE)(pBlockInfo->pInt32Array + pBlockInfo->pLocaleBlockHdr->NumberOfFiles);
-    if(pbFilePointer >= pbFileEnd)
+    if(pbFilePointer > pbFileEnd)
         return NULL;
 
     // Validate the array of root entries
@@ -871,16 +861,203 @@ static int LoadEncodingFile(TCascStorage * hs)
     return nError;
 }
 
-static int LoadRootFile(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile)
+typedef struct _CHECK_ROOT_ENTRY_INPUT
 {
-    PFILE_ROOT_ENTRY pSrcEntry;
-    PCASC_ROOT_ENTRY pTrgEntry;
+    ULONGLONG FileNameHash;
+    DWORD SumValue;
+    DWORD EncodingKey[4];
+
+} CHECK_ROOT_ENTRY_INPUT, *PCHECK_ROOT_ENTRY_INPUT;
+
+typedef struct _CHECK_ROOT_ENTRY_OUTPUT
+{
+    DWORD field_0;
+    DWORD field_4;
+    DWORD field_8;
+    bool field_C;
+
+} CHECK_ROOT_ENTRY_OUTPUT, *PCHECK_ROOT_ENTRY_OUTPUT;
+
+
+// WoW6: 00413F61
+static bool EnlargeHashTableIfMoreThan75PercentUsed(PCASC_ROOT_HASH_TABLE pRootTable, DWORD NewItemCount)
+{
+    // Don't relocate anything, just check
+    assert((double)NewItemCount / (double)pRootTable->TableSize < .75);
+    return true;
+}
+
+// WOW6: 00414402
+// Finds an existing root table entry or a free one
+PCASC_ROOT_ENTRY CascRootTable_FindFreeEntryWithEnlarge(
+    PCASC_ROOT_HASH_TABLE pRootTable,
+    PCASC_ROOT_ENTRY pNewEntry)
+{
+    PCASC_ROOT_ENTRY pEntry;
+    DWORD TableIndex;
+
+    // The table size must be a power of two
+    assert((pRootTable->TableSize & (pRootTable->TableSize - 1)) == 0);
+
+    // Make sure that number of occupied items is never bigger
+    // than 75% of the table size
+    if(!EnlargeHashTableIfMoreThan75PercentUsed(pRootTable, pRootTable->ItemCount + 1))
+        return NULL;
+
+    // Get the start index of the table
+    TableIndex = (DWORD)(pNewEntry->FileNameHash) & (pRootTable->TableSize - 1);
+
+    // If that entry is already occupied, move to a next entry
+    for(;;)
+    {
+        // Check that entry if it's free or not
+        pEntry = pRootTable->TablePtr + TableIndex;
+        if(pEntry->SumValue == 0)
+            break;
+
+        // Is the found entry equal to the existing one?
+        if(pEntry->FileNameHash == pNewEntry->FileNameHash)
+            break;
+
+        // Move to the next entry
+        TableIndex = (TableIndex + 1) & (pRootTable->TableSize - 1);
+    }
+
+    // Either return a free entry or an existing one
+    return pEntry;
+}
+
+// WOW6: 004145D1
+static void CascRootTable_InsertTableEntry(
+    PCASC_ROOT_HASH_TABLE pRootTable,
+    PCASC_ROOT_ENTRY pNewEntry)
+{
+    PCASC_ROOT_ENTRY pEntry;
+
+    // Find an existing entry or an empty one
+    pEntry = CascRootTable_FindFreeEntryWithEnlarge(pRootTable, pNewEntry);
+    assert(pEntry != NULL);
+
+    // If that entry is not used yet, fill it in
+    if(pEntry->FileNameHash == 0)
+    {
+        *pEntry = *pNewEntry;
+        pRootTable->ItemCount++;
+    }
+}
+
+static int LoadWowRootFileLocales(
+    TCascStorage * hs,
+    LPBYTE pbRootFile,
+    DWORD cbRootFile,
+    DWORD dwLocaleMask,
+    bool bLoadBlocksWithFlags80,
+    BYTE HighestBitValue)
+{
+    CASC_ROOT_ENTRY NewRootEntry;
     ROOT_BLOCK_INFO BlockInfo;
     LPBYTE pbRootFileEnd = pbRootFile + cbRootFile;
     LPBYTE pbFilePointer;
-    size_t nRootEntries = 0;
-    size_t nRootIndex = 0;
-    int nError = ERROR_NOT_ENOUGH_MEMORY;
+
+    // Now parse the root file
+    for(pbFilePointer = pbRootFile; pbFilePointer <= pbRootFileEnd; )
+    {
+        // Validate the file locale block
+        pbFilePointer = VerifyLocaleBlock(&BlockInfo, pbFilePointer, pbRootFileEnd);
+        if(pbFilePointer == NULL)
+            break;
+
+        // WoW.exe (build 19116): Entries with flag 0x100 set are skipped
+        if(BlockInfo.pLocaleBlockHdr->Flags & 0x100)
+            continue;
+
+        // WoW.exe (build 19116): Entries with flag 0x80 set are skipped if arg_4 is set to FALSE (which is by default)
+        if(bLoadBlocksWithFlags80 == 0 && (BlockInfo.pLocaleBlockHdr->Flags & 0x80))
+            continue;
+
+        // WoW.exe (build 19116): Entries with (flags >> 0x1F) not equal to arg_8 are skipped
+        if((BYTE)(BlockInfo.pLocaleBlockHdr->Flags >> 0x1F) != HighestBitValue)
+            continue;
+
+        // WoW.exe (build 19116): Locales other than defined mask are skipped too
+        if((BlockInfo.pLocaleBlockHdr->Locales & dwLocaleMask) == 0)
+            continue;
+
+        // Reset the sum value
+        NewRootEntry.SumValue = 0;
+
+        // WoW.exe (build 19116): Blocks with zero files are skipped
+        for(DWORD i = 0; i < BlockInfo.pLocaleBlockHdr->NumberOfFiles; i++)
+        {
+            // (004147A3) Prepare the CASC_ROOT_ENTRY structure
+            NewRootEntry.FileNameHash = BlockInfo.pRootEntries[i].FileNameHash;
+            NewRootEntry.SumValue = NewRootEntry.SumValue + BlockInfo.pInt32Array[i];
+            NewRootEntry.Locales = BlockInfo.pLocaleBlockHdr->Locales;
+            NewRootEntry.EncodingKey[0] = BlockInfo.pRootEntries[i].EncodingKey[0];
+            NewRootEntry.EncodingKey[1] = BlockInfo.pRootEntries[i].EncodingKey[1];
+            NewRootEntry.EncodingKey[2] = BlockInfo.pRootEntries[i].EncodingKey[2];
+            NewRootEntry.EncodingKey[3] = BlockInfo.pRootEntries[i].EncodingKey[3];
+
+            // Insert the root table item to the hash table
+            CascRootTable_InsertTableEntry(&hs->RootTable, &NewRootEntry);
+            NewRootEntry.SumValue++;
+        }
+    }
+
+    return 1;
+}
+
+// WoW.exe: 004146C7 (BuildManifest::Load)
+static int LoadWowRootFileWithParams(
+    TCascStorage * hs,
+    LPBYTE pbRootFile,
+    DWORD cbRootFile,
+    DWORD dwLocaleBits,
+    BYTE HighestBitValue)
+{
+    // Load the locale as-is
+    LoadWowRootFileLocales(hs, pbRootFile, cbRootFile, dwLocaleBits, false, HighestBitValue);
+
+    // If we wanted enGB, we also load enUS for the missing files
+    if(dwLocaleBits == CASC_LOCALE_ENGB)
+        LoadWowRootFileLocales(hs, pbRootFile, cbRootFile, CASC_LOCALE_ENUS, false, HighestBitValue);
+
+    if(dwLocaleBits == CASC_LOCALE_PTPT)
+        LoadWowRootFileLocales(hs, pbRootFile, cbRootFile, CASC_LOCALE_PTBR, false, HighestBitValue);
+
+    return ERROR_SUCCESS;
+}
+
+/*
+    // Code from WoW.exe
+    if(dwLocaleBits == CASC_LOCALE_DUAL_LANG)
+    {
+        // Is this english version of WoW?
+        if(arg_4 == CASC_LOCALE_BIT_ENUS)
+        {
+            LoadWowRootFileLocales(hs, pbRootFile, cbRootFile, CASC_LOCALE_ENGB, false, HighestBitValue);
+            LoadWowRootFileLocales(hs, pbRootFile, cbRootFile, CASC_LOCALE_ENUS, false, HighestBitValue);
+            return ERROR_SUCCESS;
+        }
+
+        // Is this portuguese version of WoW?
+        if(arg_4 == CASC_LOCALE_BIT_PTBR)
+        {
+            LoadWowRootFileLocales(hs, pbRootFile, cbRootFile, CASC_LOCALE_PTPT, false, HighestBitValue);
+            LoadWowRootFileLocales(hs, pbRootFile, cbRootFile, CASC_LOCALE_PTBR, false, HighestBitValue);
+        }
+    }
+
+    LoadWowRootFileLocales(hs, pbRootFile, cbRootFile, (1 << arg_4), false, HighestBitValue);
+*/
+
+static int LoadWowRootFile(
+    TCascStorage * hs,
+    LPBYTE pbRootFile,
+    DWORD cbRootFile,
+    DWORD dwLocaleMask)
+{
+    int nError;
 
     // Dump the root file, if needed
 #ifdef CASC_DUMP_ROOT_FILE
@@ -892,73 +1069,29 @@ static int LoadRootFile(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile)
     //                 CASC_DUMP_ROOT_FILE);
 #endif
 
-    // Calculate the root entries
-    for(pbFilePointer = pbRootFile; pbFilePointer <= pbRootFileEnd; )
-    {
-        // Validate the root block
-        pbFilePointer = VerifyLocaleBlock(&BlockInfo, pbFilePointer, pbRootFileEnd);
-        if(pbFilePointer == NULL)
-            break;
+    // Allocate root table entries. Note that the initial size
+    // of the root table is set to 0x00200000 by World of Warcraft 6.x
+    hs->RootTable.TablePtr  = CASC_ALLOC(CASC_ROOT_ENTRY, CASC_INITIAL_ROOT_TABLE_SIZE);
+    hs->RootTable.TableSize = CASC_INITIAL_ROOT_TABLE_SIZE;
+    if(hs->RootTable.TablePtr == NULL)
+        return ERROR_NOT_ENOUGH_MEMORY;
 
-        // Skip block with flags set to 0x80
-        if((BlockInfo.pLocaleBlockHdr->Flags & 0x80) == 0)
-            nRootEntries = nRootEntries + BlockInfo.pLocaleBlockHdr->NumberOfFiles;
-    }
+    // Clear the entire table
+    memset(hs->RootTable.TablePtr, 0, CASC_INITIAL_ROOT_TABLE_SIZE * sizeof(CASC_ROOT_ENTRY));
 
-    // Create a linear array of the root entries and sort it
-    hs->pRootEntries = pTrgEntry = CASC_ALLOC(CASC_ROOT_ENTRY, nRootEntries);
-    hs->ppRootEntries = CASC_ALLOC(PCASC_ROOT_ENTRY, nRootEntries);
-    if(hs->ppRootEntries && hs->pRootEntries)
-    {
-        // Convert each entry from FILE_ROOT_ENTRY to CASC_ROOT_ENTRY
-        for(pbFilePointer = pbRootFile; pbFilePointer <= pbRootFileEnd; )
-        {
-            // Validate the root block
-            pbFilePointer = VerifyLocaleBlock(&BlockInfo, pbFilePointer, pbRootFileEnd);
-            if(pbFilePointer == NULL)
-                break;
+    // Load the root file
+    nError = LoadWowRootFileWithParams(hs, pbRootFile, cbRootFile, dwLocaleMask, 0); 
+    if(nError != ERROR_SUCCESS)
+        return nError;
 
-            // Skip block with flags set to 0x80
-            if((BlockInfo.pLocaleBlockHdr->Flags & 0x80) == 0)
-            {
-                // Get the pointer to the first root entry
-                pSrcEntry = (PFILE_ROOT_ENTRY)BlockInfo.pRootEntries;
+    nError = LoadWowRootFileWithParams(hs, pbRootFile, cbRootFile, dwLocaleMask, 1); 
+    if(nError != ERROR_SUCCESS)
+        return nError;
 
-                // Convert all entries
-                for(DWORD i = 0; i < BlockInfo.pLocaleBlockHdr->NumberOfFiles; i++)
-                {
-                    // Copy the root entry
-                    CopyFileKey(pTrgEntry->EncodingKey, pSrcEntry->EncodingKey);
-                    pTrgEntry->FileNameHash = pSrcEntry->FileNameHash;
-                    pTrgEntry->Locales = BlockInfo.pLocaleBlockHdr->Locales;
-                    pTrgEntry->Flags = BlockInfo.pLocaleBlockHdr->Flags;
-
-//                  if(pTrgEntry->FileNameHash == 0x4548C346A9F091A2ULL)
-//                      DebugBreak();
-
-                    // Insert the CASC root entry to the linear array of pointers
-                    hs->ppRootEntries[nRootIndex++] = pTrgEntry;
-
-                    // Move to the next root entry
-                    pSrcEntry++;
-                    pTrgEntry++;
-                }
-            }
-        }
-
-        // Save the number of entries
-        assert(nRootIndex == nRootEntries);
-        hs->nRootEntries = nRootIndex;
-
-        // Now sort the array
-        qsort_pointer_array((void **)hs->ppRootEntries, hs->nRootEntries, CompareRootEntries, NULL);
-        nError = ERROR_SUCCESS;
-    }
-
-    return nError;
+    return ERROR_SUCCESS;
 }
 
-static int LoadRootFile(TCascStorage * hs)
+static int LoadRootFile(TCascStorage * hs, DWORD dwLocaleMask)
 {
     PDWORD FileSignature;
     HANDLE hFile = NULL; 
@@ -967,9 +1100,14 @@ static int LoadRootFile(TCascStorage * hs)
     int nError = ERROR_SUCCESS;
 
     // Sanity checks
+    assert(hs->RootTable.TablePtr == NULL);
+    assert(hs->RootTable.ItemCount == NULL);
     assert(hs->ppEncodingEntries != NULL);
-    assert(hs->pRootEntries == NULL);
-    assert(hs->nRootEntries == 0);
+
+    // Locale: The default parameter is 0 - in that case,
+    // we load enUS+enGB
+    if(dwLocaleMask == 0)
+        dwLocaleMask = CASC_LOCALE_ENUS | CASC_LOCALE_ENGB;
 
     // The root file is either MNDX file (Heroes of the Storm)
     // or a file containing an array of root entries (World of Warcraft 6.0+)
@@ -1000,7 +1138,8 @@ static int LoadRootFile(TCascStorage * hs)
         }
         else
         {
-            nError = LoadRootFile(hs, pbRootFile, cbRootFile);
+            // WOW6: 00415000 
+            nError = LoadWowRootFile(hs, pbRootFile, cbRootFile, dwLocaleMask);
         }
     }
 
@@ -1022,10 +1161,8 @@ static TCascStorage * FreeCascStorage(TCascStorage * hs)
             FreeMndxInfo(hs->pMndxInfo);
 
         // Free the pointers to file entries
-        if(hs->ppRootEntries != NULL)
-            CASC_FREE(hs->ppRootEntries);
-        if(hs->pRootEntries != NULL)
-            CASC_FREE(hs->pRootEntries);
+        if(hs->RootTable.TablePtr != NULL)
+            CASC_FREE(hs->RootTable.TablePtr);
         if(hs->ppEncodingEntries != NULL)
             CASC_FREE(hs->ppEncodingEntries);
         if(hs->pEncodingHeader != NULL)
@@ -1089,12 +1226,10 @@ static TCascStorage * FreeCascStorage(TCascStorage * hs)
 //-----------------------------------------------------------------------------
 // Public functions
 
-bool WINAPI CascOpenStorage(const TCHAR * szDataPath, DWORD dwFlags, HANDLE * phStorage)
+bool WINAPI CascOpenStorage(const TCHAR * szDataPath, DWORD dwLocaleMask, HANDLE * phStorage)
 {
     TCascStorage * hs;        
     int nError = ERROR_SUCCESS;
-
-    CASCLIB_UNUSED(dwFlags);
 
     // Allocate the storage structure
     hs = (TCascStorage *)CASC_ALLOC(TCascStorage, 1);
@@ -1133,7 +1268,7 @@ bool WINAPI CascOpenStorage(const TCHAR * szDataPath, DWORD dwFlags, HANDLE * ph
     // Load the index files
     if(nError == ERROR_SUCCESS)
     {
-        nError = LoadRootFile(hs);
+        nError = LoadRootFile(hs, dwLocaleMask);
     }
 
     // If something failed, free the storage and return

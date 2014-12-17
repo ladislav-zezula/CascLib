@@ -181,7 +181,7 @@ static int TestOpenStorage_OpenFile(const TCHAR * szStorage, const char * szFile
     int nError = ERROR_SUCCESS;
 
     // Open the storage directory
-    if(!CascOpenStorage(szStorage, 0, &hStorage))
+    if(!CascOpenStorage(szStorage, CASC_LOCALE_ENGB, &hStorage))
     {
         assert(GetLastError() != ERROR_SUCCESS);
         nError = GetLastError();
@@ -381,7 +381,7 @@ int main(int argc, char * argv[])
 //      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/18888/Data"), "SPELLS\\T_VFX_BLOOD06B.BLP");
 
     if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/19116/Data"), "Character\\Scourge\\Male\\ScourgeMale_HD00.skin");
+        nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/19116/Data"), "DBFilesClient\\AnimationData.dbc");
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/29049/BNTData"), NULL);
@@ -394,6 +394,9 @@ int main(int argc, char * argv[])
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/18888/Data"), szListFile);
+
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19116/Data"), szListFile);
 
     // Test extracting the complete storage
 //  if(nError == ERROR_SUCCESS)

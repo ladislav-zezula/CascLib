@@ -169,6 +169,8 @@ static int EnsureHeaderAreaIsLoaded(TCascFile * hf)
 
         // Load the size of the frame headers
         hf->HeaderSize = ConvertBytesToInteger_4(pbHeaderArea);
+        if(hf->HeaderSize & 0x80000000)
+            return ERROR_BAD_FORMAT;
         pbHeaderArea += sizeof(DWORD);
 
         // Read the header size
