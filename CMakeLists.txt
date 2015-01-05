@@ -46,7 +46,6 @@ set(ZLIB_BZIP2_FILES
     src/zlib/inffast.c
     src/zlib/inflate.c
     src/zlib/inftrees.c
-    src/zlib/trees.c
     src/zlib/zutil.c
 )
 
