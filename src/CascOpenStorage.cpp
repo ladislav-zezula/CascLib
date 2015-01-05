@@ -459,7 +459,7 @@ static int VerifyAndParseKeyMapping_V2(PCASC_MAPPING_TABLE pKeyMapping, DWORD Ke
             if(PtrLastPart[0] == 0)
                 return ERROR_SUCCESS;
 
-            HashLow = hashlittle(PtrLastPart + 1, 0x13, 0) | 0x80000000;
+            HashLow = hashlittle(PtrLastPart + i, 0x13, 0) | 0x80000000;
             if(HashLow != PtrLastPart[0])
                 return ERROR_BAD_FORMAT;
         }
