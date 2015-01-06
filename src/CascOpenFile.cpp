@@ -268,7 +268,7 @@ bool WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocal
     char * szFileName2;
     int nError = ERROR_SUCCESS;
 
-    UNREFERENCED_PARAMETER(dwLocale);
+    CASCLIB_UNUSED(dwLocale);
 
     // Validate the storage handle
     hs = IsValidStorageHandle(hStorage);

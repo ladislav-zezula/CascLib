@@ -359,7 +359,7 @@ static int Hack()
 
 int main(int argc, char * argv[])
 {
-    LPCTSTR szListFile = _T("\\Ladik\\AppDir\\CascLib\\listfile\\listfile-wow6.txt");
+    const TCHAR * szListFile = _T("\\Ladik\\AppDir\\CascLib\\listfile\\listfile-wow6.txt");
     int nError = ERROR_SUCCESS;
 
     // Keep compiler happy

@@ -1101,7 +1101,7 @@ static int LoadRootFile(TCascStorage * hs, DWORD dwLocaleMask)
 
     // Sanity checks
     assert(hs->RootTable.TablePtr == NULL);
-    assert(hs->RootTable.ItemCount == NULL);
+    assert(hs->RootTable.ItemCount == 0);
     assert(hs->ppEncodingEntries != NULL);
 
     // Locale: The default parameter is 0 - in that case,
