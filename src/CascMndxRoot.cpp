@@ -2872,6 +2872,14 @@ PCASC_PACKAGE FindMndxPackage(TCascStorage * hs, const char * szFileName)
     assert(hs->pPackages != NULL);
     pPackage = hs->pPackages->Packages;
 
+    //FILE * fp = fopen("E:\\packages.txt", "wt");
+    //for(size_t i = 0; i < hs->pPackages->NameEntries; i++, pPackage++)
+    //{
+    //    if(pPackage->szFileName != NULL)
+    //        fprintf(fp, "%s\n", pPackage->szFileName);
+    //}
+    //fclose(fp);
+
     // Find the longest matching name
     for(size_t i = 0; i < hs->pPackages->NameEntries; i++, pPackage++)
     {
@@ -2895,7 +2903,9 @@ static bool FillFindData(TCascSearch * pSearch, PCASC_FIND_DATA pFindData, TMndx
     PCASC_ROOT_ENTRY_MNDX pRootEntry = NULL;
     TCascStorage * hs = pSearch->hs;
     PCASC_PACKAGE pPackage;
-    char * szStrippedName;
+    char * szStrippedPtr;
+    char szStrippedName[MAX_PATH];
+    
     int nError;
 
     // Sanity check
@@ -2912,10 +2922,15 @@ static bool FillFindData(TCascSearch * pSearch, PCASC_FIND_DATA pFindData, TMndx
     if(pPackage != NULL)
     {
         // Cut the package name off the full path
-        szStrippedName = pFindData->szFileName + pPackage->nLength;
-        while(szStrippedName[0] == '/')
-            szStrippedName++;
+        szStrippedPtr = pFindData->szFileName + pPackage->nLength;
+        while(szStrippedPtr[0] == '/')
+            szStrippedPtr++;
 
+        // We need to convert the stripped name to lowercase, replacing backslashes with slashes
+        strcpy(szStrippedName, szStrippedPtr);
+        NormalizeFileName_LowerSlash(szStrippedName);
+
+        // Search the package
         nError = SearchMndxInfo(hs->pMndxInfo, szStrippedName, (DWORD)(pPackage - hs->pPackages->Packages), &pRootEntry);
         if(nError == ERROR_SUCCESS)
         {

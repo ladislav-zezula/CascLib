@@ -374,9 +374,6 @@ int main(int argc, char * argv[])
 //  if(nError == ERROR_SUCCESS)
 //      nError = Hack();
 
-    if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/19116/Data"), "SPELLS\\T_VFX_BLOOD06B.BLP");
-
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/18865/Data"), "SPELLS\\T_VFX_BLOOD06B.BLP");
 
@@ -384,10 +381,13 @@ int main(int argc, char * argv[])
 //      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/18888/Data"), "SPELLS\\T_VFX_BLOOD06B.BLP");
 
 //  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/19116/Data"), "DBFilesClient\\AnimationData.dbc");
+//      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/19342/Data"), "World\\Minimaps\\WMO\\Dungeon\\Azjol_Uppercity\\Azjol_Uppercity_001_02_05.blp");
 
 //  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/29049/BNTData"), NULL);
+//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/30509/HeroesData"), NULL);
+
+    if(nError == ERROR_SUCCESS)
+        nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/31726/HeroesData"), NULL);
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(_T("c:\\Hry\\Heroes of the Storm\\HeroesData"), NULL);
