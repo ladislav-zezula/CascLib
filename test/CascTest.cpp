@@ -398,8 +398,11 @@ int main(int argc, char * argv[])
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/18888/Data"), szListFile);
 
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19116/Data"), szListFile);
+
     if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19116/Data"), szListFile);
+        nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19342-root-file-cut/Data"), szListFile);
 
     // Test extracting the complete storage
 //  if(nError == ERROR_SUCCESS)

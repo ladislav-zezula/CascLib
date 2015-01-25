@@ -677,7 +677,7 @@ static LPBYTE LoadEncodingFileToMemory(HANDLE hFile, DWORD * pcbEncodingFile)
     DWORD cbEncodingFile = 0;
     DWORD dwSegmentPos = 0;
     DWORD dwNumSegments = 0;
-    DWORD dwBytesRead;
+    DWORD dwBytesRead = 0;
     int nError = ERROR_BAD_FORMAT;
 
     // Read the encoding header
@@ -724,7 +724,7 @@ static LPBYTE LoadRootFileToMemory(HANDLE hFile, DWORD * pcbRootFile)
     TCascFile * hf;
     LPBYTE pbRootFile = NULL;
     DWORD cbRootFile = 0;
-    DWORD dwBytesRead;
+    DWORD dwBytesRead = 0;
     BYTE StartOfFile[0x10];
     int nError = ERROR_SUCCESS;
 
