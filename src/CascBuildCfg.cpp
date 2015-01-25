@@ -141,11 +141,11 @@ static int StringBlobToBinaryBlob(
         BYTE DigitOne;
         BYTE DigitTwo;
 
-        DigitOne = (BYTE)(AsciiToUpperTable[pbBlobBegin[0]] - '0');
+        DigitOne = (BYTE)(AsciiToUpperTable_BkSlash[pbBlobBegin[0]] - '0');
         if(DigitOne > 9)
             DigitOne -= 'A' - '9' - 1;
 
-        DigitTwo = (BYTE)(AsciiToUpperTable[pbBlobBegin[1]] - '0');
+        DigitTwo = (BYTE)(AsciiToUpperTable_BkSlash[pbBlobBegin[1]] - '0');
         if(DigitTwo > 9)
             DigitTwo -= 'A' - '9' - 1;
 

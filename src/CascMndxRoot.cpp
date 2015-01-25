@@ -2904,8 +2904,7 @@ static bool FillFindData(TCascSearch * pSearch, PCASC_FIND_DATA pFindData, TMndx
     TCascStorage * hs = pSearch->hs;
     PCASC_PACKAGE pPackage;
     char * szStrippedPtr;
-    char szStrippedName[MAX_PATH];
-    
+    char szStrippedName[MAX_PATH+1];
     int nError;
 
     // Sanity check
@@ -2927,8 +2926,7 @@ static bool FillFindData(TCascSearch * pSearch, PCASC_FIND_DATA pFindData, TMndx
             szStrippedPtr++;
 
         // We need to convert the stripped name to lowercase, replacing backslashes with slashes
-        strcpy(szStrippedName, szStrippedPtr);
-        NormalizeFileName_LowerSlash(szStrippedName);
+        NormalizeFileName_LowerSlash(szStrippedName, szStrippedPtr, MAX_PATH);
 
         // Search the package
         nError = SearchMndxInfo(hs->pMndxInfo, szStrippedName, (DWORD)(pPackage - hs->pPackages->Packages), &pRootEntry);
@@ -3486,7 +3484,7 @@ void TestMndxRootFile(PCASC_MNDX_INFO pMndxInfo)
         while((nLength = ListFile_GetNext(pvListFile, "*", szFileName, MAX_PATH)) != 0)
         {
             // Normalize the file name: ToLower + BackSlashToSlash
-            NormalizeFileName_LowerSlash(szFileName);
+            NormalizeFileName_LowerSlash(szFileName, szFileName, MAX_PATH);
 
             // Check the file with all three MAR files
             TestMarFile(pMndxInfo->pMarFile1, szFileName, nLength);
