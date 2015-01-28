@@ -238,7 +238,7 @@ void NormalizeFileName_LowerSlash(char * szTrgFileName, const char * szSrcFileNa
 
     // Normalize the file name: ToLower + BackSlashToSlash
     for(i = 0; szSrcFileName[i] != 0 && szTrgFileName < szTrgFileEnd; i++)
-        szTrgFileName[i] = AsciiToLowerTable_Slash[szTrgFileName[i]];
+        szTrgFileName[i] = AsciiToLowerTable_Slash[szSrcFileName[i]];
 
     assert(szSrcFileName[i] == 0);
     szTrgFileName[i] = 0;

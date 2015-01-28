@@ -176,7 +176,8 @@ static int TestOpenStorage_OpenFile(const TCHAR * szStorage, const char * szFile
 {
     HANDLE hStorage;
     HANDLE hFile;
-    DWORD dwBytesRead;
+    DWORD dwFileSize2 = 0;
+    DWORD dwFileSize1;
     BYTE Buffer[0x1000];
     int nError = ERROR_SUCCESS;
 
@@ -192,8 +193,20 @@ static int TestOpenStorage_OpenFile(const TCHAR * szStorage, const char * szFile
         // Open a file
         if(CascOpenFile(hStorage, szFileName, 0, 0, &hFile))
         {
-            CascGetFileSize(hFile, NULL);
-            CascReadFile(hFile, Buffer, sizeof(Buffer), &dwBytesRead);
+            dwFileSize1 = CascGetFileSize(hFile, NULL);
+
+            for(;;)
+            {
+                DWORD dwBytesRead = 0;
+
+                CascReadFile(hFile, Buffer, sizeof(Buffer), &dwBytesRead);
+                if(dwBytesRead == 0)
+                    break;
+
+                dwFileSize2 += dwBytesRead;
+            }
+            
+            assert(dwFileSize1 == dwFileSize2);
             CascCloseFile(hFile);
         }
         else
@@ -380,8 +393,8 @@ int main(int argc, char * argv[])
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/18888/Data"), "SPELLS\\T_VFX_BLOOD06B.BLP");
 
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/19342/Data"), "World\\Minimaps\\WMO\\Dungeon\\Azjol_Uppercity\\Azjol_Uppercity_001_02_05.blp");
+    if(nError == ERROR_SUCCESS)
+        nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/19342/Data"), "World\\Maps\\Azeroth\\Azeroth_29_28.adt");
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/30509/HeroesData"), NULL);
@@ -401,8 +414,8 @@ int main(int argc, char * argv[])
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19116/Data"), szListFile);
 
-    if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19342-root-file-cut/Data"), szListFile);
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19342-root-file-cut/Data"), szListFile);
 
     // Test extracting the complete storage
 //  if(nError == ERROR_SUCCESS)
