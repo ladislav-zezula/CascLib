@@ -1105,7 +1105,7 @@ static int LoadRootFile(TCascStorage * hs, DWORD dwLocaleMask)
     assert(hs->ppEncodingEntries != NULL);
 
     // Locale: The default parameter is 0 - in that case,
-    // we assign the default locale, loaded gtom the .build.info file
+    // we assign the default locale, loaded from the .build.info file
     if(dwLocaleMask == 0)
         dwLocaleMask = hs->dwDefaultLocale;
 

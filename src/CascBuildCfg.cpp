@@ -52,12 +52,12 @@ static DWORD GetLocaleMask(const char * szTag)
         return CASC_LOCALE_DEDE;
 
     if(!strcmp(szTag, "zhCN"))
-        return CASC_LOCALE_DEDE;
+        return CASC_LOCALE_ZHCN;
 
     if(!strcmp(szTag, "esES"))
         return CASC_LOCALE_ESES;
 
-    if(!strcmp(szTag, "ahTW"))
+    if(!strcmp(szTag, "zhTW"))
         return CASC_LOCALE_ZHTW;
 
     if(!strcmp(szTag, "enGB"))
