@@ -539,6 +539,13 @@ static int GetGameType(TCascStorage * hs, LPBYTE pbVarBegin, LPBYTE pbLineEnd)
         return ERROR_SUCCESS;
     }
 
+    // Diablo III BETA 2.2.0
+    if((pbLineEnd - pbVarBegin) == 7 && !_strnicmp((const char *)pbVarBegin, "Diablo3", 7))
+    {
+        hs->dwGameInfo = CASC_GAME_DIABLO3;
+        return ERROR_SUCCESS;
+    }
+
     // An unknown game
     assert(false);
     return ERROR_BAD_FORMAT;
@@ -546,6 +553,7 @@ static int GetGameType(TCascStorage * hs, LPBYTE pbVarBegin, LPBYTE pbLineEnd)
 
 // "B29049"
 // "WOW-18125patch6.0.1"
+// "30013_Win32_2_2_0_Ptr_ptr"
 static int GetBuildNumber(TCascStorage * hs, LPBYTE pbVarBegin, LPBYTE pbLineEnd)
 {
     DWORD dwBuildNumber = 0;

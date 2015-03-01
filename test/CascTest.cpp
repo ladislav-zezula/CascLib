@@ -393,8 +393,11 @@ int main(int argc, char * argv[])
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/18888/Data"), "SPELLS\\T_VFX_BLOOD06B.BLP");
 
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/19342/Data"), "World\\Maps\\Azeroth\\Azeroth_29_28.adt");
+
     if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/19342/Data"), "World\\Maps\\Azeroth\\Azeroth_29_28.adt");
+        nError = TestOpenStorage_OpenFile(MAKE_PATH("2015 - Diablo III/Data"), "World\\Maps\\Azeroth\\Azeroth_29_28.adt");
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/30509/HeroesData"), NULL);
