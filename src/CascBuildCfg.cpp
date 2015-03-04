@@ -633,10 +633,12 @@ static int FetchAndVerifyConfigFile(TCascStorage * hs, PQUERY_KEY pFileKey, PQUE
 
 static int ParseInfoFile(TCascStorage * hs, PQUERY_KEY pFileBlob)
 {
+    QUERY_KEY Active = {NULL, 0};
     QUERY_KEY TagString = {NULL, 0};
     QUERY_KEY CdnHost = {NULL, 0};
     QUERY_KEY CdnPath = {NULL, 0};
     const char * szLineBegin1 = NULL;
+    const char * szLinePtr1 = NULL;
     const char * szLineBegin2 = NULL;
     const char * szLineEnd1 = NULL;
     const char * szLineEnd2 = NULL;
@@ -658,46 +660,58 @@ static int ParseInfoFile(TCascStorage * hs, PQUERY_KEY pFileBlob)
         szFilePtr++;
     }
 
-    // Skip the newline character(s)
-    while(szFilePtr < szFileEnd && (szFilePtr[0] == 0x0D || szFilePtr[0] == 0x0A))
-        szFilePtr++;
-
-    // Find the second line
-    szLineBegin2 = szFilePtr;
-    while(szFilePtr < szFileEnd)
+    while (szFilePtr < szFileEnd)
     {
-        // Check for the end of the line
-        if(szFilePtr[0] == 0x0D || szFilePtr[0] == 0x0A)
+        // Rewind header line pointers
+        szLinePtr1 = szLineBegin1;
+
+        // Skip the newline character(s)
+        while (szFilePtr < szFileEnd && (szFilePtr[0] == 0x0D || szFilePtr[0] == 0x0A))
+            szFilePtr++;
+
+        // Find the next line
+        szLineBegin2 = szFilePtr;
+        while (szFilePtr < szFileEnd)
         {
-            szLineEnd2 = szFilePtr;
-            break;
+            // Check for the end of the line
+            if (szFilePtr[0] == 0x0D || szFilePtr[0] == 0x0A)
+            {
+                szLineEnd2 = szFilePtr;
+                break;
+            }
+
+            szFilePtr++;
         }
 
-        szFilePtr++;
-    }
+        // Find the build key, CDN config key and the URL path
+        while (szLinePtr1 < szLineEnd1)
+        {
+            // Check for variables we need
+            if (IsInfoVariable(szLinePtr1, szLineEnd1, "Active", "DEC"))
+                LoadInfoVariable(&Active, szLineBegin2, szLineEnd2, false);
+            if (IsInfoVariable(szLinePtr1, szLineEnd1, "Build Key", "HEX"))
+                LoadInfoVariable(&hs->CdnBuildKey, szLineBegin2, szLineEnd2, true);
+            if (IsInfoVariable(szLinePtr1, szLineEnd1, "CDN Key", "HEX"))
+                LoadInfoVariable(&hs->CdnConfigKey, szLineBegin2, szLineEnd2, true);
+            if (IsInfoVariable(szLinePtr1, szLineEnd1, "CDN Hosts", "STRING"))
+                LoadInfoVariable(&CdnHost, szLineBegin2, szLineEnd2, false);
+            if (IsInfoVariable(szLinePtr1, szLineEnd1, "CDN Path", "STRING"))
+                LoadInfoVariable(&CdnPath, szLineBegin2, szLineEnd2, false);
+            if (IsInfoVariable(szLinePtr1, szLineEnd1, "Tags", "STRING"))
+                LoadInfoVariable(&TagString, szLineBegin2, szLineEnd2, false);
 
-    // Find the build key, CDN config key and the URL path
-    while(szLineBegin1 < szLineEnd1)
-    {
-        // Check for variables we need
-        if(IsInfoVariable(szLineBegin1, szLineEnd1, "Build Key", "HEX"))
-            LoadInfoVariable(&hs->CdnBuildKey, szLineBegin2, szLineEnd2, true);
-        if(IsInfoVariable(szLineBegin1, szLineEnd1, "CDN Key", "HEX"))
-            LoadInfoVariable(&hs->CdnConfigKey, szLineBegin2, szLineEnd2, true);
-        if(IsInfoVariable(szLineBegin1, szLineEnd1, "CDN Hosts", "STRING"))
-            LoadInfoVariable(&CdnHost, szLineBegin2, szLineEnd2, false);
-        if(IsInfoVariable(szLineBegin1, szLineEnd1, "CDN Path", "STRING"))
-            LoadInfoVariable(&CdnPath, szLineBegin2, szLineEnd2, false);
-        if(IsInfoVariable(szLineBegin1, szLineEnd1, "Tags", "STRING"))
-            LoadInfoVariable(&TagString, szLineBegin2, szLineEnd2, false);
+            // Move both line pointers
+            szLinePtr1 = SkipInfoVariable(szLinePtr1, szLineEnd1);
+            if (szLineBegin1 == NULL)
+                break;
 
-        // Move both line pointers
-        szLineBegin1 = SkipInfoVariable(szLineBegin1, szLineEnd1);
-        if(szLineBegin1 == NULL)
-            break;
+            szLineBegin2 = SkipInfoVariable(szLineBegin2, szLineEnd2);
+            if (szLineBegin2 == NULL)
+                break;
+        }
 
-        szLineBegin2 = SkipInfoVariable(szLineBegin2, szLineEnd2);
-        if(szLineBegin2 == NULL)
+        // Stop parsing if found active config
+        if (Active.pbData != NULL && *Active.pbData == '1')
             break;
     }
 
