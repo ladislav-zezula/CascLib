@@ -25,10 +25,12 @@ set(SRC_FILES
     src/CascDecompress.cpp
     src/CascDumpData.cpp
     src/CascFindFile.cpp
-    src/CascMndxRoot.cpp
     src/CascOpenFile.cpp
     src/CascOpenStorage.cpp
     src/CascReadFile.cpp
+    src/CascRootFile_Diablo3.cpp
+    src/CascRootFile_Mndx.cpp
+    src/CascRootFile_WoW.cpp
 )
 
 set(TOMCRYPT_FILES

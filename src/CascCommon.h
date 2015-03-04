@@ -44,8 +44,6 @@
 #define CASC_INDEX_COUNT          0x10
 #define CASC_FILE_KEY_SIZE        0x09          // Size of the file key
 #define CASC_MAX_DATA_FILES      0x100
-#define CASC_MAX_MAR_FILES           3          // Maximum of 3 MAR files are supported
-#define CASC_MNDX_SIGNATURE 0x58444E4D          // 'MNDX'
 
 #define CASC_SEARCH_HAVE_NAME   0x0001          // Indicated that previous search found a name
 

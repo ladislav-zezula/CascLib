@@ -11,7 +11,7 @@
 #define __CASCLIB_SELF__
 #include "CascLib.h"
 #include "CascCommon.h"
-#include "CascMndxRoot.h"
+#include "CascRootFile_Mndx.h"
 
 #ifdef _DEBUG       // The entire file is only valid for debug purposes
 
@@ -407,9 +407,6 @@ void CascDumpRootFile(
     FILE * fp;
     char szOneLine[0x100];
     DWORD i;
-
-    // This function only dumps WoW-style root file
-    assert(*(PDWORD)pbRootFile != CASC_MNDX_SIGNATURE);
 
     // Create the dump file
     fp = CreateDumpFile(szFormat, hs);

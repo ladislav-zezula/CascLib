@@ -11,7 +11,7 @@
 #define __CASCLIB_SELF__
 #include "CascLib.h"
 #include "CascCommon.h"
-#include "CascMndxRoot.h"
+#include "CascRootFile_Mndx.h"
 
 //-----------------------------------------------------------------------------
 // Local structures

@@ -1051,11 +1051,19 @@
 				>
 			</File>
 			<File
-				RelativePath=".\src\CascMndxRoot.h"
+				RelativePath=".\src\CascPort.h"
 				>
 			</File>
 			<File
-				RelativePath=".\src\CascPort.h"
+				RelativePath=".\src\CascRootFile_Diablo3.h"
+				>
+			</File>
+			<File
+				RelativePath=".\src\CascRootFile_Mndx.h"
+				>
+			</File>
+			<File
+				RelativePath=".\src\CascRootFile_WoW.h"
 				>
 			</File>
 		</Filter>
@@ -1083,14 +1091,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\src\CascMndxRoot.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\src\CascMndxRoot_x86.asm"
-				>
-			</File>
-			<File
 				RelativePath=".\src\CascOpenFile.cpp"
 				>
 			</File>
@@ -1100,6 +1100,22 @@
 			</File>
 			<File
 				RelativePath=".\src\CascReadFile.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\src\CascRootFile_Diablo3.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\src\CascRootFile_Mndx.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\src\CascRootFile_Mndx_x86.asm"
+				>
+			</File>
+			<File
+				RelativePath=".\src\CascRootFile_WoW.cpp"
 				>
 			</File>
 			<Filter

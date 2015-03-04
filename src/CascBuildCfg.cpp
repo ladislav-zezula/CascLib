@@ -711,7 +711,7 @@ static int ParseInfoFile(TCascStorage * hs, PQUERY_KEY pFileBlob)
         }
 
         // Stop parsing if found active config
-        if (Active.pbData != NULL && *Active.pbData == '1')
+        if(Active.pbData != NULL && *Active.pbData == '1')
             break;
     }
 
