@@ -254,6 +254,11 @@ static int TestOpenStorage_EnumFiles(const TCHAR * szStorage, const TCHAR * szLi
         {
             while(bFileFound)
             {
+                //char szPrevName[MAX_PATH*2];
+                //if(!_stricmp(GetPlainFileName(FindData.szFileName), "aicommand_autoai1.lvl0"))
+                //    DebugBreak();
+                //strcpy(szPrevName, FindData.szFileName);
+
                 // Extract the file
                 if((dwFoundFiles % 400) == 0)
                 {
@@ -394,10 +399,13 @@ int main(int argc, char * argv[])
 //      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/18888/Data"), "SPELLS\\T_VFX_BLOOD06B.BLP");
 
 //  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/19342/Data"), "World\\Maps\\Azeroth\\Azeroth_29_28.adt");
+//      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/19342-root-file-cut/Data"), "termination.html");
 
-    if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_OpenFile(MAKE_PATH("2015 - Diablo III/Data"), "World\\Maps\\Azeroth\\Azeroth_29_28.adt");
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - Heroes of the Storm\\30414\\HeroesData"), "World\\Maps\\Azeroth\\Azeroth_29_28.adt");
+
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/29049/BNTData"), NULL);
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/30509/HeroesData"), NULL);
@@ -417,12 +425,12 @@ int main(int argc, char * argv[])
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19116/Data"), szListFile);
 
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19342-root-file-cut/Data"), szListFile);
+    if(nError == ERROR_SUCCESS)
+        nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), szListFile);
 
     // Test extracting the complete storage
 //  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2014 - Heroes of the Storm/29049/BNTData"), _T("Work"), NULL);
+//      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2014 - Heroes of the Storm/30414/HeroesData"), _T("Work"), NULL);
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2014 - WoW/18865/Data"), _T("Work"), szListFile);
@@ -431,7 +439,10 @@ int main(int argc, char * argv[])
 //      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2014 - WoW/18888/Data"), _T("Work"), szListFile);
 
 //  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2014 - WoW/19116/Data"), _T("Work"), szListFile);
+//      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), _T("Work"), szListFile);
+
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2015 - Diablo III/Data"), _T("Work"), NULL);
 
 #ifdef _MSC_VER                                                          
     _CrtDumpMemoryLeaks();

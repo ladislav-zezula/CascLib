@@ -4,7 +4,7 @@ project(CascLib)
 set(HEADER_FILES
     src/CascCommon.h
     src/CascLib.h
-    src/CascMndxRoot.h
+    src/CascMndx.h
     src/CascPort.h
     src/common/Common.h
     src/common/FileStream.h
@@ -19,6 +19,7 @@ set(SRC_FILES
     src/common/FileStream.cpp
     src/common/ListFile.cpp
     src/common/Map.cpp
+    src/common/RootFile.cpp
     src/jenkins/lookup3.c
     src/CascBuildCfg.cpp
     src/CascCommon.cpp
@@ -30,7 +31,7 @@ set(SRC_FILES
     src/CascReadFile.cpp
     src/CascRootFile_Diablo3.cpp
     src/CascRootFile_Mndx.cpp
-    src/CascRootFile_WoW.cpp
+    src/CascRootFile_WoW6.cpp
 )
 
 set(TOMCRYPT_FILES

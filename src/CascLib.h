@@ -191,9 +191,7 @@ typedef struct _CASC_FIND_DATA
 {
     char   szFileName[MAX_PATH];                // Full name of the found file
     char * szPlainName;                         // Plain name of the found file
-    ULONGLONG FileNameHash;                     // File name hash
     BYTE   EncodingKey[MD5_HASH_SIZE];          // Encoding key
-    DWORD  dwPackageIndex;                      // File package index (HOTS only)
     DWORD  dwLocaleFlags;                       // Locale flags (WoW only)
     DWORD  dwFileSize;                          // Size of the file
 

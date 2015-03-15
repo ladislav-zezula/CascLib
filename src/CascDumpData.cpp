@@ -11,14 +11,14 @@
 #define __CASCLIB_SELF__
 #include "CascLib.h"
 #include "CascCommon.h"
-#include "CascRootFile_Mndx.h"
+#include "CascMndx.h"
 
 #ifdef _DEBUG       // The entire file is only valid for debug purposes
 
 //-----------------------------------------------------------------------------
 // Forward definitions
 
-LPBYTE VerifyLocaleBlock(PROOT_BLOCK_INFO pBlockInfo, LPBYTE pbFilePointer, LPBYTE pbFileEnd);
+//LPBYTE VerifyLocaleBlock(PROOT_BLOCK_INFO pBlockInfo, LPBYTE pbFilePointer, LPBYTE pbFileEnd);
 
 //-----------------------------------------------------------------------------
 // Sort compare functions
@@ -52,10 +52,10 @@ static int CompareIndexEntries_FilePos(const void *, const void * pvIndexEntry1,
 //-----------------------------------------------------------------------------
 // Local functions
 
-static char * StringFromMD5(LPBYTE md5, char * szBuffer)
-{
-    return StringFromBinary(md5, MD5_HASH_SIZE, szBuffer);
-}
+//static char * StringFromMD5(LPBYTE md5, char * szBuffer)
+//{
+//    return StringFromBinary(md5, MD5_HASH_SIZE, szBuffer);
+//}
 
 static char * FormatFileName(const char * szFormat, TCascStorage * hs)
 {
@@ -112,7 +112,7 @@ FILE * CreateDumpFile(const char * szFormat, TCascStorage * hs)
 
     return fp;
 }
-
+/*
 static void DumpIndexKey(
     FILE * fp,
     TCascStorage * hs,
@@ -202,7 +202,7 @@ static void DumpEncodingEntry(
         fprintf(fp, "  NO ENCODING KEYS\n");
     }
 }
-
+*/
 //-----------------------------------------------------------------------------
 // Public functions
 
@@ -322,7 +322,7 @@ void CascDumpFileNames(const char * szFileName, void * pvMarFile)
     // Free the search structures
     Struct1C.FreeStruct40();
 }
-
+/*
 void CascDumpMndxRoot(const char * szFileName, PCASC_MNDX_INFO pMndxInfo)
 {
     PCASC_ROOT_ENTRY_MNDX pRootEntry;
@@ -346,7 +346,7 @@ void CascDumpMndxRoot(const char * szFileName, PCASC_MNDX_INFO pMndxInfo)
         fclose(fp);
     }
 }
-
+*/
 void CascDumpIndexEntries(const char * szFileName, TCascStorage * hs)
 {
     PCASC_INDEX_ENTRY * ppIndexEntries;
@@ -389,7 +389,7 @@ void CascDumpIndexEntries(const char * szFileName, TCascStorage * hs)
         fclose(fp);
     }
 }
-
+/*
 void CascDumpRootFile(
     TCascStorage * hs,
     LPBYTE pbRootFile,
@@ -421,9 +421,9 @@ void CascDumpRootFile(
         for(pbFilePointer = pbRootFile; pbFilePointer <= pbRootFileEnd; )
         {
             // Validate the root block
-            pbFilePointer = VerifyLocaleBlock(&BlockInfo, pbFilePointer, pbRootFileEnd);
-            if(pbFilePointer == NULL)
-                break;
+//          pbFilePointer = VerifyLocaleBlock(&BlockInfo, pbFilePointer, pbRootFileEnd);
+//          if(pbFilePointer == NULL)
+//              break;
 
             // Dump the locale block
             fprintf(fp, "Flags: %08X  Locales: %08X  NumberOfFiles: %u\n"
@@ -461,6 +461,7 @@ void CascDumpRootFile(
         fclose(fp);
     }
 }
+*/
 
 void CascDumpFile(const char * szFileName, HANDLE hFile)
 {

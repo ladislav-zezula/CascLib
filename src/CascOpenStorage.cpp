@@ -14,11 +14,6 @@
 #include "CascLib.h"
 #include "CascCommon.h"
 
-// Handlers for different root file formats
-#include "CascRootFile_Diablo3.h"
-#include "CascRootFile_Mndx.h"
-#include "CascRootFile_WoW.h"
-
 //-----------------------------------------------------------------------------
 // Dumping options
 
@@ -708,11 +703,11 @@ static LPBYTE LoadRootFileToMemory(HANDLE hFile, DWORD * pcbRootFile)
     int nError = ERROR_SUCCESS;
 
     // Dummy read the first 16 bytes
-    CascReadFile(hFile, &StartOfFile, sizeof(StartOfFile), &dwBytesRead);
+    CascReadFile(hFile, StartOfFile, sizeof(StartOfFile), &dwBytesRead);
     if(dwBytesRead != sizeof(StartOfFile))
         nError = ERROR_BAD_FORMAT;
 
-    // Calculate and allocate space for the entire file
+    // Calculate the size of the entire file
     if(nError == ERROR_SUCCESS)
     {
         // Convert the file handle to pointer to TCascFile
@@ -787,12 +782,12 @@ static int LoadEncodingFile(TCascStorage * hs)
     // Verify all encoding segments
     if(nError == ERROR_SUCCESS)
     {
-        // Save the encoding header
-        hs->pEncodingHeader = (PCASC_ENCODING_HEADER)pbEncodingFile;
+        PCASC_ENCODING_HEADER pEncodingHeader = (PCASC_ENCODING_HEADER)pbEncodingFile;
 
         // Convert size and offset
-        dwNumberOfSegments = ConvertBytesToInteger_4(hs->pEncodingHeader->NumSegments);
-        dwSegmentsPos = ConvertBytesToInteger_4(hs->pEncodingHeader->SegmentsPos);
+        dwNumberOfSegments = ConvertBytesToInteger_4(pEncodingHeader->NumSegments);
+        dwSegmentsPos = ConvertBytesToInteger_4(pEncodingHeader->SegmentsPos);
+        hs->pbEncodingFile = pbEncodingFile;
 
         // Allocate the array of encoding segments
         pEncodingSegment = (PFILE_ENCODING_SEGMENT)(pbEncodingFile + sizeof(CASC_ENCODING_HEADER) + dwSegmentsPos);
@@ -849,9 +844,8 @@ static int LoadRootFile(TCascStorage * hs, DWORD dwLocaleMask)
     int nError = ERROR_SUCCESS;
 
     // Sanity checks
-    assert(hs->RootTable.TablePtr == NULL);
-    assert(hs->RootTable.ItemCount == 0);
     assert(hs->ppEncodingEntries != NULL);
+    assert(hs->pRootFile == NULL);
 
     // Locale: The default parameter is 0 - in that case,
     // we assign the default locale, loaded from the .build.info file
@@ -862,37 +856,32 @@ static int LoadRootFile(TCascStorage * hs, DWORD dwLocaleMask)
     // or a file containing an array of root entries (World of Warcraft 6.0+)
     // Note: The "root" key file's MD5 hash is equal to its name
     // in the configuration
-    if(!CascOpenFileByEncodingKey((HANDLE)hs, &hs->RootKey, 0, &hFile))
-        nError = GetLastError();
-
-    // Load the entire ROOT file to memory
-    if(nError == ERROR_SUCCESS)
+    if(CascOpenFileByEncodingKey((HANDLE)hs, &hs->RootKey, 0, &hFile))
     {
-        // Load the necessary part of the ENCODING file to memory
         pbRootFile = LoadRootFileToMemory(hFile, &cbRootFile);
-        if(pbRootFile == NULL || cbRootFile <= sizeof(PFILE_LOCALE_BLOCK))
-            nError = ERROR_FILE_CORRUPT;
-
-        // Close the encoding file
         CascCloseFile(hFile);
+    }
+    else
+    {
+        nError = GetLastError();
     }
 
     // Check if the version of the ROOT file
-    if(nError == ERROR_SUCCESS)
+    if(nError == ERROR_SUCCESS && pbRootFile != NULL)
     {
         FileSignature = (PDWORD)pbRootFile;
         switch(FileSignature[0])
         {
-            case CASC_MNDX_SIGNATURE:
-                nError = LoadMndxRootFile(hs, pbRootFile, cbRootFile);
+            case CASC_MNDX_ROOT_SIGNATURE:
+                nError = RootFile_CreateMNDX(hs, pbRootFile, cbRootFile);
                 break;
 
             case CASC_DIABLO3_ROOT_SIGNATURE:
-                nError = LoadDiablo3RootFile(hs, pbRootFile, cbRootFile, dwLocaleMask);
+                nError = RootFile_CreateDiablo3(hs, pbRootFile, cbRootFile);
                 break;
 
             default:
-                nError = LoadWowRootFile(hs, pbRootFile, cbRootFile, dwLocaleMask);
+                nError = RootFile_CreateWoW6(hs, pbRootFile, cbRootFile, dwLocaleMask);
                 break;
         }
     }
@@ -908,19 +897,16 @@ static TCascStorage * FreeCascStorage(TCascStorage * hs)
 
     if(hs != NULL)
     {
-        // Free the MNDX info
-        if(hs->pPackages != NULL)
-            CASC_FREE(hs->pPackages);
-        if(hs->pMndxInfo != NULL)
-            FreeMndxInfo(hs->pMndxInfo);
+        // Free the root handler
+        if(hs->pRootFile != NULL)
+            RootFile_Close(hs->pRootFile);
+        hs->pRootFile = NULL;
 
         // Free the pointers to file entries
-        if(hs->RootTable.TablePtr != NULL)
-            CASC_FREE(hs->RootTable.TablePtr);
         if(hs->ppEncodingEntries != NULL)
             CASC_FREE(hs->ppEncodingEntries);
-        if(hs->pEncodingHeader != NULL)
-            CASC_FREE(hs->pEncodingHeader);
+        if(hs->pbEncodingFile != NULL)
+            CASC_FREE(hs->pbEncodingFile);
         if(hs->pIndexEntryMap != NULL)
             Map_Free(hs->pIndexEntryMap);
 
@@ -1063,8 +1049,7 @@ bool WINAPI CascGetStorageInfo(
             break;
 
         case CascStorageFeatures:
-            if(hs->pMndxInfo != NULL)
-                dwInfoValue |= CASC_FEATURE_LISTFILE;
+            dwInfoValue |= (hs->pRootFile->dwRootFlags & ROOT_FLAG_HAS_NAMES) ? CASC_FEATURE_LISTFILE : 0;
             break;
 
         case CascStorageGameInfo:

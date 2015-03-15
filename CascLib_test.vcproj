@@ -498,7 +498,7 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath=".\src\CascRootFile_WoW.cpp"
+				RelativePath=".\src\CascRootFile_WoW6.cpp"
 				>
 			</File>
 			<File
@@ -813,7 +813,7 @@
 					>
 				</File>
 				<File
-					RelativePath=".\src\FileStream.h"
+					RelativePath=".\src\common\FileStream.h"
 					>
 				</File>
 				<File
@@ -832,6 +832,14 @@
 					RelativePath=".\src\common\Map.h"
 					>
 				</File>
+				<File
+					RelativePath=".\src\common\RootFile.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\src\common\RootFile.h"
+					>
+				</File>
 			</Filter>
 		</Filter>
 		<Filter
@@ -846,19 +854,11 @@
 				>
 			</File>
 			<File
+				RelativePath=".\src\CascMndx.h"
+				>
+			</File>
+			<File
 				RelativePath=".\src\CascPort.h"
-				>
-			</File>
-			<File
-				RelativePath=".\src\CascRootFile_Diablo3.h"
-				>
-			</File>
-			<File
-				RelativePath=".\src\CascRootFile_Mndx.h"
-				>
-			</File>
-			<File
-				RelativePath=".\src\CascRootFile_WoW.h"
 				>
 			</File>
 		</Filter>

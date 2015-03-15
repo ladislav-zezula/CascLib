@@ -26,6 +26,7 @@
 #include "common/Map.h"
 #include "common/FileStream.h"
 #include "common/ListFile.h"
+#include "common/RootFile.h"
 
 // Headers from LibTomCrypt
 #include "libtomcrypt/src/headers/tomcrypt.h"
@@ -70,40 +71,9 @@
 #define CASC_PACKAGE_BUFFER     0x1000
 
 //-----------------------------------------------------------------------------
-// On-disk structures
-
-typedef struct _FILE_LOCALE_BLOCK
-{
-    DWORD NumberOfFiles;                        // Number of entries
-    DWORD Flags;
-    DWORD Locales;                              // File locale mask (CASC_LOCALE_XXX)
-
-    // Followed by a block of 32-bit integers (count: NumberOfFiles)
-    // Followed by the MD5 and file name hash (count: NumberOfFiles)
-
-} FILE_LOCALE_BLOCK, *PFILE_LOCALE_BLOCK;
-
-typedef struct _FILE_ROOT_ENTRY
-{
-    DWORD EncodingKey[4];                       // MD5 of the file
-    ULONGLONG FileNameHash;                     // Jenkins hash of the file name
-
-} FILE_ROOT_ENTRY, *PFILE_ROOT_ENTRY;
-
-typedef struct _ROOT_BLOCK_INFO
-{
-    PFILE_LOCALE_BLOCK pLocaleBlockHdr;         // Pointer to the locale block
-    PDWORD pInt32Array;                         // Pointer to the array of 32-bit integers
-    PFILE_ROOT_ENTRY pRootEntries;
-
-} ROOT_BLOCK_INFO, *PROOT_BLOCK_INFO;
-
-//-----------------------------------------------------------------------------
 // In-memory structures
 
-class TMndxFindResult;
 struct TFileStream;
-struct _MAR_FILE;
 
 typedef struct _CASC_INDEX_ENTRY
 {
@@ -156,7 +126,7 @@ typedef struct _CASC_ENCODING_HEADER
 typedef struct _CASC_ENCODING_ENTRY
 {
     USHORT KeyCount;                                // Number of subitems
-    BYTE FileSizeBE[4];                          // Compressed file size (header area + frame headers + compressed frames), in bytes
+    BYTE FileSizeBE[4];                             // Compressed file size (header area + frame headers + compressed frames), in bytes
     BYTE EncodingKey[MD5_HASH_SIZE];                // File encoding key
 
     // Followed by the index keys
@@ -164,87 +134,10 @@ typedef struct _CASC_ENCODING_ENTRY
     // Followed by the index keys (number of items = KeyCount)
 } CASC_ENCODING_ENTRY, *PCASC_ENCODING_ENTRY;
 
-typedef struct _CASC_ROOT_LOCALE_BLOCK
-{
-    DWORD NumberOfFiles;                            // Number of entries
-    DWORD Flags;
-    DWORD FileLocales;                              // File locales (CASC_LOCALE_XXX)
+#define GET_INDEX_KEY(pEncodingEntry)  (pEncodingEntry->EncodingKey + MD5_HASH_SIZE)
 
-    // Followed by a block of 32-bit integers (count: NumberOfFiles)
-    // Followed by the MD5 and file name hash (count: NumberOfFiles)
-
-} CASC_ROOT_LOCALE_BLOCK, *PCASC_ROOT_LOCALE_BLOCK;
-
-// Root file entry for CASC storages with MNDX root file (Heroes of the Storm)
-// Corresponds to the in-file structure
-typedef struct _CASC_ROOT_ENTRY_MNDX
-{
-    DWORD Flags;                                    // High 8 bits: Flags, low 24 bits: package index
-    BYTE  EncodingKey[MD5_HASH_SIZE];               // Encoding key for the file
-    DWORD FileSize;                                 // Uncompressed file size, in bytes
-
-} CASC_ROOT_ENTRY_MNDX, *PCASC_ROOT_ENTRY_MNDX;
-
-// Root file entry for CASC storages without MNDX root file (World of Warcraft 6.0+)
-// Does not match to the in-file structure of the root entry
-typedef struct _CASC_ROOT_ENTRY
-{
-    ULONGLONG FileNameHash;                         // Jenkins hash of the file name
-    DWORD SumValue;                                 // Sum value
-    DWORD Locales;                                  // Locale flags of the file
-    DWORD EncodingKey[4];                           // File encoding key (MD5)
-
-} CASC_ROOT_ENTRY, *PCASC_ROOT_ENTRY;
-
-// Definition of the hash table for CASC root items
-typedef struct _CASC_ROOT_HASH_TABLE
-{
-    PCASC_ROOT_ENTRY TablePtr;                      // Pointer to the CASC root table
-    DWORD TableSize;                                // Total size of the root table
-    DWORD ItemCount;                                // Number of items currently in the table
-
-} CASC_ROOT_HASH_TABLE, *PCASC_ROOT_HASH_TABLE;
-
-typedef struct _CASC_MNDX_INFO
-{
-    bool bRootFileLoaded;                           // true if the root info file was properly loaded
-    BYTE RootFileName[MD5_HASH_SIZE];               // Name (aka MD5) of the root file 
-    DWORD HeaderVersion;                            // Must be <= 2
-    DWORD FormatVersion;
-    DWORD field_1C;
-    DWORD field_20;
-    DWORD MarInfoOffset;                            // Offset of the first MAR entry info
-    DWORD MarInfoCount;                             // Number of the MAR info entries
-    DWORD MarInfoSize;                              // Size of the MAR info entry
-    DWORD MndxEntriesOffset;
-    DWORD MndxEntriesTotal;                         // Total number of MNDX root entries
-    DWORD MndxEntriesValid;                         // Number of valid MNDX root entries
-    DWORD MndxEntrySize;                            // Size of one MNDX root entry
-    struct _MAR_FILE * pMarFile1;                   // File name list for the packages
-    struct _MAR_FILE * pMarFile2;                   // File name list for names stripped of package names
-    struct _MAR_FILE * pMarFile3;                   // File name list for complete names
-    PCASC_ROOT_ENTRY_MNDX pMndxEntries;
-    PCASC_ROOT_ENTRY_MNDX * ppValidEntries;
-
-} CASC_MNDX_INFO, *PCASC_MNDX_INFO;
-
-typedef struct _CASC_PACKAGE
-{
-    char * szFileName;                              // Pointer to file name
-    size_t nLength;                                 // Length of the file name
-
-} CASC_PACKAGE, *PCASC_PACKAGE;
-
-typedef struct _CASC_PACKAGES
-{
-    char * szNameBuffer;                            // Pointer to the buffer for file names
-    size_t NameEntries;                             // Number of name entries in Names
-    size_t NameBufferUsed;                          // Number of bytes used in the name buffer
-    size_t NameBufferMax;                           // Total size of the name buffer
-
-    CASC_PACKAGE Packages[1];                       // List of packages
-
-} CASC_PACKAGES, *PCASC_PACKAGES;
+//-----------------------------------------------------------------------------
+// Structures for CASC storage and CASC file
 
 typedef struct _TCascStorage
 {
@@ -286,14 +179,11 @@ typedef struct _TCascStorage
     CASC_MAPPING_TABLE KeyMapping[CASC_INDEX_COUNT]; // Key mapping
     PCASC_MAP pIndexEntryMap;                       // Map of index entries
 
-    PCASC_ENCODING_HEADER pEncodingHeader;          // The encoding file
     PCASC_ENCODING_ENTRY * ppEncodingEntries;       // Map of encoding entries
-    size_t nEncodingEntries;
+    LPBYTE pbEncodingFile;                          // The encoding file
+    size_t nEncodingEntries;                        // Number of encoding entries
 
-    CASC_ROOT_HASH_TABLE RootTable;                 // Hash table for the root entries
-
-    PCASC_MNDX_INFO pMndxInfo;                      // Used for storages which have MNDX/MAR file
-    PCASC_PACKAGES pPackages;                       // Linear list of present packages
+    TRootFile * pRootFile;                          // Common handler for various ROOT file formats
 
 } TCascStorage;
 
@@ -334,16 +224,25 @@ typedef struct _TCascFile
 typedef struct _TCascSearch
 {
     TCascStorage * hs;                              // Pointer to the storage handle
-    const char * szClassName;
-    TCHAR * szListFile;
+    const char * szClassName;                       // Contains "TCascSearch"
+    TCHAR * szListFile;                             // Name of the listfile
     void * pCache;                                  // Listfile cache
-    TMndxFindResult * pStruct1C;                    // Search structure for MNDX info
-    char * szMask;
+    char * szMask;                                  // Search mask
     char szFileName[MAX_PATH];                      // Buffer for the file name
     char szNormName[MAX_PATH];                      // Buffer for normalized file name
+
+    // Provider-specific data
+    void * pRootContext;                            // Root-specific search context
+    size_t RootSearchPhase;                         // Root-specific phase value for search phase
+    size_t IndexLevel1;                             // Root-specific search context
+    size_t IndexLevel2;                             // Root-specific search context
+    DWORD dwState;                                  // Pointer to the search state (0 = listfile, 1 = nameless, 2 = done)
+
+    // TODO: DELETE THESE
+//  void * pStruct1C;                               // Search structure for MNDX info
     DWORD RootIndex;                                // Root index of the previously found item
-    DWORD dwState;                                  // Pointer to the state (0 = listfile, 1 = nameless, 2 = done)
-    BYTE BitArray[1];                               // Bit array of already-reported files
+    
+    BYTE BitArray[1];                               // Bit array of encoding keys. Set for each entry that has already been reported
 
 } TCascSearch;
 
@@ -393,11 +292,17 @@ int LoadBuildInfo(TCascStorage * hs);
 TCascStorage * IsValidStorageHandle(HANDLE hStorage);
 TCascFile * IsValidFileHandle(HANDLE hFile);
 
-PCASC_ROOT_ENTRY     FindRootEntry(TCascStorage * hs, const char * szFileName, DWORD * PtrTableIndex);
 PCASC_ENCODING_ENTRY FindEncodingEntry(TCascStorage * hs, PQUERY_KEY pEncodingKey, size_t * PtrIndex);
 PCASC_INDEX_ENTRY    FindIndexEntry(TCascStorage * hs, PQUERY_KEY pIndexKey);
 
 int CascDecompress(void * pvOutBuffer, PDWORD pcbOutBuffer, void * pvInBuffer, DWORD cbInBuffer);
+
+//-----------------------------------------------------------------------------
+// Support for ROOT file
+
+int RootFile_CreateDiablo3(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
+int RootFile_CreateMNDX(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
+int RootFile_CreateWoW6(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile, DWORD dwLocaleMask);
 
 //-----------------------------------------------------------------------------
 // Dumping CASC data structures
@@ -407,7 +312,7 @@ void CascDumpSparseArray(const char * szFileName, void * pvSparseArray);
 void CascDumpNameFragTable(const char * szFileName, void * pvMarFile);
 void CascDumpFileNames(const char * szFileName, void * pvMarFile);
 void CascDumpIndexEntries(const char * szFileName, TCascStorage * hs);
-void CascDumpMndxRoot(const char * szFileName, PCASC_MNDX_INFO pMndxInfo);
+//void CascDumpMndxRoot(const char * szFileName, PCASC_MNDX_INFO pMndxInfo);
 void CascDumpRootFile(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile, const char * szFormat, const TCHAR * szListFile, int nDumpLevel);
 void CascDumpFile(const char * szFileName, HANDLE hFile);
 #endif  // _DEBUG
