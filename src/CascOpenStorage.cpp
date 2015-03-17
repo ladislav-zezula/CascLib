@@ -15,13 +15,6 @@
 #include "CascCommon.h"
 
 //-----------------------------------------------------------------------------
-// Dumping options
-
-#ifdef _DEBUG
-#define CASC_DUMP_ROOT_FILE  2              // The root file will be dumped (level 2)
-#endif
-
-//-----------------------------------------------------------------------------
 // Local structures
 
 #define CASC_ENCODING_SEGMENT_SIZE      0x1000
@@ -558,20 +551,19 @@ static int CreateArrayOfIndexEntries(TCascStorage * hs)
 static int CreateMapOfEncodingKeys(TCascStorage * hs, PFILE_ENCODING_SEGMENT pEncodingSegment, DWORD dwNumberOfSegments)
 {
     PCASC_ENCODING_ENTRY pEncodingEntry;
-    size_t nMaxEntries;
-    size_t nEntries = 0;
+    DWORD dwMaxEntries;
     int nError = ERROR_SUCCESS;
 
     // Sanity check
-    assert(hs->ppEncodingEntries == NULL);
     assert(hs->pIndexEntryMap != NULL);
+    assert(hs->pEncodingMap == NULL);
 
-    // Calculate the largest eventual number of encodign entries
-    nMaxEntries = (dwNumberOfSegments * CASC_ENCODING_SEGMENT_SIZE) / (sizeof(CASC_ENCODING_ENTRY) + MD5_HASH_SIZE);
+    // Calculate the largest eventual number of encoding entries
+    dwMaxEntries = (dwNumberOfSegments * CASC_ENCODING_SEGMENT_SIZE) / (sizeof(CASC_ENCODING_ENTRY) + MD5_HASH_SIZE);
 
-    // Allocate the array of pointers to encoding entries
-    hs->ppEncodingEntries = CASC_ALLOC(PCASC_ENCODING_ENTRY, nMaxEntries);
-    if(hs->ppEncodingEntries != NULL)
+    // Create the map of the encoding entries
+    hs->pEncodingMap = Map_Create(dwMaxEntries, MD5_HASH_SIZE, FIELD_OFFSET(CASC_ENCODING_ENTRY, EncodingKey));
+    if(hs->pEncodingMap != NULL)
     {
         LPBYTE pbStartOfSegment = (LPBYTE)(pEncodingSegment + dwNumberOfSegments);
 
@@ -590,7 +582,7 @@ static int CreateMapOfEncodingKeys(TCascStorage * hs, PFILE_ENCODING_SEGMENT pEn
                     break;
 
                 // Insert the pointer the array
-                hs->ppEncodingEntries[nEntries++] = pEncodingEntry;
+                Map_InsertObject(hs->pEncodingMap, pEncodingEntry->EncodingKey);
 
                 // Move to the next encoding entry
                 pbEncodingEntry += sizeof(CASC_ENCODING_ENTRY) + (pEncodingEntry->KeyCount * MD5_HASH_SIZE);
@@ -599,9 +591,6 @@ static int CreateMapOfEncodingKeys(TCascStorage * hs, PFILE_ENCODING_SEGMENT pEn
             // Move to the next segment
             pbStartOfSegment += CASC_ENCODING_SEGMENT_SIZE;
         }
-
-        // Remember the total number of encoding entries
-        hs->nEncodingEntries = nEntries;
     }
     else
         nError = ERROR_NOT_ENOUGH_MEMORY;
@@ -787,7 +776,10 @@ static int LoadEncodingFile(TCascStorage * hs)
         // Convert size and offset
         dwNumberOfSegments = ConvertBytesToInteger_4(pEncodingHeader->NumSegments);
         dwSegmentsPos = ConvertBytesToInteger_4(pEncodingHeader->SegmentsPos);
-        hs->pbEncodingFile = pbEncodingFile;
+
+        // Store the encoding file to the CASC storage
+        hs->EncodingFile.pbData = pbEncodingFile;
+        hs->EncodingFile.cbData = cbEncodingFile;
 
         // Allocate the array of encoding segments
         pEncodingSegment = (PFILE_ENCODING_SEGMENT)(pbEncodingFile + sizeof(CASC_ENCODING_HEADER) + dwSegmentsPos);
@@ -844,7 +836,7 @@ static int LoadRootFile(TCascStorage * hs, DWORD dwLocaleMask)
     int nError = ERROR_SUCCESS;
 
     // Sanity checks
-    assert(hs->ppEncodingEntries != NULL);
+    assert(hs->pEncodingMap != NULL);
     assert(hs->pRootFile == NULL);
 
     // Locale: The default parameter is 0 - in that case,
@@ -886,6 +878,18 @@ static int LoadRootFile(TCascStorage * hs, DWORD dwLocaleMask)
         }
     }
 
+#ifdef _DEBUG
+    if(nError == ERROR_SUCCESS)
+    {
+        RootFile_Dump(hs,
+                      pbRootFile,
+                      cbRootFile,
+                      _T("\\casc_root_%build%.txt"),
+                      _T("\\Ladik\\Appdir\\CascLib\\listfile\\listfile-wow6.txt"),
+                      DUMP_LEVEL_INDEX_ENTRIES);
+    }
+#endif
+
     // Free the root file
     CASC_FREE(pbRootFile);
     return nError;
@@ -903,10 +907,10 @@ static TCascStorage * FreeCascStorage(TCascStorage * hs)
         hs->pRootFile = NULL;
 
         // Free the pointers to file entries
-        if(hs->ppEncodingEntries != NULL)
-            CASC_FREE(hs->ppEncodingEntries);
-        if(hs->pbEncodingFile != NULL)
-            CASC_FREE(hs->pbEncodingFile);
+        if(hs->pEncodingMap != NULL)
+            Map_Free(hs->pEncodingMap);
+        if(hs->EncodingFile.pbData != NULL)
+            CASC_FREE(hs->EncodingFile.pbData);
         if(hs->pIndexEntryMap != NULL)
             Map_Free(hs->pIndexEntryMap);
 

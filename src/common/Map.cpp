@@ -17,23 +17,26 @@
 
 static DWORD CalcHashIndex(PCASC_MAP pMap, void * pvIdentifier)
 {
+    LPBYTE pbIdentifier = (LPBYTE)pvIdentifier;
     DWORD dwHash = 0x7EEE7EEE;
 
     // Is it a string table?
     if(pMap->KeyLength == KEY_LENGTH_STRING)
     {
-        char * szString = (char *)pvIdentifier;
-
-        for(size_t i = 0; szString[i] != 0; i++)
-            dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ szString[i];
+        for(size_t i = 0; pbIdentifier[i] != 0; i++)
+            dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbIdentifier[i];
     }
     else
     {
-        LPBYTE pbHash = (LPBYTE)pvIdentifier;
-
-        // Construct the hash from the first 4 digits
-        for(size_t i = 0; i < pMap->KeyLength; i++)
-            dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbHash[i];
+        // Construct the hash from the first 8 digits
+        dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbIdentifier[0];
+        dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbIdentifier[1];
+        dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbIdentifier[2];
+        dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbIdentifier[3];
+        dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbIdentifier[4];
+        dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbIdentifier[5];
+        dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbIdentifier[6];
+        dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbIdentifier[7];
     }
 
     // Return the hash limited by the table size
@@ -104,7 +107,7 @@ size_t Map_EnumObjects(PCASC_MAP pMap, void **ppvArray)
     return pMap->ItemCount;
 }
 
-void * Map_FindObject(PCASC_MAP pMap, void * pvIdentifier)
+void * Map_FindObject(PCASC_MAP pMap, void * pvIdentifier, PDWORD PtrIndex)
 {
     void * pvTableEntry;
     DWORD dwHashIndex;
@@ -121,7 +124,11 @@ void * Map_FindObject(PCASC_MAP pMap, void * pvIdentifier)
 
             // Compare the hash
             if(CompareIdentifier(pMap, pvTableEntry, pvIdentifier))
+            {
+                if(PtrIndex != NULL)
+                    PtrIndex[0] = dwHashIndex;
                 return ((LPBYTE)pvTableEntry - pMap->MemberOffset);
+            }
 
             // Move to the next entry
             dwHashIndex = (dwHashIndex + 1) % pMap->TableSize;

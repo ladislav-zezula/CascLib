@@ -16,6 +16,7 @@ set(HEADER_FILES
 set(SRC_FILES
     src/common/Common.cpp
     src/common/Directory.cpp
+    src/common/DumpContext.cpp
     src/common/FileStream.cpp
     src/common/ListFile.cpp
     src/common/Map.cpp

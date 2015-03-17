@@ -218,7 +218,7 @@ TCHAR * CombinePath(const TCHAR * szDirectory, const TCHAR * szSubDir)
     return szFullPath;
 }
 
-void NormalizeFileName_UpperBkSlash(char * szTrgFileName, const char * szSrcFileName, size_t cchMaxChars)
+size_t NormalizeFileName_UpperBkSlash(char * szTrgFileName, const char * szSrcFileName, size_t cchMaxChars)
 {
     char * szTrgFileEnd = szTrgFileName + cchMaxChars;
     size_t i;
@@ -229,9 +229,10 @@ void NormalizeFileName_UpperBkSlash(char * szTrgFileName, const char * szSrcFile
 
     assert(szSrcFileName[i] == 0);
     szTrgFileName[i] = 0;
+    return i;
 }
 
-void NormalizeFileName_LowerSlash(char * szTrgFileName, const char * szSrcFileName, size_t cchMaxChars)
+size_t NormalizeFileName_LowerSlash(char * szTrgFileName, const char * szSrcFileName, size_t cchMaxChars)
 {
     char * szTrgFileEnd = szTrgFileName + cchMaxChars;
     size_t i;
@@ -242,6 +243,7 @@ void NormalizeFileName_LowerSlash(char * szTrgFileName, const char * szSrcFileNa
 
     assert(szSrcFileName[i] == 0);
     szTrgFileName[i] = 0;
+    return i;
 }
 
 int ConvertDigitToInt32(const TCHAR * szString, PDWORD PtrValue)
@@ -306,6 +308,11 @@ char * StringFromBinary(LPBYTE pbBinary, size_t cbBinary, char * szBuffer)
     // Terminate the string
     *szBuffer = 0;
     return szSaveBuffer;
+}
+
+char * StringFromMD5(LPBYTE md5, char * szBuffer)
+{
+    return StringFromBinary(md5, MD5_HASH_SIZE, szBuffer);
 }
 
 //-----------------------------------------------------------------------------

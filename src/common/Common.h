@@ -50,12 +50,13 @@ TCHAR * NewStrFromAnsi(LPBYTE pbStringBegin, LPBYTE pbStringEnd);
 
 TCHAR * CombinePath(const TCHAR * szPath, const TCHAR * szSubDir);
 
-void NormalizeFileName_UpperBkSlash(char * szTrgFileName, const char * szSrcFileName, size_t cchMaxChars);
-void NormalizeFileName_LowerSlash(char * szTrgFileName, const char * szSrcFileName, size_t cchMaxChars);
+size_t NormalizeFileName_UpperBkSlash(char * szTrgFileName, const char * szSrcFileName, size_t cchMaxChars);
+size_t NormalizeFileName_LowerSlash(char * szTrgFileName, const char * szSrcFileName, size_t cchMaxChars);
 
 int ConvertDigitToInt32(const TCHAR * szString, PDWORD PtrValue);
 int ConvertStringToInt32(const TCHAR * szString, size_t nMaxDigits, PDWORD PtrValue);
 char * StringFromBinary(LPBYTE pbBinary, size_t cbBinary, char * szBuffer);
+char * StringFromMD5(LPBYTE md5, char * szBuffer);
 
 //-----------------------------------------------------------------------------
 // File name utilities

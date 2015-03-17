@@ -408,7 +408,7 @@ const char * ListFile_FindName(PLISTFILE_MAP pListMap, ULONGLONG FileNameHash)
     PLISTFILE_ENTRY pListEntry = NULL;
 
     if(pListMap != NULL)
-        pListEntry = (PLISTFILE_ENTRY)Map_FindObject(pListMap->pNameMap, &FileNameHash);
+        pListEntry = (PLISTFILE_ENTRY)Map_FindObject(pListMap->pNameMap, &FileNameHash, NULL);
     return (pListEntry != NULL) ? pListEntry->szFileName : "";
 }
 

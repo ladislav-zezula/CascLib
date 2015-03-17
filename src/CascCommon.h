@@ -26,6 +26,7 @@
 #include "common/Map.h"
 #include "common/FileStream.h"
 #include "common/ListFile.h"
+#include "common/DumpContext.h"
 #include "common/RootFile.h"
 
 // Headers from LibTomCrypt
@@ -39,7 +40,7 @@
 
 #define CASC_GAME_HOTS      0x00010000          // Heroes of the Storm
 #define CASC_GAME_WOW6      0x00020000          // World of Warcraft - Warlords of Draenor
-#define CASC_GAME_DIABLO3   0x00030000          // Diablo 3 Since PTR 2.2.0
+#define CASC_GAME_DIABLO3   0x00030000          // Diablo 3 since PTR 2.2.0
 #define CASC_GAME_MASK      0xFFFF0000          // Mask for getting game ID
 
 #define CASC_INDEX_COUNT          0x10
@@ -179,9 +180,8 @@ typedef struct _TCascStorage
     CASC_MAPPING_TABLE KeyMapping[CASC_INDEX_COUNT]; // Key mapping
     PCASC_MAP pIndexEntryMap;                       // Map of index entries
 
-    PCASC_ENCODING_ENTRY * ppEncodingEntries;       // Map of encoding entries
-    LPBYTE pbEncodingFile;                          // The encoding file
-    size_t nEncodingEntries;                        // Number of encoding entries
+    QUERY_KEY EncodingFile;                         // Content of the ENCODING file
+    PCASC_MAP pEncodingMap;                         // Map of encoding entries
 
     TRootFile * pRootFile;                          // Common handler for various ROOT file formats
 
@@ -229,7 +229,6 @@ typedef struct _TCascSearch
     void * pCache;                                  // Listfile cache
     char * szMask;                                  // Search mask
     char szFileName[MAX_PATH];                      // Buffer for the file name
-    char szNormName[MAX_PATH];                      // Buffer for normalized file name
 
     // Provider-specific data
     void * pRootContext;                            // Root-specific search context
@@ -238,10 +237,6 @@ typedef struct _TCascSearch
     size_t IndexLevel2;                             // Root-specific search context
     DWORD dwState;                                  // Pointer to the search state (0 = listfile, 1 = nameless, 2 = done)
 
-    // TODO: DELETE THESE
-//  void * pStruct1C;                               // Search structure for MNDX info
-    DWORD RootIndex;                                // Root index of the previously found item
-    
     BYTE BitArray[1];                               // Bit array of encoding keys. Set for each entry that has already been reported
 
 } TCascSearch;
@@ -292,7 +287,7 @@ int LoadBuildInfo(TCascStorage * hs);
 TCascStorage * IsValidStorageHandle(HANDLE hStorage);
 TCascFile * IsValidFileHandle(HANDLE hFile);
 
-PCASC_ENCODING_ENTRY FindEncodingEntry(TCascStorage * hs, PQUERY_KEY pEncodingKey, size_t * PtrIndex);
+PCASC_ENCODING_ENTRY FindEncodingEntry(TCascStorage * hs, PQUERY_KEY pEncodingKey, PDWORD PtrIndex);
 PCASC_INDEX_ENTRY    FindIndexEntry(TCascStorage * hs, PQUERY_KEY pIndexKey);
 
 int CascDecompress(void * pvOutBuffer, PDWORD pcbOutBuffer, void * pvInBuffer, DWORD cbInBuffer);
@@ -312,8 +307,8 @@ void CascDumpSparseArray(const char * szFileName, void * pvSparseArray);
 void CascDumpNameFragTable(const char * szFileName, void * pvMarFile);
 void CascDumpFileNames(const char * szFileName, void * pvMarFile);
 void CascDumpIndexEntries(const char * szFileName, TCascStorage * hs);
+void CascDumpEncodingEntry(TCascStorage * hs, TDumpContext * dc, PCASC_ENCODING_ENTRY pEncodingEntry, int nDumpLevel);
 //void CascDumpMndxRoot(const char * szFileName, PCASC_MNDX_INFO pMndxInfo);
-void CascDumpRootFile(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile, const char * szFormat, const TCHAR * szListFile, int nDumpLevel);
 void CascDumpFile(const char * szFileName, HANDLE hFile);
 #endif  // _DEBUG
 

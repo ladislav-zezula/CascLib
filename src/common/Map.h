@@ -31,9 +31,8 @@ typedef struct _CASC_MAP
 
 PCASC_MAP Map_Create(DWORD dwMaxItems, DWORD dwKeyLength, DWORD dwMemberOffset);
 size_t Map_EnumObjects(PCASC_MAP pMap, void **ppvArray); 
-void * Map_FindObject(PCASC_MAP pMap, void * pvIdentifier);
+void * Map_FindObject(PCASC_MAP pMap, void * pvIdentifier, PDWORD PtrIndex);
 bool Map_InsertObject(PCASC_MAP pMap, void * pvIdentifier);
-void Map_Sort(PCASC_MAP pMap);
 void Map_Free(PCASC_MAP pMap);
 
 #endif // __HASHTOPTR_H__

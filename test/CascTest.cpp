@@ -50,6 +50,12 @@
 
 static const char szCircleChar[] = "|/-\\";
 
+#if defined(_MSC_VER) && defined(_DEBUG)
+#define GET_TICK_COUNT  GetTickCount
+#else
+#define GET_TICK_COUNT  0
+#endif
+
 //-----------------------------------------------------------------------------
 // Local functions
 
@@ -231,6 +237,7 @@ static int TestOpenStorage_EnumFiles(const TCHAR * szStorage, const TCHAR * szLi
     DWORD dwTotalFiles = 0;
     DWORD dwFoundFiles = 0;
     DWORD dwCircleCount = 0;
+    DWORD dwTickCount = 0;
     bool bFileFound = true;
     int nError = ERROR_SUCCESS;
 
@@ -252,17 +259,13 @@ static int TestOpenStorage_EnumFiles(const TCHAR * szStorage, const TCHAR * szLi
         hFind = CascFindFirstFile(hStorage, "*", &FindData, szListFile);
         if(hFind != NULL)
         {
+            dwTickCount = GET_TICK_COUNT();
             while(bFileFound)
             {
-                //char szPrevName[MAX_PATH*2];
-                //if(!_stricmp(GetPlainFileName(FindData.szFileName), "aicommand_autoai1.lvl0"))
-                //    DebugBreak();
-                //strcpy(szPrevName, FindData.szFileName);
-
                 // Extract the file
                 if((dwFoundFiles % 400) == 0)
                 {
-                    LogHelper.PrintProgress("Enumerating files: %c", szCircleChar[dwCircleCount % 4]);
+//                  LogHelper.PrintProgress("Enumerating files: %c", szCircleChar[dwCircleCount % 4]);
                     dwCircleCount++;
                 }
 
@@ -270,6 +273,8 @@ static int TestOpenStorage_EnumFiles(const TCHAR * szStorage, const TCHAR * szLi
                 dwFoundFiles++;
                 bFileFound = CascFindNextFile(hFind, &FindData);
             }
+
+            dwTickCount = GET_TICK_COUNT() - dwTickCount;
 
             // Just a testing call - must fail
             CascFindNextFile(hFind, &FindData);

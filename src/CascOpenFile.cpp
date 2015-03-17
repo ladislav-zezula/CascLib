@@ -27,41 +27,19 @@ PCASC_INDEX_ENTRY FindIndexEntry(TCascStorage * hs, PQUERY_KEY pIndexKey)
     PCASC_INDEX_ENTRY pIndexEntry = NULL;
 
     if(hs->pIndexEntryMap != NULL)
-        pIndexEntry = (PCASC_INDEX_ENTRY)Map_FindObject(hs->pIndexEntryMap, pIndexKey->pbData);
+        pIndexEntry = (PCASC_INDEX_ENTRY)Map_FindObject(hs->pIndexEntryMap, pIndexKey->pbData, NULL);
 
     return pIndexEntry;
 }
 
-PCASC_ENCODING_ENTRY FindEncodingEntry(TCascStorage * hs, PQUERY_KEY pEncodingKey, size_t * PtrIndex)
+PCASC_ENCODING_ENTRY FindEncodingEntry(TCascStorage * hs, PQUERY_KEY pEncodingKey, PDWORD PtrIndex)
 {
-    PCASC_ENCODING_ENTRY pEncodingEntry;
-    size_t StartEntry = 0;
-    size_t MidlEntry;
-    size_t EndEntry = hs->nEncodingEntries;
-    int nResult;
+    PCASC_ENCODING_ENTRY pEncodingEntry = NULL;
 
-    // Perform binary search
-    while(StartEntry < EndEntry)
-    {
-        // Calculate the middle of the interval
-        MidlEntry = StartEntry + ((EndEntry - StartEntry) / 2);
-        pEncodingEntry = hs->ppEncodingEntries[MidlEntry];
+    if(hs->pEncodingMap != NULL)
+        pEncodingEntry = (PCASC_ENCODING_ENTRY)Map_FindObject(hs->pEncodingMap, pEncodingKey->pbData, PtrIndex);
 
-        // Did we find it?
-        nResult = memcmp(pEncodingKey->pbData, pEncodingEntry->EncodingKey, MD5_HASH_SIZE);
-        if(nResult == 0)
-        {
-            if(PtrIndex != NULL)
-                PtrIndex[0] = MidlEntry;
-            return pEncodingEntry;
-        }
-
-        // Move the interval to the left or right
-        (nResult < 0) ? EndEntry = MidlEntry : StartEntry = MidlEntry + 1;
-    }
-
-    // Not found, sorry
-    return NULL;
+    return pEncodingEntry;
 }
 
 static TCascFile * CreateFileHandle(TCascStorage * hs, PCASC_INDEX_ENTRY pIndexEntry)

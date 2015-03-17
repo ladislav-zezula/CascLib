@@ -19,6 +19,10 @@
 
 #define ROOT_FLAG_HAS_NAMES             0x00000001  // The root file contains file names
 
+#define DUMP_LEVEL_ROOT_FILE                    1   // Dump root file
+#define DUMP_LEVEL_ENCODING_FILE                2   // Dump root file + encoding file
+#define DUMP_LEVEL_INDEX_ENTRIES                3   // Dump root file + encoding file + index entries
+
 //-----------------------------------------------------------------------------
 // Root file function prototypes
 
@@ -40,10 +44,10 @@ typedef LPBYTE (*ROOT_GETKEY)(
     );
 
 typedef void (*ROOT_DUMP)(
-    struct TRootFile * pRootFile,                   // Pointer to an initialized root handler
-    FILE * fp,                                      // Pointer to an opened file
-    LPBYTE pbRootFile,
-    DWORD cbRootFile,
+    struct _TCascStorage * hs,                      // Pointer to the open storage
+    TDumpContext * dc,                              // Opened dump context
+    LPBYTE pbRootFile,                              // Pointer to the loaded ROOT file
+    DWORD cbRootFile,                               // Length of the loaded ROOT file
     const TCHAR * szListFile,
     int nDumpLevel
     );
@@ -69,7 +73,7 @@ struct TRootFile
 LPBYTE RootFile_Search(TRootFile * pRootFile, struct _TCascSearch * pSearch, PDWORD PtrFileSize, PDWORD PtrLocaleFlags);
 void   RootFile_EndSearch(TRootFile * pRootFile, struct _TCascSearch * pSearch);
 LPBYTE RootFile_GetKey(TRootFile * pRootFile, const char * szFileName);
-void   RootFile_Dump(TRootFile * pRootFile, const char * szFileName);
+void   RootFile_Dump(struct _TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile, const TCHAR * szNameFormat, const TCHAR * szListFile, int nDumpLevel);
 void   RootFile_Close(TRootFile * pRootFile);
 
 #endif  // __ROOT_FILE_H__

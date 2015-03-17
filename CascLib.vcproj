@@ -1126,6 +1126,14 @@
 					>
 				</File>
 				<File
+					RelativePath=".\src\common\DumpContext.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\src\common\DumpContext.h"
+					>
+				</File>
+				<File
 					RelativePath=".\src\common\FileStream.cpp"
 					>
 				</File>
