@@ -101,23 +101,31 @@ TDumpContext * CreateDumpContext(TCascStorage * hs, const TCHAR * szNameFormat)
 int dump_print(TDumpContext * dc, const char * szFormat, ...)
 {
     va_list argList;
+    char szBuffer[0x200];
     int nLength;
-
-    // Flush the dump context if there is less than 512 bytes of free space
-    if((dc->pbBufferEnd - dc->pbBufferPtr) < 0x200)
-    {
-        FileStream_Write(dc->pStream, NULL, dc->pbBufferBegin, (DWORD)(dc->pbBufferPtr - dc->pbBufferBegin));
-        dc->pbBufferPtr = dc->pbBufferBegin;
-    }
 
     // Print the buffer using sprintf
     va_start(argList, szFormat);
-    nLength = vsprintf((char *)dc->pbBufferPtr, szFormat, argList);
+    nLength = vsprintf(szBuffer, szFormat, argList);
+    assert(nLength < 0x200);
     va_end(argList);
 
-    // Increment the buffer pointer
-    assert(nLength < 0x200);
-    dc->pbBufferPtr += nLength;
+    // Copy the string. Replace "\n" with "\n\r"
+    for(int i = 0; i < nLength; i++)
+    {
+        // Flush the buffer, if needed
+        if((dc->pbBufferPtr + 2) >= dc->pbBufferEnd)
+        {
+            FileStream_Write(dc->pStream, NULL, dc->pbBufferBegin, (DWORD)(dc->pbBufferPtr - dc->pbBufferBegin));
+            dc->pbBufferPtr = dc->pbBufferBegin;
+        }
+
+        // Copy the char
+        if(szBuffer[i] == 0x0A)
+            *dc->pbBufferPtr++ = 0x0D;
+        *dc->pbBufferPtr++ = szBuffer[i];
+    }
+
     return nLength;
 }
 
@@ -126,6 +134,11 @@ int dump_close(TDumpContext * dc)
     // Only if the dump context is valid
     if(dc != NULL)
     {
+        // Flush the dump context if there are some data
+        if(dc->pbBufferPtr > dc->pbBufferBegin)
+            FileStream_Write(dc->pStream, NULL, dc->pbBufferBegin, (DWORD)(dc->pbBufferPtr - dc->pbBufferBegin));
+        dc->pbBufferPtr = dc->pbBufferBegin;
+
         // Free the file stream and the entire context
         if(dc->pStream != NULL)
             FileStream_Close(dc->pStream);

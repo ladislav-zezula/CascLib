@@ -398,16 +398,19 @@ int main(int argc, char * argv[])
 //      nError = Hack();
 
 //  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/18865/Data"), "SPELLS\\T_VFX_BLOOD06B.BLP");
-
-//  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/18888/Data"), "SPELLS\\T_VFX_BLOOD06B.BLP");
 
 //  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/19342-root-file-cut/Data"), "termination.html");
+//      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/19342-root-file-cut/Data"), "SPELLS\\T_VFX_BLOOD06B.BLP");
+
+    if(nError == ERROR_SUCCESS)
+        nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), "termination.html");
 
 //  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - Heroes of the Storm\\30414\\HeroesData"), "World\\Maps\\Azeroth\\Azeroth_29_28.adt");
+//      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - Heroes of the Storm/30414/HeroesData"), "World\\Maps\\Azeroth\\Azeroth_29_28.adt");
+
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_OpenFile(MAKE_PATH("2015 - Diablo III/30013/Data"), "World\\Maps\\Azeroth\\Azeroth_29_28.adt");
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/29049/BNTData"), NULL);
@@ -430,8 +433,8 @@ int main(int argc, char * argv[])
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19116/Data"), szListFile);
 
-    if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), szListFile);
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), szListFile);
 
     // Test extracting the complete storage
 //  if(nError == ERROR_SUCCESS)
