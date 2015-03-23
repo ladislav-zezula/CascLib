@@ -533,7 +533,7 @@ static int CreateArrayOfIndexEntries(TCascStorage * hs)
                 // 9e dc a7 8f e2 09 ad d8 b7 (encoding file)
                 // f3 5e bb fb d1 2b 3f ef 8b
                 // c8 69 9f 18 a2 5e df 7e 52
-                Map_InsertObject(pMap, pIndexEntry->IndexKey);
+                Map_InsertObject(pMap, pIndexEntry, pIndexEntry->IndexKey);
 
                 // Move to the next entry
                 pIndexEntry++;
@@ -582,7 +582,7 @@ static int CreateMapOfEncodingKeys(TCascStorage * hs, PFILE_ENCODING_SEGMENT pEn
                     break;
 
                 // Insert the pointer the array
-                Map_InsertObject(hs->pEncodingMap, pEncodingEntry->EncodingKey);
+                Map_InsertObject(hs->pEncodingMap, pEncodingEntry, pEncodingEntry->EncodingKey);
 
                 // Move to the next encoding entry
                 pbEncodingEntry += sizeof(CASC_ENCODING_ENTRY) + (pEncodingEntry->KeyCount * MD5_HASH_SIZE);
@@ -837,7 +837,7 @@ static int LoadRootFile(TCascStorage * hs, DWORD dwLocaleMask)
 
     // Sanity checks
     assert(hs->pEncodingMap != NULL);
-    assert(hs->pRootFile == NULL);
+    assert(hs->pRootHandler == NULL);
 
     // Locale: The default parameter is 0 - in that case,
     // we assign the default locale, loaded from the .build.info file
@@ -865,15 +865,15 @@ static int LoadRootFile(TCascStorage * hs, DWORD dwLocaleMask)
         switch(FileSignature[0])
         {
             case CASC_MNDX_ROOT_SIGNATURE:
-                nError = RootFile_CreateMNDX(hs, pbRootFile, cbRootFile);
+                nError = RootHandler_CreateMNDX(hs, pbRootFile, cbRootFile);
                 break;
 
             case CASC_DIABLO3_ROOT_SIGNATURE:
-                nError = RootFile_CreateDiablo3(hs, pbRootFile, cbRootFile);
+                nError = RootHandler_CreateDiablo3(hs, pbRootFile, cbRootFile);
                 break;
 
             default:
-                nError = RootFile_CreateWoW6(hs, pbRootFile, cbRootFile, dwLocaleMask);
+                nError = RootHandler_CreateWoW6(hs, pbRootFile, cbRootFile, dwLocaleMask);
                 break;
         }
     }
@@ -881,12 +881,12 @@ static int LoadRootFile(TCascStorage * hs, DWORD dwLocaleMask)
 #ifdef _DEBUG
     if(nError == ERROR_SUCCESS)
     {
-        RootFile_Dump(hs,
-                      pbRootFile,
-                      cbRootFile,
-                      _T("\\casc_root_%build%.txt"),
-                      _T("\\Ladik\\Appdir\\CascLib\\listfile\\listfile-wow6.txt"),
-                      DUMP_LEVEL_INDEX_ENTRIES);
+        //RootFile_Dump(hs,
+        //              pbRootFile,
+        //              cbRootFile,
+        //              _T("\\casc_root_%build%.txt"),
+        //              _T("\\Ladik\\Appdir\\CascLib\\listfile\\listfile-wow6.txt"),
+        //              DUMP_LEVEL_INDEX_ENTRIES);
     }
 #endif
 
@@ -902,9 +902,9 @@ static TCascStorage * FreeCascStorage(TCascStorage * hs)
     if(hs != NULL)
     {
         // Free the root handler
-        if(hs->pRootFile != NULL)
-            RootFile_Close(hs->pRootFile);
-        hs->pRootFile = NULL;
+        if(hs->pRootHandler != NULL)
+            RootHandler_Close(hs->pRootHandler);
+        hs->pRootHandler = NULL;
 
         // Free the pointers to file entries
         if(hs->pEncodingMap != NULL)
@@ -1053,7 +1053,7 @@ bool WINAPI CascGetStorageInfo(
             break;
 
         case CascStorageFeatures:
-            dwInfoValue |= (hs->pRootFile->dwRootFlags & ROOT_FLAG_HAS_NAMES) ? CASC_FEATURE_LISTFILE : 0;
+            dwInfoValue |= (hs->pRootHandler->dwRootFlags & ROOT_FLAG_HAS_NAMES) ? CASC_FEATURE_LISTFILE : 0;
             break;
 
         case CascStorageGameInfo:

@@ -27,7 +27,7 @@
 #include "common/FileStream.h"
 #include "common/ListFile.h"
 #include "common/DumpContext.h"
-#include "common/RootFile.h"
+#include "common/RootHandler.h"
 
 // Headers from LibTomCrypt
 #include "libtomcrypt/src/headers/tomcrypt.h"
@@ -75,6 +75,12 @@
 // In-memory structures
 
 struct TFileStream;
+
+typedef struct _ENCODING_KEY
+{
+    BYTE Value[MD5_HASH_SIZE];                      // MD5 of the file
+
+} ENCODING_KEY, *PENCODING_KEY;
 
 typedef struct _CASC_INDEX_ENTRY
 {
@@ -183,7 +189,7 @@ typedef struct _TCascStorage
     QUERY_KEY EncodingFile;                         // Content of the ENCODING file
     PCASC_MAP pEncodingMap;                         // Map of encoding entries
 
-    TRootFile * pRootFile;                          // Common handler for various ROOT file formats
+    TRootHandler * pRootHandler;                          // Common handler for various ROOT file formats
 
 } TCascStorage;
 
@@ -295,9 +301,9 @@ int CascDecompress(void * pvOutBuffer, PDWORD pcbOutBuffer, void * pvInBuffer, D
 //-----------------------------------------------------------------------------
 // Support for ROOT file
 
-int RootFile_CreateDiablo3(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
-int RootFile_CreateMNDX(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
-int RootFile_CreateWoW6(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile, DWORD dwLocaleMask);
+int RootHandler_CreateDiablo3(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
+int RootHandler_CreateMNDX(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
+int RootHandler_CreateWoW6(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile, DWORD dwLocaleMask);
 
 //-----------------------------------------------------------------------------
 // Dumping CASC data structures

@@ -357,7 +357,7 @@ static PLISTFILE_MAP ListMap_Finish(PLISTFILE_MAP pListMap)
         pbEntry += pListEntry->cbEntrySize;
 
         // Insert the entry to the map
-        Map_InsertObject(pMap, pListEntry);
+        Map_InsertObject(pMap, pListEntry, &pListEntry->FileNameHash);
     }
 
     return pListMap;

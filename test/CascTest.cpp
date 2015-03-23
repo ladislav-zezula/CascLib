@@ -51,9 +51,9 @@
 static const char szCircleChar[] = "|/-\\";
 
 #if defined(_MSC_VER) && defined(_DEBUG)
-#define GET_TICK_COUNT  GetTickCount
+#define GET_TICK_COUNT()  GetTickCount()
 #else
-#define GET_TICK_COUNT  0
+#define GET_TICK_COUNT()  0
 #endif
 
 //-----------------------------------------------------------------------------
@@ -234,6 +234,7 @@ static int TestOpenStorage_EnumFiles(const TCHAR * szStorage, const TCHAR * szLi
     TLogHelper LogHelper;
     HANDLE hStorage;
     HANDLE hFind;
+    char * szStripped;
     DWORD dwTotalFiles = 0;
     DWORD dwFoundFiles = 0;
     DWORD dwCircleCount = 0;
@@ -251,6 +252,8 @@ static int TestOpenStorage_EnumFiles(const TCHAR * szStorage, const TCHAR * szLi
 
     if(nError == ERROR_SUCCESS)
     {
+        FILE * fp = fopen("E:\\diablo3-listfile-ptr.txt", "wt");
+
         // Retrieve the total number of files
         CascGetStorageInfo(hStorage, CascStorageFileCount, &dwTotalFiles, sizeof(dwTotalFiles), NULL);
 
@@ -269,6 +272,16 @@ static int TestOpenStorage_EnumFiles(const TCHAR * szStorage, const TCHAR * szLi
                     dwCircleCount++;
                 }
 
+                if(fp != NULL && FindData.szFileName[0] != 0)
+                {
+                    szStripped = strchr(FindData.szFileName, '\\');
+                    if(szStripped == NULL)
+                        szStripped = FindData.szFileName;
+                    else
+                        szStripped++;
+                    fprintf(fp, "%s\n", szStripped);
+                }
+
                 // Find the next file in CASC
                 dwFoundFiles++;
                 bFileFound = CascFindNextFile(hFind, &FindData);
@@ -283,6 +296,9 @@ static int TestOpenStorage_EnumFiles(const TCHAR * szStorage, const TCHAR * szLi
             CascFindClose(hFind);
             LogHelper.PrintProgress("");
         }
+
+        if(fp != NULL)
+            fclose(fp);
     }
 
     // Close storage and return
@@ -403,14 +419,14 @@ int main(int argc, char * argv[])
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/19342-root-file-cut/Data"), "SPELLS\\T_VFX_BLOOD06B.BLP");
 
-    if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), "termination.html");
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), "termination.html");
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - Heroes of the Storm/30414/HeroesData"), "World\\Maps\\Azeroth\\Azeroth_29_28.adt");
 
 //  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_OpenFile(MAKE_PATH("2015 - Diablo III/30013/Data"), "World\\Maps\\Azeroth\\Azeroth_29_28.adt");
+//      nError = TestOpenStorage_OpenFile(MAKE_PATH("2015 - Diablo III/30013/Data"), "Base\\SoundBank\\Barbarian_Male\\0005.xxx");
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/29049/BNTData"), NULL);
@@ -435,6 +451,9 @@ int main(int argc, char * argv[])
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), szListFile);
+
+    if(nError == ERROR_SUCCESS)
+        nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Diablo III/30013/Data"), NULL);
 
     // Test extracting the complete storage
 //  if(nError == ERROR_SUCCESS)

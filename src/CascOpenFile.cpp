@@ -218,7 +218,7 @@ bool WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocal
     }
 
     // Let the root directory provider get us the encoding key
-    pbEncodingKey = RootFile_GetKey(hs->pRootFile, szFileName);
+    pbEncodingKey = RootHandler_GetKey(hs->pRootHandler, szFileName);
     if(pbEncodingKey == NULL)
     {
         SetLastError(ERROR_FILE_NOT_FOUND);

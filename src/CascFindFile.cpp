@@ -30,8 +30,8 @@ static void FreeSearchHandle(TCascSearch * pSearch)
     // Close (dereference) the archive handle
     if(pSearch->hs != NULL)
     {
-        // Give root providers chance to free their stuff
-        RootFile_EndSearch(pSearch->hs->pRootFile, pSearch);
+        // Give root handler chance to free their stuff
+        RootHandler_EndSearch(pSearch->hs->pRootHandler, pSearch);
 
         // Dereference the storage handle
         CascCloseStorage((HANDLE)pSearch->hs);
@@ -116,7 +116,7 @@ static bool DoStorageSearch_RootFile(TCascSearch * pSearch, PCASC_FIND_DATA pFin
     for(;;)
     {
         // Attempt to find (the next) file from the root entry
-        pbEncodingKey = RootFile_Search(pSearch->hs->pRootFile, pSearch, &FileSize, &LocaleFlags);
+        pbEncodingKey = RootHandler_Search(pSearch->hs->pRootHandler, pSearch, &FileSize, &LocaleFlags);
         if(pbEncodingKey == NULL)
             return false;
 
@@ -162,7 +162,6 @@ static bool DoStorageSearch_EncodingKey(TCascSearch * pSearch, PCASC_FIND_DATA p
     PCASC_INDEX_ENTRY pIndexEntry;
     TCascStorage * hs = pSearch->hs;
     QUERY_KEY IndexKey;
-    LPBYTE pbEncodingKey;
     DWORD ByteIndex;
     DWORD BitMask;
 
@@ -174,12 +173,10 @@ static bool DoStorageSearch_EncodingKey(TCascSearch * pSearch, PCASC_FIND_DATA p
         BitMask = 1 << (pSearch->IndexLevel1 & 0x07);
         if((pSearch->BitArray[ByteIndex] & BitMask) == 0)
         {
-            // Get the encoding entry
-            pbEncodingKey = (LPBYTE)hs->pEncodingMap->HashTable[pSearch->IndexLevel1];
-            if(pbEncodingKey != NULL)
+            // Locate the index entry
+            pEncodingEntry  = (PCASC_ENCODING_ENTRY)hs->pEncodingMap->HashTable[pSearch->IndexLevel1];
+            if(pEncodingEntry != NULL)
             {
-                // Locate the index entry
-                pEncodingEntry  = (PCASC_ENCODING_ENTRY)(pbEncodingKey - hs->pEncodingMap->MemberOffset);
                 IndexKey.pbData = GET_INDEX_KEY(pEncodingEntry);
                 IndexKey.cbData = MD5_HASH_SIZE;
                 pIndexEntry = FindIndexEntry(pSearch->hs, &IndexKey);

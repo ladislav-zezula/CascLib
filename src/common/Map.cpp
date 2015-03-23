@@ -15,54 +15,56 @@
 //-----------------------------------------------------------------------------
 // Local functions
 
-static DWORD CalcHashIndex(PCASC_MAP pMap, void * pvIdentifier)
+static DWORD CalcHashIndex(PCASC_MAP pMap, void * pvKey)
 {
-    LPBYTE pbIdentifier = (LPBYTE)pvIdentifier;
+    LPBYTE pbKey = (LPBYTE)pvKey;
     DWORD dwHash = 0x7EEE7EEE;
 
     // Is it a string table?
     if(pMap->KeyLength == KEY_LENGTH_STRING)
     {
-        for(size_t i = 0; pbIdentifier[i] != 0; i++)
-            dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbIdentifier[i];
+        for(size_t i = 0; pbKey[i] != 0; i++)
+            dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbKey[i];
     }
     else
     {
         // Construct the hash from the first 8 digits
-        dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbIdentifier[0];
-        dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbIdentifier[1];
-        dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbIdentifier[2];
-        dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbIdentifier[3];
-        dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbIdentifier[4];
-        dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbIdentifier[5];
-        dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbIdentifier[6];
-        dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbIdentifier[7];
+        dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbKey[0];
+        dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbKey[1];
+        dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbKey[2];
+        dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbKey[3];
+        dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbKey[4];
+        dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbKey[5];
+        dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbKey[6];
+        dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbKey[7];
     }
 
     // Return the hash limited by the table size
     return (dwHash % pMap->TableSize);
 }
 
-static bool CompareIdentifier(PCASC_MAP pMap, void * pvTableEntry, void * pvIdentifier)
+static bool CompareIdentifier(PCASC_MAP pMap, void * pvObject, void * pvKey)
 {
     // Is it a string table?
     if(pMap->KeyLength == KEY_LENGTH_STRING)
     {
-        char * szTableEntry = (char *)pvTableEntry;
-        char * szIdentifier = (char *)pvIdentifier;
+        char * szObjectKey = (char *)pvObject + pMap->KeyOffset;
+        char * szKey = (char *)pvKey;
 
-        return (strcmp(szTableEntry, szIdentifier) == 0);
+        return (strcmp(szObjectKey, szKey) == 0);
     }
     else
     {
-        return (memcmp(pvTableEntry, pvIdentifier, pMap->KeyLength) == 0);
+        LPBYTE pbObjectKey = (LPBYTE)pvObject + pMap->KeyOffset;
+
+        return (memcmp(pbObjectKey, pvKey, pMap->KeyLength) == 0);
     }
 }
 
 //-----------------------------------------------------------------------------
 // Public functions
 
-PCASC_MAP Map_Create(DWORD dwMaxItems, DWORD dwKeyLength, DWORD dwMemberOffset)
+PCASC_MAP Map_Create(DWORD dwMaxItems, DWORD dwKeyLength, DWORD dwKeyOffset)
 {
     PCASC_MAP pMap;
     size_t cbToAllocate;
@@ -79,7 +81,7 @@ PCASC_MAP Map_Create(DWORD dwMaxItems, DWORD dwKeyLength, DWORD dwMemberOffset)
         memset(pMap, 0, cbToAllocate);
         pMap->KeyLength = dwKeyLength;
         pMap->TableSize = dwTableSize;
-        pMap->MemberOffset = dwMemberOffset;
+        pMap->KeyOffset = dwKeyOffset;
     }
 
     // Return the allocated map
@@ -107,27 +109,27 @@ size_t Map_EnumObjects(PCASC_MAP pMap, void **ppvArray)
     return pMap->ItemCount;
 }
 
-void * Map_FindObject(PCASC_MAP pMap, void * pvIdentifier, PDWORD PtrIndex)
+void * Map_FindObject2(PCASC_MAP pMap, MAP_COMPARE pfnCompare, void * pvKey, PDWORD PtrIndex)
 {
-    void * pvTableEntry;
+    void * pvObject;
     DWORD dwHashIndex;
 
     // Verify pointer to the map
     if(pMap != NULL)
     {
         // Construct the main index
-        dwHashIndex = CalcHashIndex(pMap, pvIdentifier);
+        dwHashIndex = CalcHashIndex(pMap, pvKey);
         while(pMap->HashTable[dwHashIndex] != NULL)
         {
             // Get the pointer at that position
-            pvTableEntry = pMap->HashTable[dwHashIndex];
+            pvObject = pMap->HashTable[dwHashIndex];
 
             // Compare the hash
-            if(CompareIdentifier(pMap, pvTableEntry, pvIdentifier))
+            if(pfnCompare(pMap, pvObject, pvKey))
             {
                 if(PtrIndex != NULL)
                     PtrIndex[0] = dwHashIndex;
-                return ((LPBYTE)pvTableEntry - pMap->MemberOffset);
+                return pvObject;
             }
 
             // Move to the next entry
@@ -139,9 +141,14 @@ void * Map_FindObject(PCASC_MAP pMap, void * pvIdentifier, PDWORD PtrIndex)
     return NULL;
 }
 
-bool Map_InsertObject(PCASC_MAP pMap, void * pvIdentifier)
+void * Map_FindObject(PCASC_MAP pMap, void * pvKey, PDWORD PtrIndex)
 {
-    void * pvTableEntry;
+    return Map_FindObject2(pMap, CompareIdentifier, pvKey, PtrIndex);
+}
+
+bool Map_InsertObject(PCASC_MAP pMap, void * pvNewObject, void * pvKey)
+{
+    void * pvExistingObject;
     DWORD dwHashIndex;
 
     // Verify pointer to the map
@@ -152,14 +159,14 @@ bool Map_InsertObject(PCASC_MAP pMap, void * pvIdentifier)
             return false;
 
         // Construct the hash index
-        dwHashIndex = CalcHashIndex(pMap, pvIdentifier);
+        dwHashIndex = CalcHashIndex(pMap, pvKey);
         while(pMap->HashTable[dwHashIndex] != NULL)
         {
             // Get the pointer at that position
-            pvTableEntry = pMap->HashTable[dwHashIndex];
+            pvExistingObject = pMap->HashTable[dwHashIndex];
 
             // Check if hash being inserted conflicts with an existing hash
-            if(CompareIdentifier(pMap, pvTableEntry, pvIdentifier))
+            if(CompareIdentifier(pMap, pvExistingObject, pvKey))
                 return false;
 
             // Move to the next entry
@@ -167,7 +174,7 @@ bool Map_InsertObject(PCASC_MAP pMap, void * pvIdentifier)
         }
 
         // Insert at that position
-        pMap->HashTable[dwHashIndex] = pvIdentifier;
+        pMap->HashTable[dwHashIndex] = pvNewObject;
         pMap->ItemCount++;
         return true;
     }

@@ -62,7 +62,7 @@ typedef struct _CASC_ROOT_ENTRY
 
 } CASC_ROOT_ENTRY, *PCASC_ROOT_ENTRY;
 
-struct TRootFile_WoW6 : public TRootFile
+struct TRootHandler_WoW6 : public TRootHandler
 {
     PCASC_ROOT_ENTRY pRootEntries;
     PCASC_MAP pRootMap;                             // Pointer to hash table with root entries
@@ -71,7 +71,7 @@ struct TRootFile_WoW6 : public TRootFile
 };
 
 // Prototype for root file parsing routine
-typedef int (*PARSE_ROOT)(TRootFile_WoW6 * pRootFile, PCASC_ROOT_BLOCK pBlockInfo);
+typedef int (*PARSE_ROOT)(TRootHandler_WoW6 * pRootHandler, PCASC_ROOT_BLOCK pBlockInfo);
 
 //-----------------------------------------------------------------------------
 // Local functions
@@ -121,24 +121,24 @@ LPBYTE VerifyLocaleBlock(PCASC_ROOT_BLOCK pBlockInfo, LPBYTE pbFilePointer, LPBY
 }
 
 static int ParseRoot_CountFiles(
-    TRootFile_WoW6 * pRootFile,
+    TRootHandler_WoW6 * pRootHandler,
     PCASC_ROOT_BLOCK pRootBlock)
 {
     // Add the file count to the total file count
-    pRootFile->dwTotalFileCount += pRootBlock->pLocaleBlockHdr->NumberOfFiles;
+    pRootHandler->dwTotalFileCount += pRootBlock->pLocaleBlockHdr->NumberOfFiles;
     return ERROR_SUCCESS;
 }
 
 static int ParseRoot_AddRootEntries(
-    TRootFile_WoW6 * pRootFile,
+    TRootHandler_WoW6 * pRootHandler,
     PCASC_ROOT_BLOCK pRootBlock)
 {
-    PCASC_ROOT_ENTRY pRootEntry = pRootFile->pRootEntries + pRootFile->dwFileCount;
+    PCASC_ROOT_ENTRY pRootEntry = pRootHandler->pRootEntries + pRootHandler->dwFileCount;
     DWORD SumValue = 0;
 
     // Sanity checks
-    assert(pRootFile->pRootEntries != NULL);
-    assert(pRootFile->dwTotalFileCount != 0);
+    assert(pRootHandler->pRootEntries != NULL);
+    assert(pRootHandler->dwTotalFileCount != 0);
 
     // WoW.exe (build 19116): Blocks with zero files are skipped
     for(DWORD i = 0; i < pRootBlock->pLocaleBlockHdr->NumberOfFiles; i++)
@@ -153,7 +153,7 @@ static int ParseRoot_AddRootEntries(
         pRootEntry->EncodingKey[3] = pRootBlock->pRootEntries[i].EncodingKey[3];
 
         // Move to the next root entry
-        pRootFile->dwFileCount++;
+        pRootHandler->dwFileCount++;
         pRootEntry++;
         SumValue++;
     }
@@ -162,7 +162,7 @@ static int ParseRoot_AddRootEntries(
 }
 
 static int ParseWowRootFileInternal(
-    TRootFile_WoW6 * pRootFile,
+    TRootHandler_WoW6 * pRootHandler,
     PARSE_ROOT pfnParseRoot,
     LPBYTE pbRootFile,
     LPBYTE pbRootFileEnd,
@@ -197,7 +197,7 @@ static int ParseWowRootFileInternal(
             continue;
 
         // Now call the custom function
-        pfnParseRoot(pRootFile, &RootBlock);
+        pfnParseRoot(pRootHandler, &RootBlock);
     }
 
     return ERROR_SUCCESS;
@@ -227,7 +227,7 @@ static int ParseWowRootFileInternal(
 */
 
 static int ParseWowRootFile2(
-    TRootFile_WoW6 * pRootFile,
+    TRootHandler_WoW6 * pRootHandler,
     PARSE_ROOT pfnParseRoot,
     LPBYTE pbRootFile,
     LPBYTE pbRootFileEnd,
@@ -235,39 +235,38 @@ static int ParseWowRootFile2(
     BYTE HighestBitValue)
 {
     // Load the locale as-is
-    ParseWowRootFileInternal(pRootFile, pfnParseRoot, pbRootFile, pbRootFileEnd, dwLocaleMask, false, HighestBitValue);
+    ParseWowRootFileInternal(pRootHandler, pfnParseRoot, pbRootFile, pbRootFileEnd, dwLocaleMask, false, HighestBitValue);
 
     // If we wanted enGB, we also load enUS for the missing files
     if(dwLocaleMask == CASC_LOCALE_ENGB)
-        ParseWowRootFileInternal(pRootFile, pfnParseRoot, pbRootFile, pbRootFileEnd, CASC_LOCALE_ENUS, false, HighestBitValue);
+        ParseWowRootFileInternal(pRootHandler, pfnParseRoot, pbRootFile, pbRootFileEnd, CASC_LOCALE_ENUS, false, HighestBitValue);
 
     if(dwLocaleMask == CASC_LOCALE_PTPT)
-        ParseWowRootFileInternal(pRootFile, pfnParseRoot, pbRootFile, pbRootFileEnd, CASC_LOCALE_PTBR, false, HighestBitValue);
+        ParseWowRootFileInternal(pRootHandler, pfnParseRoot, pbRootFile, pbRootFileEnd, CASC_LOCALE_PTBR, false, HighestBitValue);
 
     return ERROR_SUCCESS;
 }
 
 // WoW.exe: 004146C7 (BuildManifest::Load)
 static int ParseWowRootFile(
-    TRootFile_WoW6 * pRootFile,
+    TRootHandler_WoW6 * pRootHandler,
     PARSE_ROOT pfnParseRoot,
     LPBYTE pbRootFile,
     LPBYTE pbRootFileEnd,
     DWORD dwLocaleMask)
 {
-    ParseWowRootFile2(pRootFile, pfnParseRoot, pbRootFile, pbRootFileEnd, dwLocaleMask, 0);
-    ParseWowRootFile2(pRootFile, pfnParseRoot, pbRootFile, pbRootFileEnd, dwLocaleMask, 1);
+    ParseWowRootFile2(pRootHandler, pfnParseRoot, pbRootFile, pbRootFileEnd, dwLocaleMask, 0);
+    ParseWowRootFile2(pRootHandler, pfnParseRoot, pbRootFile, pbRootFileEnd, dwLocaleMask, 1);
     return ERROR_SUCCESS;
 }
 
 //-----------------------------------------------------------------------------
 // Implementation of WoW6 root file
 
-LPBYTE TRootFileWoW6_Search(TRootFile_WoW6 * pRootFile, TCascSearch * pSearch, PDWORD /* PtrFileSize */, PDWORD PtrLocaleFlags)
+static LPBYTE WowHandler_Search(TRootHandler_WoW6 * pRootHandler, TCascSearch * pSearch, PDWORD /* PtrFileSize */, PDWORD PtrLocaleFlags)
 {
     PCASC_ROOT_ENTRY pRootEntry;
     LPBYTE RootBitArray = (LPBYTE)pSearch->pRootContext;
-    LPBYTE pbRootEntry;
     size_t cbToAllocate;
     DWORD TableIndex = 0;
     DWORD ByteIndex;
@@ -280,7 +279,7 @@ LPBYTE TRootFileWoW6_Search(TRootFile_WoW6 * pRootFile, TCascSearch * pSearch, P
         if(RootBitArray == NULL)
         {
             // Allocate the root array
-            cbToAllocate = ((pRootFile->pRootMap->TableSize + 7) / 8);
+            cbToAllocate = ((pRootHandler->pRootMap->TableSize + 7) / 8);
             RootBitArray = CASC_ALLOC(BYTE, cbToAllocate);
             if(RootBitArray == NULL)
                 return NULL;
@@ -302,7 +301,7 @@ LPBYTE TRootFileWoW6_Search(TRootFile_WoW6 * pRootFile, TCascSearch * pSearch, P
         while(ListFile_GetNext(pSearch->pCache, pSearch->szMask, pSearch->szFileName, MAX_PATH))
         {
             // Find the root entry
-            pRootEntry = FindRootEntry(pRootFile->pRootMap, pSearch->szFileName, &TableIndex);
+            pRootEntry = FindRootEntry(pRootHandler->pRootMap, pSearch->szFileName, &TableIndex);
             if(pRootEntry != NULL)
             {
                 // Remember that we already reported this root item
@@ -327,12 +326,11 @@ LPBYTE TRootFileWoW6_Search(TRootFile_WoW6 * pRootFile, TCascSearch * pSearch, P
     if(pSearch->RootSearchPhase == ROOT_SEARCH_PHASE_NAMELESS)
     {
         // Go through the hash table again
-        while(pSearch->IndexLevel1 < pRootFile->pRootMap->TableSize)
+        while(pSearch->IndexLevel1 < pRootHandler->pRootMap->TableSize)
         {
             // Is that entry valid?
-            pbRootEntry = (LPBYTE)(pRootFile->pRootMap->HashTable[pSearch->IndexLevel1]);
-            pRootEntry  = (PCASC_ROOT_ENTRY)(pbRootEntry - pRootFile->pRootMap->MemberOffset);
-            if(pbRootEntry != NULL && pRootEntry->FileNameHash != 0)
+            pRootEntry  = (PCASC_ROOT_ENTRY)(pRootHandler->pRootMap->HashTable[pSearch->IndexLevel1]);
+            if(pRootEntry != NULL && pRootEntry->FileNameHash != 0)
             {
                 // Was this root item already reported?
                 ByteIndex = (DWORD)(pSearch->IndexLevel1 / 8);
@@ -360,46 +358,46 @@ LPBYTE TRootFileWoW6_Search(TRootFile_WoW6 * pRootFile, TCascSearch * pSearch, P
     return NULL;
 }
 
-LPBYTE TRootFileWoW6_GetKey(TRootFile_WoW6 * pRootFile, const char * szFileName)
+static LPBYTE WowHandler_GetKey(TRootHandler_WoW6 * pRootHandler, const char * szFileName)
 {
     PCASC_ROOT_ENTRY pRootEntry;
 
     // Check the root directory for that hash
-    pRootEntry = FindRootEntry(pRootFile->pRootMap, szFileName, NULL);
+    pRootEntry = FindRootEntry(pRootHandler->pRootMap, szFileName, NULL);
     if(pRootEntry == NULL)
         return NULL;
 
     return (LPBYTE)pRootEntry->EncodingKey;
 }
 
-void TRootFileWoW6_EndSearch(TRootFile_WoW6 * /* pRootFile */, TCascSearch * pSearch)
+static void WowHandler_EndSearch(TRootHandler_WoW6 * /* pRootHandler */, TCascSearch * pSearch)
 {
     if(pSearch->pRootContext != NULL)
         CASC_FREE(pSearch->pRootContext);
     pSearch->pRootContext = NULL;
 }
 
-void TRootFileWoW6_Close(TRootFile_WoW6 * pRootFile)
+static void WowHandler_Close(TRootHandler_WoW6 * pRootHandler)
 {
-    if(pRootFile != NULL)
+    if(pRootHandler != NULL)
     {
         // Free the hash table, if any
-        if(pRootFile->pRootMap != NULL)
-            Map_Free(pRootFile->pRootMap);
-        pRootFile->pRootMap = NULL;
+        if(pRootHandler->pRootMap != NULL)
+            Map_Free(pRootHandler->pRootMap);
+        pRootHandler->pRootMap = NULL;
 
         // Free the array of entries
-        if(pRootFile->pRootEntries != NULL)
-            CASC_FREE(pRootFile->pRootEntries);
-        pRootFile->pRootEntries = NULL;
+        if(pRootHandler->pRootEntries != NULL)
+            CASC_FREE(pRootHandler->pRootEntries);
+        pRootHandler->pRootEntries = NULL;
 
         // Free the root file itself
-        CASC_FREE(pRootFile);
+        CASC_FREE(pRootHandler);
     }
 }
 
 #ifdef _DEBUG
-void TRootFileWoW6_Dump(
+static void TRootHandlerWoW6_Dump(
     TCascStorage * hs,
     TDumpContext * dc,                                      // Pointer to an opened file
     LPBYTE pbRootFile,
@@ -466,10 +464,10 @@ void TRootFileWoW6_Dump(
 //-----------------------------------------------------------------------------
 // Public functions
 
-int RootFile_CreateWoW6(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile, DWORD dwLocaleMask)
+int RootHandler_CreateWoW6(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile, DWORD dwLocaleMask)
 {
     PCASC_ROOT_ENTRY pRootEntry;
-    TRootFile_WoW6 * pRootFile;
+    TRootHandler_WoW6 * pRootHandler;
     LPBYTE pbRootFileEnd = pbRootFile + cbRootFile;
     int nError;
 
@@ -478,52 +476,52 @@ int RootFile_CreateWoW6(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile, 
         nError = ERROR_FILE_CORRUPT;
 
     // Allocate the root handler object
-    pRootFile = CASC_ALLOC(TRootFile_WoW6, 1);
-    if(pRootFile == NULL)
+    pRootHandler = CASC_ALLOC(TRootHandler_WoW6, 1);
+    if(pRootHandler == NULL)
         return ERROR_NOT_ENOUGH_MEMORY;
 
     // Fill-in the handler functions
-    memset(pRootFile, 0, sizeof(TRootFile_WoW6));
-    pRootFile->Search      = (ROOT_SEARCH)TRootFileWoW6_Search;
-    pRootFile->EndSearch   = (ROOT_ENDSEARCH)TRootFileWoW6_EndSearch;
-    pRootFile->GetKey      = (ROOT_GETKEY)TRootFileWoW6_GetKey;
-    pRootFile->Close       = (ROOT_CLOSE)TRootFileWoW6_Close;
+    memset(pRootHandler, 0, sizeof(TRootHandler_WoW6));
+    pRootHandler->Search      = (ROOT_SEARCH)WowHandler_Search;
+    pRootHandler->EndSearch   = (ROOT_ENDSEARCH)WowHandler_EndSearch;
+    pRootHandler->GetKey      = (ROOT_GETKEY)WowHandler_GetKey;
+    pRootHandler->Close       = (ROOT_CLOSE)WowHandler_Close;
 
 #ifdef _DEBUG
-    pRootFile->Dump = TRootFileWoW6_Dump;    // Support for ROOT file dump
+    pRootHandler->Dump = TRootHandlerWoW6_Dump;    // Support for ROOT file dump
 #endif  // _DEBUG
 
     // Give the root file to the storage
-    hs->pRootFile = pRootFile;
+    hs->pRootHandler = pRootHandler;
 
     //
     // Phase 1: Count the files that are going to be loaded
     //
 
-    ParseWowRootFile(pRootFile, ParseRoot_CountFiles, pbRootFile, pbRootFileEnd, dwLocaleMask);
+    ParseWowRootFile(pRootHandler, ParseRoot_CountFiles, pbRootFile, pbRootFileEnd, dwLocaleMask);
 
     //
     // Phase 2: Create linear table that will contain all root items
     //
 
-    pRootFile->pRootEntries = CASC_ALLOC(CASC_ROOT_ENTRY, pRootFile->dwTotalFileCount);
-    if(pRootFile->pRootEntries == NULL)
+    pRootHandler->pRootEntries = CASC_ALLOC(CASC_ROOT_ENTRY, pRootHandler->dwTotalFileCount);
+    if(pRootHandler->pRootEntries == NULL)
         return ERROR_NOT_ENOUGH_MEMORY;
 
-    ParseWowRootFile(pRootFile, ParseRoot_AddRootEntries, pbRootFile, pbRootFileEnd, dwLocaleMask);
+    ParseWowRootFile(pRootHandler, ParseRoot_AddRootEntries, pbRootFile, pbRootFileEnd, dwLocaleMask);
 
     //
     // Phase 3: Create map for fast searching
     //
 
-    pRootFile->pRootMap = Map_Create(pRootFile->dwTotalFileCount, sizeof(ULONGLONG), FIELD_OFFSET(CASC_ROOT_ENTRY, FileNameHash));
-    if(pRootFile->pRootMap == NULL)
+    pRootHandler->pRootMap = Map_Create(pRootHandler->dwTotalFileCount, sizeof(ULONGLONG), FIELD_OFFSET(CASC_ROOT_ENTRY, FileNameHash));
+    if(pRootHandler->pRootMap == NULL)
         return ERROR_NOT_ENOUGH_MEMORY;
 
-    for(DWORD i = 0; i < pRootFile->dwTotalFileCount; i++)
+    for(DWORD i = 0; i < pRootHandler->dwTotalFileCount; i++)
     {
-        pRootEntry = pRootFile->pRootEntries + i;
-        Map_InsertObject(pRootFile->pRootMap, &pRootEntry->FileNameHash);
+        pRootEntry = pRootHandler->pRootEntries + i;
+        Map_InsertObject(pRootHandler->pRootMap, pRootEntry, &pRootEntry->FileNameHash);
     }
 
     return ERROR_SUCCESS;

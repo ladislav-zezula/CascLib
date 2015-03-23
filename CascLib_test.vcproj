@@ -841,11 +841,11 @@
 					>
 				</File>
 				<File
-					RelativePath=".\src\common\RootFile.cpp"
+					RelativePath=".\src\common\RootHandler.cpp"
 					>
 				</File>
 				<File
-					RelativePath=".\src\common\RootFile.h"
+					RelativePath=".\src\common\RootHandler.h"
 					>
 				</File>
 			</Filter>

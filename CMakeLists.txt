@@ -20,7 +20,7 @@ set(SRC_FILES
     src/common/FileStream.cpp
     src/common/ListFile.cpp
     src/common/Map.cpp
-    src/common/RootFile.cpp
+    src/common/RootHandler.cpp
     src/jenkins/lookup3.c
     src/CascBuildCfg.cpp
     src/CascCommon.cpp

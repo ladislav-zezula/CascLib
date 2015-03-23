@@ -102,28 +102,32 @@ int dump_print(TDumpContext * dc, const char * szFormat, ...)
 {
     va_list argList;
     char szBuffer[0x200];
-    int nLength;
+    int nLength = 0;
 
-    // Print the buffer using sprintf
-    va_start(argList, szFormat);
-    nLength = vsprintf(szBuffer, szFormat, argList);
-    assert(nLength < 0x200);
-    va_end(argList);
-
-    // Copy the string. Replace "\n" with "\n\r"
-    for(int i = 0; i < nLength; i++)
+    // Only if the dump context is valid
+    if(dc != NULL)
     {
-        // Flush the buffer, if needed
-        if((dc->pbBufferPtr + 2) >= dc->pbBufferEnd)
-        {
-            FileStream_Write(dc->pStream, NULL, dc->pbBufferBegin, (DWORD)(dc->pbBufferPtr - dc->pbBufferBegin));
-            dc->pbBufferPtr = dc->pbBufferBegin;
-        }
+        // Print the buffer using sprintf
+        va_start(argList, szFormat);
+        nLength = vsprintf(szBuffer, szFormat, argList);
+        assert(nLength < 0x200);
+        va_end(argList);
 
-        // Copy the char
-        if(szBuffer[i] == 0x0A)
-            *dc->pbBufferPtr++ = 0x0D;
-        *dc->pbBufferPtr++ = szBuffer[i];
+        // Copy the string. Replace "\n" with "\n\r"
+        for(int i = 0; i < nLength; i++)
+        {
+            // Flush the buffer, if needed
+            if((dc->pbBufferPtr + 2) >= dc->pbBufferEnd)
+            {
+                FileStream_Write(dc->pStream, NULL, dc->pbBufferBegin, (DWORD)(dc->pbBufferPtr - dc->pbBufferBegin));
+                dc->pbBufferPtr = dc->pbBufferBegin;
+            }
+
+            // Copy the char
+            if(szBuffer[i] == 0x0A)
+                *dc->pbBufferPtr++ = 0x0D;
+            *dc->pbBufferPtr++ = szBuffer[i];
+        }
     }
 
     return nLength;
