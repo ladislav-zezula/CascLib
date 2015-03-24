@@ -234,7 +234,6 @@ static int TestOpenStorage_EnumFiles(const TCHAR * szStorage, const TCHAR * szLi
     TLogHelper LogHelper;
     HANDLE hStorage;
     HANDLE hFind;
-    char * szStripped;
     DWORD dwTotalFiles = 0;
     DWORD dwFoundFiles = 0;
     DWORD dwCircleCount = 0;
@@ -274,12 +273,8 @@ static int TestOpenStorage_EnumFiles(const TCHAR * szStorage, const TCHAR * szLi
 
                 if(fp != NULL && FindData.szFileName[0] != 0)
                 {
-                    szStripped = strchr(FindData.szFileName, '\\');
-                    if(szStripped == NULL)
-                        szStripped = FindData.szFileName;
-                    else
-                        szStripped++;
-                    fprintf(fp, "%s\n", szStripped);
+//                  fprintf(fp, "%s\n", strchr(FindData.szFileName, '\\') + 1);
+                    fprintf(fp, "%s\n", FindData.szFileName);
                 }
 
                 // Find the next file in CASC

@@ -18,6 +18,7 @@
 // Local structures
 
 #define DIABLO3_SUBDIR_SIGNATURE   0xEAF1FE87
+#define DIABLO3_PACKAGES_SIGNATURE 0xAABB0002
 #define DIABLO3_MAX_SUBDIRS        0x20
 
 #define DIABLO3_INVALID_FILE       0xFFFFFFFF
@@ -30,7 +31,8 @@
 #define ENTRY_FLAG_DIRECTORY_ENTRY   0x80           // The file is actually a directory entry
 #define ENTRY_FLAG_PLAIN_NAME        0x01           // If set, the file entry contains offset of the plain file name
 #define ENTRY_FLAG_FULL_NAME         0x02           // If set, the file entry contains offset of the full name
-#define ENTRY_FLAG_NAME_MASK         0x0F           // If set, the file entry contains offset of the full name
+#define ENTRY_FLAG_FLAGS_MASK        0xF0           // Mask for the entry flags
+#define ENTRY_FLAG_NAME_MASK         0x0F           // Mask for the entry file name type
 
 #define SEARCH_PHASE_NAMES         0                // Searching named entry
 #define SEARCH_PHASE_FILE_IDS      1                // Searching filed by ID
@@ -75,6 +77,23 @@ typedef struct _DIABLO3_CORE_TOC_ENTRY
 
 } DIABLO3_CORE_TOC_ENTRY, *PDIABLO3_CORE_TOC_ENTRY;
 
+// In-memory structure of loaded CoreTOC.dat
+typedef struct _DIABLO3_CORE_TOC
+{
+    DIABLO3_CORE_TOC_HEADER Hdr;                    // Header of CoreTOC.dat
+
+    LPBYTE pbCoreToc;                               // Content of the CoreTOC.dat file
+    DIABLO3_CORE_TOC_ENTRY Entries[1];              // Buffer for storing the entries (variable length)
+
+} DIABLO3_CORE_TOC, *PDIABLO3_CORE_TOC;
+
+// On-disk structure of Packages.dat header
+typedef struct _DIABLO3_PACKAGES_DAT_HEADER
+{
+    DWORD Signature;
+    DWORD NumberOfNames;
+} DIABLO3_PACKAGES_DAT_HEADER, *PDIABLO3_PACKAGES_DAT_HEADER;
+
 // Structure for conversion DirectoryID -> Directory name
 typedef struct _DIABLO3_ASSET_INFO
 {
@@ -85,11 +104,21 @@ typedef struct _DIABLO3_ASSET_INFO
 
 typedef const DIABLO3_ASSET_INFO * PDIABLO3_ASSET_INFO;
 
+typedef struct _DIABLO3_NAME_INFO
+{
+    int nLengthLevel0;                              // Length of the level-0 directory, including backslash
+    int nBackslashes;                               // Number of backslashes in the name
+    int nNameLength;                                // Length of the file name
+    int nExtension;                                 // Position of the extension
+    char szNormName[MAX_PATH+1];                    // Normalized file name
+
+} DIABLO3_NAME_INFO, *PDIABLO3_NAME_INFO;
+
 typedef struct _CASC_FILE_ENTRY
 {
     ENCODING_KEY EncodingKey;                       // Encoding key
     ULONGLONG FileNameHash;                         // File name hash
-    DWORD  IndexOrOffset;                           // FileIndex or partial name offset or full name offset
+    DWORD  NameOffset;                              // Offset of the partial name or full name
     USHORT SubIndex;                                // File\SubFile index
     BYTE   AssetIndex;                              // Asset index (aka directory index)
     BYTE   EntryFlags;                              // Entry flags 
@@ -99,6 +128,11 @@ typedef struct _CASC_FILE_ENTRY
 typedef struct _CASC_DIRECTORY
 {
     ENCODING_KEY EncodingKey;                       // Encoding key for the directory file itself
+
+    PDIABLO3_FILEID1_ENTRY pIndexEntries1;          // Array of index entries without subnames
+    PDIABLO3_FILEID2_ENTRY pIndexEntries2;          // Array of index entries with subnames
+    DWORD nIndexEntries1;                           // Number of index entries without subnames
+    DWORD nIndexEntries2;                           // Number of index entries with subnames
 
     DWORD FileCount;                                // Number of indexes in pFileList
     DWORD Files[1];                                 // Pointer to the array of indexes to the global file table
@@ -115,13 +149,14 @@ struct TRootHandler_Diablo3 : public TRootHandler
 
     // List of subdirectories
     PCASC_DIRECTORY SubDirs[DIABLO3_MAX_SUBDIRS];   // PCASC_DIRECTORY pointer for each subdirectory
+    DWORD dwSubDirs;
 
-    // Map of FNAME -> FileEntry
+    // Global map of FNAME -> FileEntry
     PCASC_MAP pRootMap;                             
 
     // Linear global list of all files
     PCASC_FILE_ENTRY pFileTable;                    // Global linear list of all files
-    DWORD dwMaxFileIndex;                           // Maximum file index
+//  DWORD dwMaxFileIndex;                           // Maximum file index
     DWORD dwFileCountMax;                           // Maximum number of files in the table
     DWORD dwFileCount;                              // Current number of files in the table
 
@@ -214,26 +249,6 @@ static const DIABLO3_ASSET_INFO UnknownAsset = {"Unknown", "xxx"};
 //-----------------------------------------------------------------------------
 // Local functions
 
-static const char * ExtractDirectoryName0(const char * szFileName, char * szBuffer)
-{
-    const char * szSaveFileName = szFileName;
-
-    // Find the next path part
-    while(szFileName[0] != 0 && szFileName[0] != '\\' && szFileName[0] != '/')
-    {
-        if((szFileName - szSaveFileName) > DIABLO3_MAX_LEVEL0_LENGTH)
-            return NULL;
-        *szBuffer++ = *szFileName++;
-    }
-
-    // If we found a sub-dir, move it by one character
-    if(szFileName[0] != '\\' || szFileName[0] != '/')
-        szFileName++;
-    *szBuffer = 0;
-
-    return szFileName;
-}
-
 static char * AppendPathElement(char * szBuffer, char * szBufferEnd, const char * szDirName, char chSeparator)
 {
     // Copy the directory name
@@ -263,109 +278,142 @@ static DWORD VerifyNamedFileEntry(LPBYTE pbNamedEntry, LPBYTE pbFileEnd)
     return (DWORD)(pbFileName - pbNamedEntry);
 }
 
-static ULONGLONG CalcFileNameHash(const char * szFileName)
+static bool NormalizeFileName_Diablo3(PDIABLO3_NAME_INFO pNameInfo, const char * szRootSubDir, const char * szFileName)
 {
-    ULONGLONG FileNameHash;
-    char szNormName[MAX_PATH + 1];
-    size_t nLength;
+    char * szNormName = pNameInfo->szNormName;
+    int nLengthLevel0 = 0;
+    int nBackslashes = 0;
+    int nNameLength = 0;
+    int nExtension = 0;
+
+    // Do we have parent directory name?
+    if(szRootSubDir != NULL)
+    {
+        // Copy the name of the parent sirectory
+        while(szRootSubDir[0] != 0 && nNameLength < MAX_PATH)
+        {
+            szNormName[nNameLength++] = AsciiToUpperTable_BkSlash[*szRootSubDir++];
+        }
+
+        // Append backslash
+        if(nNameLength < MAX_PATH)
+            szNormName[nNameLength++] = '\\';
+        nLengthLevel0 = nNameLength;
+        nBackslashes++;
+    }
+
+    // Normalize the name. Also count number or backslashes and remember position of the extension
+    while(szFileName[0] != 0 && nNameLength < MAX_PATH)
+    {
+        // Put the normalizet character
+        szNormName[nNameLength] = AsciiToUpperTable_BkSlash[*szFileName++];
+
+        // Take backslashes and dots into account
+        if(szNormName[nNameLength] == '\\')
+            nBackslashes++;
+        if(szNormName[nNameLength] == '.')
+            nExtension = nNameLength;
+        nNameLength++;
+    }
+
+    // Terminate the name
+    szNormName[nNameLength] = 0;
+
+    // If the name had two backslashes (like "SoundBank\X1_Monster_Westmarch_Rat\0061.fsb"),
+    // we need to replace the extension with "xxx"
+    if(nBackslashes == 3 && (nNameLength - nExtension) == 4)
+    {
+        szNormName[nExtension + 1] = 'X';
+        szNormName[nExtension + 2] = 'X';
+        szNormName[nExtension + 3] = 'X';
+    }
+
+    // Fill-in the name info
+    pNameInfo->nLengthLevel0 = nLengthLevel0;
+    pNameInfo->nBackslashes = nBackslashes;
+    pNameInfo->nNameLength = nNameLength;
+    pNameInfo->nExtension = nExtension;
+    return true;
+}
+
+static ULONGLONG CalcFileNameHashEx(PDIABLO3_NAME_INFO pNameInfo)
+{
     uint32_t dwHashHigh = 0;
     uint32_t dwHashLow = 0;
 
-    // Normalize the file name
-    nLength = NormalizeFileName_UpperBkSlash(szNormName, szFileName, MAX_PATH);
-
     // Calculate the HASH value of the normalized file name
-    hashlittle2(szNormName, nLength, &dwHashHigh, &dwHashLow);
-    FileNameHash = ((ULONGLONG)dwHashHigh << 0x20) | dwHashLow;
-
-    // Perform the hash search
-    return FileNameHash;
+    hashlittle2(pNameInfo->szNormName, pNameInfo->nNameLength, &dwHashHigh, &dwHashLow);
+    return ((ULONGLONG)dwHashHigh << 0x20) | dwHashLow;
 }
 
-static LPBYTE GetCoreTocNameArray(PDIABLO3_CORE_TOC_HEADER pTocHeader, LPBYTE pbCoreTocEnd, DWORD dwIndex, PDWORD PtrNameArraySize)
+static ULONGLONG CalcFileNameHash(const char * szRootSubDir, const char * szFileName)
 {
-    LPBYTE pbNameArrayEnd = NULL;
-    LPBYTE pbNameArray = NULL;
-    LPBYTE pbCoreToc = (LPBYTE)(pTocHeader + 1);
-    DWORD dwEntryOffset = pTocHeader->EntryOffsets[dwIndex];
-    DWORD dwEntryCount = pTocHeader->EntryCounts[dwIndex];
-    DWORD cbNameArraySize = 0;
+    DIABLO3_NAME_INFO NameInfo;
 
-    // Are there some entries?
-    if(dwEntryCount != 0)
-    {
-        // Get the begin of the array
-        pbNameArrayEnd = pbCoreTocEnd;
-        pbNameArray = pbCoreToc + dwEntryOffset + (dwEntryCount * sizeof(DIABLO3_CORE_TOC_ENTRY));
-        
-        // Get the end of the name array
-        if(dwIndex < (DIABLO3_MAX_ASSETS - 1))
-        {
-            dwEntryOffset = pTocHeader->EntryOffsets[dwIndex + 1];
-            pbNameArrayEnd = pbCoreToc + dwEntryOffset;
-        }
-
-        cbNameArraySize = (DWORD)(pbNameArrayEnd - pbNameArray);
-    }
-
-    // Give the results to the caller
-    if(PtrNameArraySize != NULL)
-        PtrNameArraySize[0] = cbNameArraySize;
-    return pbNameArray;
+    NormalizeFileName_Diablo3(&NameInfo, szRootSubDir, szFileName);
+    return CalcFileNameHashEx(&NameInfo);
 }
 
 static const char * CreateFileName(
     TRootHandler_Diablo3 * pRootHandler,
-    PCASC_FILE_ENTRY pFileEntry,
-    char * szBuffer,
-    size_t cbBuffer)
+    PCASC_FILE_ENTRY pParent,
+    DWORD dwAssetIndex,
+    DWORD dwNameOffset,
+    DWORD dwSubIndex,
+    char * szBuffer)
 {
-    const char * szFileName;
-    char * szBufferEnd;
+    PDIABLO3_ASSET_INFO pAssetInfo = &UnknownAsset;
+    char * szSaveBuffer = szBuffer;
+    char * szBufferEnd = szBuffer + MAX_PATH;
 
-    // If the file entry has full name, use it as it is
-    if((pFileEntry->EntryFlags & ENTRY_FLAG_NAME_MASK) == ENTRY_FLAG_FULL_NAME)
+    // Retrieve the asset. If the asset is unknown, put a placeholder
+    if(dwAssetIndex < DIABLO3_ASSET_COUNT && Assets[dwAssetIndex].szDirectoryName != NULL)
+        pAssetInfo = &Assets[dwAssetIndex];
+
+    // Append the level-0 directory name
+    if(pParent != NULL)
+        szBuffer = AppendPathElement(szBuffer, szBufferEnd, pRootHandler->szFileNames + pParent->NameOffset, '\\');
+
+    // Append the level-1 directory name (asset name)
+    szBuffer = AppendPathElement(szBuffer, szBufferEnd, pAssetInfo->szDirectoryName, '\\');
+
+    // If there is no sub-index, we construct the file name from the plain name
+    if(dwSubIndex == 0)
     {
-        return pRootHandler->szFileNames + pFileEntry->IndexOrOffset;
+        // Append plain name and extension
+        szBuffer = AppendPathElement(szBuffer, szBufferEnd, pRootHandler->szFileNames + dwNameOffset, '.');
+        szBuffer = AppendPathElement(szBuffer, szBufferEnd, pAssetInfo->szExtension, 0);
     }
-
-    // If the file entry has partial name, we need to construct the name
-    if((pFileEntry->EntryFlags & ENTRY_FLAG_NAME_MASK) == ENTRY_FLAG_PLAIN_NAME)
+    else
     {
-        PDIABLO3_ASSET_INFO pAssetInfo = &UnknownAsset;
-
-        // Set the buffer
-        szBufferEnd = szBuffer + cbBuffer;
-        szFileName = szBuffer;
-
-        // Retrieve the asset. If the asset is unknown, put a placeholder
-        if(pFileEntry->AssetIndex < DIABLO3_ASSET_COUNT && Assets[pFileEntry->AssetIndex].szDirectoryName != NULL)
-            pAssetInfo = &Assets[pFileEntry->AssetIndex];
-
-        // Append the asset name (aka level-1 directory)
-        szBuffer = AppendPathElement(szBuffer, szBufferEnd, pAssetInfo->szDirectoryName, '\\');
-
-        // If there is no sub-index, we construct the file name from the plain name
-        if(pFileEntry->SubIndex == 0)
-        {
-            // Append plain name and extension
-            szBuffer = AppendPathElement(szBuffer, szBufferEnd, pRootHandler->szFileNames + pFileEntry->IndexOrOffset, '.');
-            szBuffer = AppendPathElement(szBuffer, szBufferEnd, pAssetInfo->szExtension, 0);
-            
-            // Terminate the name and exit
-            szBuffer[0] = 0;
-            return szFileName;
-        }
-
         // Append plain name as subdirectory. The file name is four digits
-        szBuffer = AppendPathElement(szBuffer, szBufferEnd, pRootHandler->szFileNames + pFileEntry->IndexOrOffset, '\\');
-        szBuffer += sprintf(szBuffer, "%04u.xxx", pFileEntry->SubIndex - 1);
-        return szFileName;
+        szBuffer = AppendPathElement(szBuffer, szBufferEnd, pRootHandler->szFileNames + dwNameOffset, '\\');
+        szBuffer += sprintf(szBuffer, "%04u.xxx", dwSubIndex - 1);
     }
-
-    return NULL;
+    
+    return szSaveBuffer;
 }
 
+static const char * CreateFileName(
+    TRootHandler_Diablo3 * pRootHandler,
+    PCASC_FILE_ENTRY pParent,
+    DWORD dwFileNameOffset,
+    char * szBuffer)
+{
+    char * szSaveBuffer = szBuffer;
+    char * szBufferEnd = szBuffer + MAX_PATH;
+
+    // Sanity checks
+    assert(dwFileNameOffset < pRootHandler->cbFileNamesMax);
+
+    // Append the level-0 directory name
+    if(pParent != NULL)
+        szBuffer = AppendPathElement(szBuffer, szBufferEnd, pRootHandler->szFileNames + pParent->NameOffset, '\\');
+    
+    // Append the rest
+    szBuffer = AppendPathElement(szBuffer, szBufferEnd, pRootHandler->szFileNames + dwFileNameOffset, 0);
+    return szSaveBuffer;
+}
 
 static bool EnlargeNameBuffer(TRootHandler_Diablo3 * pRootHandler, DWORD cbNewSize)
 {
@@ -414,151 +462,136 @@ static char * InsertNamesToBuffer(TRootHandler_Diablo3 * pRootHandler, LPBYTE pb
     return szFileName;
 }
 
-static DWORD InsertIndexEntry(
+static DWORD InsertFileEntry(
     TRootHandler_Diablo3 * pRootHandler,
+    PCASC_FILE_ENTRY pParent,
     ENCODING_KEY & EncodingKey,
-    DWORD dwFileIndex,
+    DWORD dwAssetIndex,
+    LPBYTE pbPlainName,
     DWORD dwSubIndex)
 {
     PCASC_FILE_ENTRY pFileEntry = pRootHandler->pFileTable + pRootHandler->dwFileCount;
     DWORD dwTableIndex = pRootHandler->dwFileCount;
+    DWORD dwNameOffset;
+    char * szPlainName;    
+    char szFileName[MAX_PATH+1];
 
-    // Keep an eye of the maximum file index found
-    if(dwFileIndex > pRootHandler->dwMaxFileIndex)
-        pRootHandler->dwMaxFileIndex = dwFileIndex;
+    // Insert the plain name to the root handler's global name list
+    szPlainName = InsertNamesToBuffer(pRootHandler, pbPlainName, strlen((char *)pbPlainName) + 1);
+    if(szPlainName != NULL)
+    {
+        // Create the full file name 
+        dwNameOffset = (DWORD)(szPlainName - pRootHandler->szFileNames);
+        CreateFileName(pRootHandler, pParent, dwAssetIndex, dwNameOffset, dwSubIndex, szFileName);
 
-    // Fill the file entry
-    pFileEntry->EncodingKey   = EncodingKey;
-    pFileEntry->FileNameHash  = 0;
-    pFileEntry->IndexOrOffset = dwFileIndex;
-    pFileEntry->AssetIndex    = INVALID_ASSET_INDEX;
-    pFileEntry->SubIndex      = (USHORT)dwSubIndex;
-    pFileEntry->EntryFlags    = 0;
-    pRootHandler->dwFileCount++;
+        // Fill the file entry
+        pFileEntry->EncodingKey  = EncodingKey;
+        pFileEntry->FileNameHash = CalcFileNameHash(NULL, szFileName); 
+        pFileEntry->NameOffset   = dwNameOffset;
+        pFileEntry->AssetIndex   = (BYTE)dwAssetIndex;
+        pFileEntry->SubIndex     = (USHORT)dwSubIndex;
+        pFileEntry->EntryFlags   = ENTRY_FLAG_PLAIN_NAME;
+        pRootHandler->dwFileCount++;
+
+        // We must use the file name INCLUDING the level-0 directory name,
+        // otherwise we get collisions like this:
+        // enGB\SoundBank\D_A1C5RFarmerScavengerEpilogue2.sbk
+        // enUS\SoundBank\D_A1C5RFarmerScavengerEpilogue2.sbk
+        Map_InsertObject(pRootHandler->pRootMap, pFileEntry, &pFileEntry->FileNameHash);
+    }
 
     return dwTableIndex;
 }
 
-static DWORD InsertNamedEntry(
+static DWORD InsertFileEntry(
     TRootHandler_Diablo3 * pRootHandler,
-    PDIABLO3_NAMED_ENTRY pNamedEntry,
-    DWORD cbNamedEntry)
+    PCASC_FILE_ENTRY pParent,
+    ENCODING_KEY & EncodingKey,
+    LPBYTE pbFileName,
+    DWORD cbFileName)
 {
-    PCASC_FILE_ENTRY pFileEntry = pRootHandler->pFileTable + pRootHandler->dwFileCount;
+    PCASC_FILE_ENTRY pFileEntry;
+    char * szSubDirName;
     char * szFileName;
     DWORD dwNameOffset = pRootHandler->cbFileNames;
-    DWORD dwTableIndex = pRootHandler->dwFileCount;
-    DWORD cbFileName = cbNamedEntry - sizeof(ENCODING_KEY);
+    DWORD dwTableIndex = INVALID_FILE_INDEX;
 
     // First, try to copy the name to the global name buffer
-    szFileName = InsertNamesToBuffer(pRootHandler, pNamedEntry->szFileName, cbFileName);
+    szFileName = InsertNamesToBuffer(pRootHandler, pbFileName, cbFileName);
+    if(szFileName != NULL)
+    {
+        // Retrieve the subdirectory name
+        pFileEntry = pRootHandler->pFileTable + pRootHandler->dwFileCount;
+        szSubDirName = (pParent != NULL) ? pRootHandler->szFileNames + pParent->NameOffset : NULL;
+        dwTableIndex = pRootHandler->dwFileCount++;
 
-    // Store the info into the file entry
-    pFileEntry->EncodingKey   = pNamedEntry->EncodingKey;
-    pFileEntry->FileNameHash  = CalcFileNameHash(szFileName);
-    pFileEntry->EntryFlags    = ENTRY_FLAG_FULL_NAME;
-    pFileEntry->AssetIndex    = INVALID_ASSET_INDEX;
-    pFileEntry->IndexOrOffset = dwNameOffset;
-    pFileEntry->SubIndex      = 0;
-    pRootHandler->dwFileCount++;
+        // Store the info into the file entry
+        pFileEntry->EncodingKey  = EncodingKey;
+        pFileEntry->FileNameHash = CalcFileNameHash(szSubDirName, szFileName);
+        pFileEntry->EntryFlags   = ENTRY_FLAG_FULL_NAME;
+        pFileEntry->AssetIndex   = INVALID_ASSET_INDEX;
+        pFileEntry->NameOffset   = dwNameOffset;
+        pFileEntry->SubIndex     = 0;
 
-    // Calculate the file name hash
-    Map_InsertObject(pRootHandler->pRootMap, pFileEntry, &pFileEntry->FileNameHash);
+        // Calculate the file name hash
+        Map_InsertObject(pRootHandler->pRootMap, pFileEntry, &pFileEntry->FileNameHash);
+    }
 
     // Return the index of the created entry
     return dwTableIndex;
 }
 
-static void InsertPlainNamedEntry(
-    TRootHandler_Diablo3 * pRootHandler,
-    PCASC_FILE_ENTRY pFileEntry)
+static PCASC_DIRECTORY CreateDiablo3Directory(
+    LPBYTE pbIndexEntries1,
+    DWORD dwIndexEntries1,
+    LPBYTE pbIndexEntries2,
+    DWORD dwIndexEntries2,
+    DWORD dwNamedEntries)
 {
-    const char * szFileName;
-    char szNameBuff[MAX_PATH+1];
+    PCASC_DIRECTORY pDirectory;
+    size_t cbToAllocate;
 
-    // Only if the entry was not inserted before
-    if(pFileEntry->FileNameHash == 0)
+    // Calculate total space
+    cbToAllocate = sizeof(CASC_DIRECTORY) + (dwIndexEntries1 + dwIndexEntries2 + dwNamedEntries) * sizeof(DWORD);
+    pDirectory = (PCASC_DIRECTORY)CASC_ALLOC(BYTE, cbToAllocate);
+    if(pDirectory != NULL)
     {
-        // Construct the file name
-        szFileName = CreateFileName(pRootHandler, pFileEntry, szNameBuff, MAX_PATH);
-        if(szFileName != NULL)
-        {
-            // Calculate the file name hash
-            pFileEntry->FileNameHash = CalcFileNameHash(szFileName);
+        // Initialize the directory
+        memset(pDirectory, 0, cbToAllocate);
 
-            // Calculate the file name hash
-            Map_InsertObject(pRootHandler->pRootMap, pFileEntry, &pFileEntry->FileNameHash);
+        // Allocate array of files without sub-item
+        if(pbIndexEntries1 && dwIndexEntries1)
+        {
+            pDirectory->pIndexEntries1 = CASC_ALLOC(DIABLO3_FILEID1_ENTRY, dwIndexEntries1);
+            if(pDirectory->pIndexEntries1 != NULL)
+            {
+                memcpy(pDirectory->pIndexEntries1, pbIndexEntries1, sizeof(DIABLO3_FILEID1_ENTRY) * dwIndexEntries1);
+                pDirectory->nIndexEntries1 = dwIndexEntries1;
+            }
+        }
+
+        // Allocate array of files with sub-item
+        if(pbIndexEntries2 && dwIndexEntries2)
+        {
+            pDirectory->pIndexEntries2 = CASC_ALLOC(DIABLO3_FILEID2_ENTRY, dwIndexEntries2);
+            if(pDirectory->pIndexEntries2 != NULL)
+            {
+                memcpy(pDirectory->pIndexEntries2, pbIndexEntries2, sizeof(DIABLO3_FILEID2_ENTRY) * dwIndexEntries2);
+                pDirectory->nIndexEntries2 = dwIndexEntries2;
+            }
         }
     }
-}
 
-static int ParseIndexEntries1(
-    TRootHandler_Diablo3 * pRootHandler,    
-    PCASC_DIRECTORY pDirectory,
-    LPBYTE pbIndexEntries,
-    LPBYTE pbFileEnd)
-{
-    DWORD dwFileIndex;
-
-    // Sanity checks
-    assert(pRootHandler->pFileTable != NULL);
-    assert(pRootHandler->dwFileCount < pRootHandler->dwFileCountMax);
-
-    // Parse the file entry
-    while(pbIndexEntries < pbFileEnd)
-    {
-        PDIABLO3_FILEID1_ENTRY pSrcEntry = (PDIABLO3_FILEID1_ENTRY)pbIndexEntries;
-
-        // Insert the named entry to the global file table
-        dwFileIndex = InsertIndexEntry(pRootHandler, pSrcEntry->EncodingKey, pSrcEntry->FileIndex, 0);
-        if(dwFileIndex == INVALID_FILE_INDEX)
-            return ERROR_NOT_ENOUGH_MEMORY;
-
-        // Insert the named entry to the directory
-        pDirectory->Files[pDirectory->FileCount++] = dwFileIndex;
-        pbIndexEntries += sizeof(DIABLO3_FILEID1_ENTRY);
-    }
-
-    return ERROR_SUCCESS;
-}
-
-static int ParseIndexEntries2(
-    TRootHandler_Diablo3 * pRootHandler,    
-    PCASC_DIRECTORY pDirectory,
-    LPBYTE pbIndexEntries,
-    LPBYTE pbFileEnd)
-{
-    DWORD dwFileIndex;
-
-    // Sanity checks
-    assert(pRootHandler->pFileTable != NULL);
-    assert(pRootHandler->dwFileCount < pRootHandler->dwFileCountMax);
-
-    // Parse the file entry
-    while(pbIndexEntries < pbFileEnd)
-    {
-        PDIABLO3_FILEID2_ENTRY pSrcEntry = (PDIABLO3_FILEID2_ENTRY)pbIndexEntries;
-
-        // Insert the named entry to the global file table
-        dwFileIndex = InsertIndexEntry(pRootHandler, pSrcEntry->EncodingKey, pSrcEntry->FileIndex, pSrcEntry->SubIndex + 1);
-        if(dwFileIndex == INVALID_FILE_INDEX)
-            return ERROR_NOT_ENOUGH_MEMORY;
-
-        // Insert the named entry to the directory
-        pDirectory->Files[pDirectory->FileCount++] = dwFileIndex;
-        pbIndexEntries += sizeof(DIABLO3_FILEID2_ENTRY);
-    }
-
-    return ERROR_SUCCESS;
+    return pDirectory;
 }
 
 static int ParseNamedFileEntries(
     TRootHandler_Diablo3 * pRootHandler,    
+    PCASC_FILE_ENTRY pParent,
     PCASC_DIRECTORY pDirectory,
     LPBYTE pbNamedEntries,
     LPBYTE pbFileEnd)
 {
-    PCASC_FILE_ENTRY pFileEntry;
     DWORD dwFileIndex;
     DWORD cbNamedEntry;
 
@@ -577,10 +610,13 @@ static int ParseNamedFileEntries(
             return ERROR_FILE_CORRUPT;
 
         // Insert the named entry to the global file table
-        dwFileIndex = InsertNamedEntry(pRootHandler, pSrcEntry, cbNamedEntry);
+        dwFileIndex = InsertFileEntry(pRootHandler,
+                                      pParent,
+                                      pSrcEntry->EncodingKey,
+                                      pSrcEntry->szFileName,
+                                     (cbNamedEntry - sizeof(ENCODING_KEY)));
         if(dwFileIndex == INVALID_FILE_INDEX)
             return ERROR_NOT_ENOUGH_MEMORY;
-        pFileEntry = pRootHandler->pFileTable + dwFileIndex;
 
         // Insert the named entry to the directory
         pDirectory->Files[pDirectory->FileCount++] = dwFileIndex;
@@ -590,8 +626,76 @@ static int ParseNamedFileEntries(
     return ERROR_SUCCESS;
 }
 
+static void ResolveFullFileNames(
+    TRootHandler_Diablo3 * pRootHandler,
+    PDIABLO3_CORE_TOC pCoreToc,
+    DWORD dwDirIndex)
+{
+    PDIABLO3_CORE_TOC_ENTRY pTocEntry;
+    PDIABLO3_FILEID1_ENTRY pIndexEntry1;
+    PDIABLO3_FILEID2_ENTRY pIndexEntry2;
+    PCASC_FILE_ENTRY pParent;
+    PCASC_DIRECTORY pSubDir;
+    DWORD dwFileIndex;
+    DWORD i;
+
+    // Get the subdirectory and the file entry
+    pParent = pRootHandler->pFileTable + dwDirIndex;
+    pSubDir = pRootHandler->SubDirs[dwDirIndex];
+
+    // Only if the subdirectory is valid
+    if(pSubDir != NULL)
+    {
+        // Step 1: Resolve the file names without subnames
+        for(i = 0; i < pSubDir->nIndexEntries1; i++)
+        {
+            // Get the pointer to the index entry without subname
+            pIndexEntry1 = pSubDir->pIndexEntries1 + i;
+            pTocEntry = &pCoreToc->Entries[pIndexEntry1->FileIndex];
+            if(pTocEntry->FileIndex != INVALID_FILE_INDEX)
+            {
+                // Create new file entry in the global table
+                dwFileIndex = InsertFileEntry(pRootHandler,
+                                              pParent,
+                                              pIndexEntry1->EncodingKey,
+                                              pTocEntry->AssetIndex,
+                                              pCoreToc->pbCoreToc + pTocEntry->NameOffset,
+                                              0);
+                
+                // Also insert the file in the directory table
+                if(dwFileIndex != INVALID_FILE_INDEX)
+                    pSubDir->Files[pSubDir->FileCount++] = dwFileIndex;
+            }
+        }
+
+        // Step 1: Resolve the file names with subnames
+        for(i = 0; i < pSubDir->nIndexEntries2; i++)
+        {
+            // Get the pointer to the index entry without subname
+            pIndexEntry2 = pSubDir->pIndexEntries2 + i;
+            pTocEntry = &pCoreToc->Entries[pIndexEntry2->FileIndex];
+            if(pTocEntry->FileIndex != INVALID_FILE_INDEX)
+            {
+                // Create new file entry in the global table
+                dwFileIndex = InsertFileEntry(pRootHandler,
+                                              pParent,
+                                              pIndexEntry2->EncodingKey,
+                                              pTocEntry->AssetIndex,
+                                              pCoreToc->pbCoreToc + pTocEntry->NameOffset,
+                                              pIndexEntry2->SubIndex + 1);
+
+                // Also insert the file in the directory table
+                if(dwFileIndex != INVALID_FILE_INDEX)
+                    pSubDir->Files[pSubDir->FileCount++] = dwFileIndex;
+            }
+        }
+    }
+}
+
 static int ParseDirectoryFile(
     TRootHandler_Diablo3 * pRootHandler,
+    PCASC_FILE_ENTRY pParent,
+    LPBYTE pbEncodingKey,
     LPBYTE pbDirFile,
     LPBYTE pbFileEnd,
     PCASC_DIRECTORY * PtrDirectory)
@@ -600,7 +704,6 @@ static int ParseDirectoryFile(
     LPBYTE pbIndexEntries1 = NULL;
     LPBYTE pbIndexEntries2 = NULL;
     LPBYTE pbNamedEntries = NULL;
-    size_t cbToAllocate;
     DWORD dwDirSignature = 0;
     DWORD dwIndexEntries1 = 0;
     DWORD dwIndexEntries2 = 0;
@@ -630,24 +733,45 @@ static int ParseDirectoryFile(
     if(dwDirSignature == DIABLO3_SUBDIR_SIGNATURE)
     {
         // Get the pointer and length DIABLO3_FILEID1_ENTRY array
-        if((pbDirFile + sizeof(DWORD)) < pbFileEnd)
+        if((pbDirFile + sizeof(DWORD)) <= pbFileEnd)
             dwIndexEntries1 = *(PDWORD)pbDirFile;
         pbIndexEntries1 = pbDirFile + sizeof(DWORD);
         pbDirFile = pbIndexEntries1 + dwIndexEntries1 * sizeof(DIABLO3_FILEID1_ENTRY);
 
         // Get the pointer and length DIABLO3_FILEID2_ENTRY array
-        if((pbDirFile + sizeof(DWORD)) < pbFileEnd)
+        if((pbDirFile + sizeof(DWORD)) <= pbFileEnd)
             dwIndexEntries2 = *(PDWORD)pbDirFile;
         pbIndexEntries2 = pbDirFile + sizeof(DWORD);
         pbDirFile = pbIndexEntries2 + dwIndexEntries2 * sizeof(DIABLO3_FILEID2_ENTRY);
     }
 
     // Get the pointer and length DIABLO3_NAMED_ENTRY array
-    if((pbDirFile + sizeof(DWORD)) < pbFileEnd)
+    if((pbDirFile + sizeof(DWORD)) <= pbFileEnd)
         dwNamedEntries = *(PDWORD)pbDirFile;
     pbNamedEntries = pbDirFile + sizeof(DWORD);
 //  pbDirFile = pbNamedEntries + dwNamedEntries * sizeof(DIABLO3_NAMED_ENTRY);
-    
+
+    // Create the directory structure
+    pDirectory = CreateDiablo3Directory(pbIndexEntries1, dwIndexEntries1, pbIndexEntries2, dwIndexEntries2, dwNamedEntries);
+    if(pDirectory != NULL)
+    {
+        // Copy the encoding key
+        memcpy(pDirectory->EncodingKey.Value, pbEncodingKey, MD5_HASH_SIZE);
+
+        // Only the named entries are eligible to be inserted to the global file table
+        if(pbNamedEntries != NULL)
+            nError = ParseNamedFileEntries(pRootHandler, pParent, pDirectory, pbNamedEntries, pbFileEnd);
+    }
+    else
+    {
+        nError = ERROR_NOT_ENOUGH_MEMORY;
+    }
+
+    // Give the directory to the caller
+    PtrDirectory[0] = pDirectory;
+    return nError;
+
+/*
     // Allocate directory
     cbToAllocate = sizeof(CASC_DIRECTORY) + (dwIndexEntries1 + dwIndexEntries2 + dwNamedEntries) * sizeof(DWORD);
     pDirectory = (PCASC_DIRECTORY)CASC_ALLOC(BYTE, cbToAllocate);
@@ -674,119 +798,158 @@ static int ParseDirectoryFile(
         }
 
         // Parse array of entries which contain EncodingKey + FileName
-        if(pbNamedEntries != NULL)
-        {
-            nError = ParseNamedFileEntries(pRootHandler, pDirectory, pbNamedEntries, pbFileEnd);
-            if(nError != ERROR_SUCCESS)
-                return nError;
-        }
-    }
-    else
-    {
-        nError = ERROR_NOT_ENOUGH_MEMORY;
     }
 
     // Give the directory to the caller
     return nError;
+*/
 }
 
 static int ParseCoreTOC(TRootHandler_Diablo3 * pRootHandler, LPBYTE pbCoreToc, LPBYTE pbCoreTocEnd)
 {
     PDIABLO3_CORE_TOC_HEADER pTocHeader;
-    PDIABLO3_CORE_TOC_ENTRY pTocTable;
-    PCASC_FILE_ENTRY pFileEntry;
-    LPBYTE pbCoreTocEntry;
-    char * szFileNamesEnd;
-    char * szFileNames;
-    DWORD cbNameBufferSize = 0;
-    DWORD dwTotalFiles = 0;
-    DWORD dwFileIndex;
+    PDIABLO3_CORE_TOC_ENTRY pTocEntry;
+    PDIABLO3_CORE_TOC pCoreToc;
+    LPBYTE pbCoreTocNames;
+    LPBYTE pbCoreTocEntryEnd;
+    size_t cbToAllocate;
+    DWORD dwMaxFileIndex = 0;
     DWORD i;
 
     // Check the space for header
     if((pbCoreToc + sizeof(DIABLO3_CORE_TOC_HEADER)) > pbCoreTocEnd)
         return ERROR_FILE_CORRUPT;
-
-    // Get the header itself
     pTocHeader = (PDIABLO3_CORE_TOC_HEADER)pbCoreToc;
     pbCoreToc += sizeof(DIABLO3_CORE_TOC_HEADER);
 
-    // Determine the total file count and size of name buffers
-    for(DWORD i = 0; i < DIABLO3_MAX_ASSETS; i++)
-        dwTotalFiles += pTocHeader->EntryCounts[i];
-
-    // Make sure that we have enough space in the global name buffer
-    EnlargeNameBuffer(pRootHandler, pRootHandler->cbFileNames + cbNameBufferSize);
-
-    // Allocate the helper map for FileIndex -> CoreTocEntry
-    pTocTable = CASC_ALLOC(DIABLO3_CORE_TOC_ENTRY, pRootHandler->dwMaxFileIndex + 1);
-    if(pTocTable != NULL)
+    // Calculate space needed for allocation
+    for(i = 0; i < DIABLO3_MAX_ASSETS; i++)
     {
-        // Fill-in the entire table with zeros
-        memset(pTocTable, 0, sizeof(DIABLO3_CORE_TOC_ENTRY) * (pRootHandler->dwMaxFileIndex + 1));
+        // Get the first entry
+        pTocEntry = (PDIABLO3_CORE_TOC_ENTRY)(pbCoreToc + pTocHeader->EntryOffsets[i]);
 
-        // Now parse all subitems
+        // Find out the entry tith the maximum index
+        for(DWORD n = 0; n < pTocHeader->EntryCounts[i]; n++)
+        {
+            if(pTocEntry->FileIndex > dwMaxFileIndex)
+                dwMaxFileIndex = pTocEntry->FileIndex;
+            pTocEntry++;
+        }
+    }
+
+    // Allocate the DIABLO3_CORE_TOC structure
+    // Note that we will not copy the file names - they stay in the loaded CoreTOC.dat
+    cbToAllocate = sizeof(DIABLO3_CORE_TOC) + (dwMaxFileIndex + 1) * sizeof(DIABLO3_CORE_TOC_ENTRY);
+    pCoreToc = (PDIABLO3_CORE_TOC)CASC_ALLOC(BYTE, cbToAllocate);
+    if(pCoreToc != NULL)
+    {
+        // Initialize the DIABLO3_CORE_TOC structure
+        memcpy(&pCoreToc->Hdr, pTocHeader, sizeof(DIABLO3_CORE_TOC_HEADER));
+        memset(pCoreToc->Entries, 0xFF, dwMaxFileIndex * sizeof(DIABLO3_CORE_TOC_ENTRY));
+        pCoreToc->pbCoreToc = pbCoreToc;
+
+        // Parse the file again and copy all entries and names
         for(i = 0; i < DIABLO3_MAX_ASSETS; i++)
         {
-            PDIABLO3_CORE_TOC_ENTRY pTocEntry;
-            LPBYTE pbNameArray;
-            DWORD dwEntryOffset = pTocHeader->EntryOffsets[i];
-            DWORD dwEntryCount = pTocHeader->EntryCounts[i];
-            DWORD cbNameArray = 0;
+            // Set the pointers
+            pTocEntry = (PDIABLO3_CORE_TOC_ENTRY)(pbCoreToc + pTocHeader->EntryOffsets[i]);
+            pbCoreTocNames = (LPBYTE)(pTocEntry + pTocHeader->EntryCounts[i]);
+            pbCoreTocEntryEnd = pbCoreTocEnd;
 
-            // Get pointer to the first entry
-            pbCoreTocEntry = pbCoreToc + dwEntryOffset;
-            pTocEntry = (PDIABLO3_CORE_TOC_ENTRY)pbCoreTocEntry;
+            // Get the end of this entry block
+            if(i < DIABLO3_MAX_ASSETS - 1)
+                pbCoreTocEntryEnd = pbCoreToc + pTocHeader->EntryOffsets[i+1];
 
-            // Insert the name group to the global name buffer
-            pbNameArray = GetCoreTocNameArray(pTocHeader, pbCoreTocEnd, i, &cbNameArray);
-            szFileNames = InsertNamesToBuffer(pRootHandler, pbNameArray, cbNameArray);
-
-            // Get the entry count
-            for(DWORD n = 0; n < dwEntryCount; n++, pTocEntry++)
+            // Setup the entries
+            for(DWORD n = 0; n < pTocHeader->EntryCounts[i]; n++)
             {
-                // Verify range
-                if((LPBYTE)(pTocEntry + 1) > pbCoreTocEnd)
-                    break;
-                
-                // Get and verify the file index range
-                assert(pTocEntry->FileIndex <= pRootHandler->dwMaxFileIndex);
-                dwFileIndex = pTocEntry->FileIndex;
-
-                // Fill the TOC entry at that index
-                if(dwFileIndex <= pRootHandler->dwMaxFileIndex)
-                {
-                    pTocTable[dwFileIndex].AssetIndex = pTocEntry->AssetIndex;
-                    pTocTable[dwFileIndex].FileIndex  = pTocEntry->FileIndex;
-                    pTocTable[dwFileIndex].NameOffset = (DWORD)(szFileNames - pRootHandler->szFileNames) + pTocEntry->NameOffset;
-                }
+                pCoreToc->Entries[pTocEntry->FileIndex].AssetIndex = pTocEntry->AssetIndex;
+                pCoreToc->Entries[pTocEntry->FileIndex].FileIndex  = pTocEntry->FileIndex;
+                pCoreToc->Entries[pTocEntry->FileIndex].NameOffset = (DWORD)(pbCoreTocNames - pbCoreToc) + pTocEntry->NameOffset;
+                pTocEntry++;
             }
         }
 
-        // Go through the entire file table and assign the found entries
-        pFileEntry = pRootHandler->pFileTable;
-        for(i = 0; i < pRootHandler->dwFileCount; i++, pFileEntry++)
+        // Now parse all subdirectories of the root directory and resolve names of each item
+        for(i = 0; i < pRootHandler->pRootDirectory->FileCount; i++)
         {
-            // Get the file index
-            dwFileIndex = pFileEntry->IndexOrOffset;
+            ResolveFullFileNames(pRootHandler, pCoreToc, i);
+        }
+    }
 
-            // The file index must exist in the CoreToc table
-            if((pFileEntry->EntryFlags & ENTRY_FLAG_NAME_MASK) == 0 && pTocTable[dwFileIndex].NameOffset != 0)
+    return ERROR_SUCCESS;
+}
+
+static int ParsePackagesDat(TRootHandler_Diablo3 * pRootHandler, LPBYTE pbPackagesDat, LPBYTE pbPackagesEnd)
+{
+    PDIABLO3_PACKAGES_DAT_HEADER pDatHeader = (PDIABLO3_PACKAGES_DAT_HEADER)pbPackagesDat;
+    PCASC_FILE_ENTRY pFileEntry;
+    PCASC_FILE_ENTRY pParent;
+    PCASC_DIRECTORY pSubDir;
+    char * szSubDirName;
+    char * szFileName;
+    LPBYTE pbFileName;
+
+    // Get the header
+    if((pbPackagesDat + sizeof(DIABLO3_PACKAGES_DAT_HEADER)) >= pbPackagesEnd)
+        return ERROR_BAD_FORMAT;
+    pbPackagesDat += sizeof(DIABLO3_PACKAGES_DAT_HEADER);
+
+    // Check the signature and name count
+    if(pDatHeader->Signature != DIABLO3_PACKAGES_SIGNATURE)
+        return ERROR_BAD_FORMAT;
+
+    // Attempt to load the files for all level-0 directories
+    for(DWORD i = 0; i < pRootHandler->pRootDirectory->FileCount; i++)
+    {
+        // Get pointers to subdirectory
+        pParent = pRootHandler->pFileTable + i;
+        pSubDir = pRootHandler->SubDirs[i];
+        pbFileName = pbPackagesDat;
+
+        // Only if that subdir is valid
+        if(pSubDir != NULL)
+        {
+            // Check all file names
+            for(DWORD n = 0; n < pDatHeader->NumberOfNames; n++)
             {
-                // Setup the entry
-                pFileEntry->AssetIndex    = (BYTE)pTocTable[dwFileIndex].AssetIndex;
-                pFileEntry->IndexOrOffset = pTocTable[dwFileIndex].NameOffset;
-                pFileEntry->EntryFlags   |= ENTRY_FLAG_PLAIN_NAME;
+                DIABLO3_NAME_INFO NameInfo;
+                ULONGLONG FileNameHash;
 
-                // We can now insert the item to the map of FNAME -> FileEntry
-                InsertPlainNamedEntry(pRootHandler, pFileEntry);
+                // Convert the name to a normalized name
+                szSubDirName = pRootHandler->szFileNames + pParent->NameOffset;
+                NormalizeFileName_Diablo3(&NameInfo, szSubDirName, (char *)pbFileName);
+
+                // If the name had three backslashes (like "Base\SoundBank\X1_Monster_Westmarch_Rat\0061.fsb"),
+                // we try to find the name in the name table
+                if(NameInfo.nBackslashes == 3 && (NameInfo.nNameLength - NameInfo.nExtension) == 4)
+                {
+                    // Calculate the hash of the normalized file name
+                    FileNameHash = CalcFileNameHashEx(&NameInfo);
+
+                    // Try to find the value
+                    pFileEntry = (PCASC_FILE_ENTRY)Map_FindObject(pRootHandler->pRootMap, &FileNameHash, NULL);
+                    if(pFileEntry != NULL && (pFileEntry->EntryFlags & ENTRY_FLAG_NAME_MASK) == ENTRY_FLAG_PLAIN_NAME)
+                    {
+                        // Insert the discovered name to the global name buffer
+                        szFileName = InsertNamesToBuffer(pRootHandler, pbFileName, NameInfo.nNameLength + 1);
+                        if(szFileName != NULL)
+                        {
+                            // Switch the file entry to hae full name
+                            pFileEntry->NameOffset = (DWORD)(szFileName - pRootHandler->szFileNames);
+                            pFileEntry->EntryFlags = (pFileEntry->EntryFlags & ENTRY_FLAG_FLAGS_MASK) | ENTRY_FLAG_FULL_NAME;
+                        }
+                    }
+                }
+
+                // Move to the next file name
+                if((pbFileName + NameInfo.nNameLength + 1) >= pbPackagesEnd)
+                    break;
+                pbFileName = pbFileName + (NameInfo.nNameLength - NameInfo.nLengthLevel0) + 1;
             }
         }
-
-        // Free the helper table
-        CASC_FREE(pTocTable);
     }
-    
+
     return ERROR_SUCCESS;
 }
 
@@ -824,6 +987,19 @@ static LPBYTE LoadFileToMemory(TCascStorage * hs, LPBYTE pbEncodingKey, DWORD * 
     return pbFileData;
 }
 
+static LPBYTE LoadFileToMemory(TCascStorage * hs, const char * szFileName, DWORD * pcbFileData)
+{
+    LPBYTE pbEncodingKey = NULL;
+    LPBYTE pbFileData = NULL;
+
+    // Try to find encoding key for the file
+    pbEncodingKey = RootHandler_GetKey(hs->pRootHandler, szFileName);
+    if(pbEncodingKey != NULL)
+        pbFileData = LoadFileToMemory(hs, pbEncodingKey, pcbFileData);
+
+    return pbFileData;
+}
+
 //-----------------------------------------------------------------------------
 // Implementation of Diablo III root file
 
@@ -833,11 +1009,6 @@ static LPBYTE D3Handler_Search(TRootHandler_Diablo3 * pRootHandler, TCascSearch 
     PCASC_FILE_ENTRY pFileEntry;
     PCASC_DIRECTORY pRootDir = pRootHandler->pRootDirectory;
     PCASC_DIRECTORY pSubDir;
-    const char * szName0;
-    const char * szName1;
-    char * szNameBufferEnd = pSearch->szFileName + MAX_PATH;
-    char * szNameBuffer = pSearch->szFileName;
-    char szBuffer[MAX_PATH+1];
 
     // Are we still inside the root directory range?
     while(pSearch->IndexLevel1 < pRootDir->FileCount)
@@ -850,18 +1021,31 @@ static LPBYTE D3Handler_Search(TRootHandler_Diablo3 * pRootHandler, TCascSearch 
             // Are we still inside the range of directory entries?
             while(pSearch->IndexLevel2 < pSubDir->FileCount)
             {
-                // Get the index of the file entry
+                // Get the pointer to the file entry
                 pFileEntry = pRootHandler->pFileTable + pSubDir->Files[pSearch->IndexLevel2];
                 pSearch->IndexLevel2++;
 
-                // Append the level-0 directory file name 
-                szName0 = pRootHandler->szFileNames + pRootEntry->IndexOrOffset;
-                szNameBuffer = AppendPathElement(szNameBuffer, szNameBufferEnd, szName0, '\\');
+                // Create the file name from the file entry with full name
+                if(pFileEntry->EntryFlags & ENTRY_FLAG_FULL_NAME)
+                {
+                    CreateFileName(pRootHandler,
+                                   pRootEntry,
+                                   pFileEntry->NameOffset,
+                                   pSearch->szFileName);
+                    return pFileEntry->EncodingKey.Value;
+                }
 
-                // Get the rest of the name
-                szName1 = CreateFileName(pRootHandler, pFileEntry, szBuffer, MAX_PATH);
-                szNameBuffer = AppendPathElement(szNameBuffer, szNameBufferEnd, szName1, 0);
-                return pFileEntry->EncodingKey.Value;
+                // Create the file name from the file entry with plain name
+                if(pFileEntry->EntryFlags & ENTRY_FLAG_PLAIN_NAME)
+                {
+                    CreateFileName(pRootHandler,
+                                   pRootEntry,
+                                   pFileEntry->AssetIndex,
+                                   pFileEntry->NameOffset,
+                                   pFileEntry->SubIndex,
+                                   pSearch->szFileName);
+                    return pFileEntry->EncodingKey.Value;
+                }
             }
         }
 
@@ -883,31 +1067,13 @@ static LPBYTE D3Handler_GetKey(TRootHandler_Diablo3 * pRootHandler, const char *
 {
     PCASC_FILE_ENTRY pFileEntry;
     ULONGLONG FileNameHash;
-    char szDirName0[DIABLO3_MAX_LEVEL0_LENGTH+1];
 
-    // Extract the level-0 directory name
-    szFileName = ExtractDirectoryName0(szFileName, szDirName0);
-    if(szFileName == NULL)
-        return NULL;
-
-    // Find the level-0 directory entry
-    FileNameHash = CalcFileNameHash(szDirName0);
+    // Find the file directly
+    FileNameHash = CalcFileNameHash(NULL, szFileName);
     pFileEntry = (PCASC_FILE_ENTRY)Map_FindObject(pRootHandler->pRootMap, &FileNameHash, NULL);
-    if(pFileEntry == NULL)
-        return NULL;
 
-    // We allow the user to open just the level-0 directory
-    if(szFileName[0] == 0)
-        return pFileEntry->EncodingKey.Value;
-
-    // Calculate the name hash of the remaining name
-    FileNameHash = CalcFileNameHash(szFileName);
-    pFileEntry = (PCASC_FILE_ENTRY)Map_FindObject(pRootHandler->pRootMap, &FileNameHash, NULL);
-    if(pFileEntry != NULL)
-        return pFileEntry->EncodingKey.Value;
-
-    // No such file
-    return NULL;
+    // Return the entry's encoding key or NULL
+    return (pFileEntry != NULL) ? pFileEntry->EncodingKey.Value : NULL;
 }
 
 static void D3Handler_Close(TRootHandler_Diablo3 * pRootHandler)
@@ -1019,6 +1185,8 @@ int RootHandler_CreateDiablo3(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRoot
 {
     TRootHandler_Diablo3 * pRootHandler;
     LPBYTE pbRootFileEnd = pbRootFile + cbRootFile;
+    DWORD dwRootEntries = 0;
+    DWORD i;
     int nError;
 
     // Allocate the root handler object
@@ -1037,6 +1205,12 @@ int RootHandler_CreateDiablo3(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRoot
     pRootHandler->dwRootFlags |= ROOT_FLAG_HAS_NAMES;
     hs->pRootHandler = pRootHandler;
 
+    // Allocate global buffer for file names
+    pRootHandler->szFileNames = CASC_ALLOC(char, 0x10000);
+    if(pRootHandler->szFileNames == NULL)
+        return ERROR_NOT_ENOUGH_MEMORY;
+    pRootHandler->cbFileNamesMax = 0x10000;
+
     // Allocate the global linear file table
     // Note: This is about 18 MB of memory for Diablo III PTR build 30013
     pRootHandler->pFileTable = CASC_ALLOC(CASC_FILE_ENTRY, hs->pEncodingMap->ItemCount);
@@ -1044,30 +1218,23 @@ int RootHandler_CreateDiablo3(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRoot
         return ERROR_NOT_ENOUGH_MEMORY;
     pRootHandler->dwFileCountMax = (DWORD)hs->pEncodingMap->ItemCount;
 
-    // Allocate global buffer for file names
-    pRootHandler->szFileNames = CASC_ALLOC(char, 0x10000);
-    if(pRootHandler->szFileNames == NULL)
-        return ERROR_NOT_ENOUGH_MEMORY;
-    pRootHandler->cbFileNamesMax = 0x10000;
-
     // Create map of ROOT_ENTRY -> FileEntry
     pRootHandler->pRootMap = Map_Create(pRootHandler->dwFileCountMax, sizeof(ULONGLONG), FIELD_OFFSET(CASC_FILE_ENTRY, FileNameHash));
     if(pRootHandler->pRootMap == NULL)
         return ERROR_NOT_ENOUGH_MEMORY;
 
     // Create the root directory
-    nError = ParseDirectoryFile(pRootHandler, pbRootFile, pbRootFileEnd, &pRootHandler->pRootDirectory);
+    nError = ParseDirectoryFile(pRootHandler, NULL, hs->RootKey.pbData, pbRootFile, pbRootFileEnd, &pRootHandler->pRootDirectory);
     if(nError == ERROR_SUCCESS)
     {
         PCASC_FILE_ENTRY pRootEntry = pRootHandler->pFileTable;
-        DWORD dwRootEntries = pRootHandler->pRootDirectory->FileCount;
 
         // We expect the number of subdirectories to be less than maximum
+        dwRootEntries = pRootHandler->pRootDirectory->FileCount;
         assert(dwRootEntries < DIABLO3_MAX_SUBDIRS);
-        memcpy(pRootHandler->pRootDirectory->EncodingKey.Value, hs->RootKey.pbData, MD5_HASH_SIZE);
 
         // Now parse the all root items and load them
-        for(DWORD i = 0; i < dwRootEntries; i++, pRootEntry++)
+        for(i = 0; i < dwRootEntries; i++, pRootEntry++)
         {
             // Mark the root entry as directory
             pRootEntry->EntryFlags |= ENTRY_FLAG_DIRECTORY_ENTRY;
@@ -1079,15 +1246,14 @@ int RootHandler_CreateDiablo3(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRoot
                 PCASC_DIRECTORY pSubDir = NULL;
 
                 nError = ParseDirectoryFile(pRootHandler, 
+                                            pRootEntry,
+                                            pRootEntry->EncodingKey.Value,
                                             pbRootFile,
                                             pbRootFile + cbRootFile,
                                            &pSubDir);
                 
                 if(nError == ERROR_SUCCESS && pSubDir != NULL)
-                {
-                    pSubDir->EncodingKey = pRootEntry->EncodingKey;
                     pRootHandler->SubDirs[i] = pSubDir;
-                }
 
                 CASC_FREE(pbRootFile);
             }
@@ -1099,28 +1265,52 @@ int RootHandler_CreateDiablo3(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRoot
     // to get directory asset indexes, file names and extensions
     if(nError == ERROR_SUCCESS)
     {
-        LPBYTE pbEncodingKey;
         LPBYTE pbCoreTOC;
         DWORD cbCoreTOC = 0;
 
-        // Try to find encoding key for "Base\\CoreTOC.dat"
-        pbEncodingKey = pRootHandler->GetKey(pRootHandler, "Base\\CoreTOC.dat");
-        if(pbEncodingKey != NULL)
+        // Load the entire file to memory
+        pbCoreTOC = LoadFileToMemory(hs, "Base\\CoreTOC.dat", &cbCoreTOC);
+        if(pbCoreTOC != NULL)
         {
-            // Load the entire file to memory
-            pbCoreTOC = LoadFileToMemory(hs, pbEncodingKey, &cbCoreTOC);
-            if(pbCoreTOC != NULL)
-            {
-                // Parse the CoreTOC.dat and extract file names from it
-                ParseCoreTOC(pRootHandler, pbCoreTOC, pbCoreTOC + cbCoreTOC);
-
-                // Free the content of CoreTOC.dat
-                CASC_FREE(pbCoreTOC);
-            }
+            ParseCoreTOC(pRootHandler, pbCoreTOC, pbCoreTOC + cbCoreTOC);
+            CASC_FREE(pbCoreTOC);
         }
     }
 
-    // TODO: Load the file Base\Data_D3\PC\Misc\Packages.dat and fixup
+    // Load the file Base\Data_D3\PC\Misc\Packages.dat and fixup
     // the names with sub-items
+    if(nError == ERROR_SUCCESS)
+    {
+        LPBYTE pbPackagesDat;
+        DWORD cbPackagesDat = 0;
+
+        // Load the entire file to memory
+        pbPackagesDat = LoadFileToMemory(hs, "Base\\Data_D3\\PC\\Misc\\Packages.dat", &cbPackagesDat);
+        if(pbPackagesDat != NULL)
+        {
+            ParsePackagesDat(pRootHandler, pbPackagesDat, pbPackagesDat + cbPackagesDat);
+            CASC_FREE(pbPackagesDat);
+        }
+    }
+
+    // Free all remaining file ID lists
+    for(i = 0; i < dwRootEntries; i++)
+    {
+        PCASC_DIRECTORY pSubDir = pRootHandler->SubDirs[i];
+
+        if(pSubDir != NULL)
+        {
+            if(pSubDir->pIndexEntries1 != NULL)
+                CASC_FREE(pSubDir->pIndexEntries1);
+            if(pSubDir->pIndexEntries2 != NULL)
+                CASC_FREE(pSubDir->pIndexEntries2);
+
+            pSubDir->pIndexEntries1 = NULL;
+            pSubDir->pIndexEntries2 = NULL;
+            pSubDir->nIndexEntries1 = 0;
+            pSubDir->nIndexEntries2 = 0;
+        }
+    }
+
     return nError;
 }
