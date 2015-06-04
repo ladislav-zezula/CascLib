@@ -99,7 +99,7 @@ void CopyString(char * szTarget, const wchar_t * szSource, size_t cchLength)
     szTarget[cchLength] = 0;
 }
 
-char * NewStr(const char * szString, size_t nCharsToReserve)
+char * CascNewStr(const char * szString, size_t nCharsToReserve)
 {
     char * szNewString = NULL;
     size_t nLength;
@@ -118,7 +118,7 @@ char * NewStr(const char * szString, size_t nCharsToReserve)
     return szNewString;
 }
 
-wchar_t * NewStr(const wchar_t * szString, size_t nCharsToReserve)
+wchar_t * CascNewStr(const wchar_t * szString, size_t nCharsToReserve)
 {
     wchar_t * szNewString = NULL;
     size_t nLength;
@@ -131,25 +131,6 @@ wchar_t * NewStr(const wchar_t * szString, size_t nCharsToReserve)
         {
             memcpy(szNewString, szString, nLength * sizeof(wchar_t));
             szNewString[nLength] = 0;
-        }
-    }
-
-    return szNewString;
-}
-
-TCHAR * NewStrFromAnsi(LPBYTE pbStringBegin, LPBYTE pbStringEnd)
-{
-    TCHAR * szNewString = NULL;
-    TCHAR * szStringPtr = NULL;
-    size_t nLength = (size_t)(pbStringEnd - pbStringBegin);
-
-    if(pbStringEnd > pbStringBegin)
-    {
-        szNewString = szStringPtr = CASC_ALLOC(TCHAR, nLength + 1);
-        if(szNewString != NULL)
-        {
-            CopyString(szStringPtr, (const char *)pbStringBegin, nLength);
-            szStringPtr[nLength] = 0;
         }
     }
 

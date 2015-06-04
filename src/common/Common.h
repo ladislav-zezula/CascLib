@@ -53,10 +53,8 @@ void CopyString(char * szTarget, const char * szSource, size_t cchLength);
 void CopyString(wchar_t * szTarget, const char * szSource, size_t cchLength);
 void CopyString(char * szTarget, const wchar_t * szSource, size_t cchLength);
 
-char * NewStr(const char * szString, size_t nCharsToReserve);
-wchar_t * NewStr(const wchar_t * szString, size_t nCharsToReserve);
-
-TCHAR * NewStrFromAnsi(LPBYTE pbStringBegin, LPBYTE pbStringEnd);
+char * CascNewStr(const char * szString, size_t nCharsToReserve);
+wchar_t * CascNewStr(const wchar_t * szString, size_t nCharsToReserve);
 
 TCHAR * CombinePath(const TCHAR * szPath, const TCHAR * szSubDir);
 

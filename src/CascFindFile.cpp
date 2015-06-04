@@ -78,7 +78,7 @@ static TCascSearch * AllocateSearchHandle(TCascStorage * hs, const TCHAR * szLis
         // Save the other variables
         if(szListFile != NULL)
         {
-            pSearch->szListFile = NewStr(szListFile, 0);
+            pSearch->szListFile = CascNewStr(szListFile, 0);
             if(pSearch->szListFile == NULL)
             {
                 FreeSearchHandle(pSearch);
@@ -87,7 +87,7 @@ static TCascSearch * AllocateSearchHandle(TCascStorage * hs, const TCHAR * szLis
         }
 
         // Allocate the search mask
-        pSearch->szMask = NewStr(szMask, 0);
+        pSearch->szMask = CascNewStr(szMask, 0);
         if(pSearch->szMask == NULL)
         {
             FreeSearchHandle(pSearch);

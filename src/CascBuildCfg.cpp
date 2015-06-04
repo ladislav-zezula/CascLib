@@ -608,7 +608,7 @@ static int FetchAndVerifyConfigFile(TCascStorage * hs, PQUERY_KEY pFileKey, PQUE
     int nError;
 
     // Construct the local file name
-    szFileName = NewStr(hs->szDataPath, 8 + 3 + 3 + 32);
+    szFileName = CascNewStr(hs->szDataPath, 8 + 3 + 3 + 32);
     if(szFileName == NULL)
         return ERROR_NOT_ENOUGH_MEMORY;
 
@@ -787,8 +787,16 @@ static int ParseAgentFile(TCascStorage * hs, PQUERY_KEY pFileBlob)
     pbBlobEnd = FindNextSeparator(pFileBlob, pbBlobBegin);
     if(pbBlobEnd != NULL)
     {
-        // Convert the string to a blob
-        hs->szUrlPath = NewStrFromAnsi(pbBlobBegin, pbBlobEnd);
+        hs->szUrlPath = CASC_ALLOC(TCHAR, pbBlobEnd - pbBlobBegin + 1);
+        if(hs->szUrlPath != NULL)
+        {
+            CopyString(hs->szUrlPath, (const char *)pbBlobBegin, (pbBlobEnd - pbBlobBegin));
+            hs->szUrlPath[pbBlobEnd - pbBlobBegin] = 0;
+        }
+        else
+        {
+            nError = ERROR_NOT_ENOUGH_MEMORY;
+        }
     }
 
     // Verify all variables

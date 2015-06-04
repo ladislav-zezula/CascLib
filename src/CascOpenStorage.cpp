@@ -202,10 +202,10 @@ static int InitializeCascDirectories(TCascStorage * hs, const TCHAR * szDataPath
     TCHAR * szLastPathPart;
 
     // Save the game data directory
-    hs->szDataPath  = NewStr(szDataPath, 0);
+    hs->szDataPath  = CascNewStr(szDataPath, 0);
     
     // Save the root game directory
-    hs->szRootPath  = NewStr(szDataPath, 0);
+    hs->szRootPath  = CascNewStr(szDataPath, 0);
 
     // Find the last part
     szLastPathPart = hs->szRootPath;

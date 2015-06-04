@@ -22,7 +22,7 @@ static TCHAR * FormatFileName(TCascStorage * hs, const TCHAR * szNameFormat)
     TCHAR * szTrg;
 
     // Create copy of the file name
-    szFileName = szSrc = szTrg = NewStr(szNameFormat, 0);
+    szFileName = szSrc = szTrg = CascNewStr(szNameFormat, 0);
     if(szFileName != NULL)
     {
         // Format the file name
