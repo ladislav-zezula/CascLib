@@ -348,87 +348,55 @@ const char * GetPlainFileName(const char * szFileName)
 
 bool CheckWildCard(const char * szString, const char * szWildCard)
 {
-    const char * szSubString;
-    int nSubStringLength;
-    int nMatchCount = 0;
+    const char * szWildCardPtr;
 
-    // When the mask is empty, it never matches
-    if(szWildCard == NULL || *szWildCard == 0)
-        return false;
-
-    // If the wildcard contains just "*", then it always matches
-    if(szWildCard[0] == '*' && szWildCard[1] == 0)
-        return true;
-
-    // Do normal test
     for(;;)
     {
         // If there is '?' in the wildcard, we skip one char
-        while(*szWildCard == '?')
+        while(szWildCard[0] == '?')
         {
+            if(szString[0] == 0)
+                return false;
+
             szWildCard++;
             szString++;
         }
 
-        // If there is '*', means zero or more chars. We have to 
-        // find the sequence after '*'
-        if(*szWildCard == '*')
+        // Handle '*'
+        szWildCardPtr = szWildCard;
+        if(szWildCardPtr[0] != 0)
         {
-            // More stars is equal to one star
-            while(*szWildCard == '*' || *szWildCard == '?')
-                szWildCard++;
-
-            // If we found end of the wildcard, it's a match
-            if(*szWildCard == 0)
-                return true;
-
-            // Determine the length of the substring in szWildCard
-            szSubString = szWildCard;
-            while(*szSubString != 0 && *szSubString != '?' && *szSubString != '*')
-                szSubString++;
-            nSubStringLength = (int)(szSubString - szWildCard);
-            nMatchCount = 0;
-
-            // Now we have to find a substring in szString,
-            // that matches the substring in szWildCard
-            while(*szString != 0)
+            if(szWildCardPtr[0] == '*')
             {
-                // Calculate match count
-                while(nMatchCount < nSubStringLength)
-                {
-                    if(AsciiToUpperTable_BkSlash[(BYTE)szString[nMatchCount]] != AsciiToUpperTable_BkSlash[(BYTE)szWildCard[nMatchCount]])
-                        break;
-                    if(szString[nMatchCount] == 0)
-                        break;
-                    nMatchCount++;
-                }
+                szWildCardPtr++;
 
-                // If the match count has reached substring length, we found a match
-                if(nMatchCount == nSubStringLength)
-                {
-                    szWildCard += nMatchCount;
-                    szString += nMatchCount;
-                    break;
-                }
+                if(szWildCardPtr[0] == '*')
+                    continue;
 
-                // No match, move to the next char in szString
-                nMatchCount = 0;
-                szString++;
+                if(szWildCardPtr[0] == 0)
+                    return true;
+
+                if(AsciiToUpperTable_BkSlash[szWildCardPtr[0]] == AsciiToUpperTable_BkSlash[szString[0]])
+                {
+                    if(CheckWildCard(szString, szWildCardPtr))
+                        return true;
+                }
             }
+            else
+            {
+                if(AsciiToUpperTable_BkSlash[szWildCardPtr[0]] != AsciiToUpperTable_BkSlash[szString[0]])
+                    return false;
+
+                szWildCard = szWildCardPtr + 1;
+            }
+
+            if(szString[0] == 0)
+                return false;
+            szString++;
         }
         else
         {
-            // If we came to the end of the string, compare it to the wildcard
-            if(AsciiToUpperTable_BkSlash[(BYTE)*szString] != AsciiToUpperTable_BkSlash[(BYTE)*szWildCard])
-                return false;
-
-            // If we arrived to the end of the string, it's a match
-            if(*szString == 0)
-                return true;
-
-            // Otherwise, continue in comparing
-            szWildCard++;
-            szString++;
+            return (szString[0] == 0) ? true : false;
         }
     }
 }

@@ -423,6 +423,9 @@ int main(int argc, char * argv[])
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_OpenFile(MAKE_PATH("2015 - Diablo III/30013/Data"), "Base\\SoundBank\\Barbarian_Male\\0005.xxx");
 
+     if(nError == ERROR_SUCCESS)
+        nError = TestOpenStorage_OpenFile(_T("c:\\Hry\\Diablo III Public Test\\Data"), "Base\\SoundBank\\Barbarian_Male\\0005.xxx");
+
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/29049/BNTData"), NULL);
 

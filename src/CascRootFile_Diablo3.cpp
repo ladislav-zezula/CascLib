@@ -493,6 +493,9 @@ static DWORD InsertFileEntry(
         pFileEntry->EntryFlags   = ENTRY_FLAG_PLAIN_NAME;
         pRootHandler->dwFileCount++;
 
+        // Verify collisions (debug version only)
+        assert(Map_FindObject(pRootHandler->pRootMap, &pFileEntry->FileNameHash, NULL) == NULL);
+
         // We must use the file name INCLUDING the level-0 directory name,
         // otherwise we get collisions like this:
         // enGB\SoundBank\D_A1C5RFarmerScavengerEpilogue2.sbk
@@ -532,6 +535,9 @@ static DWORD InsertFileEntry(
         pFileEntry->AssetIndex   = INVALID_ASSET_INDEX;
         pFileEntry->NameOffset   = dwNameOffset;
         pFileEntry->SubIndex     = 0;
+
+        // Verify collisions (debug version only)
+        assert(Map_FindObject(pRootHandler->pRootMap, &pFileEntry->FileNameHash, NULL) == NULL);
 
         // Calculate the file name hash
         Map_InsertObject(pRootHandler->pRootMap, pFileEntry, &pFileEntry->FileNameHash);
