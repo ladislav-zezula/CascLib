@@ -227,6 +227,16 @@ HANDLE WINAPI CascFindFirstFile(HANDLE hStorage, const char * szMask, PCASC_FIND
 bool  WINAPI CascFindNextFile(HANDLE hFind, PCASC_FIND_DATA pFindData);
 bool  WINAPI CascFindClose(HANDLE hFind);
 
+//-----------------------------------------------------------------------------
+// GetLastError/SetLastError support for non-Windows platform
+
+#ifndef PLATFORM_WINDOWS
+
+int GetLastError();
+void SetLastError(int nError);
+
+#endif  // PLATFORM_WINDOWS
+
 #ifdef __cplusplus
 }   // extern "C"
 #endif

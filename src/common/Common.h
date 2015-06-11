@@ -29,24 +29,6 @@ extern unsigned char AsciiToUpperTable_BkSlash[256];
 extern unsigned char IntToHexChar[];
 
 //-----------------------------------------------------------------------------
-// GetLastError/SetLastError support for non-Windows platform
-
-#ifndef PLATFORM_WINDOWS
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-int GetLastError();
-void SetLastError(int nError);
-
-#ifdef __cplusplus
-}   // extern "C"
-#endif
-
-#endif  // PLATFORM_WINDOWS
-
-//-----------------------------------------------------------------------------
 // String manipulation
 
 void CopyString(char * szTarget, const char * szSource, size_t cchLength);
