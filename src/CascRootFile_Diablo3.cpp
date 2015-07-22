@@ -77,6 +77,17 @@ typedef struct _DIABLO3_CORE_TOC_ENTRY
 
 } DIABLO3_CORE_TOC_ENTRY, *PDIABLO3_CORE_TOC_ENTRY;
 
+// In-memory structure of parsed directory header
+typedef struct _DIABLO3_DIR_HEADER
+{
+    LPBYTE pbEntries1;
+    LPBYTE pbEntries2;
+    LPBYTE pbEntries3;
+    DWORD dwEntries1;
+    DWORD dwEntries2;
+    DWORD dwEntries3;
+} DIABLO3_DIR_HEADER, *PDIABLO3_DIR_HEADER;
+
 // In-memory structure of loaded CoreTOC.dat
 typedef struct _DIABLO3_CORE_TOC
 {
@@ -156,7 +167,6 @@ struct TRootHandler_Diablo3 : public TRootHandler
 
     // Linear global list of all files
     PCASC_FILE_ENTRY pFileTable;                    // Global linear list of all files
-//  DWORD dwMaxFileIndex;                           // Maximum file index
     DWORD dwFileCountMax;                           // Maximum number of files in the table
     DWORD dwFileCount;                              // Current number of files in the table
 
@@ -476,6 +486,13 @@ static DWORD InsertFileEntry(
     char * szPlainName;    
     char szFileName[MAX_PATH+1];
 
+    // Make sure that we don't exceed the file limit at this phase
+    if(pRootHandler->dwFileCount >= pRootHandler->dwFileCountMax)
+    {
+        assert(false);
+        return INVALID_FILE_INDEX;
+    }
+
     // Insert the plain name to the root handler's global name list
     szPlainName = InsertNamesToBuffer(pRootHandler, pbPlainName, strlen((char *)pbPlainName) + 1);
     if(szPlainName != NULL)
@@ -513,20 +530,25 @@ static DWORD InsertFileEntry(
     LPBYTE pbFileName,
     DWORD cbFileName)
 {
-    PCASC_FILE_ENTRY pFileEntry;
+    PCASC_FILE_ENTRY pFileEntry = pRootHandler->pFileTable + pRootHandler->dwFileCount;
     char * szSubDirName;
     char * szFileName;
     DWORD dwNameOffset = pRootHandler->cbFileNames;
-    DWORD dwTableIndex = INVALID_FILE_INDEX;
+    DWORD dwTableIndex = pRootHandler->dwFileCount;
+
+    // Make sure that we don't exceed the file limit at this phase
+    if(pRootHandler->dwFileCount >= pRootHandler->dwFileCountMax)
+    {
+        assert(false);
+        return INVALID_FILE_INDEX;
+    }
 
     // First, try to copy the name to the global name buffer
     szFileName = InsertNamesToBuffer(pRootHandler, pbFileName, cbFileName);
     if(szFileName != NULL)
     {
         // Retrieve the subdirectory name
-        pFileEntry = pRootHandler->pFileTable + pRootHandler->dwFileCount;
         szSubDirName = (pParent != NULL) ? pRootHandler->szFileNames + pParent->NameOffset : NULL;
-        dwTableIndex = pRootHandler->dwFileCount++;
 
         // Store the info into the file entry
         pFileEntry->EncodingKey  = EncodingKey;
@@ -535,6 +557,7 @@ static DWORD InsertFileEntry(
         pFileEntry->AssetIndex   = INVALID_ASSET_INDEX;
         pFileEntry->NameOffset   = dwNameOffset;
         pFileEntry->SubIndex     = 0;
+        pRootHandler->dwFileCount++;
 
         // Verify collisions (debug version only)
         assert(Map_FindObject(pRootHandler->pRootMap, &pFileEntry->FileNameHash, NULL) == NULL);
@@ -548,17 +571,13 @@ static DWORD InsertFileEntry(
 }
 
 static PCASC_DIRECTORY CreateDiablo3Directory(
-    LPBYTE pbIndexEntries1,
-    DWORD dwIndexEntries1,
-    LPBYTE pbIndexEntries2,
-    DWORD dwIndexEntries2,
-    DWORD dwNamedEntries)
+    PDIABLO3_DIR_HEADER pDirHeader)
 {
     PCASC_DIRECTORY pDirectory;
     size_t cbToAllocate;
 
     // Calculate total space
-    cbToAllocate = sizeof(CASC_DIRECTORY) + (dwIndexEntries1 + dwIndexEntries2 + dwNamedEntries) * sizeof(DWORD);
+    cbToAllocate = sizeof(CASC_DIRECTORY) + (pDirHeader->dwEntries1 + pDirHeader->dwEntries2 + pDirHeader->dwEntries3) * sizeof(DWORD);
     pDirectory = (PCASC_DIRECTORY)CASC_ALLOC(BYTE, cbToAllocate);
     if(pDirectory != NULL)
     {
@@ -566,24 +585,24 @@ static PCASC_DIRECTORY CreateDiablo3Directory(
         memset(pDirectory, 0, cbToAllocate);
 
         // Allocate array of files without sub-item
-        if(pbIndexEntries1 && dwIndexEntries1)
+        if(pDirHeader->pbEntries1 && pDirHeader->dwEntries1)
         {
-            pDirectory->pIndexEntries1 = CASC_ALLOC(DIABLO3_FILEID1_ENTRY, dwIndexEntries1);
+            pDirectory->pIndexEntries1 = CASC_ALLOC(DIABLO3_FILEID1_ENTRY, pDirHeader->dwEntries1);
             if(pDirectory->pIndexEntries1 != NULL)
             {
-                memcpy(pDirectory->pIndexEntries1, pbIndexEntries1, sizeof(DIABLO3_FILEID1_ENTRY) * dwIndexEntries1);
-                pDirectory->nIndexEntries1 = dwIndexEntries1;
+                memcpy(pDirectory->pIndexEntries1, pDirHeader->pbEntries1, sizeof(DIABLO3_FILEID1_ENTRY) * pDirHeader->dwEntries1);
+                pDirectory->nIndexEntries1 = pDirHeader->dwEntries1;
             }
         }
 
         // Allocate array of files with sub-item
-        if(pbIndexEntries2 && dwIndexEntries2)
+        if(pDirHeader->pbEntries2 && pDirHeader->dwEntries2)
         {
-            pDirectory->pIndexEntries2 = CASC_ALLOC(DIABLO3_FILEID2_ENTRY, dwIndexEntries2);
+            pDirectory->pIndexEntries2 = CASC_ALLOC(DIABLO3_FILEID2_ENTRY, pDirHeader->dwEntries2);
             if(pDirectory->pIndexEntries2 != NULL)
             {
-                memcpy(pDirectory->pIndexEntries2, pbIndexEntries2, sizeof(DIABLO3_FILEID2_ENTRY) * dwIndexEntries2);
-                pDirectory->nIndexEntries2 = dwIndexEntries2;
+                memcpy(pDirectory->pIndexEntries2, pDirHeader->pbEntries2, sizeof(DIABLO3_FILEID2_ENTRY) * pDirHeader->dwEntries2);
+                pDirectory->nIndexEntries2 = pDirHeader->dwEntries2;
             }
         }
     }
@@ -698,23 +717,59 @@ static void ResolveFullFileNames(
     }
 }
 
-static int ParseDirectoryFile(
-    TRootHandler_Diablo3 * pRootHandler,
-    PCASC_FILE_ENTRY pParent,
-    LPBYTE pbEncodingKey,
-    LPBYTE pbDirFile,
-    LPBYTE pbFileEnd,
-    PCASC_DIRECTORY * PtrDirectory)
+static LPBYTE LoadFileToMemory(TCascStorage * hs, LPBYTE pbEncodingKey, DWORD * pcbFileData)
 {
-    PCASC_DIRECTORY pDirectory;
-    LPBYTE pbIndexEntries1 = NULL;
-    LPBYTE pbIndexEntries2 = NULL;
-    LPBYTE pbNamedEntries = NULL;
-    DWORD dwDirSignature = 0;
-    DWORD dwIndexEntries1 = 0;
-    DWORD dwIndexEntries2 = 0;
-    DWORD dwNamedEntries = 0;
-    int nError = ERROR_SUCCESS;
+    QUERY_KEY EncodingKey;
+    LPBYTE pbFileData = NULL;
+    HANDLE hFile;
+    DWORD cbBytesRead = 0;
+    DWORD cbFileData = 0;
+
+    // Open the file by encoding key
+    EncodingKey.pbData = pbEncodingKey;
+    EncodingKey.cbData = MD5_HASH_SIZE;
+    if(CascOpenFileByEncodingKey((HANDLE)hs, &EncodingKey, 0, &hFile))
+    {
+        // Retrieve the file size
+        cbFileData = CascGetFileSize(hFile, NULL);
+        if(cbFileData > 0)
+        {
+            pbFileData = CASC_ALLOC(BYTE, cbFileData);
+            if(pbFileData != NULL)
+            {
+                CascReadFile(hFile, pbFileData, cbFileData, &cbBytesRead);
+            }
+        }
+
+        // Close the file
+        CascCloseFile(hFile);
+    }
+
+    // Give the file to the caller
+    if(pcbFileData != NULL)
+        pcbFileData[0] = cbBytesRead;
+    return pbFileData;
+}
+
+static LPBYTE LoadFileToMemory(TCascStorage * hs, const char * szFileName, DWORD * pcbFileData)
+{
+    LPBYTE pbEncodingKey = NULL;
+    LPBYTE pbFileData = NULL;
+
+    // Try to find encoding key for the file
+    pbEncodingKey = RootHandler_GetKey(hs->pRootHandler, szFileName);
+    if(pbEncodingKey != NULL)
+        pbFileData = LoadFileToMemory(hs, pbEncodingKey, pcbFileData);
+
+    return pbFileData;
+}
+
+static int ParseDirectoryHeader(
+    PDIABLO3_DIR_HEADER pDirHeader,
+    LPBYTE pbDirFile,
+    LPBYTE pbFileEnd)
+{
+    DWORD dwSignature = 0;
 
     //
     // Structure of a Diablo3 directory file
@@ -727,46 +782,126 @@ static int ParseDirectoryFile(
     // 7) Array of DIABLO3_NAMED_ENTRY entries
     //
 
+    // Prepare the header signature
+    memset(pDirHeader, 0, sizeof(DIABLO3_DIR_HEADER));
+
     // Get the signature
-    if((pbDirFile + sizeof(DWORD)) <= pbFileEnd)
-        dwDirSignature = *(PDWORD)pbDirFile;
-    pbDirFile += sizeof(DWORD);
+    if((pbDirFile + sizeof(DWORD)) >= pbFileEnd)
+        return ERROR_BAD_FORMAT;
+    dwSignature = *(PDWORD)pbDirFile;
 
     // Check the signature
-    if(dwDirSignature != CASC_DIABLO3_ROOT_SIGNATURE && dwDirSignature != DIABLO3_SUBDIR_SIGNATURE)
+    if(dwSignature != CASC_DIABLO3_ROOT_SIGNATURE && dwSignature != DIABLO3_SUBDIR_SIGNATURE)
         return ERROR_BAD_FORMAT;
+    pbDirFile += sizeof(DWORD);
 
-    if(dwDirSignature == DIABLO3_SUBDIR_SIGNATURE)
+    // Subdirectories have extra two arrays
+    if(dwSignature == DIABLO3_SUBDIR_SIGNATURE)
     {
-        // Get the pointer and length DIABLO3_FILEID1_ENTRY array
-        if((pbDirFile + sizeof(DWORD)) <= pbFileEnd)
-            dwIndexEntries1 = *(PDWORD)pbDirFile;
-        pbIndexEntries1 = pbDirFile + sizeof(DWORD);
-        pbDirFile = pbIndexEntries1 + dwIndexEntries1 * sizeof(DIABLO3_FILEID1_ENTRY);
+        // Get the number of DIABLO3_FILEID1_ENTRY items
+        if((pbDirFile + sizeof(DWORD)) >= pbFileEnd)
+            return ERROR_BAD_FORMAT;
+        pDirHeader->dwEntries1 = *(PDWORD)pbDirFile;
 
-        // Get the pointer and length DIABLO3_FILEID2_ENTRY array
-        if((pbDirFile + sizeof(DWORD)) <= pbFileEnd)
-            dwIndexEntries2 = *(PDWORD)pbDirFile;
-        pbIndexEntries2 = pbDirFile + sizeof(DWORD);
-        pbDirFile = pbIndexEntries2 + dwIndexEntries2 * sizeof(DIABLO3_FILEID2_ENTRY);
+        // Get the array of DIABLO3_FILEID1_ENTRY
+        pDirHeader->pbEntries1 = (pbDirFile + sizeof(DWORD));
+        pbDirFile = pbDirFile + sizeof(DWORD) + pDirHeader->dwEntries1 * sizeof(DIABLO3_FILEID1_ENTRY);
+
+        // Get the number of DIABLO3_FILEID2_ENTRY items
+        if((pbDirFile + sizeof(DWORD)) >= pbFileEnd)
+            return ERROR_BAD_FORMAT;
+        pDirHeader->dwEntries2 = *(PDWORD)pbDirFile;
+
+        // Get the array of DIABLO3_FILEID2_ENTRY
+        pDirHeader->pbEntries2 = (pbDirFile + sizeof(DWORD));
+        pbDirFile = pbDirFile + sizeof(DWORD) + pDirHeader->dwEntries2 * sizeof(DIABLO3_FILEID2_ENTRY);
     }
 
     // Get the pointer and length DIABLO3_NAMED_ENTRY array
-    if((pbDirFile + sizeof(DWORD)) <= pbFileEnd)
-        dwNamedEntries = *(PDWORD)pbDirFile;
-    pbNamedEntries = pbDirFile + sizeof(DWORD);
-//  pbDirFile = pbNamedEntries + dwNamedEntries * sizeof(DIABLO3_NAMED_ENTRY);
+    if((pbDirFile + sizeof(DWORD)) >= pbFileEnd)
+        return ERROR_BAD_FORMAT;
+    pDirHeader->dwEntries3 = *(PDWORD)pbDirFile;
+    pDirHeader->pbEntries3 = (pbDirFile + sizeof(DWORD));
+    return ERROR_SUCCESS;
+}
+
+static DWORD ScanDirectoryFile(
+    TCascStorage * hs,
+    LPBYTE pbRootFile,
+    LPBYTE pbFileEnd)
+{
+    PDIABLO3_NAMED_ENTRY pNamedEntry;
+    DIABLO3_DIR_HEADER RootHeader;
+    DIABLO3_DIR_HEADER DirHeader;
+    LPBYTE pbSubDir;
+    DWORD dwTotalFileCount;
+    DWORD cbNamedEntry;
+    DWORD cbSubDir;
+    int nError;
+
+    // Parse the directory header in order to retrieve the items
+    nError = ParseDirectoryHeader(&RootHeader, pbRootFile, pbFileEnd);
+    if(nError != ERROR_SUCCESS)
+        return 0;
+
+    // Add the root directory's entries
+    dwTotalFileCount = RootHeader.dwEntries1 + RootHeader.dwEntries2 + RootHeader.dwEntries3;
+
+    // Parse the named entries
+    for(DWORD i = 0; i < RootHeader.dwEntries3; i++)
+    {
+        // Get the this named entry
+        if((cbNamedEntry = VerifyNamedFileEntry(RootHeader.pbEntries3, pbFileEnd)) == 0)
+            return 0;
+        pNamedEntry = (PDIABLO3_NAMED_ENTRY)RootHeader.pbEntries3;
+        RootHeader.pbEntries3 += cbNamedEntry;
+
+        // Load the subdirectory to memory
+        pbSubDir = LoadFileToMemory(hs, pNamedEntry->EncodingKey.Value, &cbSubDir);
+        if(pbSubDir != NULL)
+        {
+            // Count the files in the subdirectory
+            if(ParseDirectoryHeader(&DirHeader, pbSubDir, pbSubDir + cbSubDir) == ERROR_SUCCESS)
+            {
+                dwTotalFileCount += DirHeader.dwEntries1 + DirHeader.dwEntries2 + DirHeader.dwEntries3;
+            }
+
+            // Free the subdirectory
+            CASC_FREE(pbSubDir);
+        }
+    }
+
+    // Return the total number of entries
+    return dwTotalFileCount;
+}
+
+static int ParseDirectoryFile(
+    TRootHandler_Diablo3 * pRootHandler,
+    PCASC_FILE_ENTRY pParent,
+    LPBYTE pbEncodingKey,
+    LPBYTE pbDirFile,
+    LPBYTE pbFileEnd,
+    PCASC_DIRECTORY * PtrDirectory)
+{
+    DIABLO3_DIR_HEADER DirHeader;
+    PCASC_DIRECTORY pDirectory;
+    int nError;
+
+    // Parse the directory header in order to retrieve the items
+    nError = ParseDirectoryHeader(&DirHeader, pbDirFile, pbFileEnd);
+    if(nError != ERROR_SUCCESS)
+        return nError;
 
     // Create the directory structure
-    pDirectory = CreateDiablo3Directory(pbIndexEntries1, dwIndexEntries1, pbIndexEntries2, dwIndexEntries2, dwNamedEntries);
+    pDirectory = CreateDiablo3Directory(&DirHeader);
     if(pDirectory != NULL)
     {
         // Copy the encoding key
         memcpy(pDirectory->EncodingKey.Value, pbEncodingKey, MD5_HASH_SIZE);
 
         // Only the named entries are eligible to be inserted to the global file table
-        if(pbNamedEntries != NULL)
-            nError = ParseNamedFileEntries(pRootHandler, pParent, pDirectory, pbNamedEntries, pbFileEnd);
+        if(DirHeader.pbEntries3 && DirHeader.dwEntries3 != NULL)
+            nError = ParseNamedFileEntries(pRootHandler, pParent, pDirectory, DirHeader.pbEntries3, pbFileEnd);
     }
     else
     {
@@ -776,39 +911,6 @@ static int ParseDirectoryFile(
     // Give the directory to the caller
     PtrDirectory[0] = pDirectory;
     return nError;
-
-/*
-    // Allocate directory
-    cbToAllocate = sizeof(CASC_DIRECTORY) + (dwIndexEntries1 + dwIndexEntries2 + dwNamedEntries) * sizeof(DWORD);
-    pDirectory = (PCASC_DIRECTORY)CASC_ALLOC(BYTE, cbToAllocate);
-    if(pDirectory != NULL)
-    {
-        // Fill it with zeroes
-        memset(pDirectory, 0, cbToAllocate);
-        PtrDirectory[0] = pDirectory;
-
-        // Parse array of entries which contain EncodingKey + FileIndex
-        if(pbIndexEntries1 != NULL)
-        {
-            nError = ParseIndexEntries1(pRootHandler, pDirectory, pbIndexEntries1, pbIndexEntries1 + dwIndexEntries1 * sizeof(DIABLO3_FILEID1_ENTRY));
-            if(nError != ERROR_SUCCESS)
-                return nError;
-        }
-        
-        // Parse array of entries which contain EncodingKey + FileIndex + SubIndex
-        if(pbIndexEntries2 != NULL)
-        {
-            nError = ParseIndexEntries2(pRootHandler, pDirectory, pbIndexEntries2, pbIndexEntries2 + dwIndexEntries2 * sizeof(DIABLO3_FILEID2_ENTRY));
-            if(nError != ERROR_SUCCESS)
-                return nError;
-        }
-
-        // Parse array of entries which contain EncodingKey + FileName
-    }
-
-    // Give the directory to the caller
-    return nError;
-*/
 }
 
 static int ParseCoreTOC(TRootHandler_Diablo3 * pRootHandler, LPBYTE pbCoreToc, LPBYTE pbCoreTocEnd)
@@ -957,53 +1059,6 @@ static int ParsePackagesDat(TRootHandler_Diablo3 * pRootHandler, LPBYTE pbPackag
     }
 
     return ERROR_SUCCESS;
-}
-
-static LPBYTE LoadFileToMemory(TCascStorage * hs, LPBYTE pbEncodingKey, DWORD * pcbFileData)
-{
-    QUERY_KEY EncodingKey;
-    LPBYTE pbFileData = NULL;
-    HANDLE hFile;
-    DWORD cbBytesRead = 0;
-    DWORD cbFileData = 0;
-
-    // Open the file by encoding key
-    EncodingKey.pbData = pbEncodingKey;
-    EncodingKey.cbData = MD5_HASH_SIZE;
-    if(CascOpenFileByEncodingKey((HANDLE)hs, &EncodingKey, 0, &hFile))
-    {
-        // Retrieve the file size
-        cbFileData = CascGetFileSize(hFile, NULL);
-        if(cbFileData > 0)
-        {
-            pbFileData = CASC_ALLOC(BYTE, cbFileData);
-            if(pbFileData != NULL)
-            {
-                CascReadFile(hFile, pbFileData, cbFileData, &cbBytesRead);
-            }
-        }
-
-        // Close the file
-        CascCloseFile(hFile);
-    }
-
-    // Give the file to the caller
-    if(pcbFileData != NULL)
-        pcbFileData[0] = cbBytesRead;
-    return pbFileData;
-}
-
-static LPBYTE LoadFileToMemory(TCascStorage * hs, const char * szFileName, DWORD * pcbFileData)
-{
-    LPBYTE pbEncodingKey = NULL;
-    LPBYTE pbFileData = NULL;
-
-    // Try to find encoding key for the file
-    pbEncodingKey = RootHandler_GetKey(hs->pRootHandler, szFileName);
-    if(pbEncodingKey != NULL)
-        pbFileData = LoadFileToMemory(hs, pbEncodingKey, pcbFileData);
-
-    return pbFileData;
 }
 
 //-----------------------------------------------------------------------------
@@ -1191,6 +1246,7 @@ int RootHandler_CreateDiablo3(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRoot
 {
     TRootHandler_Diablo3 * pRootHandler;
     LPBYTE pbRootFileEnd = pbRootFile + cbRootFile;
+    DWORD dwTotalFileCount;
     DWORD dwRootEntries = 0;
     DWORD i;
     int nError;
@@ -1211,6 +1267,11 @@ int RootHandler_CreateDiablo3(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRoot
     pRootHandler->dwRootFlags |= ROOT_FLAG_HAS_NAMES;
     hs->pRootHandler = pRootHandler;
 
+    // Scan the total number of files in the root directories
+    dwTotalFileCount = ScanDirectoryFile(hs, pbRootFile, pbRootFileEnd);
+    if(dwTotalFileCount == 0)
+        return ERROR_FILE_CORRUPT;
+
     // Allocate global buffer for file names
     pRootHandler->szFileNames = CASC_ALLOC(char, 0x10000);
     if(pRootHandler->szFileNames == NULL)
@@ -1219,13 +1280,13 @@ int RootHandler_CreateDiablo3(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRoot
 
     // Allocate the global linear file table
     // Note: This is about 18 MB of memory for Diablo III PTR build 30013
-    pRootHandler->pFileTable = CASC_ALLOC(CASC_FILE_ENTRY, hs->pEncodingMap->ItemCount);
+    pRootHandler->pFileTable = CASC_ALLOC(CASC_FILE_ENTRY, dwTotalFileCount);
     if(pRootHandler->pFileTable == NULL)
         return ERROR_NOT_ENOUGH_MEMORY;
-    pRootHandler->dwFileCountMax = (DWORD)hs->pEncodingMap->ItemCount;
+    pRootHandler->dwFileCountMax = dwTotalFileCount;
 
     // Create map of ROOT_ENTRY -> FileEntry
-    pRootHandler->pRootMap = Map_Create(pRootHandler->dwFileCountMax, sizeof(ULONGLONG), FIELD_OFFSET(CASC_FILE_ENTRY, FileNameHash));
+    pRootHandler->pRootMap = Map_Create(dwTotalFileCount, sizeof(ULONGLONG), FIELD_OFFSET(CASC_FILE_ENTRY, FileNameHash));
     if(pRootHandler->pRootMap == NULL)
         return ERROR_NOT_ENOUGH_MEMORY;
 
