@@ -211,7 +211,7 @@ static int InitializeCascDirectories(TCascStorage * hs, const TCHAR * szDataPath
     szLastPathPart = hs->szRootPath;
     for(size_t i = 0; hs->szRootPath[i] != 0; i++)
     {
-        if(hs->szRootPath[i] == '\\' || hs->szRootPath[i] == '/')  
+        if((hs->szRootPath[i] == '\\' || hs->szRootPath[i] == '/') && (hs->szRootPath[i+1] != 0))
             szLastPathPart = hs->szRootPath + i;
     } 
     

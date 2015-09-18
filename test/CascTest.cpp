@@ -429,8 +429,8 @@ int main(int argc, char * argv[])
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/29049/BNTData"), NULL);
 
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/30509/HeroesData"), NULL);
+    if(nError == ERROR_SUCCESS)
+        nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/30509/HeroesData/"), NULL);
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/31726/HeroesData"), NULL);
@@ -450,8 +450,8 @@ int main(int argc, char * argv[])
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), szListFile);
 
-    if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Diablo III/30013/Data"), NULL);
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Diablo III/30013/Data"), NULL);
 
     // Test extracting the complete storage
 //  if(nError == ERROR_SUCCESS)
