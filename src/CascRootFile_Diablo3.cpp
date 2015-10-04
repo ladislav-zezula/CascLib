@@ -172,8 +172,8 @@ struct TRootHandler_Diablo3 : public TRootHandler
 
     // Linear global list of names
     char * szFileNames;                             // Pointer to global name buffer
-    DWORD cbFileNamesMax;                           // Maximum size of the name buffer
-    DWORD cbFileNames;                              // Current size of the name buffer
+    size_t cbFileNamesMax;                          // Maximum size of the name buffer
+    size_t cbFileNames;                             // Current size of the name buffer
 };
 
 //-----------------------------------------------------------------------------
@@ -425,10 +425,10 @@ static const char * CreateFileName(
     return szSaveBuffer;
 }
 
-static bool EnlargeNameBuffer(TRootHandler_Diablo3 * pRootHandler, DWORD cbNewSize)
+static bool EnlargeNameBuffer(TRootHandler_Diablo3 * pRootHandler, size_t cbNewSize)
 {
     char * szFileNames;
-    DWORD cbFileNamesMax;
+    size_t cbFileNamesMax;
 
     // We expect it to be already allocated
     assert(pRootHandler->szFileNames != NULL);
@@ -455,7 +455,7 @@ static bool EnlargeNameBuffer(TRootHandler_Diablo3 * pRootHandler, DWORD cbNewSi
     return true;
 }
 
-static char * InsertNamesToBuffer(TRootHandler_Diablo3 * pRootHandler, LPBYTE pbNewNames, DWORD cbNewNames)
+static char * InsertNamesToBuffer(TRootHandler_Diablo3 * pRootHandler, LPBYTE pbNewNames, size_t cbNewNames)
 {
     char * szFileName;
 

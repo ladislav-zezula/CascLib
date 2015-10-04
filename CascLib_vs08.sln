@@ -2,7 +2,7 @@ Microsoft Visual Studio Solution File, Format Version 10.00
 # Visual Studio 2008
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CascLib_test", "CascLib_test.vcproj", "{9403EA00-98F8-4D02-80B0-65D9168B0CCC}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CascLib", "CascLib.vcproj", "{78424708-1F6E-4D4B-920C-FB6D26847055}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CascLib", "CascLib_vs08.vcproj", "{78424708-1F6E-4D4B-920C-FB6D26847055}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

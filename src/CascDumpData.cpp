@@ -316,7 +316,7 @@ void CascDumpIndexEntries(const char * szFileName, TCascStorage * hs)
                 FileSize = ConvertBytesToInteger_4_LE(pIndexEntry->FileSizeLE);
                 ArchOffset &= 0x3FFFFFFF;
                 
-                fprintf(fp, " %02X  %08X %08X %s\n", ArchIndex, ArchOffset, FileSize, StringFromBinary(pIndexEntry->IndexKey, CASC_FILE_KEY_SIZE, szIndexKey));
+                fprintf(fp, " %02X  %08X %08X %s\n", ArchIndex, (DWORD)ArchOffset, FileSize, StringFromBinary(pIndexEntry->IndexKey, CASC_FILE_KEY_SIZE, szIndexKey));
             }
 
             CASC_FREE(ppIndexEntries);
