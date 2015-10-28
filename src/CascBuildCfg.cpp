@@ -228,23 +228,6 @@ static int StringBlobToBinaryBlob(
     return ERROR_SUCCESS;
 }
 
-
-static LPBYTE FindNextSeparator(PQUERY_KEY pFileBlob, LPBYTE pbFilePtr)
-{
-    LPBYTE pbFileBegin = pFileBlob->pbData;
-    LPBYTE pbFileEnd = pFileBlob->pbData + pFileBlob->cbData;
-
-    if(pbFileBegin <= pbFilePtr && pbFilePtr < pbFileEnd)
-    {
-        while(pbFilePtr < pbFileEnd && pbFilePtr[0] != '|')
-            pbFilePtr++;
-
-        return pbFilePtr;
-    }
-
-    return NULL;
-}
-
 static bool GetNextFileLine(PQUERY_KEY pFileBlob, LPBYTE * ppbLineBegin, LPBYTE * ppbLineEnd)
 {
     LPBYTE pbLineBegin = *ppbLineBegin;
@@ -700,88 +683,73 @@ static int FetchAndVerifyConfigFile(TCascStorage * hs, PQUERY_KEY pFileKey, PQUE
     return nError;
 }
 
-static int ParseInfoFile(TCascStorage * hs, PQUERY_KEY pFileBlob)
+static int ParseInfoFile(TCascStorage * hs, void * pListFile)
 {
     QUERY_KEY Active = {NULL, 0};
     QUERY_KEY TagString = {NULL, 0};
     QUERY_KEY CdnHost = {NULL, 0};
     QUERY_KEY CdnPath = {NULL, 0};
-    const char * szLineBegin1 = NULL;
-    const char * szLinePtr1 = NULL;
-    const char * szLineBegin2 = NULL;
-    const char * szLineEnd1 = NULL;
-    const char * szLineEnd2 = NULL;
-    const char * szFileEnd = (const char *)(pFileBlob->pbData + pFileBlob->cbData);
-    const char * szFilePtr = (const char *)pFileBlob->pbData;
+    char szOneLine1[0x200];
+    char szOneLine2[0x200];
+    size_t nLength1;
+    size_t nLength2;
     int nError = ERROR_BAD_FORMAT;
 
-    // Find the first line
-    szLineBegin1 = szFilePtr;
-    while(szFilePtr < szFileEnd)
+    // Extract the first line, cotaining the headers
+    nLength1 = ListFile_GetNextLine(pListFile, szOneLine1, _maxchars(szOneLine1));
+    if(nLength1 == 0)
+        return ERROR_BAD_FORMAT;
+
+    // Now parse the second and the next lines. We are looking for line
+    // with "Active" set to 1
+    for(;;)
     {
-        // Check for the end of the line
-        if(szFilePtr[0] == 0x0D || szFilePtr[0] == 0x0A)
-        {
-            szLineEnd1 = szFilePtr;
+        const char * szLinePtr1 = szOneLine1;
+        const char * szLineEnd1 = szOneLine1 + nLength1;
+        const char * szLinePtr2 = szOneLine2;
+        const char * szLineEnd2;
+
+        // Read the next line
+        nLength2 = ListFile_GetNextLine(pListFile, szOneLine2, _maxchars(szOneLine2));
+        if(nLength2 == 0)
             break;
-        }
+        szLineEnd2 = szLinePtr2 + nLength2;
 
-        szFilePtr++;
-    }
-
-    while (szFilePtr < szFileEnd)
-    {
-        // Rewind header line pointers
-        szLinePtr1 = szLineBegin1;
-
-        // Skip the newline character(s)
-        while (szFilePtr < szFileEnd && (szFilePtr[0] == 0x0D || szFilePtr[0] == 0x0A))
-            szFilePtr++;
-
-        // Find the next line
-        szLineBegin2 = szFilePtr;
-        while (szFilePtr < szFileEnd)
-        {
-            // Check for the end of the line
-            if (szFilePtr[0] == 0x0D || szFilePtr[0] == 0x0A)
-            {
-                szLineEnd2 = szFilePtr;
-                break;
-            }
-
-            szFilePtr++;
-        }
-
-        // Find the build key, CDN config key and the URL path
-        while (szLinePtr1 < szLineEnd1)
+        // Parse all variables
+        while(szLinePtr1 < szLineEnd1)
         {
             // Check for variables we need
-            if (IsInfoVariable(szLinePtr1, szLineEnd1, "Active", "DEC"))
-                LoadInfoVariable(&Active, szLineBegin2, szLineEnd2, false);
-            if (IsInfoVariable(szLinePtr1, szLineEnd1, "Build Key", "HEX"))
-                LoadInfoVariable(&hs->CdnBuildKey, szLineBegin2, szLineEnd2, true);
-            if (IsInfoVariable(szLinePtr1, szLineEnd1, "CDN Key", "HEX"))
-                LoadInfoVariable(&hs->CdnConfigKey, szLineBegin2, szLineEnd2, true);
-            if (IsInfoVariable(szLinePtr1, szLineEnd1, "CDN Hosts", "STRING"))
-                LoadInfoVariable(&CdnHost, szLineBegin2, szLineEnd2, false);
-            if (IsInfoVariable(szLinePtr1, szLineEnd1, "CDN Path", "STRING"))
-                LoadInfoVariable(&CdnPath, szLineBegin2, szLineEnd2, false);
-            if (IsInfoVariable(szLinePtr1, szLineEnd1, "Tags", "STRING"))
-                LoadInfoVariable(&TagString, szLineBegin2, szLineEnd2, false);
+            if(IsInfoVariable(szLinePtr1, szLineEnd1, "Active", "DEC"))
+                LoadInfoVariable(&Active, szLinePtr2, szLineEnd2, false);
+            if(IsInfoVariable(szLinePtr1, szLineEnd1, "Build Key", "HEX"))
+                LoadInfoVariable(&hs->CdnBuildKey, szLinePtr2, szLineEnd2, true);
+            if(IsInfoVariable(szLinePtr1, szLineEnd1, "CDN Key", "HEX"))
+                LoadInfoVariable(&hs->CdnConfigKey, szLinePtr2, szLineEnd2, true);
+            if(IsInfoVariable(szLinePtr1, szLineEnd1, "CDN Hosts", "STRING"))
+                LoadInfoVariable(&CdnHost, szLinePtr2, szLineEnd2, false);
+            if(IsInfoVariable(szLinePtr1, szLineEnd1, "CDN Path", "STRING"))
+                LoadInfoVariable(&CdnPath, szLinePtr2, szLineEnd2, false);
+            if(IsInfoVariable(szLinePtr1, szLineEnd1, "Tags", "STRING"))
+                LoadInfoVariable(&TagString, szLinePtr2, szLineEnd2, false);
 
             // Move both line pointers
             szLinePtr1 = SkipInfoVariable(szLinePtr1, szLineEnd1);
-            if (szLineBegin1 == NULL)
+            if(szLinePtr1 == NULL)
                 break;
 
-            szLineBegin2 = SkipInfoVariable(szLineBegin2, szLineEnd2);
-            if (szLineBegin2 == NULL)
+            szLinePtr2 = SkipInfoVariable(szLinePtr2, szLineEnd2);
+            if(szLinePtr2 == NULL)
                 break;
         }
 
         // Stop parsing if found active config
         if(Active.pbData != NULL && *Active.pbData == '1')
             break;
+
+        // Free the blobs
+        FreeCascBlob(&CdnHost);
+        FreeCascBlob(&CdnPath);
+        FreeCascBlob(&TagString);
     }
 
     // All four must be present
@@ -810,61 +778,44 @@ static int ParseInfoFile(TCascStorage * hs, PQUERY_KEY pFileBlob)
     return nError;
 }
 
-static int ParseAgentFile(TCascStorage * hs, PQUERY_KEY pFileBlob)
+static int ParseAgentFile(TCascStorage * hs, void * pListFile)
 {
-    LPBYTE pbBlobBegin = pFileBlob->pbData;
-    LPBYTE pbBlobEnd;
-    int nError = ERROR_SUCCESS;
+    const char * szLinePtr;
+    const char * szLineEnd;
+    char szOneLine[0x200];
+    size_t nLength;
+    int nError;
 
-    // Extract the CDN build hash
-    pbBlobEnd = FindNextSeparator(pFileBlob, pbBlobBegin);
-    if(pbBlobEnd != NULL)
-    {
-        // Convert the string to a blob
-        nError = LoadSingleBlob(&hs->CdnBuildKey, pbBlobBegin, pbBlobEnd);
-        
-        // Move to the next part
-        if(pbBlobEnd[0] == _T('|'))
-            pbBlobEnd++;
-        pbBlobBegin = pbBlobEnd;
-    }
+    // Load the single line from the text file
+    nLength = ListFile_GetNextLine(pListFile, szOneLine, _maxchars(szOneLine));
+    if(nLength == 0)
+        return ERROR_BAD_FORMAT;
 
-    // Extract the CDN config hash
-    pbBlobEnd = FindNextSeparator(pFileBlob, pbBlobBegin);
-    if(pbBlobEnd != NULL)
-    {
-        // Convert the string to a blob
-        nError = LoadSingleBlob(&hs->CdnConfigKey, pbBlobBegin, pbBlobEnd);
-        
-        // Move to the next part
-        if(pbBlobEnd[0] == _T('|'))
-            pbBlobEnd++;
-        pbBlobBegin = pbBlobEnd;
-    }
+    // Set the line range
+    szLinePtr = szOneLine;
+    szLineEnd = szOneLine + nLength;
 
-    // Skip the intermediate part
-    pbBlobEnd = FindNextSeparator(pFileBlob, pbBlobBegin);
-    if(pbBlobEnd != NULL)
+    // Extract the CDN build key
+    nError = LoadInfoVariable(&hs->CdnBuildKey, szLinePtr, szLineEnd, true);
+    if(nError == ERROR_SUCCESS)
     {
-        // Move to the next part
-        if(pbBlobEnd[0] == _T('|'))
-            pbBlobEnd++;
-        pbBlobBegin = pbBlobEnd;
-    }
+        // Skip the variable
+        szLinePtr = SkipInfoVariable(szLinePtr, szLineEnd);
 
-    // Extract the URL config hash
-    pbBlobEnd = FindNextSeparator(pFileBlob, pbBlobBegin);
-    if(pbBlobEnd != NULL)
-    {
-        hs->szUrlPath = CASC_ALLOC(TCHAR, pbBlobEnd - pbBlobBegin + 1);
-        if(hs->szUrlPath != NULL)
+        // Load the CDN config hash
+        nError = LoadInfoVariable(&hs->CdnConfigKey, szLinePtr, szLineEnd, true);
+        if(nError == ERROR_SUCCESS)
         {
-            CopyString(hs->szUrlPath, (const char *)pbBlobBegin, (pbBlobEnd - pbBlobBegin));
-            hs->szUrlPath[pbBlobEnd - pbBlobBegin] = 0;
-        }
-        else
-        {
-            nError = ERROR_NOT_ENOUGH_MEMORY;
+            // Skip the variable
+            szLinePtr = SkipInfoVariable(szLinePtr, szLineEnd);
+
+            // Skip the Locale/OS/code variable
+            szLinePtr = SkipInfoVariable(szLinePtr, szLineEnd);
+
+            // Load the URL
+            hs->szUrlPath = CascNewStrFromAnsi(szLinePtr, szLineEnd);
+            if(hs->szUrlPath == NULL)
+                nError = ERROR_NOT_ENOUGH_MEMORY;
         }
     }
 
@@ -1016,29 +967,28 @@ static int LoadCdnBuildFile(TCascStorage * hs, PQUERY_KEY pFileBlob)
 
 int LoadBuildInfo(TCascStorage * hs)
 {
-    QUERY_KEY InfoFile = {NULL, 0};
     QUERY_KEY FileData = {NULL, 0};
     TCHAR * szAgentFile;
     TCHAR * szInfoFile;
+    void * pListFile;
     bool bBuildConfigComplete = false;
     int nError = ERROR_SUCCESS;
 
-    // Since HOTS build 30027, the game uses build.info file for storage info
+    // Since HOTS build 30027, the game uses .build.info file for storage info
     if(bBuildConfigComplete == false)
     {
         szInfoFile = CombinePath(hs->szRootPath, _T(".build.info"));
         if(szInfoFile != NULL)
         {
-            nError = LoadTextFile(szInfoFile, &InfoFile);
-            if(nError == ERROR_SUCCESS)
+            pListFile = ListFile_OpenExternal(szInfoFile);
+            if(pListFile != NULL)
             {
                 // Parse the info file
-                nError = ParseInfoFile(hs, &InfoFile);
+                nError = ParseInfoFile(hs, pListFile);
                 if(nError == ERROR_SUCCESS)
                     bBuildConfigComplete = true;
                 
-                // Free the loaded blob
-                FreeCascBlob(&InfoFile);
+                ListFile_Free(pListFile);
             }
 
             CASC_FREE(szInfoFile);
@@ -1051,20 +1001,20 @@ int LoadBuildInfo(TCascStorage * hs)
         szAgentFile = CombinePath(hs->szRootPath, _T(".build.db"));
         if(szAgentFile != NULL)
         {
-            nError = LoadTextFile(szAgentFile, &FileData);
-            if(nError == ERROR_SUCCESS)
+            pListFile = ListFile_OpenExternal(szAgentFile);
+            if(pListFile != NULL)
             {
-                nError = ParseAgentFile(hs, &FileData);
+                nError = ParseAgentFile(hs, pListFile);
                 if(nError == ERROR_SUCCESS)
                     bBuildConfigComplete = true;
 
-                FreeCascBlob(&FileData);
+                ListFile_Free(pListFile);
             }
             CASC_FREE(szAgentFile);
         }
     }
 
-    // If the .build.info and .build.db file hasn't been loaded, 
+    // If the .build.info and .build.db file hasn't been loaded, fail it 
     if(nError == ERROR_SUCCESS && bBuildConfigComplete == false)
     {
         nError = ERROR_FILE_CORRUPT;

@@ -137,6 +137,23 @@ wchar_t * CascNewStr(const wchar_t * szString, size_t nCharsToReserve)
     return szNewString;
 }
 
+TCHAR * CascNewStrFromAnsi(const char * szBegin, const char * szEnd)
+{
+    TCHAR * szNewString = NULL;
+
+    // Only if the entry is valid
+    if(szBegin != NULL && szEnd > szBegin)
+    {
+        // Allocate and copy the string
+        szNewString = CASC_ALLOC(TCHAR, (szEnd - szBegin + 1));
+        if(szNewString != NULL)
+            CopyString(szNewString, szBegin, (szEnd - szBegin));
+    }
+
+    // Return the string
+    return szNewString;
+}
+
 TCHAR * CombinePath(const TCHAR * szDirectory, const TCHAR * szSubDir)
 {
     TCHAR * szFullPath = NULL;

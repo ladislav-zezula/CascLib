@@ -219,6 +219,25 @@ void * ListFile_OpenExternal(const TCHAR * szListFile)
     return NULL;
 }
 
+size_t ListFile_GetNextLine(void * pvListFile, char * szBuffer, size_t nMaxChars)
+{
+    TListFileCache * pCache = (TListFileCache *)pvListFile;
+    size_t nLength = 0;
+    int nError = ERROR_INVALID_PARAMETER;
+
+    // Check for parameters
+    if(pCache != NULL)
+    {
+        // Read the (next) line
+        nLength = ReadListFileLine(pCache, szBuffer, nMaxChars);
+        nError = (nLength != 0) ? ERROR_SUCCESS : ERROR_NO_MORE_FILES;
+    }
+
+    if(nError != ERROR_SUCCESS)
+        SetLastError(nError);
+    return nLength;
+}
+
 size_t ListFile_GetNext(void * pvListFile, const char * szMask, char * szBuffer, size_t nMaxChars)
 {
     TListFileCache * pCache = (TListFileCache *)pvListFile;

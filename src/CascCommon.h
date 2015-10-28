@@ -72,6 +72,10 @@
 
 #define CASC_PACKAGE_BUFFER     0x1000
 
+#ifndef _maxchars
+#define _maxchars(buff)  ((sizeof(buff) / sizeof(buff[0])) - 1)
+#endif
+
 //-----------------------------------------------------------------------------
 // In-memory structures
 

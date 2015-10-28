@@ -760,6 +760,8 @@ static int LoadEncodingFile(TCascStorage * hs)
         if(pbEncodingFile == NULL || cbEncodingFile <= sizeof(CASC_ENCODING_HEADER))
             nError = ERROR_FILE_CORRUPT;
 
+        //CascDumpFile("E:\\ENCODING", hFile);
+
         // Close the encoding file
         CascCloseFile(hFile);
     }
@@ -768,10 +770,6 @@ static int LoadEncodingFile(TCascStorage * hs)
     if(nError == ERROR_SUCCESS)
     {
         PCASC_ENCODING_HEADER pEncodingHeader = (PCASC_ENCODING_HEADER)pbEncodingFile;
-
-        //HANDLE hFile = CreateFile(_T("E:\\ENCODING"), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
-        //WriteFile(hFile, pbEncodingFile, cbEncodingFile, NULL, NULL);
-        //CloseHandle(hFile);
 
         // Convert size and offset
         dwNumberOfSegments = ConvertBytesToInteger_4(pEncodingHeader->NumSegments);
@@ -853,12 +851,14 @@ static int LoadRootFile(TCascStorage * hs, DWORD dwLocaleMask)
     if(nError == ERROR_SUCCESS)
     {
         pbRootFile = LoadRootFileToMemory(hFile, &cbRootFile);
+        //CascDumpFile("E:\\ROOT", hFile);
         CascCloseFile(hFile);
     }
 
     // Check if the version of the ROOT file
     if(nError == ERROR_SUCCESS && pbRootFile != NULL)
     {
+
         FileSignature = (PDWORD)pbRootFile;
         switch(FileSignature[0])
         {

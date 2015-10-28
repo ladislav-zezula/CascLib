@@ -38,6 +38,8 @@ void CopyString(char * szTarget, const wchar_t * szSource, size_t cchLength);
 char * CascNewStr(const char * szString, size_t nCharsToReserve);
 wchar_t * CascNewStr(const wchar_t * szString, size_t nCharsToReserve);
 
+TCHAR * CascNewStrFromAnsi(const char * szBegin, const char * szEnd);
+
 TCHAR * CombinePath(const TCHAR * szPath, const TCHAR * szSubDir);
 TCHAR * CombinePathAndString(const TCHAR * szPath, const char * szString, size_t nLength);
 
