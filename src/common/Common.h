@@ -39,6 +39,7 @@ char * CascNewStr(const char * szString, size_t nCharsToReserve);
 wchar_t * CascNewStr(const wchar_t * szString, size_t nCharsToReserve);
 
 TCHAR * CombinePath(const TCHAR * szPath, const TCHAR * szSubDir);
+TCHAR * CombinePathAndString(const TCHAR * szPath, const char * szString, size_t nLength);
 
 size_t NormalizeFileName_UpperBkSlash(char * szTrgFileName, const char * szSrcFileName, size_t cchMaxChars);
 size_t NormalizeFileName_LowerSlash(char * szTrgFileName, const char * szSrcFileName, size_t cchMaxChars);

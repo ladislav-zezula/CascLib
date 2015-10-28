@@ -1107,6 +1107,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\src\CascRootFile_Ovr.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\src\CascRootFile_WoW6.cpp"
 				>
 			</File>

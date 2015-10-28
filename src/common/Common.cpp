@@ -199,6 +199,23 @@ TCHAR * CombinePath(const TCHAR * szDirectory, const TCHAR * szSubDir)
     return szFullPath;
 }
 
+TCHAR * CombinePathAndString(const TCHAR * szPath, const char * szString, size_t nLength)
+{
+    TCHAR * szFullPath = NULL;
+    TCHAR * szSubDir;
+
+    // Create the subdir string
+    szSubDir = CASC_ALLOC(TCHAR, nLength + 1);
+    if(szSubDir != NULL)
+    {
+        CopyString(szSubDir, szString, nLength);
+        szFullPath = CombinePath(szPath, szSubDir);
+        CASC_FREE(szSubDir);
+    }
+
+    return szFullPath;
+}
+
 size_t NormalizeFileName_UpperBkSlash(char * szTrgFileName, const char * szSrcFileName, size_t cchMaxChars)
 {
     char * szTrgFileEnd = szTrgFileName + cchMaxChars;

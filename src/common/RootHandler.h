@@ -14,8 +14,9 @@
 //-----------------------------------------------------------------------------
 // Defines
 
-#define CASC_DIABLO3_ROOT_SIGNATURE     0x8007D0C4
 #define CASC_MNDX_ROOT_SIGNATURE        0x58444E4D  // 'MNDX'
+#define CASC_DIABLO3_ROOT_SIGNATURE     0x8007D0C4
+#define CASC_OVERWATCH_ROOT_SIGNATURE   0x35444D23  // '#MD5'
 
 #define ROOT_FLAG_HAS_NAMES             0x00000001  // The root file contains file names
 

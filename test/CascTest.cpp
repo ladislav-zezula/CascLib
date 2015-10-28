@@ -180,6 +180,7 @@ static int ExtractFile(HANDLE hStorage, const char * szFileName, const TCHAR * s
 
 static int TestOpenStorage_OpenFile(const TCHAR * szStorage, const char * szFileName)
 {
+    TLogHelper LogHelper("OpenStorage");
     HANDLE hStorage;
     HANDLE hFile;
     DWORD dwFileSize2 = 0;
@@ -188,6 +189,7 @@ static int TestOpenStorage_OpenFile(const TCHAR * szStorage, const char * szFile
     int nError = ERROR_SUCCESS;
 
     // Open the storage directory
+    LogHelper.PrintProgress(_T("Opening storage \"%s\"..."), szStorage);
     if(!CascOpenStorage(szStorage, CASC_LOCALE_ENGB, &hStorage))
     {
         assert(GetLastError() != ERROR_SUCCESS);
@@ -197,6 +199,7 @@ static int TestOpenStorage_OpenFile(const TCHAR * szStorage, const char * szFile
     if(nError == ERROR_SUCCESS && szFileName != NULL)
     {
         // Open a file
+        LogHelper.PrintProgress(_T("Opening file \"%s\"..."), szFileName);
         if(CascOpenFile(hStorage, szFileName, 0, 0, &hFile))
         {
             dwFileSize1 = CascGetFileSize(hFile, NULL);
@@ -231,7 +234,7 @@ static int TestOpenStorage_OpenFile(const TCHAR * szStorage, const char * szFile
 static int TestOpenStorage_EnumFiles(const TCHAR * szStorage, const TCHAR * szListFile = NULL)
 {
     CASC_FIND_DATA FindData;
-    TLogHelper LogHelper;
+    TLogHelper LogHelper("OpenForEnum");
     HANDLE hStorage;
     HANDLE hFind;
     DWORD dwTotalFiles = 0;
@@ -242,7 +245,7 @@ static int TestOpenStorage_EnumFiles(const TCHAR * szStorage, const TCHAR * szLi
     int nError = ERROR_SUCCESS;
 
     // Open the storage directory
-    LogHelper.PrintProgress("Opening storage ...");
+    LogHelper.PrintProgress(_T("Opening storage \"%s\"..."), szStorage);
     if(!CascOpenStorage(szStorage, 0, &hStorage))
     {
         assert(GetLastError() != ERROR_SUCCESS);
@@ -251,8 +254,6 @@ static int TestOpenStorage_EnumFiles(const TCHAR * szStorage, const TCHAR * szLi
 
     if(nError == ERROR_SUCCESS)
     {
-        FILE * fp = fopen("E:\\diablo3-listfile-ptr.txt", "wt");
-
         // Retrieve the total number of files
         CascGetStorageInfo(hStorage, CascStorageFileCount, &dwTotalFiles, sizeof(dwTotalFiles), NULL);
 
@@ -267,14 +268,8 @@ static int TestOpenStorage_EnumFiles(const TCHAR * szStorage, const TCHAR * szLi
                 // Extract the file
                 if((dwFoundFiles % 400) == 0)
                 {
-//                  LogHelper.PrintProgress("Enumerating files: %c", szCircleChar[dwCircleCount % 4]);
+                    LogHelper.PrintProgress("Enumerating files: %c", szCircleChar[dwCircleCount % 4]);
                     dwCircleCount++;
-                }
-
-                if(fp != NULL && FindData.szFileName[0] != 0)
-                {
-//                  fprintf(fp, "%s\n", strchr(FindData.szFileName, '\\') + 1);
-                    fprintf(fp, "%s\n", FindData.szFileName);
                 }
 
                 // Find the next file in CASC
@@ -291,9 +286,6 @@ static int TestOpenStorage_EnumFiles(const TCHAR * szStorage, const TCHAR * szLi
             CascFindClose(hFind);
             LogHelper.PrintProgress("");
         }
-
-        if(fp != NULL)
-            fclose(fp);
     }
 
     // Close storage and return
@@ -305,7 +297,7 @@ static int TestOpenStorage_EnumFiles(const TCHAR * szStorage, const TCHAR * szLi
 static int TestOpenStorage_ExtractFiles(const TCHAR * szStorage, const TCHAR * szTargetDir, const TCHAR * szListFile)
 {
     CASC_FIND_DATA FindData;
-    TLogHelper LogHelper;
+    TLogHelper LogHelper("OpenForExtract");
     HANDLE hStorage;
     HANDLE hFind;
     bool bFileFound = true;
@@ -426,32 +418,32 @@ int main(int argc, char * argv[])
 //   if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_OpenFile(_T("c:\\Hry\\Diablo III Public Test\\Data"), "Base\\SoundBank\\Barbarian_Male\\0005.xxx");
 
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/29049/BNTData"), NULL);
+    //if(nError == ERROR_SUCCESS)
+    //    nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/29049"), NULL);
+
+    //if(nError == ERROR_SUCCESS)                                                                  
+    //    nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm\\30414\\HeroesData\\config\\09\\32\\"), NULL);
+
+    //if(nError == ERROR_SUCCESS)
+    //    nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/31726/HeroesData"), NULL);
+
+    //if(nError == ERROR_SUCCESS)
+    //    nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/18865/Data"), szListFile);
+
+    //if(nError == ERROR_SUCCESS)
+    //    nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/18888/Data"), szListFile);
+
+    //if(nError == ERROR_SUCCESS)
+    //    nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19116/Data"), szListFile);
+
+    //if(nError == ERROR_SUCCESS)
+    //    nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), szListFile);
+
+    //if(nError == ERROR_SUCCESS)
+    //    nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Diablo III/30013/Data"), NULL);
 
     if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/30509/HeroesData/"), NULL);
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/31726/HeroesData"), NULL);
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_EnumFiles(_T("c:\\Hry\\Heroes of the Storm\\HeroesData"), NULL);
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/18865/Data"), szListFile);
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/18888/Data"), szListFile);
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19116/Data"), szListFile);
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), szListFile);
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Diablo III/30013/Data"), NULL);
+        nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Overwatch/24919/casc/data"), NULL);
 
     // Test extracting the complete storage
 //  if(nError == ERROR_SUCCESS)

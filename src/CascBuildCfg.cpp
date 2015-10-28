@@ -13,6 +13,25 @@
 #include "CascCommon.h"
 
 //-----------------------------------------------------------------------------
+// Local structures
+
+struct TGameIdString
+{
+    const char * szGameInfo;
+    size_t cchGameInfo;
+    DWORD dwGameInfo;
+};
+
+static TGameIdString GameIds[] =
+{
+    {"Hero",       0x04, CASC_GAME_HOTS},           // Alpha build of Heroes of the Storm
+    {"WoW",        0x03, CASC_GAME_WOW6},           // Alpha build of World of Warcraft - Warlords of Draenor
+    {"Diablo3",    0x07, CASC_GAME_DIABLO3},        // Diablo III BETA 2.2.0
+    {"Prometheus", 0x0A, CASC_GAME_OVERWATCH},      // Overwatch BETA since build 24919
+    {NULL, 0, 0},
+};
+
+//-----------------------------------------------------------------------------
 // Local functions
 
 static bool inline IsValueSeparator(LPBYTE pbVarValue)
@@ -332,15 +351,62 @@ static int LoadInfoVariable(PQUERY_KEY pVarBlob, const char * szLineBegin, const
     return ERROR_SUCCESS;
 }
 
+static char * ExtractStringVariable(PQUERY_KEY pJsonFile, const char * szVarName, size_t * PtrLength)
+{
+    char * szValueBegin;
+    char * szValueStr;
+    char * szFileEnd = (char *)(pJsonFile->pbData + pJsonFile->cbData);
+    char szQuotedName[0x100];
+    int nLength;
+
+    // Find the substring
+    nLength = sprintf(szQuotedName, "\"%s\"", szVarName);
+    szValueStr = strstr((char *)pJsonFile->pbData, szQuotedName);
+    
+    // Did we find the variable value?
+    if(szValueStr != NULL)
+    {
+        // Skip the variable name
+        szValueStr += nLength;
+
+        // Skip the stuff after
+        while(szValueStr < szFileEnd && (szValueStr[0] == ' ' || szValueStr[0] == ':'))
+            szValueStr++;
+
+        // The variable value must start with a quotation mark
+        if(szValueStr[0] != '"')
+            return NULL;
+        szValueBegin = ++szValueStr;
+
+        // Find the next quotation mark
+        while(szValueStr < szFileEnd && szValueStr[0] != '"')
+            szValueStr++;
+
+        // Get the string value
+        if(szValueStr > szValueBegin)
+        {
+            PtrLength[0] = (szValueStr - szValueBegin);
+            return szValueBegin;
+        }
+    }
+
+    return NULL;
+}
 
 static void AppendConfigFilePath(TCHAR * szFileName, PQUERY_KEY pFileKey)
 {
+    size_t nLength = _tcslen(szFileName);
+
+    // If there is no slash, append if
+    if(nLength > 0 && szFileName[nLength - 1] != '\\' && szFileName[nLength - 1] != '/')
+        szFileName[nLength++] = _T('/');
+
     // Get to the end of the file name
-    szFileName = szFileName + _tcslen(szFileName);
+    szFileName = szFileName + nLength;
 
     // Append the "config" directory
-    _tcscat(szFileName, _T("/config"));
-    szFileName += 7;
+    _tcscpy(szFileName, _T("config"));
+    szFileName += 6;
 
     // Append the first level directory
     szFileName = AppendBlobText(szFileName, pFileKey->pbData, 1, _T('/'));
@@ -525,28 +591,22 @@ static int LoadTextFile(const TCHAR * szFileName, PQUERY_KEY pFileBlob)
 
 static int GetGameType(TCascStorage * hs, LPBYTE pbVarBegin, LPBYTE pbLineEnd)
 {
-    // Alpha build of Heroes of the Storm
-    if((pbLineEnd - pbVarBegin) == 4 && !_strnicmp((const char *)pbVarBegin, "Hero", 4))
+    // Go through all games that we support
+    for(size_t i = 0; GameIds[i].szGameInfo != NULL; i++)
     {
-        hs->dwGameInfo = CASC_GAME_HOTS;
-        return ERROR_SUCCESS;
+        // Check the length of the variable 
+        if((size_t)(pbLineEnd - pbVarBegin) == GameIds[i].cchGameInfo)
+        {
+            // Check the string
+            if(!_strnicmp((const char *)pbVarBegin, GameIds[i].szGameInfo, GameIds[i].cchGameInfo))
+            {
+                hs->dwGameInfo = GameIds[i].dwGameInfo;
+                return ERROR_SUCCESS;
+            }
+        }
     }
 
-    // Alpha build of World of Warcraft - Warlords of Draenor
-    if((pbLineEnd - pbVarBegin) == 3 && !_strnicmp((const char *)pbVarBegin, "WoW", 3))
-    {
-        hs->dwGameInfo = CASC_GAME_WOW6;
-        return ERROR_SUCCESS;
-    }
-
-    // Diablo III BETA 2.2.0
-    if((pbLineEnd - pbVarBegin) == 7 && !_strnicmp((const char *)pbVarBegin, "Diablo3", 7))
-    {
-        hs->dwGameInfo = CASC_GAME_DIABLO3;
-        return ERROR_SUCCESS;
-    }
-
-    // An unknown game
+    // Unknown/unsupported game
     assert(false);
     return ERROR_BAD_FORMAT;
 }
@@ -554,17 +614,26 @@ static int GetGameType(TCascStorage * hs, LPBYTE pbVarBegin, LPBYTE pbLineEnd)
 // "B29049"
 // "WOW-18125patch6.0.1"
 // "30013_Win32_2_2_0_Ptr_ptr"
+// "prometheus-0_8_0_0-24919"
 static int GetBuildNumber(TCascStorage * hs, LPBYTE pbVarBegin, LPBYTE pbLineEnd)
 {
     DWORD dwBuildNumber = 0;
 
     // Skip all non-digit characters
-    while(pbVarBegin < pbLineEnd && IsCharDigit(pbVarBegin[0]) == false)
-        pbVarBegin++;
+    while(pbVarBegin < pbLineEnd)
+    {
+        // There must be at least three digits (build 99 anyone?)
+        if(IsCharDigit(pbVarBegin[0]) && IsCharDigit(pbVarBegin[1]) && IsCharDigit(pbVarBegin[2]))
+        {
+            // Convert the build number string to value
+            while(pbVarBegin < pbLineEnd && IsCharDigit(pbVarBegin[0]))
+                dwBuildNumber = (dwBuildNumber * 10) + (*pbVarBegin++ - '0');
+            break;
+        }
 
-    // Convert the build number
-    while(pbVarBegin < pbLineEnd && IsCharDigit(pbVarBegin[0]))
-        dwBuildNumber = (dwBuildNumber * 10) + (*pbVarBegin++ - '0');
+        // Move to the next
+        pbVarBegin++;
+    }
 
     assert(dwBuildNumber != 0);
     hs->dwBuildNumber = dwBuildNumber;
@@ -1035,6 +1104,45 @@ int LoadBuildInfo(TCascStorage * hs)
             return ERROR_SUCCESS;
 
         nError = ERROR_FILE_NOT_FOUND;
+    }
+
+    return nError;
+}
+
+// Checks whether there is a ".agent.db". If yes, the function
+// sets "szRootPath" and "szDataPath" in the storage structure
+// and returns ERROR_SUCCESS
+int CheckGameDirectory(TCascStorage * hs, TCHAR * szDirectory)
+{
+    QUERY_KEY AgentFile;
+    TCHAR * szFilePath;
+    size_t nLength = 0;
+    char * szValue;
+    int nError = ERROR_FILE_NOT_FOUND;
+
+    // Create the full name of the .agent.db file
+    szFilePath = CombinePath(szDirectory, _T(".agent.db"));
+    if(szFilePath != NULL)
+    {
+        // Load the file to memory
+        nError = LoadTextFile(szFilePath, &AgentFile);
+        if(nError == ERROR_SUCCESS)
+        {
+            // Extract the data directory from the ".agent.db" file
+            szValue = ExtractStringVariable(&AgentFile, "data_dir", &nLength);
+            if(szValue != NULL)
+            {
+                hs->szRootPath = CascNewStr(szDirectory, 0);
+                hs->szDataPath = CombinePathAndString(szDirectory, szValue, nLength);
+                nError = (hs->szDataPath != NULL) ? ERROR_SUCCESS : ERROR_NOT_ENOUGH_MEMORY;
+            }
+
+            // Free the loaded blob
+            FreeCascBlob(&AgentFile);
+        }
+
+        // Freee the file path
+        CASC_FREE(szFilePath);
     }
 
     return nError;

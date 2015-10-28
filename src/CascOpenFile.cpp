@@ -107,6 +107,32 @@ static bool OpenFileByIndexKey(TCascStorage * hs, PQUERY_KEY pIndexKey, DWORD dw
     return (nError == ERROR_SUCCESS);
 }
 
+static bool OpenRootFileByIndexKey(TCascStorage * hs, PQUERY_KEY pIndexKey, TCascFile ** ppCascFile)
+{
+    TCascFile * hf = NULL;
+    int nError = ERROR_SUCCESS;
+
+    // Open the file as if it was normal file
+    if(!OpenFileByIndexKey(hs, pIndexKey, 0, &hf))
+        nError = ERROR_SUCCESS;
+
+    // The ROOT file is the following after the ENCODING file
+    if(nError == ERROR_SUCCESS)
+    {
+        // Move the pointers past the file
+        hf->HeaderOffset = hf->HeaderOffset + hf->CompressedSize;
+        hf->CompressedSize = 0;
+        hf->FileSize = 0;
+
+        // Give the pointer to the file handle
+        ppCascFile[0] = hf;
+    }
+
+    if(nError != ERROR_SUCCESS)
+        SetLastError(nError);
+    return (nError == ERROR_SUCCESS);
+}
+
 static bool OpenFileByEncodingKey(TCascStorage * hs, PQUERY_KEY pEncodingKey, DWORD dwFlags, TCascFile ** ppCascFile)
 {
     PCASC_ENCODING_ENTRY pEncodingEntry;

@@ -41,6 +41,7 @@
 #define CASC_GAME_HOTS      0x00010000          // Heroes of the Storm
 #define CASC_GAME_WOW6      0x00020000          // World of Warcraft - Warlords of Draenor
 #define CASC_GAME_DIABLO3   0x00030000          // Diablo 3 since PTR 2.2.0
+#define CASC_GAME_OVERWATCH 0x00040000          // Overwatch since PTR 24919
 #define CASC_GAME_MASK      0xFFFF0000          // Mask for getting game ID
 
 #define CASC_INDEX_COUNT          0x10
@@ -286,6 +287,7 @@ ULONGLONG ConvertBytesToInteger_5(LPBYTE ValueAsBytes);
 // Build configuration reading
 
 int LoadBuildInfo(TCascStorage * hs);
+int CheckGameDirectory(TCascStorage * hs, TCHAR * szDirectory);
 
 //-----------------------------------------------------------------------------
 // Internal file functions
@@ -301,8 +303,9 @@ int CascDecompress(void * pvOutBuffer, PDWORD pcbOutBuffer, void * pvInBuffer, D
 //-----------------------------------------------------------------------------
 // Support for ROOT file
 
-int RootHandler_CreateDiablo3(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
 int RootHandler_CreateMNDX(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
+int RootHandler_CreateDiablo3(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
+int RootHandler_CreateOverwatch(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
 int RootHandler_CreateWoW6(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile, DWORD dwLocaleMask);
 
 //-----------------------------------------------------------------------------
@@ -314,7 +317,6 @@ void CascDumpNameFragTable(const char * szFileName, void * pvMarFile);
 void CascDumpFileNames(const char * szFileName, void * pvMarFile);
 void CascDumpIndexEntries(const char * szFileName, TCascStorage * hs);
 void CascDumpEncodingEntry(TCascStorage * hs, TDumpContext * dc, PCASC_ENCODING_ENTRY pEncodingEntry, int nDumpLevel);
-//void CascDumpMndxRoot(const char * szFileName, PCASC_MNDX_INFO pMndxInfo);
 void CascDumpFile(const char * szFileName, HANDLE hFile);
 #endif  // _DEBUG
 

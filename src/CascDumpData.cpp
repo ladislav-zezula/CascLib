@@ -258,31 +258,6 @@ void CascDumpEncodingEntry(
     }
 }
 
-/*
-void CascDumpMndxRoot(const char * szFileName, PCASC_MNDX_INFO pMndxInfo)
-{
-    PCASC_ROOT_ENTRY_MNDX pRootEntry;
-    FILE * fp;
-    char szMd5[MD5_STRING_SIZE];
-
-    // Create the dump file
-    fp = fopen(szFileName, "wt");
-    if(fp != NULL)
-    {
-        fprintf(fp, "Indx Fl+Asset EncodingKey                      FileSize\n==== ======== ================================ ========\n");
-        for(DWORD i = 0; i < pMndxInfo->MndxEntriesValid; i++)
-        {
-            pRootEntry = pMndxInfo->ppValidEntries[i];
-
-            fprintf(fp, "%04X %08X %s %08X\n", i,
-                                               pRootEntry->Flags,
-                                               StringFromMD5(pRootEntry->EncodingKey, szMd5),
-                                               pRootEntry->FileSize);
-        }
-        fclose(fp);
-    }
-}
-*/
 void CascDumpIndexEntries(const char * szFileName, TCascStorage * hs)
 {
     PCASC_INDEX_ENTRY * ppIndexEntries;

@@ -98,9 +98,10 @@ static int LoadFileFrames(TCascFile * hf)
         else
             nError = GetLastError();
 
-        // Note: Do not take the FileSize from the sum of frames.
-        // This value is invalid when loading the ENCODING file.
-//      hf->FileSize = FileSize;
+        // Note: on ENCODING file, this value is almost always bigger
+        // then the real size of ENCODING. We handle this problem
+        // by calculating size of the ENCODIG file from its header.
+        hf->FileSize = FileSize;
 
 #ifdef CASCLIB_TEST
         hf->FileSize_FrameSum = FileSize;
@@ -299,7 +300,7 @@ DWORD WINAPI CascGetFileSize(HANDLE hFile, PDWORD pdwFileSizeHigh)
     }
 
     // Make sure that the file header area is loaded
-    nError = EnsureHeaderAreaIsLoaded(hf);
+    nError = EnsureFrameHeadersLoaded(hf);
     if(nError != ERROR_SUCCESS)
     {
         SetLastError(nError);

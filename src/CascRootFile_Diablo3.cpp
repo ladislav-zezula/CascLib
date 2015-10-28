@@ -533,7 +533,7 @@ static DWORD InsertFileEntry(
     PCASC_FILE_ENTRY pFileEntry = pRootHandler->pFileTable + pRootHandler->dwFileCount;
     char * szSubDirName;
     char * szFileName;
-    DWORD dwNameOffset = pRootHandler->cbFileNames;
+    DWORD dwNameOffset = (DWORD)pRootHandler->cbFileNames;
     DWORD dwTableIndex = pRootHandler->dwFileCount;
 
     // Make sure that we don't exceed the file limit at this phase
