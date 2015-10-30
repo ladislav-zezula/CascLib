@@ -430,10 +430,6 @@
 			Filter="cpp;c;cxx;rc;def;r;odl;idl;hpj;bat"
 			>
 			<File
-				RelativePath=".\src\CascBuildCfg.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\src\CascCommon.cpp"
 				>
 			</File>
@@ -507,6 +503,10 @@
 			</File>
 			<File
 				RelativePath=".\test\CascTest.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\src\CascTextFiles.cpp"
 				>
 			</File>
 			<Filter
@@ -813,11 +813,23 @@
 					>
 				</File>
 				<File
+					RelativePath=".\src\common\Directory.h"
+					>
+				</File>
+				<File
 					RelativePath=".\src\common\DumpContext.cpp"
 					>
 				</File>
 				<File
 					RelativePath=".\src\common\DumpContext.h"
+					>
+				</File>
+				<File
+					RelativePath=".\src\common\DynamicArray.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\src\common\DynamicArray.h"
 					>
 				</File>
 				<File

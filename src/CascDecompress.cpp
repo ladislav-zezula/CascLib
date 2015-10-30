@@ -53,7 +53,7 @@ int CascDecompress(void * pvOutBuffer, PDWORD pcbOutBuffer, void * pvInBuffer, D
     LPBYTE pbOutBuffer = (LPBYTE)pvOutBuffer;
     LPBYTE pbInBuffer = (LPBYTE)pvInBuffer;
     DWORD cbOutBuffer = *pcbOutBuffer;   // Current size of the output buffer
-    BYTE uCompression;                  // Decompressions applied to the data
+    BYTE uCompression;                   // Decompressions applied to the data
 
     // Verify buffer sizes
     if(cbInBuffer <= 1)
@@ -66,11 +66,18 @@ int CascDecompress(void * pvOutBuffer, PDWORD pcbOutBuffer, void * pvInBuffer, D
     // Perform the decompressions
     switch(uCompression)
     {
+        case 'E':   // Encrypted
+
+            assert(cbOutBuffer >= cbInBuffer);
+            memcpy(pbOutBuffer, pbInBuffer, cbInBuffer);
+            *pcbOutBuffer = cbInBuffer;
+            return ERROR_SUCCESS;
+
         case 'N':   // Uncompressed
 
             assert(cbOutBuffer == cbInBuffer);
             memcpy(pbOutBuffer, pbInBuffer, cbInBuffer);
-            *pcbOutBuffer = cbOutBuffer;
+            *pcbOutBuffer = cbInBuffer;
             return ERROR_SUCCESS;
 
         case 'Z':   // ZLIB

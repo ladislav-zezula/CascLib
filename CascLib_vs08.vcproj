@@ -1063,10 +1063,6 @@
 			Name="Source Files"
 			>
 			<File
-				RelativePath=".\src\CascBuildCfg.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\src\CascCommon.cpp"
 				>
 			</File>
@@ -1114,6 +1110,10 @@
 				RelativePath=".\src\CascRootFile_WoW6.cpp"
 				>
 			</File>
+			<File
+				RelativePath=".\src\CascTextFiles.cpp"
+				>
+			</File>
 			<Filter
 				Name="common"
 				>
@@ -1130,11 +1130,23 @@
 					>
 				</File>
 				<File
+					RelativePath=".\src\common\Directory.h"
+					>
+				</File>
+				<File
 					RelativePath=".\src\common\DumpContext.cpp"
 					>
 				</File>
 				<File
 					RelativePath=".\src\common\DumpContext.h"
+					>
+				</File>
+				<File
+					RelativePath=".\src\common\DynamicArray.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\src\common\DynamicArray.h"
 					>
 				</File>
 				<File

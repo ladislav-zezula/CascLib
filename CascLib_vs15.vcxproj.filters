@@ -67,7 +67,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\CascBuildCfg.cpp">
+    <ClCompile Include="src\CascTextFiles.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\CascCommon.cpp">

@@ -439,11 +439,11 @@ int main(int argc, char * argv[])
     //if(nError == ERROR_SUCCESS)
     //    nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), szListFile);
 
-    //if(nError == ERROR_SUCCESS)
-    //    nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Diablo III/30013/Data"), NULL);
-
     if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Overwatch/24919/casc/data"), NULL);
+        nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Diablo III/30013/Data"), NULL);
+
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Overwatch/24919/casc/data"), NULL);
 
     // Test extracting the complete storage
 //  if(nError == ERROR_SUCCESS)

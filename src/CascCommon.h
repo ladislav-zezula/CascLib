@@ -23,8 +23,10 @@
 
 #include "CascPort.h"
 #include "common/Common.h"
+#include "common/DynamicArray.h"
 #include "common/Map.h"
 #include "common/FileStream.h"
+#include "common/Directory.h"
 #include "common/ListFile.h"
 #include "common/DumpContext.h"
 #include "common/RootHandler.h"
@@ -288,10 +290,11 @@ DWORD ConvertBytesToInteger_4_LE(LPBYTE ValueAsBytes);
 ULONGLONG ConvertBytesToInteger_5(LPBYTE ValueAsBytes);
 
 //-----------------------------------------------------------------------------
-// Build configuration reading
+// Text file parsing (CascTextFiles.cpp)
 
 int LoadBuildInfo(TCascStorage * hs);
 int CheckGameDirectory(TCascStorage * hs, TCHAR * szDirectory);
+int ParseRootFileLine(const char * szLinePtr, const char * szLineEnd, PQUERY_KEY pEncodingKey, char * szFileName, size_t nMaxChars);
 
 //-----------------------------------------------------------------------------
 // Internal file functions

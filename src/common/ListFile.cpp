@@ -24,20 +24,29 @@ struct TListFileCache
 {
     RELOAD_CACHE pfnReloadCache;        // Function for reloading the cache
     CLOSE_STREAM pfnCloseStream;        // Function for closing the stream
-    void  * pvCacheContext;             // Reload context passed to reload function
-    char  * szMask;                     // Self-relative pointer to file mask
-    DWORD   dwFileSize;                 // Total size of the cached file
-    DWORD   dwFilePos;                  // Position of the cache in the file
-    BYTE  * pBegin;                     // The begin of the listfile cache
-    BYTE  * pPos;
-    BYTE  * pEnd;                       // The last character in the file cache
+    LPBYTE pBegin;                      // The begin of the listfile cache
+    LPBYTE pPos;                        // Current position in the cache
+    LPBYTE pEnd;                        // The last character in the file cache
+    void * pvCacheContext;              // Reload context passed to reload function
+    DWORD  dwFileSize;                  // Total size of the cached file
+    DWORD  dwFilePos;                   // Position of the cache in the file
 
-    BYTE Buffer[CACHE_BUFFER_SIZE];
-//  char MaskBuff[1]                    // Followed by the name mask (if any)
+    // Followed by the cache (variable length)
 };
 
 //-----------------------------------------------------------------------------
-// Local functions
+// Dummy cache functions
+
+static bool ReloadCache_DoNothing(void * /* pvCacheContext */, LPBYTE /* pbBuffer */, DWORD /* dwBytesToRead */)
+{
+    return false;
+}
+
+static void CloseStream_DoNothing(void * /* pvCacheContext */)
+{}
+
+//-----------------------------------------------------------------------------
+// Reloading cache from a file
 
 static bool ReloadCache_ExternalFile(void * pvCacheContext, LPBYTE pbBuffer, DWORD dwBytesToRead)
 {
@@ -53,37 +62,36 @@ static void CloseStream_ExternalFile(void * pvCacheContext)
     return FileStream_Close(pStream);
 }
 
-
 // Reloads the cache. Returns number of characters
 // that has been loaded into the cache.
 static DWORD ReloadListFileCache(TListFileCache * pCache)
 {
+    size_t cbCacheSize = (size_t)(pCache->pEnd - pCache->pBegin);
     DWORD dwBytesToRead = 0;
 
     // Only do something if the cache is empty
     if(pCache->pPos >= pCache->pEnd)
     {
         // Move the file position forward
-        pCache->dwFilePos += CACHE_BUFFER_SIZE;
+        pCache->dwFilePos += cbCacheSize;
         if(pCache->dwFilePos >= pCache->dwFileSize)
             return 0;
 
         // Get the number of bytes remaining
         dwBytesToRead = pCache->dwFileSize - pCache->dwFilePos;
-        if(dwBytesToRead > CACHE_BUFFER_SIZE)
-            dwBytesToRead = CACHE_BUFFER_SIZE;
+        if(dwBytesToRead > cbCacheSize)
+            dwBytesToRead = cbCacheSize;
 
         // Load the next data chunk to the cache
         // If we didn't read anything, it might mean that the block
         // of the file is not available
         // We stop reading the file at this point, because the rest
         // of the listfile is unreliable
-        if(!pCache->pfnReloadCache(pCache->pvCacheContext, pCache->Buffer, dwBytesToRead))
+        if(!pCache->pfnReloadCache(pCache->pvCacheContext, pCache->pBegin, dwBytesToRead))
             return 0;
 
         // Set the buffer pointers
-        pCache->pBegin =
-        pCache->pPos = &pCache->Buffer[0];
+        pCache->pPos = pCache->pBegin;
         pCache->pEnd = pCache->pBegin + dwBytesToRead;
     }
 
@@ -160,7 +168,7 @@ static TListFileCache * CreateListFileCache(RELOAD_CACHE pfnReloadCache, CLOSE_S
     DWORD dwBytesToRead;
 
     // Allocate cache for one file block
-    pCache = (TListFileCache *)CASC_ALLOC(BYTE, sizeof(TListFileCache));
+    pCache = (TListFileCache *)CASC_ALLOC(BYTE, sizeof(TListFileCache) + CACHE_BUFFER_SIZE);
     if(pCache != NULL)
     {
         // Clear the entire structure
@@ -170,19 +178,45 @@ static TListFileCache * CreateListFileCache(RELOAD_CACHE pfnReloadCache, CLOSE_S
         pCache->pvCacheContext = pvCacheContext;
         pCache->dwFileSize = dwFileSize;
 
+        // Set the initial pointers
+        pCache->pBegin = (LPBYTE)(pCache + 1);
+
         // Load the file cache from the file
         dwBytesToRead = CASCLIB_MIN(CACHE_BUFFER_SIZE, dwFileSize);
-        if(pfnReloadCache(pvCacheContext, pCache->Buffer, dwBytesToRead))
+        if(pfnReloadCache(pvCacheContext, pCache->pBegin, dwBytesToRead))
         {
             // Allocate pointers
-            pCache->pBegin = pCache->pPos = &pCache->Buffer[0];
-            pCache->pEnd   = pCache->pBegin + dwBytesToRead;
+            pCache->pPos = pCache->pBegin;
+            pCache->pEnd = pCache->pBegin + dwBytesToRead;
         }
         else
         {
             ListFile_Free(pCache);
             pCache = NULL;
         }
+    }
+
+    // Return the cache
+    return pCache;
+}
+
+static TListFileCache * CreateListFileCache(LPBYTE pbBuffer, DWORD cbBuffer)
+{
+    TListFileCache * pCache = NULL;
+
+    // Allocate cache for one file block
+    pCache = (TListFileCache *)CASC_ALLOC(BYTE, sizeof(TListFileCache));
+    if(pCache != NULL)
+    {
+        // Clear the entire structure
+        memset(pCache, 0, sizeof(TListFileCache));
+        pCache->pfnReloadCache = ReloadCache_DoNothing;
+        pCache->pfnCloseStream = CloseStream_DoNothing;
+        pCache->dwFileSize = cbBuffer;
+
+        // Do not copy the buffer, just set pointers
+        pCache->pBegin = pCache->pPos = pbBuffer;
+        pCache->pEnd = pbBuffer + cbBuffer;
     }
 
     // Return the cache
@@ -217,6 +251,11 @@ void * ListFile_OpenExternal(const TCHAR * szListFile)
     }
 
     return NULL;
+}
+
+void * ListFile_FromBuffer(LPBYTE pbBuffer, DWORD cbBuffer)
+{
+    return CreateListFileCache(pbBuffer, cbBuffer);
 }
 
 size_t ListFile_GetNextLine(void * pvListFile, char * szBuffer, size_t nMaxChars)

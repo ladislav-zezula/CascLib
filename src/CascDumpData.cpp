@@ -226,7 +226,7 @@ void CascDumpEncodingEntry(
     PCASC_INDEX_ENTRY pIndexEntry;
     QUERY_KEY QueryKey;
     LPBYTE pbIndexKey;
-    char szMd5[MD5_STRING_SIZE];
+    char szMd5[MD5_STRING_SIZE+1];
 
     // If the encoding key exists
     if(pEncodingEntry != NULL)

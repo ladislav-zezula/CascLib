@@ -17,15 +17,15 @@
 //-----------------------------------------------------------------------------
 // Local defines
 
-#define CASC_MAR_SIGNATURE 0x0052414d           //  'MAR\0'
+#define CASC_MAR_SIGNATURE 0x0052414d               //  'MAR\0'
 
 //-----------------------------------------------------------------------------
 // Local structures
 
 typedef struct _FILE_MNDX_HEADER
 {
-    DWORD Signature;                            // 'MNDX'
-    DWORD HeaderVersion;                        // Must be <= 2
+    DWORD Signature;                                // 'MNDX'
+    DWORD HeaderVersion;                            // Must be <= 2
     DWORD FormatVersion;
 
 } FILE_MNDX_HEADER, *PFILE_MNDX_HEADER;

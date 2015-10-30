@@ -148,7 +148,7 @@ extern "C" {
 
 #ifndef MD5_HASH_SIZE
 #define MD5_HASH_SIZE                     0x10
-#define MD5_STRING_SIZE                   0x21
+#define MD5_STRING_SIZE                   0x20
 #endif
 
 #ifndef SHA1_DIGEST_SIZE
