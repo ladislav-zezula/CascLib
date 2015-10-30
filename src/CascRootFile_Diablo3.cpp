@@ -1225,8 +1225,9 @@ int RootHandler_CreateDiablo3(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRoot
     if(nError != ERROR_SUCCESS)
         return nError;
 
-    // Allocate global buffer for file names
-    nError = Array_Create(&pRootHandler->FileNames, char, 0x100000);
+    // Allocate global buffer for file names.
+    // The size of the buffer was taken from Diablo III build 30013
+    nError = Array_Create(&pRootHandler->FileNames, char, 0x01000000);
     if(nError != ERROR_SUCCESS)
         return nError;
 
