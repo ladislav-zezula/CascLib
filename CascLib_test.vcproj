@@ -442,6 +442,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\src\CascFiles.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\src\CascFindFile.cpp"
 				>
 			</File>
@@ -503,10 +507,6 @@
 			</File>
 			<File
 				RelativePath=".\test\CascTest.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\src\CascTextFiles.cpp"
 				>
 			</File>
 			<Filter

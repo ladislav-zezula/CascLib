@@ -1,12 +1,12 @@
 /*****************************************************************************/
-/* CascTextFiles.cpp                      Copyright (c) Ladislav Zezula 2014 */
+/* CascFiles.cpp                          Copyright (c) Ladislav Zezula 2014 */
 /*---------------------------------------------------------------------------*/
-/* Build configuration for CascLib                                           */
+/* Various text file parsers                                                 */
 /*---------------------------------------------------------------------------*/
 /*   Date    Ver   Who  Comment                                              */
 /* --------  ----  ---  -------                                              */
 /* 29.04.14  1.00  Lad  The first version of CascBuildCfg.cpp                */
-/* 30.10.15  1.00  Lad  Renamed to CascTextFiles.cpp                         */
+/* 30.10.15  1.00  Lad  Renamed to CascFiles.cpp                             */
 /*****************************************************************************/
 
 #define __CASCLIB_SELF__
