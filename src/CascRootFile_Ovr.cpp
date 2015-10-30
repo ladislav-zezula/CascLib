@@ -15,12 +15,12 @@
 //-----------------------------------------------------------------------------
 // Structure definitions for Overwatch root file
 
-typedef struct _CASC_FILE_ENTRY
+typedef struct _FILE_ENTRY_OVRW
 {
     ENCODING_KEY EncodingKey;                       // Encoding key
     ULONGLONG FileNameHash;                         // File name hash
     const char * szFileName;                        // Pointer to the file name
-} CASC_FILE_ENTRY, *PCASC_FILE_ENTRY;
+} FILE_ENTRY_OVRW, *PFILE_ENTRY_OVRW;
 
 struct TRootHandler_Ovr : public TRootHandler
 {
@@ -58,7 +58,7 @@ static int InsertFileEntry(
     const char * szFileName,
     ENCODING_KEY & EncodingKey)
 {
-    PCASC_FILE_ENTRY pFileEntry;
+    PFILE_ENTRY_OVRW pFileEntry;
     size_t nLength = strlen(szFileName);
 
     // Attempt to insert the file name to the global buffer
@@ -67,7 +67,7 @@ static int InsertFileEntry(
         return ERROR_NOT_ENOUGH_MEMORY;
 
     // Attempt to insert the entry to the array of file entries
-    pFileEntry = (PCASC_FILE_ENTRY)Array_Insert(&pRootHandler->FileTable, NULL, 1);
+    pFileEntry = (PFILE_ENTRY_OVRW)Array_Insert(&pRootHandler->FileTable, NULL, 1);
     if(pFileEntry == NULL)
         return ERROR_NOT_ENOUGH_MEMORY;
 
@@ -87,6 +87,20 @@ static int InsertFileEntry(
 
 static LPBYTE OvrHandler_Search(TRootHandler_Ovr * pRootHandler, TCascSearch * pSearch, PDWORD /* PtrFileSize */, PDWORD /* PtrLocaleFlags */)
 {
+    PFILE_ENTRY_OVRW pFileEntry;
+
+    // Are we still inside the root directory range?
+    while(pSearch->IndexLevel1 < pRootHandler->FileTable.ItemCount)
+    {
+        // Retrieve the file item
+        pFileEntry = (PFILE_ENTRY_OVRW)Array_ItemAt(&pRootHandler->FileTable, pSearch->IndexLevel1);
+        strcpy(pSearch->szFileName, pFileEntry->szFileName);        
+        
+        // Prepare the pointer to the next search
+        pSearch->IndexLevel1++;
+        return pFileEntry->EncodingKey.Value;
+    }
+
     // No more entries
     return NULL;
 }
@@ -110,6 +124,10 @@ static void OvrHandler_Close(TRootHandler_Ovr * pRootHandler)
         if(pRootHandler->pRootMap)
             Map_Free(pRootHandler->pRootMap);
         pRootHandler->pRootMap = NULL;
+
+        // Free the array of the file names and file items
+        Array_Free(&pRootHandler->FileTable);
+        Array_Free(&pRootHandler->FileNames);
 
         // Free the root file itself
         CASC_FREE(pRootHandler);
@@ -144,7 +162,7 @@ int RootHandler_CreateOverwatch(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRo
     pRootHandler->Close       = (ROOT_CLOSE)OvrHandler_Close;
 
     // Allocate the linear array of file entries
-    nError = Array_Create(&pRootHandler->FileTable, CASC_FILE_ENTRY, 0x10000);
+    nError = Array_Create(&pRootHandler->FileTable, FILE_ENTRY_OVRW, 0x10000);
     if(nError != ERROR_SUCCESS)
         return nError;
 
@@ -154,7 +172,7 @@ int RootHandler_CreateOverwatch(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRo
         return nError;
 
     // Create map of ROOT_ENTRY -> FileEntry
-    pRootHandler->pRootMap = Map_Create(dwFileCountMax, sizeof(ULONGLONG), FIELD_OFFSET(CASC_FILE_ENTRY, FileNameHash));
+    pRootHandler->pRootMap = Map_Create(dwFileCountMax, sizeof(ULONGLONG), FIELD_OFFSET(FILE_ENTRY_OVRW, FileNameHash));
     if(pRootHandler->pRootMap == NULL)
         return ERROR_NOT_ENOUGH_MEMORY;
 

@@ -1104,6 +1104,7 @@ int CheckGameDirectory(TCascStorage * hs, TCHAR * szDirectory)
 // The line has all preceding spaces removed
 int ParseRootFileLine(const char * szLinePtr, const char * szLineEnd, PQUERY_KEY PtrEncodingKey, char * szFileName, size_t nMaxChars)
 {
+    size_t nLength;
     int nError;
 
     // Check the MD5 (aka encoding key)
@@ -1121,14 +1122,15 @@ int ParseRootFileLine(const char * szLinePtr, const char * szLineEnd, PQUERY_KEY
     // Skip the chunk ID
     szLinePtr = SkipInfoVariable(szLinePtr, szLineEnd);
 
-    // Skip the archived file name
-    szLinePtr = SkipInfoVariable(szLinePtr, szLineEnd);
+    // Get the archived file name
+    szLineEnd = SkipInfoVariable(szLinePtr, szLineEnd);
+    nLength = (size_t)(szLineEnd - szLinePtr - 1);
 
     // Get the file name
-    if((size_t)(szLineEnd - szLinePtr) > nMaxChars)
+    if(nLength > nMaxChars)
         return ERROR_INSUFFICIENT_BUFFER;
 
-    memcpy(szFileName, szLinePtr, (szLineEnd - szLinePtr));
-    szFileName[szLineEnd - szLinePtr] = 0;
+    memcpy(szFileName, szLinePtr, nLength);
+    szFileName[nLength] = 0;
     return ERROR_SUCCESS;
 }
