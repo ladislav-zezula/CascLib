@@ -265,6 +265,85 @@ static PCASC_FILE_FRAME FindFileFrame(TCascFile * hf, DWORD FilePointer)
     return NULL;
 }
 
+static int ProcessFileFrame(
+    LPBYTE pbOutBuffer,
+    DWORD  cbOutBuffer,
+    LPBYTE pbInBuffer,
+    DWORD cbInBuffer,
+    DWORD dwFrameIndex)
+{
+    LPBYTE pbTempBuffer;
+    LPBYTE pbWorkBuffer;
+    DWORD cbTempBuffer = CASCLIB_MAX(cbInBuffer, cbOutBuffer);
+    DWORD cbWorkBuffer = cbOutBuffer + 1;
+    DWORD dwStepCount = 0;
+    bool bWorkComplete = false;
+    int nError = ERROR_SUCCESS;
+
+    // Allocate the temporary buffer that will serve as output
+    pbWorkBuffer = pbTempBuffer = CASC_ALLOC(BYTE, cbTempBuffer);
+    if(pbWorkBuffer == NULL)
+        return ERROR_NOT_ENOUGH_MEMORY;
+
+    // Perform the loop
+    for(;;)
+    {
+        // Set the output buffer. 
+        // Even operations: extract to temporary buffer
+        // Odd operations: extract to output buffer
+        pbWorkBuffer = (dwStepCount & 0x01) ? pbOutBuffer : pbTempBuffer;
+        cbWorkBuffer = (dwStepCount & 0x01) ? cbOutBuffer : cbTempBuffer;
+        
+        // Perform the operation specific to the operation ID
+        switch(pbInBuffer[0])
+        {
+            case 'E':   // Encrypted files
+                nError = CascDecrypt(pbWorkBuffer, &cbWorkBuffer, pbInBuffer + 1, cbInBuffer - 1, dwFrameIndex);
+                bWorkComplete = (nError != ERROR_SUCCESS);
+                break;
+
+            case 'Z':   // ZLIB compressed files
+                nError = CascDecompress(pbWorkBuffer, &cbWorkBuffer, pbInBuffer + 1, cbInBuffer - 1);
+                bWorkComplete = true;
+                break;
+
+            case 'N':   // Normal stored files
+                nError = CascDirectCopy(pbWorkBuffer, &cbWorkBuffer, pbInBuffer + 1, cbInBuffer - 1);
+                bWorkComplete = true;
+                break;
+
+            case 'F':   // Recursive frames - not supported
+            default:    // Unrecognized - if we unpacked something, we consider it done
+                nError = ERROR_NOT_SUPPORTED;
+                bWorkComplete = true;
+                assert(false);
+                break;
+        }
+
+        // Are we done?
+        if(bWorkComplete)
+            break;
+
+        // Set the input buffer to the work buffer
+        pbInBuffer = pbWorkBuffer;
+        cbInBuffer = cbWorkBuffer;
+        dwStepCount++;
+    }
+
+    // If the data are currently in the temporary buffer,
+    // we need to copy them to output buffer
+    if(nError == ERROR_SUCCESS && pbWorkBuffer != pbOutBuffer)
+    {
+        if(cbWorkBuffer != cbOutBuffer)
+            nError = ERROR_INSUFFICIENT_BUFFER;
+        memcpy(pbOutBuffer, pbWorkBuffer, cbOutBuffer);
+    }
+
+    // Free the temporary buffer
+    CASC_FREE(pbTempBuffer);
+    return nError;
+}
+
 //-----------------------------------------------------------------------------
 // Public functions
 
@@ -388,7 +467,6 @@ bool WINAPI CascReadFile(HANDLE hFile, void * pvBuffer, DWORD dwBytesToRead, PDW
     DWORD dwFilePointer = 0;
     DWORD dwEndPointer = 0;
     DWORD dwFrameSize;
-    DWORD cbOutBuffer;
     bool bReadResult;
     int nError = ERROR_SUCCESS;
 
@@ -424,7 +502,7 @@ bool WINAPI CascReadFile(HANDLE hFile, void * pvBuffer, DWORD dwBytesToRead, PDW
     {
         // Get the frame
         pFrame = FindFileFrame(hf, hf->FilePointer);
-        if(pFrame == NULL)
+        if(pFrame == NULL || pFrame->CompressedSize < 1)
             nError = ERROR_FILE_CORRUPT;
     }
 
@@ -440,7 +518,7 @@ bool WINAPI CascReadFile(HANDLE hFile, void * pvBuffer, DWORD dwBytesToRead, PDW
         // Perform block read from each file frame
         while(dwFilePointer < dwEndPointer)
         {
-            LPBYTE pbRawData = NULL;
+            LPBYTE pbFrameData = NULL;
             DWORD dwFrameStart = pFrame->FrameFileOffset;
             DWORD dwFrameEnd = pFrame->FrameFileOffset + pFrame->FrameSize;
 
@@ -458,8 +536,8 @@ bool WINAPI CascReadFile(HANDLE hFile, void * pvBuffer, DWORD dwBytesToRead, PDW
                 }
 
                 // We also need to allocate buffer for the raw data
-                pbRawData = CASC_ALLOC(BYTE, pFrame->CompressedSize);
-                if(pbRawData == NULL)
+                pbFrameData = CASC_ALLOC(BYTE, pFrame->CompressedSize);
+                if(pbFrameData == NULL)
                 {
                     nError = ERROR_NOT_ENOUGH_MEMORY;
                     break;
@@ -467,7 +545,7 @@ bool WINAPI CascReadFile(HANDLE hFile, void * pvBuffer, DWORD dwBytesToRead, PDW
 
                 // Load the raw file data to memory
                 FileOffset = pFrame->FrameArchiveOffset;
-                bReadResult = FileStream_Read(hf->pStream, &FileOffset, pbRawData, pFrame->CompressedSize);
+                bReadResult = FileStream_Read(hf->pStream, &FileOffset, pbFrameData, pFrame->CompressedSize);
                 
                 // Note: The raw file data size could be less than expected
                 // Happened in WoW build 19342 with the ROOT file. MD5 in the frame header
@@ -485,43 +563,34 @@ bool WINAPI CascReadFile(HANDLE hFile, void * pvBuffer, DWORD dwBytesToRead, PDW
                     // If the frame offset is before EOF and frame end is beyond EOF, correct it
                     if(FileOffset < StreamSize && dwFrameSize < pFrame->CompressedSize)
                     {
-                        memset(pbRawData + dwFrameSize, 0, (pFrame->CompressedSize - dwFrameSize));
+                        memset(pbFrameData + dwFrameSize, 0, (pFrame->CompressedSize - dwFrameSize));
                         bReadResult = true;
                     }
                 }
 
                 // If the read result failed, we cannot finish reading it
-                if(bReadResult == false)
+                if(bReadResult && VerifyDataBlockHash(pbFrameData, pFrame->CompressedSize, pFrame->md5))
                 {
-                    CASC_FREE(pbRawData);
-                    nError = GetLastError();
-                    break;
+                    // Convert the source frame to the file cache
+                    nError = ProcessFileFrame(hf->pbFileCache,
+                                              pFrame->FrameSize,
+                                              pbFrameData,
+                                              pFrame->CompressedSize,
+                                      (DWORD)(pFrame - hf->pFrames));
+                    if(nError == ERROR_SUCCESS)
+                    {
+                        // Set the start and end of the cache
+                        hf->CacheStart = dwFrameStart;
+                        hf->CacheEnd = dwFrameEnd;
+                    }
                 }
-
-                // Verify the block MD5
-                if(!VerifyDataBlockHash(pbRawData, pFrame->CompressedSize, pFrame->md5))
+                else
                 {
-                    CASC_FREE(pbRawData);
                     nError = ERROR_FILE_CORRUPT;
-                    break;
                 }
 
-                // Decompress the file frame
-                cbOutBuffer = pFrame->FrameSize;
-                nError = CascDecompress(hf->pbFileCache, &cbOutBuffer, pbRawData, pFrame->CompressedSize);
-                if(nError != ERROR_SUCCESS || cbOutBuffer != pFrame->FrameSize)
-                {
-                    CASC_FREE(pbRawData);
-                    nError = ERROR_FILE_CORRUPT;
-                    break;
-                }
-
-                // Set the start and end of the cache
-                hf->CacheStart = dwFrameStart;
-                hf->CacheEnd = dwFrameEnd;
-
-                // Free the decompress buffer, if needed
-                CASC_FREE(pbRawData);
+                // Free the raw frame data
+                CASC_FREE(pbFrameData);
             }
 
             // Copy the decompressed data

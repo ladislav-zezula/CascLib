@@ -84,7 +84,7 @@ extern "C" {
 #define CASC_STOR_XXXXX             0x00000001  // Not used
 
 // Values for CascOpenFile
-#define CASC_FILE_XXXXX             0x00000001  // Not used
+#define CASC_OPEN_BY_ENCODING_KEY   0x00000001  // The name is just the encoding key; skip ROOT file processing
 
 // Flags for file stream
 #define BASE_PROVIDER_FILE          0x00000000  // Base data source is a file

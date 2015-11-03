@@ -59,6 +59,23 @@ static const char szCircleChar[] = "|/-\\";
 //-----------------------------------------------------------------------------
 // Local functions
 
+static bool IsEncodingKey(const char * szFileName)
+{
+    QUERY_KEY EncodingKey;
+    BYTE KeyBuffer[MD5_HASH_SIZE];
+
+    // The length must be at least the length of the encoding key
+    if(strlen(szFileName) < MD5_STRING_SIZE)
+        return false;
+
+    // Convert the BLOB to binary.
+    EncodingKey.pbData = KeyBuffer;
+    if(StringBlobToBinaryBlob(&EncodingKey, (LPBYTE)szFileName, (LPBYTE)szFileName + MD5_STRING_SIZE) != ERROR_SUCCESS)
+        return false;
+
+    return true;
+}
+
 static int ForceCreatePath(TCHAR * szFullPath)
 {
     TCHAR * szPlainName = (TCHAR *)GetPlainFileName(szFullPath) - 1;
@@ -175,6 +192,128 @@ static int ExtractFile(HANDLE hStorage, const char * szFileName, const TCHAR * s
     return nError;
 }
 
+static int CompareFile(TLogHelper & LogHelper, HANDLE hStorage, CASC_FIND_DATA & cf, const TCHAR * szLocalPath)
+{
+    ULONGLONG FileSize = (ULONGLONG)-1;
+    TFileStream * pStream = NULL;
+    HANDLE hCascFile = NULL;
+    LPBYTE pbFileData1 = NULL;
+    LPBYTE pbFileData2 = NULL;
+    TCHAR szFileName[MAX_PATH+1];
+    TCHAR szTempBuff[MAX_PATH+1];
+    DWORD dwFileSize1;
+    DWORD dwFileSize2;
+    DWORD dwBytesRead;
+    DWORD dwFlags = 0;
+    int nError = ERROR_SUCCESS;
+
+    // If we don't know the name, use the encoding key as name
+    if(cf.szFileName[0] == 0)
+    {
+        StringFromBinary(cf.EncodingKey, MD5_HASH_SIZE, cf.szFileName);
+        dwFlags |= CASC_OPEN_BY_ENCODING_KEY;
+
+        CopyString(szTempBuff, cf.szFileName, MAX_PATH);
+        _stprintf(szFileName, _T("%s\\unknown\\%02X\\%s"), szLocalPath, cf.EncodingKey[0], szTempBuff);
+    }
+    else
+    {
+        CopyString(szTempBuff, cf.szFileName, MAX_PATH);
+        _stprintf(szFileName, _T("%s\\%s"), szLocalPath, szTempBuff);
+    }
+
+    LogHelper.PrintProgress("Comparing %s ...", cf.szFileName);
+
+    // Open the CASC file
+    if(nError == ERROR_SUCCESS)
+    {
+        if(!CascOpenFile(hStorage, cf.szFileName, cf.dwLocaleFlags, dwFlags, &hCascFile))
+            nError = LogHelper.PrintError("CASC file not found: %s", cf.szFileName);
+    }
+
+    // Open the local file
+    if(nError == ERROR_SUCCESS)
+    {
+        pStream = FileStream_OpenFile(szFileName, 0);
+        if(pStream == NULL)
+            nError = LogHelper.PrintError("Local file not found: %s", cf.szFileName);
+    }
+
+    // Retrieve the size of the file
+    if(nError == ERROR_SUCCESS)
+    {
+        dwFileSize1 = CascGetFileSize(hCascFile, NULL);
+        if(FileStream_GetSize(pStream, &FileSize))
+            dwFileSize2 = (DWORD)FileSize;
+
+        if(dwFileSize1 == CASC_INVALID_SIZE || dwFileSize2 == CASC_INVALID_SIZE)
+        {
+            nError = LogHelper.PrintError("Failed to get file size: %s", cf.szFileName);
+        }
+    }
+
+    // The file sizes must match
+    if(nError == ERROR_SUCCESS)
+    {
+        if(dwFileSize1 != dwFileSize2)
+        {
+            SetLastError(ERROR_FILE_CORRUPT);
+            nError = LogHelper.PrintError("Size mismatch on %s", cf.szFileName);
+        }
+    }
+
+    // Read the entire content to memory
+    if(nError == ERROR_SUCCESS)
+    {
+        pbFileData1 = CASC_ALLOC(BYTE, dwFileSize1);
+        pbFileData2 = CASC_ALLOC(BYTE, dwFileSize2);
+        if(pbFileData1 == NULL || pbFileData2 == NULL)
+        {
+            SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+            nError = LogHelper.PrintError("Failed allocate memory");
+        }
+    }
+
+    // Read the entire CASC file to memory
+    if(nError == ERROR_SUCCESS)
+    {
+        if(!CascReadFile(hCascFile, pbFileData1, dwFileSize1, &dwBytesRead))
+        {
+            nError = LogHelper.PrintError("Failed to read casc file: %s", cf.szFileName);
+        }
+    }
+
+    // Read the entire local file to memory
+    if(nError == ERROR_SUCCESS)
+    {
+        if(!FileStream_Read(pStream, NULL, pbFileData2, dwFileSize2))
+        {
+            nError = LogHelper.PrintError("Failed to read local file: %s", cf.szFileName);
+        }
+    }
+
+    // Compare both
+    if(nError == ERROR_SUCCESS)
+    {
+        if(memcmp(pbFileData1, pbFileData2, dwFileSize1))
+        {
+            SetLastError(ERROR_FILE_CORRUPT);
+            nError = LogHelper.PrintError("File data mismatch: %s", cf.szFileName);
+        }
+    }
+
+    // Free both buffers
+    if(pbFileData2 != NULL)
+        CASC_FREE(pbFileData2);
+    if(pbFileData1 != NULL)
+        CASC_FREE(pbFileData1);
+    if(pStream != NULL)
+        FileStream_Close(pStream);
+    if(hCascFile != NULL)
+        CascCloseFile(hCascFile);
+    return nError;
+}
+
 //-----------------------------------------------------------------------------
 // Testing functions
 
@@ -185,6 +324,7 @@ static int TestOpenStorage_OpenFile(const TCHAR * szStorage, const char * szFile
     HANDLE hFile;
     DWORD dwFileSize2 = 0;
     DWORD dwFileSize1;
+    DWORD dwFlags = 0;
     BYTE Buffer[0x1000];
     int nError = ERROR_SUCCESS;
 
@@ -198,9 +338,13 @@ static int TestOpenStorage_OpenFile(const TCHAR * szStorage, const char * szFile
 
     if(nError == ERROR_SUCCESS && szFileName != NULL)
     {
+        // Check whether the name is the encoding key
+        if(IsEncodingKey(szFileName))
+            dwFlags |= CASC_OPEN_BY_ENCODING_KEY;
+
         // Open a file
         LogHelper.PrintProgress(_T("Opening file \"%s\"..."), szFileName);
-        if(CascOpenFile(hStorage, szFileName, 0, 0, &hFile))
+        if(CascOpenFile(hStorage, szFileName, 0, dwFlags, &hFile))
         {
             dwFileSize1 = CascGetFileSize(hFile, NULL);
 
@@ -215,7 +359,6 @@ static int TestOpenStorage_OpenFile(const TCHAR * szStorage, const char * szFile
                 dwFileSize2 += dwBytesRead;
             }
             
-            assert(dwFileSize1 == dwFileSize2);
             CascCloseFile(hFile);
         }
         else
@@ -321,12 +464,13 @@ static int TestOpenStorage_ExtractFiles(const TCHAR * szStorage, const TCHAR * s
             while(bFileFound)
             {
                 // Extract the file
-                LogHelper.PrintProgress("Extracting %s ...", FindData.szPlainName);
-                nError = ExtractFile(hStorage, FindData.szFileName, szTargetDir, FindData.dwLocaleFlags);
+//              LogHelper.PrintProgress("Extracting %s ...", FindData.szPlainName);
+//              nError = ExtractFile(hStorage, FindData.szFileName, szTargetDir, FindData.dwLocaleFlags);
+//              if(nError != ERROR_SUCCESS)
+//                  LogHelper.PrintError("Extracting %s .. Failed", FindData.szPlainName);
 
-                // Terminate the line
-                if(nError != ERROR_SUCCESS)
-                    LogHelper.PrintError("Extracting %s .. Failed", FindData.szPlainName);
+                // Compare the file with the local copy
+                CompareFile(LogHelper, hStorage, FindData, szTargetDir);
 
                 // Find the next file in CASC
                 bFileFound = CascFindNextFile(hFind, &FindData);
@@ -418,6 +562,9 @@ int main(int argc, char * argv[])
 //   if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_OpenFile(_T("c:\\Hry\\Diablo III Public Test\\Data"), "Base\\SoundBank\\Barbarian_Male\\0005.xxx");
 
+     if(nError == ERROR_SUCCESS)
+        nError = TestOpenStorage_OpenFile(MAKE_PATH("2015 - Overwatch/24919/casc/data"), "68a420ffabcccfca4a4a12e1e5b2b6be");
+
     //if(nError == ERROR_SUCCESS)
     //    nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/29049"), NULL);
 
@@ -442,8 +589,8 @@ int main(int argc, char * argv[])
     //if(nError == ERROR_SUCCESS)
     //    nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Diablo III/30013/Data"), NULL);
 
-    if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Overwatch/24919/casc/data"), NULL);
+    //if(nError == ERROR_SUCCESS)
+    //    nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Overwatch/24919/casc/data"), NULL);
 
     // Test extracting the complete storage
 //  if(nError == ERROR_SUCCESS)
@@ -460,6 +607,9 @@ int main(int argc, char * argv[])
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2015 - Diablo III/Data"), _T("Work"), NULL);
+
+//   if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2015 - Overwatch/24919/casc/data"), MAKE_PATH("Work"), NULL);
 
 #ifdef _MSC_VER                                                          
     _CrtDumpMemoryLeaks();

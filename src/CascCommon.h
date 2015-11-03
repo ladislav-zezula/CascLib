@@ -80,6 +80,7 @@
 
 //-----------------------------------------------------------------------------
 // In-memory structures
+// See http://pxr.dk/wowdev/wiki/index.php?title=CASC for more information
 
 struct TFileStream;
 
@@ -292,6 +293,7 @@ ULONGLONG ConvertBytesToInteger_5(LPBYTE ValueAsBytes);
 //-----------------------------------------------------------------------------
 // Text file parsing (CascTextFiles.cpp)
 
+int StringBlobToBinaryBlob(PQUERY_KEY pBlob, LPBYTE pbBlobBegin, LPBYTE pbBlobEnd);
 int LoadBuildInfo(TCascStorage * hs);
 int CheckGameDirectory(TCascStorage * hs, TCHAR * szDirectory);
 int ParseRootFileLine(const char * szLinePtr, const char * szLineEnd, PQUERY_KEY pEncodingKey, char * szFileName, size_t nMaxChars);
@@ -305,7 +307,9 @@ TCascFile * IsValidFileHandle(HANDLE hFile);
 PCASC_ENCODING_ENTRY FindEncodingEntry(TCascStorage * hs, PQUERY_KEY pEncodingKey, PDWORD PtrIndex);
 PCASC_INDEX_ENTRY    FindIndexEntry(TCascStorage * hs, PQUERY_KEY pIndexKey);
 
-int CascDecompress(void * pvOutBuffer, PDWORD pcbOutBuffer, void * pvInBuffer, DWORD cbInBuffer);
+int CascDecompress(LPBYTE pvOutBuffer, PDWORD pcbOutBuffer, LPBYTE pvInBuffer, DWORD cbInBuffer);
+int CascDecrypt   (LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBYTE pbInBuffer, DWORD cbInBuffer, DWORD dwFrameIndex);
+int CascDirectCopy(LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBYTE pbInBuffer, DWORD cbInBuffer);
 
 //-----------------------------------------------------------------------------
 // Support for ROOT file

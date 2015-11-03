@@ -194,41 +194,6 @@ TCHAR * AppendBlobText(TCHAR * szBuffer, LPBYTE pbData, DWORD cbData, TCHAR chSe
     return szBuffer;
 }
 
-static int StringBlobToBinaryBlob(
-    PQUERY_KEY pBlob,
-    LPBYTE pbBlobBegin, 
-    LPBYTE pbBlobEnd)
-{
-    // Sanity checks
-    assert(pBlob != NULL && pBlob->pbData != NULL);
-
-    // Reset the blob length
-    pBlob->cbData = 0;
-
-    // Convert the blob
-    while(pbBlobBegin < pbBlobEnd)
-    {
-        BYTE DigitOne;
-        BYTE DigitTwo;
-
-        DigitOne = (BYTE)(AsciiToUpperTable_BkSlash[pbBlobBegin[0]] - '0');
-        if(DigitOne > 9)
-            DigitOne -= 'A' - '9' - 1;
-
-        DigitTwo = (BYTE)(AsciiToUpperTable_BkSlash[pbBlobBegin[1]] - '0');
-        if(DigitTwo > 9)
-            DigitTwo -= 'A' - '9' - 1;
-
-        if(DigitOne > 0x0F || DigitTwo > 0x0F || pBlob->cbData >= MAX_CASC_KEY_LENGTH)
-            return ERROR_BAD_FORMAT;
-
-        pBlob->pbData[pBlob->cbData++] = (DigitOne << 0x04) | DigitTwo;
-        pbBlobBegin += 2;
-    }
-
-    return ERROR_SUCCESS;
-}
-
 static bool GetNextFileLine(PQUERY_KEY pFileBlob, LPBYTE * ppbLineBegin, LPBYTE * ppbLineEnd)
 {
     LPBYTE pbLineBegin = *ppbLineBegin;
@@ -965,6 +930,43 @@ static int LoadCdnBuildFile(TCascStorage * hs, PQUERY_KEY pFileBlob)
 
 //-----------------------------------------------------------------------------
 // Public functions
+
+// Converts string blob to binary blob. The "QUERY_KEY::pbData"
+// must have preallocated size of MAX_CASC_KEY_LENGTH
+int StringBlobToBinaryBlob(
+    PQUERY_KEY pBlob,
+    LPBYTE pbBlobBegin, 
+    LPBYTE pbBlobEnd)
+{
+    // Sanity checks
+    assert(pBlob != NULL && pBlob->pbData != NULL);
+
+    // Reset the blob length
+    pBlob->cbData = 0;
+
+    // Convert the blob
+    while(pbBlobBegin < pbBlobEnd)
+    {
+        BYTE DigitOne;
+        BYTE DigitTwo;
+
+        DigitOne = (BYTE)(AsciiToUpperTable_BkSlash[pbBlobBegin[0]] - '0');
+        if(DigitOne > 9)
+            DigitOne -= 'A' - '9' - 1;
+
+        DigitTwo = (BYTE)(AsciiToUpperTable_BkSlash[pbBlobBegin[1]] - '0');
+        if(DigitTwo > 9)
+            DigitTwo -= 'A' - '9' - 1;
+
+        if(DigitOne > 0x0F || DigitTwo > 0x0F || pBlob->cbData >= MAX_CASC_KEY_LENGTH)
+            return ERROR_BAD_FORMAT;
+
+        pBlob->pbData[pBlob->cbData++] = (DigitOne << 0x04) | DigitTwo;
+        pbBlobBegin += 2;
+    }
+
+    return ERROR_SUCCESS;
+}
 
 int LoadBuildInfo(TCascStorage * hs)
 {

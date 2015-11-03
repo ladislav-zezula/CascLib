@@ -341,6 +341,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\src\CascDecrypt.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\src\CascDumpData.cpp"
 				>
 			</File>

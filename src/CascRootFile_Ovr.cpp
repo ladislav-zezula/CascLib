@@ -19,7 +19,7 @@ typedef struct _FILE_ENTRY_OVRW
 {
     ENCODING_KEY EncodingKey;                       // Encoding key
     ULONGLONG FileNameHash;                         // File name hash
-    const char * szFileName;                        // Pointer to the file name
+    DWORD dwFileName;                               // Offset of the file name in the name cache
 } FILE_ENTRY_OVRW, *PFILE_ENTRY_OVRW;
 
 struct TRootHandler_Ovr : public TRootHandler
@@ -74,7 +74,7 @@ static int InsertFileEntry(
     // Fill the file entry
     pFileEntry->EncodingKey  = EncodingKey;
     pFileEntry->FileNameHash = CalcFileNameHash(szFileName);
-    pFileEntry->szFileName   = szFileName;
+    pFileEntry->dwFileName   = Array_IndexOf(&pRootHandler->FileNames, szFileName);
 
     // Insert the file entry to the map
     assert(Map_FindObject(pRootHandler->pRootMap, &pFileEntry->FileNameHash, NULL) == NULL);
@@ -94,7 +94,7 @@ static LPBYTE OvrHandler_Search(TRootHandler_Ovr * pRootHandler, TCascSearch * p
     {
         // Retrieve the file item
         pFileEntry = (PFILE_ENTRY_OVRW)Array_ItemAt(&pRootHandler->FileTable, pSearch->IndexLevel1);
-        strcpy(pSearch->szFileName, pFileEntry->szFileName);        
+        strcpy(pSearch->szFileName, (char *)Array_ItemAt(&pRootHandler->FileNames, pFileEntry->dwFileName));        
         
         // Prepare the pointer to the next search
         pSearch->IndexLevel1++;
@@ -112,8 +112,9 @@ static void OvrHandler_EndSearch(TRootHandler_Ovr * /* pRootHandler */, TCascSea
 
 static LPBYTE OvrHandler_GetKey(TRootHandler_Ovr * pRootHandler, const char * szFileName)
 {
-    // Return the entry's encoding key or NULL
-    return NULL;
+    ULONGLONG FileNameHash = CalcFileNameHash(szFileName);
+
+    return (LPBYTE)Map_FindObject(pRootHandler->pRootMap, &FileNameHash, NULL);
 }
 
 static void OvrHandler_Close(TRootHandler_Ovr * pRootHandler)

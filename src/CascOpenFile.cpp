@@ -198,6 +198,7 @@ bool WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocal
     TCascStorage * hs;
     QUERY_KEY EncodingKey;
     LPBYTE pbEncodingKey;
+    BYTE KeyBuffer[MD5_HASH_SIZE];
     int nError = ERROR_SUCCESS;
 
     CASCLIB_UNUSED(dwLocale);
@@ -217,21 +218,43 @@ bool WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocal
         return false;
     }
 
-    // Let the root directory provider get us the encoding key
-    pbEncodingKey = RootHandler_GetKey(hs->pRootHandler, szFileName);
-    if(pbEncodingKey == NULL)
+    // If the user is opening the file via encoding key, skip the ROOT file processing
+    if((dwFlags & CASC_OPEN_BY_ENCODING_KEY) == 0)
     {
-        SetLastError(ERROR_FILE_NOT_FOUND);
-        return false;
+        // Let the root directory provider get us the encoding key
+        pbEncodingKey = RootHandler_GetKey(hs->pRootHandler, szFileName);
+        if(pbEncodingKey == NULL)
+        {
+            SetLastError(ERROR_FILE_NOT_FOUND);
+            return false;
+        }
+
+        // Setup the encoding key
+        EncodingKey.pbData = pbEncodingKey;
+        EncodingKey.cbData = MD5_HASH_SIZE;
+    }
+    else
+    {
+        // Check the length of the file name
+        if(strlen(szFileName) < MD5_STRING_SIZE)
+        {
+            SetLastError(ERROR_INVALID_PARAMETER);
+            return false;
+        }
+
+        // Convert the file name to binary blob
+        EncodingKey.pbData = KeyBuffer;
+        nError = StringBlobToBinaryBlob(&EncodingKey, (LPBYTE)szFileName, (LPBYTE)szFileName + MD5_STRING_SIZE);
     }
 
     // Use the encoding key to find the file in the encoding table entry
-    EncodingKey.pbData = pbEncodingKey;
-    EncodingKey.cbData = MD5_HASH_SIZE;
-    if(!OpenFileByEncodingKey(hs, &EncodingKey, dwFlags, (TCascFile **)phFile))
+    if(nError == ERROR_SUCCESS)
     {
-        assert(GetLastError() != ERROR_SUCCESS);
-        nError = GetLastError();
+        if(!OpenFileByEncodingKey(hs, &EncodingKey, dwFlags, (TCascFile **)phFile))
+        {
+            assert(GetLastError() != ERROR_SUCCESS);
+            nError = GetLastError();
+        }
     }
 
 #ifdef CASCLIB_TEST
