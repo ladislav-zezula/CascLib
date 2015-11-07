@@ -351,11 +351,8 @@ static PLISTFILE_MAP ListMap_Create()
 static PLISTFILE_MAP ListMap_InsertName(PLISTFILE_MAP pListMap, const char * szFileName, size_t nLength)
 {
     PLISTFILE_ENTRY pListEntry;
-    char szFileName2[MAX_PATH+1];
     size_t cbToAllocate;
     size_t cbEntrySize;
-    uint32_t dwHashHigh = 0;
-    uint32_t dwHashLow = 0;
 
     // Make sure there is enough space in the list map
     cbEntrySize = sizeof(LISTFILE_ENTRY) + nLength;
@@ -372,14 +369,10 @@ static PLISTFILE_MAP ListMap_InsertName(PLISTFILE_MAP pListMap, const char * szF
 
     // Get the pointer to the first entry
     pListEntry = (PLISTFILE_ENTRY)((LPBYTE)(pListMap + 1) + pListMap->cbBuffer);
-
-    // Get the name hash
-    NormalizeFileName_UpperBkSlash(szFileName2, szFileName, MAX_PATH);
-    hashlittle2(szFileName2, nLength, &dwHashHigh, &dwHashLow);
-    
-    // Calculate the HASH value of the normalized file name
-    pListEntry->FileNameHash = ((ULONGLONG)dwHashHigh << 0x20) | dwHashLow;
+    pListEntry->FileNameHash = CalcFileNameHash(szFileName);
     pListEntry->cbEntrySize = (DWORD)cbEntrySize;
+
+    // Copy the file name to the entry
     memcpy(pListEntry->szFileName, szFileName, nLength);
     pListEntry->szFileName[nLength] = 0;
 

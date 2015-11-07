@@ -233,32 +233,43 @@ TCHAR * CombinePathAndString(const TCHAR * szPath, const char * szString, size_t
     return szFullPath;
 }
 
-size_t NormalizeFileName_UpperBkSlash(char * szTrgFileName, const char * szSrcFileName, size_t cchMaxChars)
+size_t NormalizeFileName(const unsigned char * NormTable, char * szNormName, const char * szFileName, size_t cchMaxChars)
 {
-    char * szTrgFileEnd = szTrgFileName + cchMaxChars;
+    char * szNormNameEnd = szNormName + cchMaxChars;
     size_t i;
 
     // Normalize the file name: ToLower + BackSlashToSlash
-    for(i = 0; szSrcFileName[i] != 0 && szTrgFileName < szTrgFileEnd; i++)
-        szTrgFileName[i] = AsciiToUpperTable_BkSlash[szSrcFileName[i]];
+    for(i = 0; szFileName[0] != 0 && szNormName < szNormNameEnd; i++)
+        *szNormName++ = NormTable[*szFileName++];
 
-    assert(szSrcFileName[i] == 0);
-    szTrgFileName[i] = 0;
+    // Terminate the string
+    szNormName[0] = 0;
     return i;
 }
 
-size_t NormalizeFileName_LowerSlash(char * szTrgFileName, const char * szSrcFileName, size_t cchMaxChars)
+size_t NormalizeFileName_UpperBkSlash(char * szNormName, const char * szFileName, size_t cchMaxChars)
 {
-    char * szTrgFileEnd = szTrgFileName + cchMaxChars;
-    size_t i;
+    return NormalizeFileName(AsciiToUpperTable_BkSlash, szNormName, szFileName, cchMaxChars);
+}
 
-    // Normalize the file name: ToLower + BackSlashToSlash
-    for(i = 0; szSrcFileName[i] != 0 && szTrgFileName < szTrgFileEnd; i++)
-        szTrgFileName[i] = AsciiToLowerTable_Slash[szSrcFileName[i]];
+size_t NormalizeFileName_LowerSlash(char * szNormName, const char * szFileName, size_t cchMaxChars)
+{
+    return NormalizeFileName(AsciiToLowerTable_Slash, szNormName, szFileName, cchMaxChars);
+}
 
-    assert(szSrcFileName[i] == 0);
-    szTrgFileName[i] = 0;
-    return i;
+ULONGLONG CalcFileNameHash(const char * szFileName)
+{
+    char szNormName[MAX_PATH+1];
+    uint32_t dwHashHigh = 0;
+    uint32_t dwHashLow = 0;
+    size_t nLength;
+
+    // Normalize the file name - convert to uppercase, slashes to backslashes
+    nLength = NormalizeFileName_UpperBkSlash(szNormName, szFileName, MAX_PATH);
+
+    // Calculate the HASH value of the normalized file name
+    hashlittle2(szNormName, nLength, &dwHashHigh, &dwHashLow);
+    return ((ULONGLONG)dwHashHigh << 0x20) | dwHashLow;
 }
 
 int ConvertDigitToInt32(const TCHAR * szString, PDWORD PtrValue)
@@ -271,6 +282,22 @@ int ConvertDigitToInt32(const TCHAR * szString, PDWORD PtrValue)
 
     PtrValue[0] = Digit;
     return (Digit > 0x0F) ? ERROR_BAD_FORMAT : ERROR_SUCCESS;
+}
+
+int ConvertStringToInt08(const char * szString, PDWORD PtrValue)
+{
+    BYTE DigitOne = AsciiToUpperTable_BkSlash[szString[0]] - '0';
+    BYTE DigitTwo = AsciiToUpperTable_BkSlash[szString[1]] - '0';
+
+    // Fix the digits
+    if(DigitOne > 9)
+        DigitOne -= 'A' - '9' - 1;
+    if(DigitTwo > 9)
+        DigitTwo -= 'A' - '9' - 1;
+
+    // Combine them into a value
+    PtrValue[0] = (DigitOne << 0x04) | DigitTwo;
+    return (DigitOne <= 0x0F && DigitTwo <= 0x0F) ? ERROR_SUCCESS : ERROR_BAD_FORMAT;
 }
 
 int ConvertStringToInt32(const TCHAR * szString, size_t nMaxDigits, PDWORD PtrValue)

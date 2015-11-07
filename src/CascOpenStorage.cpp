@@ -90,6 +90,19 @@ static const TCHAR * szIndexFormat_V2 = _T("%02x%08x.idx");
 //-----------------------------------------------------------------------------
 // Local functions
 
+static void InitializeEncodingEntry(
+    PCASC_ENCODING_ENTRY pEncodingEntry,
+    USHORT KeyCount,
+    DWORD  cbFileSize,
+    LPBYTE pbEncodingKey,
+    LPBYTE pbIndexKey)
+{
+    ConvertIntegerToBytes_4(cbFileSize, pEncodingEntry->FileSizeBE);
+    memcpy(pEncodingEntry->EncodingKey, pbEncodingKey, MD5_HASH_SIZE);
+    memcpy(pEncodingEntry->EncodingKey + MD5_HASH_SIZE, pbIndexKey, MD5_HASH_SIZE);
+    pEncodingEntry->KeyCount = KeyCount;
+}
+
 inline void CopyFileKey(LPBYTE Trg, LPBYTE Src)
 {
     Trg[0x00] = Src[0x00];
@@ -760,8 +773,6 @@ static int LoadEncodingFile(TCascStorage * hs)
         if(pbEncodingFile == NULL || cbEncodingFile <= sizeof(CASC_ENCODING_HEADER))
             nError = ERROR_FILE_CORRUPT;
 
-        //CascDumpFile("E:\\ENCODING", hFile);
-
         // Close the encoding file
         CascCloseFile(hFile);
     }
@@ -823,6 +834,20 @@ static int LoadEncodingFile(TCascStorage * hs)
         pEncodingSegment = (PFILE_ENCODING_SEGMENT)(pbEncodingFile + sizeof(CASC_ENCODING_HEADER) + dwSegmentsPos);
         nError = CreateMapOfEncodingKeys(hs, pEncodingSegment, dwNumberOfSegments);
     }
+
+    // Now insert a fake entry of encoding file itself.
+    // This will allow us to open the the encoding file later
+    if(nError == ERROR_SUCCESS)
+    {
+        PCASC_ENCODING_ENTRY pEncodingEntry = (PCASC_ENCODING_ENTRY)hs->FakeEntry;
+
+        InitializeEncodingEntry(pEncodingEntry, 1,
+                                                cbEncodingFile,
+                                                hs->EncodingEKey.pbData,
+                                                hs->EncodingEKey.pbData);
+        Map_InsertObject(hs->pEncodingMap, pEncodingEntry, pEncodingEntry->EncodingKey);
+    }
+
     return nError;
 }
 
@@ -851,14 +876,12 @@ static int LoadRootFile(TCascStorage * hs, DWORD dwLocaleMask)
     if(nError == ERROR_SUCCESS)
     {
         pbRootFile = LoadRootFileToMemory(hFile, &cbRootFile);
-        //CascDumpFile("E:\\ROOT", hFile);
         CascCloseFile(hFile);
     }
 
     // Check if the version of the ROOT file
     if(nError == ERROR_SUCCESS && pbRootFile != NULL)
     {
-
         FileSignature = (PDWORD)pbRootFile;
         switch(FileSignature[0])
         {
@@ -878,6 +901,13 @@ static int LoadRootFile(TCascStorage * hs, DWORD dwLocaleMask)
                 nError = RootHandler_CreateWoW6(hs, pbRootFile, cbRootFile, dwLocaleMask);
                 break;
         }
+    }
+
+    // Insert entry for the 
+    if(nError == ERROR_SUCCESS)
+    {
+        RootHandler_Insert(hs->pRootHandler, "ROOT", hs->RootKey.pbData);
+        RootHandler_Insert(hs->pRootHandler, "ENCODING", hs->EncodingEKey.pbData);
     }
 
 #ifdef _DEBUG

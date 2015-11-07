@@ -27,6 +27,12 @@
 //-----------------------------------------------------------------------------
 // Root file function prototypes
 
+typedef int (*ROOT_INSERT)(
+    struct TRootHandler * pRootHandler,             // Pointer to an initialized root handler
+    const char * szFileName,                        // Pointer to the file name
+    LPBYTE pbEncodingKey                            // Pointer to the encoding key of the file name
+    );
+
 typedef LPBYTE (*ROOT_SEARCH)(
     struct TRootHandler * pRootHandler,             // Pointer to an initialized root handler
     struct _TCascSearch * pSearch,                  // Pointer to the initialized search structure
@@ -59,6 +65,7 @@ typedef void (*ROOT_CLOSE)(
 
 struct TRootHandler
 {
+    ROOT_INSERT    Insert;                          // Inserts an existing file name
     ROOT_SEARCH    Search;                          // Performs the root file search
     ROOT_ENDSEARCH EndSearch;                       // Performs cleanup after searching
     ROOT_GETKEY    GetKey;                          // Retrieves encoding key for a file name
@@ -71,6 +78,7 @@ struct TRootHandler
 //-----------------------------------------------------------------------------
 // Public functions
 
+int    RootHandler_Insert(TRootHandler * pRootHandler, const char * szFileName, LPBYTE pbEncodingKey);
 LPBYTE RootHandler_Search(TRootHandler * pRootHandler, struct _TCascSearch * pSearch, PDWORD PtrFileSize, PDWORD PtrLocaleFlags);
 void   RootHandler_EndSearch(TRootHandler * pRootHandler, struct _TCascSearch * pSearch);
 LPBYTE RootHandler_GetKey(TRootHandler * pRootHandler, const char * szFileName);

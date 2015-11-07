@@ -343,7 +343,7 @@ static int TestOpenStorage_OpenFile(const TCHAR * szStorage, const char * szFile
             dwFlags |= CASC_OPEN_BY_ENCODING_KEY;
 
         // Open a file
-        LogHelper.PrintProgress(_T("Opening file \"%s\"..."), szFileName);
+        LogHelper.PrintProgress("Opening file %s...", szFileName);
         if(CascOpenFile(hStorage, szFileName, 0, dwFlags, &hFile))
         {
             dwFileSize1 = CascGetFileSize(hFile, NULL);
@@ -388,7 +388,7 @@ static int TestOpenStorage_EnumFiles(const TCHAR * szStorage, const TCHAR * szLi
     int nError = ERROR_SUCCESS;
 
     // Open the storage directory
-    LogHelper.PrintProgress(_T("Opening storage \"%s\"..."), szStorage);
+    LogHelper.PrintProgress(_T("Opening storage %s ..."), szStorage);
     if(!CascOpenStorage(szStorage, 0, &hStorage))
     {
         assert(GetLastError() != ERROR_SUCCESS);
@@ -557,13 +557,10 @@ int main(int argc, char * argv[])
 //      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - Heroes of the Storm/30414/HeroesData"), "World\\Maps\\Azeroth\\Azeroth_29_28.adt");
 
 //  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_OpenFile(MAKE_PATH("2015 - Diablo III/30013/Data"), "Base\\SoundBank\\Barbarian_Male\\0005.xxx");
+//      nError = TestOpenStorage_OpenFile(MAKE_PATH("2015 - Diablo III/30013"), "ENCODING");
 
 //   if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_OpenFile(_T("c:\\Hry\\Diablo III Public Test\\Data"), "Base\\SoundBank\\Barbarian_Male\\0005.xxx");
-
-     if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_OpenFile(MAKE_PATH("2015 - Overwatch/24919/casc/data"), "68a420ffabcccfca4a4a12e1e5b2b6be");
+//      nError = TestOpenStorage_OpenFile(MAKE_PATH("2015 - Overwatch/24919/casc/data"), "ROOT");
 
     //if(nError == ERROR_SUCCESS)
     //    nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/29049"), NULL);
@@ -583,14 +580,14 @@ int main(int argc, char * argv[])
     //if(nError == ERROR_SUCCESS)
     //    nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19116/Data"), szListFile);
 
-    //if(nError == ERROR_SUCCESS)
-    //    nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), szListFile);
+    if(nError == ERROR_SUCCESS)
+        nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), szListFile);
 
-    //if(nError == ERROR_SUCCESS)
-    //    nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Diablo III/30013/Data"), NULL);
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Diablo III/30013/Data"), NULL);
 
-    //if(nError == ERROR_SUCCESS)
-    //    nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Overwatch/24919/casc/data"), NULL);
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Overwatch/24919/casc/data"), NULL);
 
     // Test extracting the complete storage
 //  if(nError == ERROR_SUCCESS)

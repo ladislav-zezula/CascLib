@@ -43,10 +43,13 @@ TCHAR * CascNewStrFromAnsi(const char * szBegin, const char * szEnd);
 TCHAR * CombinePath(const TCHAR * szPath, const TCHAR * szSubDir);
 TCHAR * CombinePathAndString(const TCHAR * szPath, const char * szString, size_t nLength);
 
-size_t NormalizeFileName_UpperBkSlash(char * szTrgFileName, const char * szSrcFileName, size_t cchMaxChars);
-size_t NormalizeFileName_LowerSlash(char * szTrgFileName, const char * szSrcFileName, size_t cchMaxChars);
+size_t NormalizeFileName_UpperBkSlash(char * szNormName, const char * szFileName, size_t cchMaxChars);
+size_t NormalizeFileName_LowerSlash(char * szNormName, const char * szFileName, size_t cchMaxChars);
+
+ULONGLONG CalcFileNameHash(const char * szFileName);
 
 int ConvertDigitToInt32(const TCHAR * szString, PDWORD PtrValue);
+int ConvertStringToInt08(const char * szString, PDWORD PtrValue);
 int ConvertStringToInt32(const TCHAR * szString, size_t nMaxDigits, PDWORD PtrValue);
 char * StringFromBinary(LPBYTE pbBinary, size_t cbBinary, char * szBuffer);
 char * StringFromMD5(LPBYTE md5, char * szBuffer);

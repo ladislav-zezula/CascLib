@@ -65,3 +65,11 @@ ULONGLONG ConvertBytesToInteger_5(LPBYTE ValueAsBytes)
 
     return Value;
 }
+
+void ConvertIntegerToBytes_4(DWORD Value, LPBYTE ValueAsBytes)
+{
+    ValueAsBytes[0] = (Value >> 0x18) & 0xFF;
+    ValueAsBytes[1] = (Value >> 0x10) & 0xFF;
+    ValueAsBytes[2] = (Value >> 0x08) & 0xFF;
+    ValueAsBytes[3] = (Value >> 0x00) & 0xFF;
+}

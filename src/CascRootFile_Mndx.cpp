@@ -3040,6 +3040,11 @@ static LPBYTE FillFindData(TRootHandler_MNDX * pRootHandler, TCascSearch * pSear
     return pRootEntry->EncodingKey;
 }
 
+static int MndxHandler_Insert(TRootHandler_MNDX *, const char *, LPBYTE)
+{
+    return ERROR_NOT_SUPPORTED;
+}
+
 static LPBYTE MndxHandler_Search(TRootHandler_MNDX * pRootHandler, TCascSearch * pSearch, PDWORD PtrFileSize, PDWORD /* PtrLocaleFlags */)
 {
     TMndxFindResult * pStruct1C = NULL;
@@ -3075,13 +3080,9 @@ static LPBYTE MndxHandler_Search(TRootHandler_MNDX * pRootHandler, TCascSearch *
 
 static void MndxHandler_EndSearch(TRootHandler_MNDX * /* pRootHandler */, TCascSearch * pSearch)
 {
-
     if(pSearch != NULL)
-    {
-        TMndxFindResult * pStruct1C = (TMndxFindResult *)pSearch->pRootContext;
-
-        delete pStruct1C;
-    }
+        delete (TMndxFindResult *)pSearch->pRootContext;
+    pSearch->pRootContext = NULL;
 }
 
 static LPBYTE MndxHandler_GetKey(TRootHandler_MNDX * pRootHandler, const char * szFileName)
@@ -3153,12 +3154,13 @@ int RootHandler_CreateMNDX(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFil
         return ERROR_BAD_FORMAT;
 
     // Allocate the structure for the MNDX root file
-    pRootHandler = CASC_ALLOC(TRootHandler_MNDX, 1);
+    hs->pRootHandler = pRootHandler = CASC_ALLOC(TRootHandler_MNDX, 1);
     if(pRootHandler == NULL)
         return ERROR_NOT_ENOUGH_MEMORY;
 
     // Fill-in the handler functions
     memset(pRootHandler, 0, sizeof(TRootHandler_MNDX));
+    pRootHandler->Insert      = (ROOT_INSERT)MndxHandler_Insert;
     pRootHandler->Search      = (ROOT_SEARCH)MndxHandler_Search;
     pRootHandler->EndSearch   = (ROOT_ENDSEARCH)MndxHandler_EndSearch;
     pRootHandler->GetKey      = (ROOT_GETKEY)MndxHandler_GetKey;
@@ -3314,7 +3316,6 @@ int RootHandler_CreateMNDX(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFil
 #endif
 
     // Return the result
-    hs->pRootHandler = pRootHandler;
     return nError;
 }
 

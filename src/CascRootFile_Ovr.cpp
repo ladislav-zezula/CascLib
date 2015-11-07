@@ -15,12 +15,12 @@
 //-----------------------------------------------------------------------------
 // Structure definitions for Overwatch root file
 
-typedef struct _FILE_ENTRY_OVRW
+typedef struct _CASC_FILE_ENTRY
 {
     ENCODING_KEY EncodingKey;                       // Encoding key
     ULONGLONG FileNameHash;                         // File name hash
     DWORD dwFileName;                               // Offset of the file name in the name cache
-} FILE_ENTRY_OVRW, *PFILE_ENTRY_OVRW;
+} CASC_FILE_ENTRY, *PCASC_FILE_ENTRY;
 
 struct TRootHandler_Ovr : public TRootHandler
 {
@@ -37,28 +37,12 @@ struct TRootHandler_Ovr : public TRootHandler
 //-----------------------------------------------------------------------------
 // Local functions
 
-static ULONGLONG CalcFileNameHash(const char * szFileName)
-{
-    char szNormName[MAX_PATH+1];
-    size_t nLength = 0;
-    uint32_t dwHashHigh = 0;
-    uint32_t dwHashLow = 0;
-
-    // Normalize the file name
-    while(szFileName[0] != 0 && nLength < MAX_PATH)
-        szNormName[nLength++] = AsciiToUpperTable_BkSlash[*szFileName++];
-
-    // Calculate the HASH value of the normalized file name
-    hashlittle2(szNormName, nLength, &dwHashHigh, &dwHashLow);
-    return ((ULONGLONG)dwHashHigh << 0x20) | dwHashLow;
-}
-
 static int InsertFileEntry(
     TRootHandler_Ovr * pRootHandler,
     const char * szFileName,
-    ENCODING_KEY & EncodingKey)
+    LPBYTE pbEncodingKey)
 {
-    PFILE_ENTRY_OVRW pFileEntry;
+    PCASC_FILE_ENTRY pFileEntry;
     size_t nLength = strlen(szFileName);
 
     // Attempt to insert the file name to the global buffer
@@ -67,12 +51,12 @@ static int InsertFileEntry(
         return ERROR_NOT_ENOUGH_MEMORY;
 
     // Attempt to insert the entry to the array of file entries
-    pFileEntry = (PFILE_ENTRY_OVRW)Array_Insert(&pRootHandler->FileTable, NULL, 1);
+    pFileEntry = (PCASC_FILE_ENTRY)Array_Insert(&pRootHandler->FileTable, NULL, 1);
     if(pFileEntry == NULL)
         return ERROR_NOT_ENOUGH_MEMORY;
 
     // Fill the file entry
-    pFileEntry->EncodingKey  = EncodingKey;
+    pFileEntry->EncodingKey  = *(PENCODING_KEY)pbEncodingKey;
     pFileEntry->FileNameHash = CalcFileNameHash(szFileName);
     pFileEntry->dwFileName   = Array_IndexOf(&pRootHandler->FileNames, szFileName);
 
@@ -85,15 +69,23 @@ static int InsertFileEntry(
 //-----------------------------------------------------------------------------
 // Implementation of Overwatch root file
 
+static int OvrHandler_Insert(
+    TRootHandler_Ovr * pRootHandler,
+    const char * szFileName,
+    LPBYTE pbEncodingKey)
+{
+    return InsertFileEntry(pRootHandler, szFileName, pbEncodingKey);
+}
+
 static LPBYTE OvrHandler_Search(TRootHandler_Ovr * pRootHandler, TCascSearch * pSearch, PDWORD /* PtrFileSize */, PDWORD /* PtrLocaleFlags */)
 {
-    PFILE_ENTRY_OVRW pFileEntry;
+    PCASC_FILE_ENTRY pFileEntry;
 
     // Are we still inside the root directory range?
     while(pSearch->IndexLevel1 < pRootHandler->FileTable.ItemCount)
     {
         // Retrieve the file item
-        pFileEntry = (PFILE_ENTRY_OVRW)Array_ItemAt(&pRootHandler->FileTable, pSearch->IndexLevel1);
+        pFileEntry = (PCASC_FILE_ENTRY)Array_ItemAt(&pRootHandler->FileTable, pSearch->IndexLevel1);
         strcpy(pSearch->szFileName, (char *)Array_ItemAt(&pRootHandler->FileNames, pFileEntry->dwFileName));        
         
         // Prepare the pointer to the next search
@@ -151,19 +143,23 @@ int RootHandler_CreateOverwatch(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRo
     int nError = ERROR_SUCCESS;
 
     // Allocate the root handler object
-    pRootHandler = CASC_ALLOC(TRootHandler_Ovr, 1);
+    hs->pRootHandler = pRootHandler = CASC_ALLOC(TRootHandler_Ovr, 1);
     if(pRootHandler == NULL)
         return ERROR_NOT_ENOUGH_MEMORY;
 
     // Fill-in the handler functions
     memset(pRootHandler, 0, sizeof(TRootHandler_Ovr));
+    pRootHandler->Insert      = (ROOT_INSERT)OvrHandler_Insert;
     pRootHandler->Search      = (ROOT_SEARCH)OvrHandler_Search;
     pRootHandler->EndSearch   = (ROOT_ENDSEARCH)OvrHandler_EndSearch;
     pRootHandler->GetKey      = (ROOT_GETKEY)OvrHandler_GetKey;
     pRootHandler->Close       = (ROOT_CLOSE)OvrHandler_Close;
 
+    // Fill-in the flags
+    pRootHandler->dwRootFlags |= ROOT_FLAG_HAS_NAMES;
+
     // Allocate the linear array of file entries
-    nError = Array_Create(&pRootHandler->FileTable, FILE_ENTRY_OVRW, 0x10000);
+    nError = Array_Create(&pRootHandler->FileTable, CASC_FILE_ENTRY, 0x10000);
     if(nError != ERROR_SUCCESS)
         return nError;
 
@@ -173,14 +169,10 @@ int RootHandler_CreateOverwatch(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRo
         return nError;
 
     // Create map of ROOT_ENTRY -> FileEntry
-    pRootHandler->pRootMap = Map_Create(dwFileCountMax, sizeof(ULONGLONG), FIELD_OFFSET(FILE_ENTRY_OVRW, FileNameHash));
+    pRootHandler->pRootMap = Map_Create(dwFileCountMax, sizeof(ULONGLONG), FIELD_OFFSET(CASC_FILE_ENTRY, FileNameHash));
     if(pRootHandler->pRootMap == NULL)
         return ERROR_NOT_ENOUGH_MEMORY;
 
-    // Fill-in the flags
-    pRootHandler->dwRootFlags |= ROOT_FLAG_HAS_NAMES;
-    hs->pRootHandler = pRootHandler;
-    
     // Parse the ROOT file
     pTextFile = ListFile_FromBuffer(pbRootFile, cbRootFile);
     if(pTextFile != NULL)
@@ -195,7 +187,7 @@ int RootHandler_CreateOverwatch(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRo
             nError = ParseRootFileLine(szOneLine, szOneLine + nLength, &EncodingKey, szFileName, _maxchars(szFileName));
             if(nError == ERROR_SUCCESS)
             {
-                InsertFileEntry(pRootHandler, szFileName, KeyBuffer);
+                InsertFileEntry(pRootHandler, szFileName, KeyBuffer.Value);
             }
         }
 

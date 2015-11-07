@@ -33,9 +33,10 @@ typedef bool (*MAP_COMPARE)(PCASC_MAP pMap, void * pvObject, void * pvKey);
 
 PCASC_MAP Map_Create(DWORD dwMaxItems, DWORD dwKeyLength, DWORD dwKeyOffset);
 size_t Map_EnumObjects(PCASC_MAP pMap, void **ppvArray); 
-void * Map_FindObject2(PCASC_MAP pMap, MAP_COMPARE pfnCompare, void * pvIdentifier, PDWORD PtrIndex);
 void * Map_FindObject(PCASC_MAP pMap, void * pvKey, PDWORD PtrIndex);
 bool Map_InsertObject(PCASC_MAP pMap, void * pvNewObject, void * pvKey);
+const char * Map_FindString(PCASC_MAP pMap, const char * szString, const char * szStringEnd);
+bool Map_InsertString(PCASC_MAP pMap, const char * szString, bool bCutExtension);
 void Map_Free(PCASC_MAP pMap);
 
 #endif // __HASHTOPTR_H__

@@ -153,8 +153,10 @@ int TLogHelper::PrintWithClreol(const TCHAR * szFormat, va_list argList, bool bP
     // Copy the message format itself. Replace %s with "%s", unless it's (%s)
     if(szFormat != NULL)
     {
-        szBuffer = CopyFormatCharacter(szBuffer, szFormat);
-        szFormat += nLength;
+        while(szFormat[0] != 0)
+        {
+            szBuffer = CopyFormatCharacter(szBuffer, szFormat);
+        }
     }
 
     // Append the last error

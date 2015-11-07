@@ -150,6 +150,7 @@ typedef struct _CASC_ENCODING_ENTRY
 } CASC_ENCODING_ENTRY, *PCASC_ENCODING_ENTRY;
 
 #define GET_INDEX_KEY(pEncodingEntry)  (pEncodingEntry->EncodingKey + MD5_HASH_SIZE)
+#define FAKE_ENCODING_ENTRY_SIZE  (sizeof(CASC_ENCODING_ENTRY) + MD5_HASH_SIZE)
 
 //-----------------------------------------------------------------------------
 // Structures for CASC storage and CASC file
@@ -197,7 +198,8 @@ typedef struct _TCascStorage
     QUERY_KEY EncodingFile;                         // Content of the ENCODING file
     PCASC_MAP pEncodingMap;                         // Map of encoding entries
 
-    TRootHandler * pRootHandler;                          // Common handler for various ROOT file formats
+    TRootHandler * pRootHandler;                    // Common handler for various ROOT file formats
+    BYTE FakeEntry[FAKE_ENCODING_ENTRY_SIZE];       // A fake entry for ENCODING file (which does not have entry in itself)
 
 } TCascStorage;
 
@@ -246,7 +248,6 @@ typedef struct _TCascSearch
 
     // Provider-specific data
     void * pRootContext;                            // Root-specific search context
-    size_t RootSearchPhase;                         // Root-specific phase value for search phase
     size_t IndexLevel1;                             // Root-specific search context
     size_t IndexLevel2;                             // Root-specific search context
     DWORD dwState;                                  // Pointer to the search state (0 = listfile, 1 = nameless, 2 = done)
@@ -289,6 +290,8 @@ DWORD ConvertBytesToInteger_3(LPBYTE ValueAsBytes);
 DWORD ConvertBytesToInteger_4(LPBYTE ValueAsBytes);
 DWORD ConvertBytesToInteger_4_LE(LPBYTE ValueAsBytes);
 ULONGLONG ConvertBytesToInteger_5(LPBYTE ValueAsBytes);
+
+void ConvertIntegerToBytes_4(DWORD Value, LPBYTE ValueAsBytes);
 
 //-----------------------------------------------------------------------------
 // Text file parsing (CascTextFiles.cpp)
