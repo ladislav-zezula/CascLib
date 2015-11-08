@@ -416,7 +416,7 @@ int RootHandler_CreateWoW6(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFil
 
     // Count the files that are going to be loaded
     ParseWowRootFile(pRootHandler, ParseRoot_CountFiles, pbRootFile, pbRootFileEnd, dwLocaleMask);
-    pRootHandler->dwTotalFileCount += 10;
+    pRootHandler->dwTotalFileCount += CASC_EXTRA_FILES;
 
     // Create linear table that will contain all root items
     nError = Array_Create(&pRootHandler->FileTable, CASC_FILE_ENTRY, pRootHandler->dwTotalFileCount);

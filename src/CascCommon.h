@@ -49,6 +49,7 @@
 #define CASC_INDEX_COUNT          0x10
 #define CASC_FILE_KEY_SIZE        0x09          // Size of the file key
 #define CASC_MAX_DATA_FILES      0x100
+#define CASC_EXTRA_FILES          0x20          // Number of extra entries to be reserved for additionally inserted files
 
 #define CASC_SEARCH_HAVE_NAME   0x0001          // Indicated that previous search found a name
 
@@ -123,24 +124,33 @@ typedef struct _CASC_FILE_FRAME
     BYTE  md5[MD5_HASH_SIZE];                       // MD5 hash of the file sector
 } CASC_FILE_FRAME, *PCASC_FILE_FRAME;
 
+// The encoding file is in the form of:
+// * File header
+// * String block #1
+// * Table A header
+// * Table A entries
+// * Table B header
+// * Table B entries
+// * String block #2
+// http://pxr.dk/wowdev/wiki/index.php?title=CASC#Key_CASC_Files
 typedef struct _CASC_ENCODING_HEADER
 {
     BYTE Magic[2];                                  // "EN"
-    BYTE field_2;
-    BYTE field_3;
-    BYTE field_4;
-    BYTE field_5[2];
-    BYTE field_7[2];
-    BYTE NumSegments[4];                            // Number of entries (big endian)
-    BYTE field_D[4];
+    BYTE Version;                                   // Expected to be 1 by CascLib
+    BYTE ChecksumSizeA;                             // The length of the checksums in Encoding Table
+    BYTE ChecksumSizeB;                             // The length of the checksums in Encoding Layout Table
+    BYTE Flags_TableA[2];                           // Flags for Encoding Table
+    BYTE Flags_TableB[2];                           // Flags for Encoding Layout Table
+    BYTE Entries_TableA[4];                         // Number of segments in Encoding Table (big endian)
+    BYTE Entries_TableB[4];                         // Number of segments in Encoding Layout Table (big endian)
     BYTE field_11;
-    BYTE SegmentsPos[4];                            // Offset of encoding segments
+    BYTE Size_StringTable1[4];                      // Size of the string block #1
 
 } CASC_ENCODING_HEADER, *PCASC_ENCODING_HEADER;
 
 typedef struct _CASC_ENCODING_ENTRY
 {
-    USHORT KeyCount;                                // Number of subitems
+    USHORT KeyCount;                                // Number of index keys
     BYTE FileSizeBE[4];                             // Compressed file size (header area + frame headers + compressed frames), in bytes
     BYTE EncodingKey[MD5_HASH_SIZE];                // File encoding key
 
@@ -148,6 +158,16 @@ typedef struct _CASC_ENCODING_ENTRY
     // (number of items = KeyCount)
     // Followed by the index keys (number of items = KeyCount)
 } CASC_ENCODING_ENTRY, *PCASC_ENCODING_ENTRY;
+
+// A version of CASC_ENCODING_ENTRY with one index key
+typedef struct _CASC_ENCODING_ENTRY_1
+{
+    USHORT KeyCount;                                // Number of index keys
+    BYTE FileSizeBE[4];                             // Compressed file size (header area + frame headers + compressed frames), in bytes
+    BYTE EncodingKey[MD5_HASH_SIZE];                // File encoding key
+    BYTE IndexKey[MD5_HASH_SIZE];                   // File index key
+
+} CASC_ENCODING_ENTRY_1, *PCASC_ENCODING_ENTRY_1;
 
 #define GET_INDEX_KEY(pEncodingEntry)  (pEncodingEntry->EncodingKey + MD5_HASH_SIZE)
 #define FAKE_ENCODING_ENTRY_SIZE  (sizeof(CASC_ENCODING_ENTRY) + MD5_HASH_SIZE)
@@ -197,9 +217,9 @@ typedef struct _TCascStorage
 
     QUERY_KEY EncodingFile;                         // Content of the ENCODING file
     PCASC_MAP pEncodingMap;                         // Map of encoding entries
+    DYNAMIC_ARRAY ExtraEntries;                     // Extra encoding entries
 
     TRootHandler * pRootHandler;                    // Common handler for various ROOT file formats
-    BYTE FakeEntry[FAKE_ENCODING_ENTRY_SIZE];       // A fake entry for ENCODING file (which does not have entry in itself)
 
 } TCascStorage;
 

@@ -17,6 +17,8 @@
 //-----------------------------------------------------------------------------
 // Local structures
 
+// Size of one segment in the ENCODING table
+// The segment is filled by entries of type 
 #define CASC_ENCODING_SEGMENT_SIZE      0x1000
 
 typedef struct _BLOCK_SIZE_AND_HASH
@@ -58,25 +60,10 @@ typedef struct _FILE_INDEX_HEADER_V2
 
 } FILE_INDEX_HEADER_V2, *PFILE_INDEX_HEADER_V2;
 
-typedef struct _FILE_ENCODING_HEADER
-{
-    BYTE Magic[2];                              // "EN"
-    BYTE field_2;
-    BYTE field_3;
-    BYTE field_4;
-    BYTE field_5[2];
-    BYTE field_7[2];
-    BYTE NumSegments[4];                        // Number of entries (big endian)
-    BYTE field_D[4];
-    BYTE field_11;
-    BYTE SegmentsPos[4];                        // Offset of encoding segments
-
-} FILE_ENCODING_HEADER, *PFILE_ENCODING_HEADER;
-
 typedef struct _FILE_ENCODING_SEGMENT
 {
-    BYTE FirstEncodingKey[MD5_HASH_SIZE];           // The first encoding key in the segment
-    BYTE SegmentHash[MD5_HASH_SIZE];                // MD5 hash of the entire segment
+    BYTE FirstEncodingKey[MD5_HASH_SIZE];       // The first encoding key in the segment
+    BYTE SegmentHash[MD5_HASH_SIZE];            // MD5 hash of the entire segment
 
 } FILE_ENCODING_SEGMENT, *PFILE_ENCODING_SEGMENT;
 
@@ -89,19 +76,6 @@ static const TCHAR * szIndexFormat_V2 = _T("%02x%08x.idx");
 
 //-----------------------------------------------------------------------------
 // Local functions
-
-static void InitializeEncodingEntry(
-    PCASC_ENCODING_ENTRY pEncodingEntry,
-    USHORT KeyCount,
-    DWORD  cbFileSize,
-    LPBYTE pbEncodingKey,
-    LPBYTE pbIndexKey)
-{
-    ConvertIntegerToBytes_4(cbFileSize, pEncodingEntry->FileSizeBE);
-    memcpy(pEncodingEntry->EncodingKey, pbEncodingKey, MD5_HASH_SIZE);
-    memcpy(pEncodingEntry->EncodingKey + MD5_HASH_SIZE, pbIndexKey, MD5_HASH_SIZE);
-    pEncodingEntry->KeyCount = KeyCount;
-}
 
 inline void CopyFileKey(LPBYTE Trg, LPBYTE Src)
 {
@@ -208,6 +182,61 @@ static bool IsCascIndexHeader_V2(LPBYTE pbFileData, DWORD cbFileData)
     // The index header for CASC v 2.0 begins with length and checksum
     hashlittle2(pSizeAndHash + 1, pSizeAndHash->cbBlockSize, &HashHigh, &HashLow);
     return (HashHigh == pSizeAndHash->dwBlockHash);
+}
+
+static int InsertExtraFile(
+    TCascStorage * hs,
+    const char * szFileName,
+    LPBYTE pbKey,
+    bool bIsEncodingKey)
+{
+    int nError;
+
+    // If the given key is not encoding key (aka, it's an index key),
+    // we need to create a fake encoding entry
+    if(bIsEncodingKey == false)
+    {
+        PCASC_ENCODING_ENTRY pNewEntry;
+        PCASC_INDEX_ENTRY pIndexEntry;
+        QUERY_KEY IndexKey;
+
+        // Find the entry in the index table in order to get the file size
+        IndexKey.pbData = pbKey;
+        IndexKey.cbData = MD5_HASH_SIZE;
+        pIndexEntry = FindIndexEntry(hs, &IndexKey);
+        if(pIndexEntry == NULL)
+            return ERROR_FILE_NOT_FOUND;
+
+        // Make sure that the array is initialized
+        // Reserve space for 0x20 encoding entries
+        if(hs->ExtraEntries.ItemArray == NULL)
+        {
+            nError = Array_Create(&hs->ExtraEntries, CASC_ENCODING_ENTRY_1, CASC_EXTRA_FILES);
+            if(nError != ERROR_SUCCESS)
+                return nError;
+        }
+
+        // Create a fake entry in the encoding map
+        pNewEntry = (PCASC_ENCODING_ENTRY)Array_Insert(&hs->ExtraEntries, NULL, 1);
+        if(pNewEntry == NULL)
+            return ERROR_NOT_ENOUGH_MEMORY;
+
+        // Fill the encoding entry
+        pNewEntry->KeyCount = 1;
+        pNewEntry->FileSizeBE[0] = pIndexEntry->FileSizeLE[3];
+        pNewEntry->FileSizeBE[1] = pIndexEntry->FileSizeLE[2];
+        pNewEntry->FileSizeBE[2] = pIndexEntry->FileSizeLE[1];
+        pNewEntry->FileSizeBE[3] = pIndexEntry->FileSizeLE[0];
+        memcpy(pNewEntry->EncodingKey, pbKey, MD5_HASH_SIZE);
+        memcpy(pNewEntry + 1, pbKey, MD5_HASH_SIZE);
+
+        // Insert the entry to the map of encoding keys
+        Map_InsertObject(hs->pEncodingMap, pNewEntry, pNewEntry->EncodingKey);
+    }
+
+    // Now we need to insert the entry to the root handler in order
+    // to be able to translate file name to encoding key
+    return RootHandler_Insert(hs->pRootHandler, szFileName, pbKey);
 }
 
 static int InitializeCascDirectories(TCascStorage * hs, const TCHAR * szDataPath)
@@ -581,7 +610,7 @@ static int CreateArrayOfIndexEntries(TCascStorage * hs)
     return nError;
 }
 
-static int CreateMapOfEncodingKeys(TCascStorage * hs, PFILE_ENCODING_SEGMENT pEncodingSegment, DWORD dwNumberOfSegments)
+static int CreateMapOfEncodingKeys(TCascStorage * hs, PFILE_ENCODING_SEGMENT pEncodingSegment, DWORD dwNumSegments)
 {
     PCASC_ENCODING_ENTRY pEncodingEntry;
     DWORD dwMaxEntries;
@@ -592,16 +621,17 @@ static int CreateMapOfEncodingKeys(TCascStorage * hs, PFILE_ENCODING_SEGMENT pEn
     assert(hs->pEncodingMap == NULL);
 
     // Calculate the largest eventual number of encoding entries
-    dwMaxEntries = (dwNumberOfSegments * CASC_ENCODING_SEGMENT_SIZE) / (sizeof(CASC_ENCODING_ENTRY) + MD5_HASH_SIZE);
+    // Add space for extra entries
+    dwMaxEntries = (dwNumSegments * CASC_ENCODING_SEGMENT_SIZE) / (sizeof(CASC_ENCODING_ENTRY) + MD5_HASH_SIZE);
 
     // Create the map of the encoding entries
-    hs->pEncodingMap = Map_Create(dwMaxEntries, MD5_HASH_SIZE, FIELD_OFFSET(CASC_ENCODING_ENTRY, EncodingKey));
+    hs->pEncodingMap = Map_Create(dwMaxEntries + CASC_EXTRA_FILES, MD5_HASH_SIZE, FIELD_OFFSET(CASC_ENCODING_ENTRY, EncodingKey));
     if(hs->pEncodingMap != NULL)
     {
-        LPBYTE pbStartOfSegment = (LPBYTE)(pEncodingSegment + dwNumberOfSegments);
+        LPBYTE pbStartOfSegment = (LPBYTE)(pEncodingSegment + dwNumSegments);
 
         // Parse all segments
-        for(DWORD i = 0; i < dwNumberOfSegments; i++)
+        for(DWORD i = 0; i < dwNumSegments; i++)
         {
             LPBYTE pbEncodingEntry = pbStartOfSegment;
             LPBYTE pbEndOfSegment = pbStartOfSegment + CASC_ENCODING_SEGMENT_SIZE - sizeof(CASC_ENCODING_ENTRY) - MD5_HASH_SIZE;
@@ -680,8 +710,16 @@ static LPBYTE LoadEncodingFileToMemory(HANDLE hFile, DWORD * pcbEncodingFile)
     CascReadFile(hFile, &EncodingHeader, sizeof(CASC_ENCODING_HEADER), &dwBytesRead);
     if(dwBytesRead == sizeof(CASC_ENCODING_HEADER))
     {
-        dwNumSegments = ConvertBytesToInteger_4(EncodingHeader.NumSegments);
-        dwSegmentPos = ConvertBytesToInteger_4(EncodingHeader.SegmentsPos);
+        // Check the version and sizes
+        if(EncodingHeader.Version != 0x01 || EncodingHeader.ChecksumSizeA != MD5_HASH_SIZE && EncodingHeader.ChecksumSizeB != MD5_HASH_SIZE)
+        {
+            assert(false);
+            return NULL;
+        }
+
+        // Get the number of segments
+        dwNumSegments = ConvertBytesToInteger_4(EncodingHeader.Entries_TableA);
+        dwSegmentPos = ConvertBytesToInteger_4(EncodingHeader.Size_StringTable1);
         if(EncodingHeader.Magic[0] == 'E' && EncodingHeader.Magic[1] == 'N' && dwSegmentPos != 0 && dwNumSegments != 0)
             nError = ERROR_SUCCESS;
     }
@@ -757,7 +795,7 @@ static int LoadEncodingFile(TCascStorage * hs)
     LPBYTE pbEncodingFile = NULL;
     HANDLE hFile = NULL; 
     DWORD cbEncodingFile = 0;
-    DWORD dwNumberOfSegments = 0;
+    DWORD dwNumSegments = 0;
     DWORD dwSegmentsPos = 0;
     int nError = ERROR_SUCCESS;
 
@@ -783,8 +821,8 @@ static int LoadEncodingFile(TCascStorage * hs)
         PCASC_ENCODING_HEADER pEncodingHeader = (PCASC_ENCODING_HEADER)pbEncodingFile;
 
         // Convert size and offset
-        dwNumberOfSegments = ConvertBytesToInteger_4(pEncodingHeader->NumSegments);
-        dwSegmentsPos = ConvertBytesToInteger_4(pEncodingHeader->SegmentsPos);
+        dwNumSegments = ConvertBytesToInteger_4(pEncodingHeader->Entries_TableA);
+        dwSegmentsPos = ConvertBytesToInteger_4(pEncodingHeader->Size_StringTable1);
 
         // Store the encoding file to the CASC storage
         hs->EncodingFile.pbData = pbEncodingFile;
@@ -792,10 +830,10 @@ static int LoadEncodingFile(TCascStorage * hs)
 
         // Allocate the array of encoding segments
         pEncodingSegment = (PFILE_ENCODING_SEGMENT)(pbEncodingFile + sizeof(CASC_ENCODING_HEADER) + dwSegmentsPos);
-        pbStartOfSegment = (LPBYTE)(pEncodingSegment + dwNumberOfSegments);
+        pbStartOfSegment = (LPBYTE)(pEncodingSegment + dwNumSegments);
 
         // Go through all encoding segments and verify them
-        for(DWORD i = 0; i < dwNumberOfSegments; i++)
+        for(DWORD i = 0; i < dwNumSegments; i++)
         {
             PCASC_ENCODING_ENTRY pEncodingEntry = (PCASC_ENCODING_ENTRY)pbStartOfSegment;
 
@@ -832,20 +870,7 @@ static int LoadEncodingFile(TCascStorage * hs)
     if(nError == ERROR_SUCCESS)
     {
         pEncodingSegment = (PFILE_ENCODING_SEGMENT)(pbEncodingFile + sizeof(CASC_ENCODING_HEADER) + dwSegmentsPos);
-        nError = CreateMapOfEncodingKeys(hs, pEncodingSegment, dwNumberOfSegments);
-    }
-
-    // Now insert a fake entry of encoding file itself.
-    // This will allow us to open the the encoding file later
-    if(nError == ERROR_SUCCESS)
-    {
-        PCASC_ENCODING_ENTRY pEncodingEntry = (PCASC_ENCODING_ENTRY)hs->FakeEntry;
-
-        InitializeEncodingEntry(pEncodingEntry, 1,
-                                                cbEncodingFile,
-                                                hs->EncodingEKey.pbData,
-                                                hs->EncodingEKey.pbData);
-        Map_InsertObject(hs->pEncodingMap, pEncodingEntry, pEncodingEntry->EncodingKey);
+        nError = CreateMapOfEncodingKeys(hs, pEncodingSegment, dwNumSegments);
     }
 
     return nError;
@@ -906,8 +931,8 @@ static int LoadRootFile(TCascStorage * hs, DWORD dwLocaleMask)
     // Insert entry for the 
     if(nError == ERROR_SUCCESS)
     {
-        RootHandler_Insert(hs->pRootHandler, "ROOT", hs->RootKey.pbData);
-        RootHandler_Insert(hs->pRootHandler, "ENCODING", hs->EncodingEKey.pbData);
+        InsertExtraFile(hs, "ENCODING", hs->EncodingEKey.pbData, false);
+        InsertExtraFile(hs, "ROOT", hs->RootKey.pbData, true);
     }
 
 #ifdef _DEBUG
@@ -937,6 +962,9 @@ static TCascStorage * FreeCascStorage(TCascStorage * hs)
         if(hs->pRootHandler != NULL)
             RootHandler_Close(hs->pRootHandler);
         hs->pRootHandler = NULL;
+
+        // Free the extra encoding entries
+        Array_Free(&hs->ExtraEntries);
 
         // Free the pointers to file entries
         if(hs->pEncodingMap != NULL)

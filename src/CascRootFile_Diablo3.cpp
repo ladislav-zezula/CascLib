@@ -1104,14 +1104,15 @@ int RootHandler_CreateDiablo3(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRoot
     pRootHandler->dwRootFlags |= ROOT_FLAG_HAS_NAMES;
 
     // Scan the total number of files in the root directories
+    // Reserve space for extra files
     dwTotalFileCount = ScanDirectoryFile(hs, pbRootFile, pbRootFileEnd);
     if(dwTotalFileCount == 0)
         return ERROR_FILE_CORRUPT;
+    dwTotalFileCount += CASC_EXTRA_FILES;
 
     // Allocate the global linear file table
     // Note: This is about 18 MB of memory for Diablo III PTR build 30013
-    // Leave space for up to another 10 files
-    nError = Array_Create(&pRootHandler->FileTable, CASC_FILE_ENTRY, dwTotalFileCount + 10);
+    nError = Array_Create(&pRootHandler->FileTable, CASC_FILE_ENTRY, dwTotalFileCount);
     if(nError != ERROR_SUCCESS)
         return nError;
 
