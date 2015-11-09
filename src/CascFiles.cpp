@@ -35,26 +35,14 @@ static TGameIdString GameIds[] =
 //-----------------------------------------------------------------------------
 // Local functions
 
-static bool inline IsValueSeparator(LPBYTE pbVarValue)
+static bool inline IsValueSeparator(const char * szVarValue)
 {
-    return ((0 <= pbVarValue[0] && pbVarValue[0] <= 0x20) || (pbVarValue[0] == '|'));
+    return ((0 <= szVarValue[0] && szVarValue[0] <= 0x20) || (szVarValue[0] == '|'));
 }
 
 static bool IsCharDigit(BYTE OneByte)
 {
     return ('0' <= OneByte && OneByte <= '9');
-}
-
-static void FreeCascBlob(PQUERY_KEY pBlob)
-{
-    if(pBlob != NULL)
-    {
-        if(pBlob->pbData != NULL)
-            CASC_FREE(pBlob->pbData);
-
-        pBlob->pbData = NULL;
-        pBlob->cbData = 0;
-    }
 }
 
 static DWORD GetLocaleMask(const char * szTag)
@@ -194,72 +182,38 @@ TCHAR * AppendBlobText(TCHAR * szBuffer, LPBYTE pbData, DWORD cbData, TCHAR chSe
     return szBuffer;
 }
 
-static bool GetNextFileLine(PQUERY_KEY pFileBlob, LPBYTE * ppbLineBegin, LPBYTE * ppbLineEnd)
+static const char * CheckLineVariable(const char * szLineBegin, const char * szLineEnd, const char * szVarName)
 {
-    LPBYTE pbLineBegin = *ppbLineBegin;
-    LPBYTE pbLineEnd = *ppbLineEnd;
-    LPBYTE pbFileEnd = pFileBlob->pbData + pFileBlob->cbData;
-
-    // If there was a previous line, skip all end-of-line chars
-    if(pbLineEnd != NULL)
-    {
-        // Go to the next line
-        while(pbLineEnd < pbFileEnd && (pbLineEnd[0] == 0x0A || pbLineEnd[0] == 0x0D))
-            pbLineEnd++;
-        pbLineBegin = pbLineEnd;
-
-        // If there is no more data, return false
-        if(pbLineEnd >= pbFileEnd)
-            return false;
-    }
-
-    // Skip all spaces before the line begins
-    while(pbLineBegin < pbFileEnd && (pbLineBegin[0] == 0x09 || pbLineBegin[0] == 0x20))
-        pbLineBegin++;
-    pbLineEnd = pbLineBegin;
-
-    // Go to the end of the line
-    while(pbLineEnd < pbFileEnd && pbLineEnd[0] != 0x0A && pbLineEnd[0] != 0x0D)
-        pbLineEnd++;
-
-    // Give the results to the caller
-    *ppbLineBegin = pbLineBegin;
-    *ppbLineEnd = pbLineEnd;
-    return true;
-}
-
-static LPBYTE CheckLineVariable(LPBYTE pbLineBegin, LPBYTE pbLineEnd, const char * szVarName)
-{
-    size_t nLineLength = (size_t)(pbLineEnd - pbLineBegin);
+    size_t nLineLength = (size_t)(szLineEnd - szLineBegin);
     size_t nNameLength = strlen(szVarName);
 
     // If the line longer than the variable name?
     if(nLineLength > nNameLength)
     {
-        if(!_strnicmp((const char *)pbLineBegin, szVarName, nNameLength))
+        if(!_strnicmp((const char *)szLineBegin, szVarName, nNameLength))
         {
             // Skip the variable name
-            pbLineBegin += nNameLength;
+            szLineBegin += nNameLength;
 
             // Skip the separator(s)
-            while(pbLineBegin < pbLineEnd && IsValueSeparator(pbLineBegin))
-                pbLineBegin++;
+            while(szLineBegin < szLineEnd && IsValueSeparator(szLineBegin))
+                szLineBegin++;
 
             // Check if there is "="
-            if(pbLineBegin >= pbLineEnd || pbLineBegin[0] != '=')
+            if(szLineBegin >= szLineEnd || szLineBegin[0] != '=')
                 return NULL;
-            pbLineBegin++;
+            szLineBegin++;
 
             // Skip the separator(s)
-            while(pbLineBegin < pbLineEnd && IsValueSeparator(pbLineBegin))
-                pbLineBegin++;
+            while(szLineBegin < szLineEnd && IsValueSeparator(szLineBegin))
+                szLineBegin++;
 
             // Check if there is "="
-            if(pbLineBegin >= pbLineEnd)
+            if(szLineBegin >= szLineEnd)
                 return NULL;
 
             // Return the begin of the variable
-            return pbLineBegin;
+            return szLineBegin;
         }
     }
 
@@ -283,7 +237,8 @@ static int LoadInfoVariable(PQUERY_KEY pVarBlob, const char * szLineBegin, const
     {
         // Initialize the blob
         pVarBlob->pbData = CASC_ALLOC(BYTE, (szLinePtr - szLineBegin) / 2);
-        return StringBlobToBinaryBlob(pVarBlob, (LPBYTE)szLineBegin, (LPBYTE)szLinePtr);
+        pVarBlob->cbData = (DWORD)((szLinePtr - szLineBegin) / 2);
+        return ConvertStringToBinary(szLineBegin, (size_t)(szLinePtr - szLineBegin), pVarBlob->pbData);
     }
 
     // Initialize the blob
@@ -363,23 +318,23 @@ static void AppendConfigFilePath(TCHAR * szFileName, PQUERY_KEY pFileKey)
     szFileName = AppendBlobText(szFileName, pFileKey->pbData, pFileKey->cbData, _T('/'));
 }
 
-static DWORD GetBlobCount(LPBYTE pbLineBegin, LPBYTE pbLineEnd)
+static DWORD GetBlobCount(const char * szLineBegin, const char * szLineEnd)
 {
     DWORD dwBlobCount = 0;
 
     // Until we find an end of the line
-    while(pbLineBegin < pbLineEnd)
+    while(szLineBegin < szLineEnd)
     {
         // Skip the blob
-        while(pbLineBegin < pbLineEnd && IsValueSeparator(pbLineBegin) == false)
-            pbLineBegin++;
+        while(szLineBegin < szLineEnd && IsValueSeparator(szLineBegin) == false)
+            szLineBegin++;
 
         // Increment the number of blobs
         dwBlobCount++;
 
         // Skip the separator
-        while(pbLineBegin < pbLineEnd && IsValueSeparator(pbLineBegin))
-            pbLineBegin++;
+        while(szLineBegin < szLineEnd && IsValueSeparator(szLineBegin))
+            szLineBegin++;
     }
 
     return dwBlobCount;
@@ -387,115 +342,79 @@ static DWORD GetBlobCount(LPBYTE pbLineBegin, LPBYTE pbLineEnd)
 
 static int LoadBlobArray(
     PQUERY_KEY pBlob,
-    DWORD dwMaxBlobs,
-    LPBYTE pbLineBegin,
-    LPBYTE pbLineEnd,
-    LPBYTE pbBuffer,
-    DWORD dwBufferSize)
+    const char * szLineBegin,
+    const char * szLineEnd,
+    DWORD dwMaxBlobs)
 {
-    LPBYTE pbBlobBegin = pbLineBegin;
-    LPBYTE pbBlobEnd = pbLineBegin;
+    LPBYTE pbBufferEnd = pBlob->pbData + pBlob->cbData;
+    LPBYTE pbBuffer = pBlob->pbData;
     int nError = ERROR_SUCCESS;
 
     // Sanity check
-    assert(pbBuffer != NULL);
+    assert(pBlob->pbData != NULL);
+    assert(pBlob->cbData != 0);
 
     // Until we find an end of the line
-    while(pbBlobBegin < pbLineEnd)
+    while(szLineBegin < szLineEnd && dwMaxBlobs > 0)
     {
-        // Convert the blob from string to binary
-        if(dwBufferSize < MAX_CASC_KEY_LENGTH)
-            return ERROR_NOT_ENOUGH_MEMORY;
+        const char * szBlobEnd = szLineBegin;
 
         // Find the end of the text blob
-        while(pbBlobEnd < pbLineEnd && IsValueSeparator(pbBlobEnd) == false)
-            pbBlobEnd++;
+        while(szBlobEnd < szLineEnd && IsValueSeparator(szBlobEnd) == false)
+            szBlobEnd++;
 
-        // Convert the blob from ANSI to binary
-        pBlob->pbData = pbBuffer;
-        nError = StringBlobToBinaryBlob(pBlob, pbBlobBegin, pbBlobEnd);
-        if(nError != ERROR_SUCCESS || dwMaxBlobs == 1)
-            break;
+        // Verify the length of the found blob
+        if((szBlobEnd - szLineBegin) != MD5_STRING_SIZE)
+            return ERROR_BAD_FORMAT;
 
-        // Move the blob, buffer, and limits
-        dwBufferSize -= MAX_CASC_KEY_LENGTH;
-        pbBuffer += MAX_CASC_KEY_LENGTH;
+        // Verify if there is enough space in the buffer
+        if((pbBufferEnd - pbBuffer) < MD5_HASH_SIZE)
+            return ERROR_NOT_ENOUGH_MEMORY;
+
+        // Perform the conversion
+        nError = ConvertStringToBinary(szLineBegin, MD5_STRING_SIZE, pbBuffer);
+        if(nError != ERROR_SUCCESS)
+            return nError;
+
+        // Move pointers
+        pbBuffer += MD5_HASH_SIZE;
         dwMaxBlobs--;
-        pBlob++;
 
         // Skip the separator
-        while(pbBlobEnd < pbLineEnd && IsValueSeparator(pbBlobEnd))
-            pbBlobEnd++;
-        pbBlobBegin = pbBlobEnd;
+        while(szBlobEnd < szLineEnd && IsValueSeparator(szBlobEnd))
+            szBlobEnd++;
+        szLineBegin = szBlobEnd;
     }
 
     return nError;
 }
 
-static int LoadSingleBlob(PQUERY_KEY pBlob, LPBYTE pbBlobBegin, LPBYTE pbBlobEnd)
+static int LoadMultipleBlobs(PQUERY_KEY pBlob, const char * szLineBegin, const char * szLineEnd, DWORD dwBlobCount)
 {
-    LPBYTE pbBuffer;
-    size_t nLength = (pbBlobEnd - pbBlobBegin) / 2;
+    size_t nLength = (szLineEnd - szLineBegin);
 
-    // Check maximum size
-    if(nLength > MAX_CASC_KEY_LENGTH)
+    // We expect each blob to have length of the encoding key and one space between
+    if(nLength > (dwBlobCount * MD5_STRING_SIZE) + ((dwBlobCount - 1) * sizeof(char))) 
         return ERROR_INVALID_PARAMETER;
 
     // Allocate the blob buffer
-    pbBuffer = CASC_ALLOC(BYTE, MAX_CASC_KEY_LENGTH);
-    if(pbBuffer == NULL)
+    pBlob->pbData = CASC_ALLOC(BYTE, dwBlobCount * MD5_HASH_SIZE);
+    if(pBlob->pbData == NULL)
         return ERROR_NOT_ENOUGH_MEMORY;
 
-    return LoadBlobArray(pBlob, 1, pbBlobBegin, pbBlobEnd, pbBuffer, MAX_CASC_KEY_LENGTH);
+    // Set the buffer size and load the blob array
+    pBlob->cbData = dwBlobCount * MD5_HASH_SIZE;
+    return LoadBlobArray(pBlob, szLineBegin, szLineEnd, dwBlobCount);
 }
 
-static PQUERY_KEY LoadMultipleBlobs(LPBYTE pbLineBegin, LPBYTE pbLineEnd, DWORD * pdwBlobCount)
+static int LoadMultipleBlobs(PQUERY_KEY pBlob, const char * szLineBegin, const char * szLineEnd)
 {
-    PQUERY_KEY pBlobArray = NULL;
-    LPBYTE pbBuffer = NULL;
-    DWORD dwBlobCount = GetBlobCount(pbLineBegin, pbLineEnd);
-    int nError;
+    return LoadMultipleBlobs(pBlob, szLineBegin, szLineEnd, GetBlobCount(szLineBegin, szLineEnd));
+}
 
-    // Only if there is at least 1 blob
-    if(dwBlobCount != 0)
-    {
-        // Allocate the array of blobs
-        pBlobArray = CASC_ALLOC(QUERY_KEY, dwBlobCount);
-        if(pBlobArray != NULL)
-        {
-            // Zero the blob array
-            memset(pBlobArray, 0, dwBlobCount * sizeof(QUERY_KEY));
-
-            // Allocate buffer for the blobs
-            pbBuffer = CASC_ALLOC(BYTE, dwBlobCount * MAX_CASC_KEY_LENGTH);
-            if(pbBuffer != NULL)
-            {
-                // Zero the buffer
-                memset(pbBuffer, 0, dwBlobCount * MAX_CASC_KEY_LENGTH);
-
-                // Load the entire blob array
-                nError = LoadBlobArray(pBlobArray, dwBlobCount, pbLineBegin, pbLineEnd, pbBuffer, dwBlobCount * MAX_CASC_KEY_LENGTH);
-                if(nError == ERROR_SUCCESS)
-                {
-                    *pdwBlobCount = dwBlobCount;
-                    return pBlobArray;
-                }
-
-                // Free the buffer
-                CASC_FREE(pbBuffer);
-            }
-
-            // Free the array of blobs
-            CASC_FREE(pBlobArray);
-            pBlobArray = NULL;
-        }
-
-        // Reset the blob count
-        dwBlobCount = 0;
-    }
-
-    *pdwBlobCount = dwBlobCount;
-    return pBlobArray;
+static int LoadSingleBlob(PQUERY_KEY pBlob, const char * szLineBegin, const char * szLineEnd)
+{
+    return LoadMultipleBlobs(pBlob, szLineBegin, szLineEnd, 1); 
 }
 
 static int LoadTextFile(const TCHAR * szFileName, PQUERY_KEY pFileBlob)
@@ -538,16 +457,16 @@ static int LoadTextFile(const TCHAR * szFileName, PQUERY_KEY pFileBlob)
     return nError;
 }
 
-static int GetGameType(TCascStorage * hs, LPBYTE pbVarBegin, LPBYTE pbLineEnd)
+static int GetGameType(TCascStorage * hs, const char * szVarBegin, const char * szLineEnd)
 {
     // Go through all games that we support
     for(size_t i = 0; GameIds[i].szGameInfo != NULL; i++)
     {
         // Check the length of the variable 
-        if((size_t)(pbLineEnd - pbVarBegin) == GameIds[i].cchGameInfo)
+        if((size_t)(szLineEnd - szVarBegin) == GameIds[i].cchGameInfo)
         {
             // Check the string
-            if(!_strnicmp((const char *)pbVarBegin, GameIds[i].szGameInfo, GameIds[i].cchGameInfo))
+            if(!_strnicmp(szVarBegin, GameIds[i].szGameInfo, GameIds[i].cchGameInfo))
             {
                 hs->dwGameInfo = GameIds[i].dwGameInfo;
                 return ERROR_SUCCESS;
@@ -564,24 +483,24 @@ static int GetGameType(TCascStorage * hs, LPBYTE pbVarBegin, LPBYTE pbLineEnd)
 // "WOW-18125patch6.0.1"
 // "30013_Win32_2_2_0_Ptr_ptr"
 // "prometheus-0_8_0_0-24919"
-static int GetBuildNumber(TCascStorage * hs, LPBYTE pbVarBegin, LPBYTE pbLineEnd)
+static int GetBuildNumber(TCascStorage * hs, const char * szVarBegin, const char * szLineEnd)
 {
     DWORD dwBuildNumber = 0;
 
     // Skip all non-digit characters
-    while(pbVarBegin < pbLineEnd)
+    while(szVarBegin < szLineEnd)
     {
         // There must be at least three digits (build 99 anyone?)
-        if(IsCharDigit(pbVarBegin[0]) && IsCharDigit(pbVarBegin[1]) && IsCharDigit(pbVarBegin[2]))
+        if(IsCharDigit(szVarBegin[0]) && IsCharDigit(szVarBegin[1]) && IsCharDigit(szVarBegin[2]))
         {
             // Convert the build number string to value
-            while(pbVarBegin < pbLineEnd && IsCharDigit(pbVarBegin[0]))
-                dwBuildNumber = (dwBuildNumber * 10) + (*pbVarBegin++ - '0');
+            while(szVarBegin < szLineEnd && IsCharDigit(szVarBegin[0]))
+                dwBuildNumber = (dwBuildNumber * 10) + (*szVarBegin++ - '0');
             break;
         }
 
         // Move to the next
-        pbVarBegin++;
+        szVarBegin++;
     }
 
     assert(dwBuildNumber != 0);
@@ -620,36 +539,37 @@ static int GetDefaultLocaleMask(TCascStorage * hs, PQUERY_KEY pTagsString)
     return ERROR_SUCCESS;
 }
 
-static int FetchAndVerifyConfigFile(TCascStorage * hs, PQUERY_KEY pFileKey, PQUERY_KEY pFileBlob)
+static void * FetchAndVerifyConfigFile(TCascStorage * hs, PQUERY_KEY pFileKey)
 {
     TCHAR * szFileName;
-    int nError;
+    void * pvListFile = NULL;
 
     // Construct the local file name
     szFileName = CascNewStr(hs->szDataPath, 8 + 3 + 3 + 32);
-    if(szFileName == NULL)
-        return ERROR_NOT_ENOUGH_MEMORY;
-
-    // Add the part where the config file path is
-    AppendConfigFilePath(szFileName, pFileKey);
-    
-    // Load the config file
-    nError = LoadTextFile(szFileName, pFileBlob);
-    if(nError == ERROR_SUCCESS)
+    if(szFileName != NULL)
     {
-        // Verify the blob's MD5
-        if(!VerifyDataBlockHash(pFileBlob->pbData, pFileBlob->cbData, pFileKey->pbData))
+        // Add the part where the config file path is
+        AppendConfigFilePath(szFileName, pFileKey);
+
+        // Load and verify the external listfile
+        pvListFile = ListFile_OpenExternal(szFileName);
+        if(pvListFile != NULL)
         {
-            FreeCascBlob(pFileBlob);
-            nError = ERROR_BAD_FORMAT;
+            if(!ListFile_VerifyMD5(pvListFile, pFileKey->pbData))
+            {
+                ListFile_Free(pvListFile);
+                pvListFile = NULL;
+            }
         }
+
+        // Free the file name
+        CASC_FREE(szFileName);
     }
 
-    CASC_FREE(szFileName);
-    return nError;
+    return pvListFile;
 }
 
-static int ParseInfoFile(TCascStorage * hs, void * pListFile)
+static int ParseInfoFile(TCascStorage * hs, void * pvListFile)
 {
     QUERY_KEY Active = {NULL, 0};
     QUERY_KEY TagString = {NULL, 0};
@@ -662,7 +582,7 @@ static int ParseInfoFile(TCascStorage * hs, void * pListFile)
     int nError = ERROR_BAD_FORMAT;
 
     // Extract the first line, cotaining the headers
-    nLength1 = ListFile_GetNextLine(pListFile, szOneLine1, _maxchars(szOneLine1));
+    nLength1 = ListFile_GetNextLine(pvListFile, szOneLine1, _maxchars(szOneLine1));
     if(nLength1 == 0)
         return ERROR_BAD_FORMAT;
 
@@ -676,7 +596,7 @@ static int ParseInfoFile(TCascStorage * hs, void * pListFile)
         const char * szLineEnd2;
 
         // Read the next line
-        nLength2 = ListFile_GetNextLine(pListFile, szOneLine2, _maxchars(szOneLine2));
+        nLength2 = ListFile_GetNextLine(pvListFile, szOneLine2, _maxchars(szOneLine2));
         if(nLength2 == 0)
             break;
         szLineEnd2 = szLinePtr2 + nLength2;
@@ -741,10 +661,11 @@ static int ParseInfoFile(TCascStorage * hs, void * pListFile)
     FreeCascBlob(&CdnHost);
     FreeCascBlob(&CdnPath);
     FreeCascBlob(&TagString);
+    FreeCascBlob(&Active);
     return nError;
 }
 
-static int ParseAgentFile(TCascStorage * hs, void * pListFile)
+static int ParseAgentFile(TCascStorage * hs, void * pvListFile)
 {
     const char * szLinePtr;
     const char * szLineEnd;
@@ -753,7 +674,7 @@ static int ParseAgentFile(TCascStorage * hs, void * pListFile)
     int nError;
 
     // Load the single line from the text file
-    nLength = ListFile_GetNextLine(pListFile, szOneLine, _maxchars(szOneLine));
+    nLength = ListFile_GetNextLine(pvListFile, szOneLine, _maxchars(szOneLine));
     if(nLength == 0)
         return ERROR_BAD_FORMAT;
 
@@ -791,189 +712,144 @@ static int ParseAgentFile(TCascStorage * hs, void * pListFile)
     return nError;
 }
 
-static int LoadCdnConfigFile(TCascStorage * hs, PQUERY_KEY pFileBlob)
+static int LoadCdnConfigFile(TCascStorage * hs, void * pvListFile)
 {
-    LPBYTE pbLineBegin = pFileBlob->pbData;
-    LPBYTE pbVarBegin;
-    LPBYTE pbLineEnd = NULL;
-    int nError;
+    const char * szLineBegin;
+    const char * szVarBegin;
+    const char * szLineEnd;
+    int nError = ERROR_SUCCESS;
 
-    while(pbLineBegin != NULL)
+    // Keep parsing the listfile while there is something in there
+    for(;;)
     {
         // Get the next line
-        if(!GetNextFileLine(pFileBlob, &pbLineBegin, &pbLineEnd))
+        if(!ListFile_GetNextLine(pvListFile, &szLineBegin, &szLineEnd))
             break;
 
         // Archive group
-        pbVarBegin = CheckLineVariable(pbLineBegin, pbLineEnd, "archive-group");
-        if(pbVarBegin != NULL)
+        szVarBegin = CheckLineVariable(szLineBegin, szLineEnd, "archive-group");
+        if(szVarBegin != NULL)
         {
-            nError = LoadSingleBlob(&hs->ArchiveGroup, pbVarBegin, pbLineEnd);
-            if(nError != ERROR_SUCCESS)
-                return nError;
+            nError = LoadSingleBlob(&hs->ArchivesGroup, szVarBegin, szLineEnd);
             continue;
         }
 
         // Archives
-        pbVarBegin = CheckLineVariable(pbLineBegin, pbLineEnd, "archives");
-        if(pbVarBegin != NULL)
+        szVarBegin = CheckLineVariable(szLineBegin, szLineEnd, "archives");
+        if(szVarBegin != NULL)
         {
-            hs->pArchiveArray = LoadMultipleBlobs(pbVarBegin, pbLineEnd, &hs->ArchiveCount);
-            if(hs->pArchiveArray == NULL || hs->ArchiveCount == 0)
-                return ERROR_BAD_FORMAT;
+            nError = LoadMultipleBlobs(&hs->ArchivesKey, szVarBegin, szLineEnd);
             continue;
         }
 
         // Patch archive group
-        pbVarBegin = CheckLineVariable(pbLineBegin, pbLineEnd, "patch-archive-group");
-        if(pbVarBegin != NULL)
+        szVarBegin = CheckLineVariable(szLineBegin, szLineEnd, "patch-archive-group");
+        if(szVarBegin != NULL)
         {
-            LoadSingleBlob(&hs->PatchArchiveGroup, pbVarBegin, pbLineEnd);
+            LoadSingleBlob(&hs->PatchArchivesKey, szVarBegin, szLineEnd);
             continue;
         }
 
         // Patch archives
-        pbVarBegin = CheckLineVariable(pbLineBegin, pbLineEnd, "patch-archives");
-        if(pbVarBegin != NULL)
+        szVarBegin = CheckLineVariable(szLineBegin, szLineEnd, "patch-archives");
+        if(szVarBegin != NULL)
         {
-            hs->pPatchArchiveArray = LoadMultipleBlobs(pbVarBegin, pbLineEnd, &hs->PatchArchiveCount);
+            nError = LoadMultipleBlobs(&hs->PatchArchivesKey, szVarBegin, szLineEnd);
             continue;
         }
     }
 
     // Check if all required fields are present
-    if(hs->ArchiveGroup.pbData == NULL || hs->ArchiveGroup.cbData == 0 || hs->pArchiveArray == NULL || hs->ArchiveCount == 0)
+    if(hs->ArchivesKey.pbData == NULL || hs->ArchivesKey.cbData == 0)
         return ERROR_BAD_FORMAT;
 
-    return ERROR_SUCCESS;
+    return nError;
 }
 
-static int LoadCdnBuildFile(TCascStorage * hs, PQUERY_KEY pFileBlob)
+static int LoadCdnBuildFile(TCascStorage * hs, void * pvListFile)
 {
-    LPBYTE pbLineBegin = pFileBlob->pbData;
-    LPBYTE pbVarBegin;
-    LPBYTE pbLineEnd = NULL;
+    const char * szLineBegin;
+    const char * szVarBegin;
+    const char * szLineEnd = NULL;
+    int nError = ERROR_SUCCESS;
 
-    while(pbLineBegin != NULL)
+    for(;;)
     {
         // Get the next line
-        if(!GetNextFileLine(pFileBlob, &pbLineBegin, &pbLineEnd))
+        if(!ListFile_GetNextLine(pvListFile, &szLineBegin, &szLineEnd))
             break;
 
         // Game name
-        pbVarBegin = CheckLineVariable(pbLineBegin, pbLineEnd, "build-product");
-        if(pbVarBegin != NULL)
+        szVarBegin = CheckLineVariable(szLineBegin, szLineEnd, "build-product");
+        if(szVarBegin != NULL)
         {
-            GetGameType(hs, pbVarBegin, pbLineEnd);
+            GetGameType(hs, szVarBegin, szLineEnd);
             continue;
         }
 
         // Game build number
-        pbVarBegin = CheckLineVariable(pbLineBegin, pbLineEnd, "build-name");
-        if(pbVarBegin != NULL)
+        szVarBegin = CheckLineVariable(szLineBegin, szLineEnd, "build-name");
+        if(szVarBegin != NULL)
         {
-            GetBuildNumber(hs, pbVarBegin, pbLineEnd);
+            GetBuildNumber(hs, szVarBegin, szLineEnd);
             continue;
         }
 
         // Root
-        pbVarBegin = CheckLineVariable(pbLineBegin, pbLineEnd, "root");
-        if(pbVarBegin != NULL)
+        szVarBegin = CheckLineVariable(szLineBegin, szLineEnd, "root");
+        if(szVarBegin != NULL)
         {
-            LoadSingleBlob(&hs->RootKey, pbVarBegin, pbLineEnd);
+            LoadSingleBlob(&hs->RootKey, szVarBegin, szLineEnd);
             continue;
         }
 
         // Patch
-        pbVarBegin = CheckLineVariable(pbLineBegin, pbLineEnd, "patch");
-        if(pbVarBegin != NULL)
+        szVarBegin = CheckLineVariable(szLineBegin, szLineEnd, "patch");
+        if(szVarBegin != NULL)
         {
-            LoadSingleBlob(&hs->PatchKey, pbVarBegin, pbLineEnd);
+            LoadSingleBlob(&hs->PatchKey, szVarBegin, szLineEnd);
             continue;
         }
 
         // Download
-        pbVarBegin = CheckLineVariable(pbLineBegin, pbLineEnd, "download");
-        if(pbVarBegin != NULL)
+        szVarBegin = CheckLineVariable(szLineBegin, szLineEnd, "download");
+        if(szVarBegin != NULL)
         {
-            LoadSingleBlob(&hs->DownloadKey, pbVarBegin, pbLineEnd);
+            LoadSingleBlob(&hs->DownloadKey, szVarBegin, szLineEnd);
             continue;
         }
 
         // Install
-        pbVarBegin = CheckLineVariable(pbLineBegin, pbLineEnd, "install");
-        if(pbVarBegin != NULL)
+        szVarBegin = CheckLineVariable(szLineBegin, szLineEnd, "install");
+        if(szVarBegin != NULL)
         {
-            LoadSingleBlob(&hs->InstallKey, pbVarBegin, pbLineEnd);
+            LoadSingleBlob(&hs->InstallKey, szVarBegin, szLineEnd);
             continue;
         }
 
         // Encoding keys
-        pbVarBegin = CheckLineVariable(pbLineBegin, pbLineEnd, "encoding");
-        if(pbVarBegin != NULL)
+        szVarBegin = CheckLineVariable(szLineBegin, szLineEnd, "encoding");
+        if(szVarBegin != NULL)
         {
-            hs->pEncodingKeys = LoadMultipleBlobs(pbVarBegin, pbLineEnd, &hs->EncodingKeys);
-            if(hs->pEncodingKeys == NULL || hs->EncodingKeys != 2)
-                return ERROR_BAD_FORMAT;
-
-            hs->EncodingKey = hs->pEncodingKeys[0];
-            hs->EncodingEKey = hs->pEncodingKeys[1];
+            nError = LoadMultipleBlobs(&hs->EncodingKey, szVarBegin, szLineEnd, 2);
             continue;
         }
     }
 
     // Check the encoding keys
-    if(hs->pEncodingKeys == NULL || hs->EncodingKeys == 0)
+    if(hs->EncodingKey.pbData == NULL || hs->EncodingKey.cbData != MD5_HASH_SIZE * 2)
         return ERROR_BAD_FORMAT;
-    return ERROR_SUCCESS;
+    return nError;
 }
 
 //-----------------------------------------------------------------------------
 // Public functions
 
-// Converts string blob to binary blob. The "QUERY_KEY::pbData"
-// must have preallocated size of MAX_CASC_KEY_LENGTH
-int StringBlobToBinaryBlob(
-    PQUERY_KEY pBlob,
-    LPBYTE pbBlobBegin, 
-    LPBYTE pbBlobEnd)
-{
-    // Sanity checks
-    assert(pBlob != NULL && pBlob->pbData != NULL);
-
-    // Reset the blob length
-    pBlob->cbData = 0;
-
-    // Convert the blob
-    while(pbBlobBegin < pbBlobEnd)
-    {
-        BYTE DigitOne;
-        BYTE DigitTwo;
-
-        DigitOne = (BYTE)(AsciiToUpperTable_BkSlash[pbBlobBegin[0]] - '0');
-        if(DigitOne > 9)
-            DigitOne -= 'A' - '9' - 1;
-
-        DigitTwo = (BYTE)(AsciiToUpperTable_BkSlash[pbBlobBegin[1]] - '0');
-        if(DigitTwo > 9)
-            DigitTwo -= 'A' - '9' - 1;
-
-        if(DigitOne > 0x0F || DigitTwo > 0x0F || pBlob->cbData >= MAX_CASC_KEY_LENGTH)
-            return ERROR_BAD_FORMAT;
-
-        pBlob->pbData[pBlob->cbData++] = (DigitOne << 0x04) | DigitTwo;
-        pbBlobBegin += 2;
-    }
-
-    return ERROR_SUCCESS;
-}
-
 int LoadBuildInfo(TCascStorage * hs)
 {
-    QUERY_KEY FileData = {NULL, 0};
     TCHAR * szAgentFile;
     TCHAR * szInfoFile;
-    void * pListFile;
+    void * pvListFile;
     bool bBuildConfigComplete = false;
     int nError = ERROR_SUCCESS;
 
@@ -983,15 +859,15 @@ int LoadBuildInfo(TCascStorage * hs)
         szInfoFile = CombinePath(hs->szRootPath, _T(".build.info"));
         if(szInfoFile != NULL)
         {
-            pListFile = ListFile_OpenExternal(szInfoFile);
-            if(pListFile != NULL)
+            pvListFile = ListFile_OpenExternal(szInfoFile);
+            if(pvListFile != NULL)
             {
                 // Parse the info file
-                nError = ParseInfoFile(hs, pListFile);
+                nError = ParseInfoFile(hs, pvListFile);
                 if(nError == ERROR_SUCCESS)
                     bBuildConfigComplete = true;
                 
-                ListFile_Free(pListFile);
+                ListFile_Free(pvListFile);
             }
 
             CASC_FREE(szInfoFile);
@@ -1004,45 +880,45 @@ int LoadBuildInfo(TCascStorage * hs)
         szAgentFile = CombinePath(hs->szRootPath, _T(".build.db"));
         if(szAgentFile != NULL)
         {
-            pListFile = ListFile_OpenExternal(szAgentFile);
-            if(pListFile != NULL)
+            pvListFile = ListFile_OpenExternal(szAgentFile);
+            if(pvListFile != NULL)
             {
-                nError = ParseAgentFile(hs, pListFile);
+                nError = ParseAgentFile(hs, pvListFile);
                 if(nError == ERROR_SUCCESS)
                     bBuildConfigComplete = true;
 
-                ListFile_Free(pListFile);
+                ListFile_Free(pvListFile);
             }
             CASC_FREE(szAgentFile);
         }
     }
 
-    // If the .build.info and .build.db file hasn't been loaded, fail it 
-    if(nError == ERROR_SUCCESS && bBuildConfigComplete == false)
+    // If the .build.info OR .build.db file has been loaded,
+    // proceed with loading the CDN config file and CDN build file
+    if(nError == ERROR_SUCCESS && bBuildConfigComplete)
     {
-        nError = ERROR_FILE_CORRUPT;
-    }
-
-    // Load the configuration file
-    if(nError == ERROR_SUCCESS)
-    {
-        nError = FetchAndVerifyConfigFile(hs, &hs->CdnConfigKey, &FileData);
-        if(nError == ERROR_SUCCESS)
+        // Load the configuration file
+        pvListFile = FetchAndVerifyConfigFile(hs, &hs->CdnConfigKey);
+        if(pvListFile != NULL)
         {
-            nError = LoadCdnConfigFile(hs, &FileData);
-            FreeCascBlob(&FileData);
+            nError = LoadCdnConfigFile(hs, pvListFile);
+            ListFile_Free(pvListFile);
         }
+        else
+            nError = ERROR_FILE_NOT_FOUND;
     }
 
     // Load the build file
-    if(nError == ERROR_SUCCESS)
+    if(nError == ERROR_SUCCESS && bBuildConfigComplete)
     {
-        nError = FetchAndVerifyConfigFile(hs, &hs->CdnBuildKey, &FileData);
-        if(nError == ERROR_SUCCESS)
+        pvListFile = FetchAndVerifyConfigFile(hs, &hs->CdnBuildKey);
+        if(pvListFile != NULL)
         {
-            nError = LoadCdnBuildFile(hs, &FileData);
-            FreeCascBlob(&FileData);
+            nError = LoadCdnBuildFile(hs, pvListFile);
+            ListFile_Free(pvListFile);
         }
+        else
+            nError = ERROR_FILE_NOT_FOUND;
     }
 
     // Fill the index directory
@@ -1114,7 +990,8 @@ int ParseRootFileLine(const char * szLinePtr, const char * szLineEnd, PQUERY_KEY
         return ERROR_BAD_FORMAT;
 
     // Convert the encoding key to binary
-    nError = StringBlobToBinaryBlob(PtrEncodingKey, (LPBYTE)szLinePtr, (LPBYTE)szLinePtr + MD5_STRING_SIZE);
+    PtrEncodingKey->cbData = MD5_HASH_SIZE;
+    nError = ConvertStringToBinary(szLinePtr, MD5_STRING_SIZE, PtrEncodingKey->pbData);
     if(nError != ERROR_SUCCESS)
         return nError;
 

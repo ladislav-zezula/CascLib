@@ -445,7 +445,7 @@ static int InsertFileEntry(
     // Store the info into the file entry
     pFileEntry->EncodingKey  = EncodingKey;
     pFileEntry->FileNameHash = CalcFileNameHash(szFileName);
-    pFileEntry->dwFileName   = Array_IndexOf(&pRootHandler->FileNames, szFileName);
+    pFileEntry->dwFileName   = (DWORD)Array_IndexOf(&pRootHandler->FileNames, szFileName);
     pFileEntry->dwFlags      = 0;
 
     // Verify collisions (debug version only)
@@ -571,7 +571,7 @@ static int ParseDirEntries_Named(
         // This way we obtain the full name and the name lookup
         // will be fully operational
         memcpy(szNamePtr, pNamedEntry->szFileName, (cbFileEntry - sizeof(ENCODING_KEY)));
-        cchFileName = (szNamePtr - szFileName) + (cbFileEntry - sizeof(ENCODING_KEY));
+        cchFileName = (DWORD)((szNamePtr - szFileName) + (cbFileEntry - sizeof(ENCODING_KEY)));
 
         // Insert the named entry to the global file table
         nError = InsertFileEntry(pRootHandler,
@@ -633,7 +633,7 @@ static void ResolveFullFileNames(
 
             // Insert the short name to the list of the names
             szNamePtr = (char *)Array_Insert(&pRootHandler->FileNames, szShortName, nLength + 1);
-            pFileEntry->dwFileName = Array_IndexOf(&pRootHandler->FileNames, szNamePtr);
+            pFileEntry->dwFileName = (DWORD)Array_IndexOf(&pRootHandler->FileNames, szNamePtr);
 
             // Create the full file name
             nLength = CreateFileName(pRootHandler, szShortName, szFullName);
@@ -1084,7 +1084,6 @@ int RootHandler_CreateDiablo3(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRoot
     LPBYTE pbPackagesDat = NULL;
     DWORD dwTotalFileCount;
     DWORD cbPackagesDat = 0;
-    DWORD i;
     int nError;
 
     // Allocate the root handler object
@@ -1131,13 +1130,13 @@ int RootHandler_CreateDiablo3(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRoot
     nError = ParseDirectoryFile(pRootHandler, pbRootFile, pbRootFileEnd, DIABLO3_INVALID_INDEX);
     if(nError == ERROR_SUCCESS)
     {
-        DWORD dwRootEntries = pRootHandler->FileTable.ItemCount;
+        size_t dwRootEntries = pRootHandler->FileTable.ItemCount;
 
         // We expect the number of level-0 to be less than maximum
         assert(dwRootEntries < DIABLO3_MAX_SUBDIRS);
 
         // Now parse the all root items and load them
-        for(i = 0; i < dwRootEntries; i++)
+        for(size_t i = 0; i < dwRootEntries; i++)
         {
             PCASC_FILE_ENTRY pRootEntry = (PCASC_FILE_ENTRY)Array_ItemAt(&pRootHandler->FileTable, i);
 

@@ -51,6 +51,7 @@ ULONGLONG CalcFileNameHash(const char * szFileName);
 int ConvertDigitToInt32(const TCHAR * szString, PDWORD PtrValue);
 int ConvertStringToInt08(const char * szString, PDWORD PtrValue);
 int ConvertStringToInt32(const TCHAR * szString, size_t nMaxDigits, PDWORD PtrValue);
+int ConvertStringToBinary(const char * szString, size_t nMaxDigits, LPBYTE pbBinary);
 char * StringFromBinary(LPBYTE pbBinary, size_t cbBinary, char * szBuffer);
 char * StringFromMD5(LPBYTE md5, char * szBuffer);
 

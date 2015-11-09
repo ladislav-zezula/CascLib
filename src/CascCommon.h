@@ -191,24 +191,14 @@ typedef struct _TCascStorage
     
     QUERY_KEY CdnConfigKey;
     QUERY_KEY CdnBuildKey;
-
-    PQUERY_KEY pArchiveArray;                       // Array of the archives
-    QUERY_KEY ArchiveGroup;                         // Name of the group archive file
-    DWORD ArchiveCount;                             // Number of archives in the array
-
-    PQUERY_KEY pPatchArchiveArray;                  // Array of the patch archives
-    QUERY_KEY PatchArchiveGroup;                    // Name of the patch group archive file
-    DWORD PatchArchiveCount;                        // Number of patch archives in the array
-
+    QUERY_KEY ArchivesGroup;                        // Key array of the "archive-group"
+    QUERY_KEY ArchivesKey;                          // Key array of the "archives"
+    QUERY_KEY PatchArchivesKey;                     // Key array of the "patch-archives"
     QUERY_KEY RootKey;
     QUERY_KEY PatchKey;
     QUERY_KEY DownloadKey;
     QUERY_KEY InstallKey;
-
-    PQUERY_KEY pEncodingKeys;
     QUERY_KEY EncodingKey;
-    QUERY_KEY EncodingEKey;
-    DWORD EncodingKeys;
 
     TFileStream * DataFileArray[CASC_MAX_DATA_FILES]; // Data file handles
 
@@ -312,11 +302,11 @@ DWORD ConvertBytesToInteger_4_LE(LPBYTE ValueAsBytes);
 ULONGLONG ConvertBytesToInteger_5(LPBYTE ValueAsBytes);
 
 void ConvertIntegerToBytes_4(DWORD Value, LPBYTE ValueAsBytes);
+void FreeCascBlob(PQUERY_KEY pQueryKey);
 
 //-----------------------------------------------------------------------------
 // Text file parsing (CascTextFiles.cpp)
 
-int StringBlobToBinaryBlob(PQUERY_KEY pBlob, LPBYTE pbBlobBegin, LPBYTE pbBlobEnd);
 int LoadBuildInfo(TCascStorage * hs);
 int CheckGameDirectory(TCascStorage * hs, TCHAR * szDirectory);
 int ParseRootFileLine(const char * szLinePtr, const char * szLineEnd, PQUERY_KEY pEncodingKey, char * szFileName, size_t nMaxChars);

@@ -163,7 +163,7 @@ static int Decrypt(PCASC_SALSA20 pState, LPBYTE pbOutBuffer, LPBYTE pbInBuffer, 
 
         // Set the number of remaining bytes
         pbXorValue = (LPBYTE)XorValue;
-        BlockSize = CASCLIB_MIN(cbInBuffer, 0x40);
+        BlockSize = (DWORD)CASCLIB_MIN(cbInBuffer, 0x40);
 
         // Prepare the XOR constants
         for(i = 0; i < 16; i++)

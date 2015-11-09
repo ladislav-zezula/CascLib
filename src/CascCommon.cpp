@@ -73,3 +73,18 @@ void ConvertIntegerToBytes_4(DWORD Value, LPBYTE ValueAsBytes)
     ValueAsBytes[2] = (Value >> 0x08) & 0xFF;
     ValueAsBytes[3] = (Value >> 0x00) & 0xFF;
 }
+
+//-----------------------------------------------------------------------------
+// Common fre routine of a CASC blob
+
+void FreeCascBlob(PQUERY_KEY pBlob)
+{
+    if(pBlob != NULL)
+    {
+        if(pBlob->pbData != NULL)
+            CASC_FREE(pBlob->pbData);
+
+        pBlob->pbData = NULL;
+        pBlob->cbData = 0;
+    }
+}

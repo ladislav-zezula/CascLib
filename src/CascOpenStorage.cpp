@@ -121,28 +121,6 @@ static bool IsIndexFileName_V2(const TCHAR * szFileName)
             _tcsicmp(szFileName + 0x0A, _T(".idx")) == 0);
 }
 
-static void QUERY_KEY_Free(PQUERY_KEY pBlob)
-{
-    if(pBlob != NULL)
-    {
-        if(pBlob->pbData != NULL)
-            CASC_FREE(pBlob->pbData);
-        
-        pBlob->pbData = NULL;
-        pBlob->cbData = 0;
-    }
-}
-
-static void QUERY_KEY_FreeArray(PQUERY_KEY pBlobArray)
-{
-    // Free the buffer in the first blob
-    // (will also free all buffers in the array)
-    QUERY_KEY_Free(pBlobArray);
-
-    // Free the array itself
-    CASC_FREE(pBlobArray);
-}
-
 static bool IsCascIndexHeader_V1(LPBYTE pbFileData, DWORD cbFileData)
 {
     PFILE_INDEX_HEADER_V1 pIndexHeader = (PFILE_INDEX_HEADER_V1)pbFileData;
@@ -187,34 +165,22 @@ static bool IsCascIndexHeader_V2(LPBYTE pbFileData, DWORD cbFileData)
 static int InsertExtraFile(
     TCascStorage * hs,
     const char * szFileName,
-    LPBYTE pbKey,
-    bool bIsEncodingKey)
+    PQUERY_KEY pQueryKey)
 {
-    int nError;
-
     // If the given key is not encoding key (aka, it's an index key),
     // we need to create a fake encoding entry
-    if(bIsEncodingKey == false)
+    if(pQueryKey->cbData == MD5_HASH_SIZE * 2)
     {
         PCASC_ENCODING_ENTRY pNewEntry;
         PCASC_INDEX_ENTRY pIndexEntry;
         QUERY_KEY IndexKey;
 
         // Find the entry in the index table in order to get the file size
-        IndexKey.pbData = pbKey;
+        IndexKey.pbData = pQueryKey->pbData + MD5_HASH_SIZE;
         IndexKey.cbData = MD5_HASH_SIZE;
         pIndexEntry = FindIndexEntry(hs, &IndexKey);
         if(pIndexEntry == NULL)
             return ERROR_FILE_NOT_FOUND;
-
-        // Make sure that the array is initialized
-        // Reserve space for 0x20 encoding entries
-        if(hs->ExtraEntries.ItemArray == NULL)
-        {
-            nError = Array_Create(&hs->ExtraEntries, CASC_ENCODING_ENTRY_1, CASC_EXTRA_FILES);
-            if(nError != ERROR_SUCCESS)
-                return nError;
-        }
 
         // Create a fake entry in the encoding map
         pNewEntry = (PCASC_ENCODING_ENTRY)Array_Insert(&hs->ExtraEntries, NULL, 1);
@@ -227,8 +193,8 @@ static int InsertExtraFile(
         pNewEntry->FileSizeBE[1] = pIndexEntry->FileSizeLE[2];
         pNewEntry->FileSizeBE[2] = pIndexEntry->FileSizeLE[1];
         pNewEntry->FileSizeBE[3] = pIndexEntry->FileSizeLE[0];
-        memcpy(pNewEntry->EncodingKey, pbKey, MD5_HASH_SIZE);
-        memcpy(pNewEntry + 1, pbKey, MD5_HASH_SIZE);
+        memcpy(pNewEntry->EncodingKey, pQueryKey->pbData, MD5_HASH_SIZE);
+        memcpy(pNewEntry + 1, pQueryKey->pbData + MD5_HASH_SIZE, MD5_HASH_SIZE);
 
         // Insert the entry to the map of encoding keys
         Map_InsertObject(hs->pEncodingMap, pNewEntry, pNewEntry->EncodingKey);
@@ -236,7 +202,7 @@ static int InsertExtraFile(
 
     // Now we need to insert the entry to the root handler in order
     // to be able to translate file name to encoding key
-    return RootHandler_Insert(hs->pRootHandler, szFileName, pbKey);
+    return RootHandler_Insert(hs->pRootHandler, szFileName, pQueryKey->pbData);
 }
 
 static int InitializeCascDirectories(TCascStorage * hs, const TCHAR * szDataPath)
@@ -791,6 +757,7 @@ static LPBYTE LoadRootFileToMemory(HANDLE hFile, DWORD * pcbRootFile)
 static int LoadEncodingFile(TCascStorage * hs)
 {
     PFILE_ENCODING_SEGMENT pEncodingSegment;
+    QUERY_KEY EncodingKey;
     LPBYTE pbStartOfSegment;
     LPBYTE pbEncodingFile = NULL;
     HANDLE hFile = NULL; 
@@ -800,7 +767,9 @@ static int LoadEncodingFile(TCascStorage * hs)
     int nError = ERROR_SUCCESS;
 
     // Open the encoding file
-    if(!CascOpenFileByIndexKey((HANDLE)hs, &hs->EncodingEKey, 0, &hFile))
+    EncodingKey.pbData = hs->EncodingKey.pbData + MD5_HASH_SIZE;
+    EncodingKey.cbData = MD5_HASH_SIZE;
+    if(!CascOpenFileByIndexKey((HANDLE)hs, &EncodingKey, 0, &hFile))
         nError = GetLastError();
 
     // Load the entire ENCODING file to memory
@@ -931,8 +900,10 @@ static int LoadRootFile(TCascStorage * hs, DWORD dwLocaleMask)
     // Insert entry for the 
     if(nError == ERROR_SUCCESS)
     {
-        InsertExtraFile(hs, "ENCODING", hs->EncodingEKey.pbData, false);
-        InsertExtraFile(hs, "ROOT", hs->RootKey.pbData, true);
+        InsertExtraFile(hs, "ENCODING", &hs->EncodingKey);
+        InsertExtraFile(hs, "ROOT", &hs->RootKey);
+        InsertExtraFile(hs, "DOWNLOAD", &hs->DownloadKey);
+        InsertExtraFile(hs, "INSTALL", &hs->InstallKey);
     }
 
 #ifdef _DEBUG
@@ -1004,20 +975,17 @@ static TCascStorage * FreeCascStorage(TCascStorage * hs)
         if(hs->szUrlPath != NULL)
             CASC_FREE(hs->szUrlPath);
 
-        // Fre the blob arrays
-        QUERY_KEY_FreeArray(hs->pArchiveArray);
-        QUERY_KEY_FreeArray(hs->pPatchArchiveArray);
-        QUERY_KEY_FreeArray(hs->pEncodingKeys);
-
         // Free the blobs
-        QUERY_KEY_Free(&hs->CdnConfigKey);
-        QUERY_KEY_Free(&hs->CdnBuildKey);
-        QUERY_KEY_Free(&hs->ArchiveGroup);
-        QUERY_KEY_Free(&hs->PatchArchiveGroup);
-        QUERY_KEY_Free(&hs->RootKey);
-        QUERY_KEY_Free(&hs->PatchKey);
-        QUERY_KEY_Free(&hs->DownloadKey);
-        QUERY_KEY_Free(&hs->InstallKey);
+        FreeCascBlob(&hs->CdnConfigKey);
+        FreeCascBlob(&hs->CdnBuildKey);
+        FreeCascBlob(&hs->ArchivesGroup);
+        FreeCascBlob(&hs->ArchivesKey);
+        FreeCascBlob(&hs->PatchArchivesKey);
+        FreeCascBlob(&hs->RootKey);
+        FreeCascBlob(&hs->PatchKey);
+        FreeCascBlob(&hs->DownloadKey);
+        FreeCascBlob(&hs->InstallKey);
+        FreeCascBlob(&hs->EncodingKey);
 
         // Free the storage structure
         hs->szClassName = NULL;
@@ -1068,6 +1036,13 @@ bool WINAPI CascOpenStorage(const TCHAR * szDataPath, DWORD dwLocaleMask, HANDLE
     if(nError == ERROR_SUCCESS)
     {
         nError = LoadEncodingFile(hs);
+    }
+
+    // Initialize the dynamic array for extra files
+    // Reserve space for 0x20 encoding entries
+    if(nError == ERROR_SUCCESS)
+    {
+        nError = Array_Create(&hs->ExtraEntries, CASC_ENCODING_ENTRY_1, CASC_EXTRA_FILES);
     }
 
     // Load the index files

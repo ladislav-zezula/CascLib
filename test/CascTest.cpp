@@ -61,7 +61,6 @@ static const char szCircleChar[] = "|/-\\";
 
 static bool IsEncodingKey(const char * szFileName)
 {
-    QUERY_KEY EncodingKey;
     BYTE KeyBuffer[MD5_HASH_SIZE];
 
     // The length must be at least the length of the encoding key
@@ -69,8 +68,7 @@ static bool IsEncodingKey(const char * szFileName)
         return false;
 
     // Convert the BLOB to binary.
-    EncodingKey.pbData = KeyBuffer;
-    if(StringBlobToBinaryBlob(&EncodingKey, (LPBYTE)szFileName, (LPBYTE)szFileName + MD5_STRING_SIZE) != ERROR_SUCCESS)
+    if(ConvertStringToBinary(szFileName, MD5_STRING_SIZE, KeyBuffer) != ERROR_SUCCESS)
         return false;
 
     return true;
@@ -529,7 +527,7 @@ static int Hack()
 
 int main(int argc, char * argv[])
 {
-    const TCHAR * szListFile = _T("\\Ladik\\AppDir\\CascLib\\listfile\\listfile-wow6.txt");
+    const TCHAR * szListFile = _T("\\Ladik\\Appdir\\CascLib\\listfile\\World of Warcraft 6x.txt");
     int nError = ERROR_SUCCESS;
 
     // Keep compiler happy
@@ -580,14 +578,14 @@ int main(int argc, char * argv[])
     //if(nError == ERROR_SUCCESS)
     //    nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19116/Data"), szListFile);
 
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), szListFile);
+    if(nError == ERROR_SUCCESS)
+        nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), szListFile);
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Diablo III/30013/Data"), NULL);
 
-    if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Overwatch/24919/casc/data"), NULL);
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Overwatch/24919/casc/data"), NULL);
 
     // Test extracting the complete storage
 //  if(nError == ERROR_SUCCESS)

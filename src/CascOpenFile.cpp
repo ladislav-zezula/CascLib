@@ -244,7 +244,8 @@ bool WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocal
 
         // Convert the file name to binary blob
         EncodingKey.pbData = KeyBuffer;
-        nError = StringBlobToBinaryBlob(&EncodingKey, (LPBYTE)szFileName, (LPBYTE)szFileName + MD5_STRING_SIZE);
+        EncodingKey.cbData = MD5_HASH_SIZE;
+        nError = ConvertStringToBinary(szFileName, MD5_STRING_SIZE, KeyBuffer);
     }
 
     // Use the encoding key to find the file in the encoding table entry

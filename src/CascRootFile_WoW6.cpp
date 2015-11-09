@@ -149,7 +149,6 @@ static int ParseRoot_AddRootEntries(
         pFileEntry->EncodingKey = pRootBlock->pRootEntries[i].EncodingKey;
 
         // Also, insert the entry to the map
-        assert(Map_FindObject(pRootHandler->pRootMap, &pFileEntry->FileNameHash, NULL) == NULL);
         Map_InsertObject(pRootHandler->pRootMap, pFileEntry, &pFileEntry->FileNameHash);
 
         // Move to the next root entry
@@ -267,10 +266,30 @@ static int WowHandler_Insert(
     const char * szFileName,
     LPBYTE pbEncodingKey)
 {
-    CASCLIB_UNUSED(pRootHandler);
-    CASCLIB_UNUSED(szFileName);
-    CASCLIB_UNUSED(pbEncodingKey);
-    return ERROR_NOT_SUPPORTED;
+    PCASC_FILE_ENTRY pFileEntry;
+
+    // Don't let the number of items to overflow
+    if(pRootHandler->FileTable.ItemCount >= pRootHandler->FileTable.ItemCountMax)
+        return ERROR_NOT_ENOUGH_MEMORY;
+
+    // Insert the item to the linear file list
+    pFileEntry = (PCASC_FILE_ENTRY)Array_Insert(&pRootHandler->FileTable, NULL, 1);
+    if(pFileEntry != NULL)
+    {
+        // Fill-in the new entry
+        pFileEntry->EncodingKey  = *(PENCODING_KEY)pbEncodingKey;
+        pFileEntry->FileNameHash = CalcFileNameHash(szFileName);
+        pFileEntry->SumValue     = 0;
+        pFileEntry->Locales      = CASC_LOCALE_ALL;
+
+        // Verify collisions (debug version only)
+        assert(Map_FindObject(pRootHandler->pRootMap, &pFileEntry->FileNameHash, NULL) == NULL);
+
+        // Insert the entry to the map
+        Map_InsertObject(pRootHandler->pRootMap, pFileEntry, &pFileEntry->FileNameHash);
+    }
+
+    return ERROR_SUCCESS;
 }
 
 static LPBYTE WowHandler_Search(TRootHandler_WoW6 * pRootHandler, TCascSearch * pSearch, PDWORD /* PtrFileSize */, PDWORD PtrLocaleFlags)

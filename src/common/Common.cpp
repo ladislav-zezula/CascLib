@@ -334,6 +334,41 @@ int ConvertStringToInt32(const TCHAR * szString, size_t nMaxDigits, PDWORD PtrVa
     return ERROR_SUCCESS;
 }
 
+// Converts string blob to binary blob.
+int ConvertStringToBinary(
+    const char * szString,
+    size_t nMaxDigits,
+    LPBYTE pbBinary)
+{
+    const char * szStringEnd = szString + nMaxDigits;
+    DWORD dwCounter = 0;
+    BYTE DigitValue;
+    BYTE ByteValue = 0;
+
+    // Convert the string
+    while(szString < szStringEnd)
+    {
+        // Retrieve the digit converted to hexa
+        DigitValue = (BYTE)(AsciiToUpperTable_BkSlash[szString[0]] - '0');
+        if(DigitValue > 9)
+            DigitValue -= 'A' - '9' - 1;
+        if(DigitValue > 0x0F)
+            return ERROR_BAD_FORMAT;
+
+        // Insert the digit to the binary buffer
+        ByteValue = (ByteValue << 0x04) | DigitValue;
+        dwCounter++;
+
+        // If we reached the second digit, it means that we need
+        // to flush the byte value and move on
+        if((dwCounter & 0x01) == 0)
+            *pbBinary++ = ByteValue;
+        szString++;
+    }
+
+    return ERROR_SUCCESS;
+}
+
 char * StringFromBinary(LPBYTE pbBinary, size_t cbBinary, char * szBuffer)
 {
     char * szSaveBuffer = szBuffer;
