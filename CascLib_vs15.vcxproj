@@ -610,7 +610,7 @@
     <ClInclude Include="src\FileStream.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\CascTextFiles.cpp" />
+    <ClCompile Include="src\CascFiles.cpp" />
     <ClCompile Include="src\CascCommon.cpp" />
     <ClCompile Include="src\CascDecompress.cpp" />
     <ClCompile Include="src\CascDumpData.cpp" />

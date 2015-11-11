@@ -305,7 +305,7 @@ void ConvertIntegerToBytes_4(DWORD Value, LPBYTE ValueAsBytes);
 void FreeCascBlob(PQUERY_KEY pQueryKey);
 
 //-----------------------------------------------------------------------------
-// Text file parsing (CascTextFiles.cpp)
+// Text file parsing (CascFiles.cpp)
 
 int LoadBuildInfo(TCascStorage * hs);
 int CheckGameDirectory(TCascStorage * hs, TCHAR * szDirectory);
