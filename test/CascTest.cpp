@@ -103,31 +103,31 @@ static int ForceCreatePath(TCHAR * szFullPath)
     return ERROR_SUCCESS;
 }
 
-static int ExtractFile(HANDLE hStorage, const char * szFileName, const TCHAR * szLocalPath, DWORD dwLocaleFlags)
+static int ExtractFile(HANDLE hStorage, CASC_FIND_DATA & cf, const TCHAR * szLocalPath)
 {
 //  TFileStream * pStream = NULL;
     HANDLE hFile = NULL;
-    TCHAR szLocalFileName[MAX_PATH];
-    TCHAR * szNamePtr = szLocalFileName;
     BYTE Buffer[0x1000];
-    DWORD dwBytesRead = 0;
+    DWORD dwBytesRead = 1;
+    DWORD dwFlags = 0;
     bool bResult;
     int nError = ERROR_SUCCESS;
 
-    // Create the file path
-    _tcscpy(szNamePtr, szLocalPath);
-    szNamePtr += _tcslen(szLocalPath);
-
-    *szNamePtr++ = _T('\\');
-    
-    // Copy the plain file name
-    CopyString(szNamePtr, szFileName, strlen(szFileName));
+    // Keep compiler happy
+    CASCLIB_UNUSED(szLocalPath);
 
     // Open the CASC file
     if(nError == ERROR_SUCCESS)
     {
+        // Replace with encoding key
+        if(cf.szFileName[0] == 0)
+        {
+            StringFromBinary(cf.EncodingKey, MD5_HASH_SIZE, cf.szFileName);
+            dwFlags |= CASC_OPEN_BY_ENCODING_KEY;
+        }
+
         // Open a file
-        if(!CascOpenFile(hStorage, szFileName, dwLocaleFlags, 0, &hFile))
+        if(!CascOpenFile(hStorage, cf.szFileName, cf.dwLocaleFlags, dwFlags, &hFile))
         {
             assert(GetLastError() != ERROR_SUCCESS);
             nError = GetLastError();
@@ -137,6 +137,14 @@ static int ExtractFile(HANDLE hStorage, const char * szFileName, const TCHAR * s
     // Create the local file
 //  if(nError == ERROR_SUCCESS)
 //  {
+//      TCHAR szLocalFileName[MAX_PATH];
+//      TCHAR * szNamePtr = szLocalFileName;
+//          
+//      // Create the file path
+//      _tcscpy(szNamePtr, szLocalPath);
+//      szNamePtr += _tcslen(szLocalPath);
+//      *szNamePtr++ = _T('\\');
+//      CopyString(szNamePtr, cf.szFileName, strlen(szFileName));
 //      pStream = FileStream_CreateFile(szLocalFileName, 0);
 //      if(pStream == NULL)
 //      {
@@ -149,22 +157,19 @@ static int ExtractFile(HANDLE hStorage, const char * szFileName, const TCHAR * s
 //  }
 
     // Read some data from the file
-    if(nError == ERROR_SUCCESS)
+    while(nError == ERROR_SUCCESS)
     {
-        while(dwBytesRead == 0)
+        // Read data from the file
+        bResult = CascReadFile(hFile, Buffer, sizeof(Buffer), &dwBytesRead);
+        if(bResult == false)
         {
-            // Read data from the file
-            bResult = CascReadFile(hFile, Buffer, sizeof(Buffer), &dwBytesRead);
-            if(bResult == false)
-            {
-                nError = GetLastError();
-                break;
-            }
-
-            // Write the local file
-//          if(dwBytesRead != 0)
-//              FileStream_Write(pStream, NULL, Buffer, dwBytesRead);
+            nError = GetLastError();
+            break;
         }
+
+        // Write the local file
+//      if(dwBytesRead != 0)
+//          FileStream_Write(pStream, NULL, Buffer, dwBytesRead);
     }
 
     // Log the file sizes
@@ -462,13 +467,13 @@ static int TestOpenStorage_ExtractFiles(const TCHAR * szStorage, const TCHAR * s
             while(bFileFound)
             {
                 // Extract the file
-//              LogHelper.PrintProgress("Extracting %s ...", FindData.szPlainName);
-//              nError = ExtractFile(hStorage, FindData.szFileName, szTargetDir, FindData.dwLocaleFlags);
-//              if(nError != ERROR_SUCCESS)
-//                  LogHelper.PrintError("Extracting %s .. Failed", FindData.szPlainName);
+                LogHelper.PrintProgress("Extracting %s ...", FindData.szPlainName);
+                nError = ExtractFile(hStorage, FindData, szTargetDir);
+                if(nError != ERROR_SUCCESS)
+                    LogHelper.PrintError("Extracting %s .. Failed", FindData.szPlainName);
 
                 // Compare the file with the local copy
-                CompareFile(LogHelper, hStorage, FindData, szTargetDir);
+//              CompareFile(LogHelper, hStorage, FindData, szTargetDir);
 
                 // Find the next file in CASC
                 bFileFound = CascFindNextFile(hFind, &FindData);
@@ -566,8 +571,8 @@ int main(int argc, char * argv[])
     //if(nError == ERROR_SUCCESS)                                                                  
     //    nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm\\30414\\HeroesData\\config\\09\\32\\"), NULL);
 
-    //if(nError == ERROR_SUCCESS)
-    //    nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/31726/HeroesData"), NULL);
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/31726/HeroesData"), NULL);
 
     //if(nError == ERROR_SUCCESS)
     //    nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/18865/Data"), szListFile);
@@ -578,8 +583,8 @@ int main(int argc, char * argv[])
     //if(nError == ERROR_SUCCESS)
     //    nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19116/Data"), szListFile);
 
-    if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), szListFile);
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), szListFile);
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Diablo III/30013/Data"), NULL);
@@ -603,8 +608,8 @@ int main(int argc, char * argv[])
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2015 - Diablo III/Data"), _T("Work"), NULL);
 
-//   if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2015 - Overwatch/24919/casc/data"), MAKE_PATH("Work"), NULL);
+     if(nError == ERROR_SUCCESS)
+        nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2015 - Overwatch/24919/casc/data"), MAKE_PATH("Work"), NULL);
 
 #ifdef _MSC_VER                                                          
     _CrtDumpMemoryLeaks();
