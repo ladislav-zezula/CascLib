@@ -14,7 +14,18 @@
 #include "CascCommon.h"
 
 //-----------------------------------------------------------------------------
+// Local functions
+
+typedef int (*PARSEINFOFILE)(TCascStorage * hs, void * pvListFile);
+
+//-----------------------------------------------------------------------------
 // Local structures
+
+struct TBuildFileInfo
+{
+    const TCHAR * szFileName;
+    CBLD_TYPE BuildFileType;
+};
 
 struct TGameIdString
 {
@@ -23,7 +34,24 @@ struct TGameIdString
     DWORD dwGameInfo;
 };
 
-static TGameIdString GameIds[] =
+static const TBuildFileInfo BuildTypes[] =
+{
+    {_T(".build.info"), CascBuildInfo},             // Since HOTS build 30027, the game uses .build.info file for storage info
+    {_T(".build.db"),   CascBuildDb},               // Older CASC storages
+    {NULL, CascBuildNone}
+};
+
+static const TCHAR * DataDirs[] = 
+{
+    _T("SC2Data"),                                  // Starcraft II (Legacy of the Void) build 38749
+    _T("Data\\Casc"),                               // Overwatch
+    _T("Data"),                                     // World of Warcraft, Diablo
+    _T("HeroesData"),                               // Heroes of the Storm
+    _T("BNTData"),                                  // Heroes of the Storm, until build 30414
+    NULL,
+};
+
+static const TGameIdString GameIds[] =
 {
     {"Hero",       0x04, CASC_GAME_HOTS},           // Alpha build of Heroes of the Storm
     {"WoW",        0x03, CASC_GAME_WOW6},           // Alpha build of World of Warcraft - Warlords of Draenor
@@ -254,47 +282,6 @@ static int LoadInfoVariable(PQUERY_KEY pVarBlob, const char * szLineBegin, const
     memcpy(pVarBlob->pbData, szLineBegin, pVarBlob->cbData);
     pVarBlob->pbData[pVarBlob->cbData] = 0;
     return ERROR_SUCCESS;
-}
-
-static char * ExtractStringVariable(char * szOneLine, const char * szVarName, size_t * PtrLength)
-{
-    char * szValueBegin;
-    char * szValueStr;
-    char szQuotedName[0x100];
-    int nLength;
-
-    // Find the substring
-    nLength = sprintf(szQuotedName, "\"%s\"", szVarName);
-    szValueStr = strstr(szOneLine, szQuotedName);
-    
-    // Did we find the variable value?
-    if(szValueStr != NULL)
-    {
-        // Skip the variable name
-        szValueStr += nLength;
-
-        // Skip the stuff after
-        while(szValueStr[0] != 0 && (szValueStr[0] == ' ' || szValueStr[0] == ':'))
-            szValueStr++;
-
-        // The variable value must start with a quotation mark
-        if(szValueStr[0] != '"')
-            return NULL;
-        szValueBegin = ++szValueStr;
-
-        // Find the next quotation mark
-        while(szValueStr[0] != 0 && szValueStr[0] != '"')
-            szValueStr++;
-
-        // Get the string value
-        if(szValueStr > szValueBegin)
-        {
-            PtrLength[0] = (szValueStr - szValueBegin);
-            return szValueBegin;
-        }
-    }
-
-    return NULL;
 }
 
 static void AppendConfigFilePath(TCHAR * szFileName, PQUERY_KEY pFileKey)
@@ -529,7 +516,7 @@ static void * FetchAndVerifyConfigFile(TCascStorage * hs, PQUERY_KEY pFileKey)
     return pvListFile;
 }
 
-static int ParseInfoFile(TCascStorage * hs, void * pvListFile)
+static int ParseFile_BuildInfo(TCascStorage * hs, void * pvListFile)
 {
     QUERY_KEY Active = {NULL, 0};
     QUERY_KEY TagString = {NULL, 0};
@@ -625,7 +612,7 @@ static int ParseInfoFile(TCascStorage * hs, void * pvListFile)
     return nError;
 }
 
-static int ParseAgentFile(TCascStorage * hs, void * pvListFile)
+static int ParseFile_BuildDb(TCascStorage * hs, void * pvListFile)
 {
     const char * szLinePtr;
     const char * szLineEnd;
@@ -802,64 +789,75 @@ static int LoadCdnBuildFile(TCascStorage * hs, void * pvListFile)
     return nError;
 }
 
+static int CheckDataDirectory(TCascStorage * hs, TCHAR * szDirectory)
+{
+    TCHAR * szDataPath;
+    int nError = ERROR_FILE_NOT_FOUND;
+
+    // Try all known subdirectories
+    for(size_t i = 0; DataDirs[i] != NULL; i++)
+    {
+        // Create the eventual data path
+        szDataPath = CombinePath(szDirectory, DataDirs[i]);
+        if(szDataPath != NULL)
+        {
+            // Does that directory exist?
+            if(DirectoryExists(szDataPath))
+            {
+                hs->szDataPath = szDataPath;
+                return ERROR_SUCCESS;
+            }
+
+            // Free the data path
+            CASC_FREE(szDataPath);
+        }
+    }
+
+    return nError;
+}
+
+
 //-----------------------------------------------------------------------------
 // Public functions
 
 int LoadBuildInfo(TCascStorage * hs)
 {
-    TCHAR * szAgentFile;
-    TCHAR * szInfoFile;
+    PARSEINFOFILE PfnParseProc = NULL;
     void * pvListFile;
-    bool bBuildConfigComplete = false;
     int nError = ERROR_SUCCESS;
 
-    // Since HOTS build 30027, the game uses .build.info file for storage info
-    if(bBuildConfigComplete == false)
+    switch(hs->BuildFileType)
     {
-        szInfoFile = CombinePath(hs->szRootPath, _T(".build.info"));
-        if(szInfoFile != NULL)
-        {
-            pvListFile = ListFile_OpenExternal(szInfoFile);
-            if(pvListFile != NULL)
-            {
-                // Parse the info file
-                nError = ParseInfoFile(hs, pvListFile);
-                if(nError == ERROR_SUCCESS)
-                    bBuildConfigComplete = true;
-                
-                ListFile_Free(pvListFile);
-            }
+        case CascBuildInfo:
+            PfnParseProc = ParseFile_BuildInfo;
+            break;
 
-            CASC_FREE(szInfoFile);
-        }
+        case CascBuildDb:
+            PfnParseProc = ParseFile_BuildDb;
+            break;
+
+        default:
+            nError = ERROR_NOT_SUPPORTED;
+            break;
     }
 
-    // If the info file has not been loaded, try the legacy .build.db
-    if(bBuildConfigComplete == false)
+    // Parse the appropriate build file
+    if(nError == ERROR_SUCCESS)
     {
-        szAgentFile = CombinePath(hs->szRootPath, _T(".build.db"));
-        if(szAgentFile != NULL)
+        pvListFile = ListFile_OpenExternal(hs->szBuildFile);
+        if(pvListFile != NULL)
         {
-            pvListFile = ListFile_OpenExternal(szAgentFile);
-            if(pvListFile != NULL)
-            {
-                nError = ParseAgentFile(hs, pvListFile);
-                if(nError == ERROR_SUCCESS)
-                    bBuildConfigComplete = true;
-
-                ListFile_Free(pvListFile);
-            }
-            CASC_FREE(szAgentFile);
+            // Parse the info file
+            nError = PfnParseProc(hs, pvListFile);
+            ListFile_Free(pvListFile);
         }
+        else
+            nError = ERROR_FILE_NOT_FOUND;
     }
-
-    // If we haven't found any of these 2 files, ...
-    if(bBuildConfigComplete == false)
-        nError = ERROR_FILE_NOT_FOUND;
 
     // If the .build.info OR .build.db file has been loaded,
     // proceed with loading the CDN config file and CDN build file
-    if(nError == ERROR_SUCCESS && bBuildConfigComplete)
+    if(nError == ERROR_SUCCESS)
     {
         // Load the configuration file
         pvListFile = FetchAndVerifyConfigFile(hs, &hs->CdnConfigKey);
@@ -873,7 +871,7 @@ int LoadBuildInfo(TCascStorage * hs)
     }
 
     // Load the build file
-    if(nError == ERROR_SUCCESS && bBuildConfigComplete)
+    if(nError == ERROR_SUCCESS)
     {
         pvListFile = FetchAndVerifyConfigFile(hs, &hs->CdnBuildKey);
         if(pvListFile != NULL)
@@ -907,42 +905,36 @@ int LoadBuildInfo(TCascStorage * hs)
 // and returns ERROR_SUCCESS
 int CheckGameDirectory(TCascStorage * hs, TCHAR * szDirectory)
 {
-    TCHAR * szFilePath;
-    size_t nLength = 0;
-    void * pvListFile;
-    char * szValue;
-    char szOneLine[MAX_PATH+1];
+    TFileStream * pStream;
+    TCHAR * szBuildFile;
     int nError = ERROR_FILE_NOT_FOUND;
 
-    // Create the full name of the .agent.db file
-    szFilePath = CombinePath(szDirectory, _T(".agent.db"));
-    if(szFilePath != NULL)
+    // Try to find any of the root files used in the history
+    for(size_t i = 0; BuildTypes[i].szFileName != NULL; i++)
     {
-        // Load the text file to memory
-        pvListFile = ListFile_OpenExternal(szFilePath);
-        if(pvListFile != NULL)
+        // Create the full name of the .agent.db file
+        szBuildFile = CombinePath(szDirectory, BuildTypes[i].szFileName);
+        if(szBuildFile != NULL)
         {
-            // Parse the file line by line
-            while(ListFile_GetNextLine(pvListFile, szOneLine, _maxchars(szOneLine)))
+            // Attempt to open the file
+            pStream = FileStream_OpenFile(szBuildFile, 0);
+            if(pStream != NULL)
             {
-                // Extract the data directory from the ".agent.db" file
-                szValue = ExtractStringVariable(szOneLine, "data_dir", &nLength);
-                if(szValue != NULL)
+                // Free the stream
+                FileStream_Close(pStream);
+
+                // Check for the data directory
+                nError = CheckDataDirectory(hs, szDirectory);
+                if(nError == ERROR_SUCCESS)
                 {
-                    hs->szRootPath = CascNewStr(szDirectory, 0);
-                    hs->szDataPath = CombinePathAndString(szDirectory, szValue, nLength);
-                    nError = (hs->szDataPath != NULL) ? ERROR_SUCCESS : ERROR_NOT_ENOUGH_MEMORY;
+                    hs->szBuildFile = szBuildFile;
+                    hs->BuildFileType = BuildTypes[i].BuildFileType;
+                    return ERROR_SUCCESS;
                 }
             }
-
-            // Free the listfile
-            ListFile_Free(pvListFile);
+             
+            CASC_FREE(szBuildFile);
         }
-        else
-            nError = GetLastError();
-
-        // Free the file path
-        CASC_FREE(szFilePath);
     }
 
     return nError;

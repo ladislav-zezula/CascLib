@@ -162,6 +162,22 @@ static bool IsCascIndexHeader_V2(LPBYTE pbFileData, DWORD cbFileData)
     return (HashHigh == pSizeAndHash->dwBlockHash);
 }
 
+static bool CutLastPathPart(TCHAR * szWorkPath)
+{
+    size_t nLength = _tcslen(szWorkPath);
+
+    for(nLength = _tcslen(szWorkPath); nLength > 0; nLength--)
+    {
+        if(szWorkPath[nLength] == '\\' || szWorkPath[nLength] == '/')
+        {
+            szWorkPath[nLength] = 0;
+            return true;
+        }
+    }
+
+    return false;
+}
+
 static int InsertExtraFile(
     TCascStorage * hs,
     const char * szFileName,
@@ -208,7 +224,6 @@ static int InsertExtraFile(
 static int InitializeCascDirectories(TCascStorage * hs, const TCHAR * szDataPath)
 {
     TCHAR * szWorkPath;
-    size_t nLength;
     int nError = ERROR_NOT_ENOUGH_MEMORY;
 
     // Find the root directory of the storage. The root directory
@@ -216,34 +231,27 @@ static int InitializeCascDirectories(TCascStorage * hs, const TCHAR * szDataPath
     szWorkPath = CascNewStr(szDataPath, 0);
     if(szWorkPath != NULL)
     {
-        // Is this a game directory?
-        nError = CheckGameDirectory(hs, szWorkPath);
-        if(nError == ERROR_SUCCESS)
+        // Get the length and go up until we find the ".build.info" or ".build.db"
+        for(;;)
         {
-            CASC_FREE(szWorkPath);
-            return nError;
-        }
-
-        // Get the length and go up until we find the ".build.info"
-        for(nLength = _tcslen(szWorkPath); nLength > 0; nLength--)
-        {
-            if(szWorkPath[nLength] == '\\' || szWorkPath[nLength] == '/')
+            // Is this a game directory?
+            nError = CheckGameDirectory(hs, szWorkPath);
+            if(nError == ERROR_SUCCESS)
             {
-                // Cut the rest
-                szWorkPath[nLength] = 0;
+                nError = ERROR_SUCCESS;
+                break;
+            }
 
-                // Is this a game directory?
-                nError = CheckGameDirectory(hs, szWorkPath);
-                if(nError == ERROR_SUCCESS)
-                {
-                    CASC_FREE(szWorkPath);
-                    return nError;
-                }
+            // Cut one path part
+            if(!CutLastPathPart(szWorkPath))
+            {
+                nError = ERROR_FILE_NOT_FOUND;
+                break;
             }
         }
 
+        // Free the work path buffer
         CASC_FREE(szWorkPath);
-        nError = ERROR_FILE_NOT_FOUND;
     }
 
     return nError;
@@ -970,6 +978,8 @@ static TCascStorage * FreeCascStorage(TCascStorage * hs)
             CASC_FREE(hs->szRootPath);
         if(hs->szDataPath != NULL)
             CASC_FREE(hs->szDataPath);
+        if(hs->szBuildFile != NULL)
+            CASC_FREE(hs->szBuildFile);
         if(hs->szIndexPath != NULL)
             CASC_FREE(hs->szIndexPath);
         if(hs->szUrlPath != NULL)
@@ -1119,8 +1129,6 @@ bool WINAPI CascGetStorageInfo(
     *(PDWORD)pvStorageInfo = dwInfoValue;
     return true;
 }
-
-
 
 bool WINAPI CascCloseStorage(HANDLE hStorage)
 {

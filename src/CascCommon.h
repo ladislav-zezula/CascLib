@@ -86,6 +86,13 @@
 
 struct TFileStream;
 
+typedef enum _CBLD_TYPE
+{
+    CascBuildNone = 0,                              // No build type found
+    CascBuildInfo,                                  // .build.info
+    CascBuildDb,                                    // .build.db (older storages)
+} CBLD_TYPE, *PCBLD_TYPE;
+
 typedef struct _ENCODING_KEY
 {
     BYTE Value[MD5_HASH_SIZE];                      // MD5 of the file
@@ -182,6 +189,7 @@ typedef struct _TCascStorage
     const TCHAR * szIndexFormat;                    // Format of the index file name
     TCHAR * szRootPath;                             // This is the game directory
     TCHAR * szDataPath;                             // This is the directory where data files are
+    TCHAR * szBuildFile;                            // Build file name (.build.info or .build.db)
     TCHAR * szIndexPath;                            // This is the directory where index files are
     TCHAR * szUrlPath;                              // URL to the Blizzard servers
     DWORD dwRefCount;                               // Number of references
@@ -190,6 +198,8 @@ typedef struct _TCascStorage
     DWORD dwFileBeginDelta;                         // This is number of bytes to shift back from archive offset (from index entry) to actual begin of file data
     DWORD dwDefaultLocale;                          // Default locale, read from ".build.info"
     
+    CBLD_TYPE BuildFileType;                        // Type of the build file
+
     QUERY_KEY CdnConfigKey;
     QUERY_KEY CdnBuildKey;
     QUERY_KEY ArchivesGroup;                        // Key array of the "archive-group"
