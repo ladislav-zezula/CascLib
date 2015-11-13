@@ -29,6 +29,7 @@ static TGameIdString GameIds[] =
     {"WoW",        0x03, CASC_GAME_WOW6},           // Alpha build of World of Warcraft - Warlords of Draenor
     {"Diablo3",    0x07, CASC_GAME_DIABLO3},        // Diablo III BETA 2.2.0
     {"Prometheus", 0x0A, CASC_GAME_OVERWATCH},      // Overwatch BETA since build 24919
+    {"SC2",        0x03, CASC_GAME_STARCRAFT2},     // Starcraft II - Legacy of the Void
     {NULL, 0, 0},
 };
 
@@ -255,17 +256,16 @@ static int LoadInfoVariable(PQUERY_KEY pVarBlob, const char * szLineBegin, const
     return ERROR_SUCCESS;
 }
 
-static char * ExtractStringVariable(PQUERY_KEY pJsonFile, const char * szVarName, size_t * PtrLength)
+static char * ExtractStringVariable(char * szOneLine, const char * szVarName, size_t * PtrLength)
 {
     char * szValueBegin;
     char * szValueStr;
-    char * szFileEnd = (char *)(pJsonFile->pbData + pJsonFile->cbData);
     char szQuotedName[0x100];
     int nLength;
 
     // Find the substring
     nLength = sprintf(szQuotedName, "\"%s\"", szVarName);
-    szValueStr = strstr((char *)pJsonFile->pbData, szQuotedName);
+    szValueStr = strstr(szOneLine, szQuotedName);
     
     // Did we find the variable value?
     if(szValueStr != NULL)
@@ -274,7 +274,7 @@ static char * ExtractStringVariable(PQUERY_KEY pJsonFile, const char * szVarName
         szValueStr += nLength;
 
         // Skip the stuff after
-        while(szValueStr < szFileEnd && (szValueStr[0] == ' ' || szValueStr[0] == ':'))
+        while(szValueStr[0] != 0 && (szValueStr[0] == ' ' || szValueStr[0] == ':'))
             szValueStr++;
 
         // The variable value must start with a quotation mark
@@ -283,7 +283,7 @@ static char * ExtractStringVariable(PQUERY_KEY pJsonFile, const char * szVarName
         szValueBegin = ++szValueStr;
 
         // Find the next quotation mark
-        while(szValueStr < szFileEnd && szValueStr[0] != '"')
+        while(szValueStr[0] != 0 && szValueStr[0] != '"')
             szValueStr++;
 
         // Get the string value
@@ -415,46 +415,6 @@ static int LoadMultipleBlobs(PQUERY_KEY pBlob, const char * szLineBegin, const c
 static int LoadSingleBlob(PQUERY_KEY pBlob, const char * szLineBegin, const char * szLineEnd)
 {
     return LoadMultipleBlobs(pBlob, szLineBegin, szLineEnd, 1); 
-}
-
-static int LoadTextFile(const TCHAR * szFileName, PQUERY_KEY pFileBlob)
-{
-    TFileStream * pStream;
-    ULONGLONG FileSize = 0;
-    int nError = ERROR_SUCCESS;
-
-    // Open the agent file
-    pStream = FileStream_OpenFile(szFileName, STREAM_FLAG_READ_ONLY | STREAM_PROVIDER_FLAT | BASE_PROVIDER_FILE);
-    if(pStream != NULL)
-    {
-        // Retrieve its size
-        FileStream_GetSize(pStream, &FileSize);
-
-        // Load the file to memory
-        if(0 < FileSize && FileSize < 0x100000)
-        {
-            // Initialize the blob
-            pFileBlob->cbData = (DWORD)FileSize;
-            pFileBlob->pbData = CASC_ALLOC(BYTE, pFileBlob->cbData + 1);
-
-            // Load the file data into the blob
-            if(pFileBlob->pbData != NULL)
-            {
-                FileStream_Read(pStream, NULL, pFileBlob->pbData, (DWORD)FileSize);
-                pFileBlob->pbData[pFileBlob->cbData] = 0;
-            }
-            else
-                nError = ERROR_NOT_ENOUGH_MEMORY;
-        }
-        else
-            nError = ERROR_INVALID_PARAMETER;
-
-        FileStream_Close(pStream);
-    }
-    else
-        nError = GetLastError();
-
-    return nError;
 }
 
 static int GetGameType(TCascStorage * hs, const char * szVarBegin, const char * szLineEnd)
@@ -893,6 +853,10 @@ int LoadBuildInfo(TCascStorage * hs)
         }
     }
 
+    // If we haven't found any of these 2 files, ...
+    if(bBuildConfigComplete == false)
+        nError = ERROR_FILE_NOT_FOUND;
+
     // If the .build.info OR .build.db file has been loaded,
     // proceed with loading the CDN config file and CDN build file
     if(nError == ERROR_SUCCESS && bBuildConfigComplete)
@@ -943,34 +907,41 @@ int LoadBuildInfo(TCascStorage * hs)
 // and returns ERROR_SUCCESS
 int CheckGameDirectory(TCascStorage * hs, TCHAR * szDirectory)
 {
-    QUERY_KEY AgentFile;
     TCHAR * szFilePath;
     size_t nLength = 0;
+    void * pvListFile;
     char * szValue;
+    char szOneLine[MAX_PATH+1];
     int nError = ERROR_FILE_NOT_FOUND;
 
     // Create the full name of the .agent.db file
     szFilePath = CombinePath(szDirectory, _T(".agent.db"));
     if(szFilePath != NULL)
     {
-        // Load the file to memory
-        nError = LoadTextFile(szFilePath, &AgentFile);
-        if(nError == ERROR_SUCCESS)
+        // Load the text file to memory
+        pvListFile = ListFile_OpenExternal(szFilePath);
+        if(pvListFile != NULL)
         {
-            // Extract the data directory from the ".agent.db" file
-            szValue = ExtractStringVariable(&AgentFile, "data_dir", &nLength);
-            if(szValue != NULL)
+            // Parse the file line by line
+            while(ListFile_GetNextLine(pvListFile, szOneLine, _maxchars(szOneLine)))
             {
-                hs->szRootPath = CascNewStr(szDirectory, 0);
-                hs->szDataPath = CombinePathAndString(szDirectory, szValue, nLength);
-                nError = (hs->szDataPath != NULL) ? ERROR_SUCCESS : ERROR_NOT_ENOUGH_MEMORY;
+                // Extract the data directory from the ".agent.db" file
+                szValue = ExtractStringVariable(szOneLine, "data_dir", &nLength);
+                if(szValue != NULL)
+                {
+                    hs->szRootPath = CascNewStr(szDirectory, 0);
+                    hs->szDataPath = CombinePathAndString(szDirectory, szValue, nLength);
+                    nError = (hs->szDataPath != NULL) ? ERROR_SUCCESS : ERROR_NOT_ENOUGH_MEMORY;
+                }
             }
 
-            // Free the loaded blob
-            FreeCascBlob(&AgentFile);
+            // Free the listfile
+            ListFile_Free(pvListFile);
         }
+        else
+            nError = GetLastError();
 
-        // Freee the file path
+        // Free the file path
         CASC_FREE(szFilePath);
     }
 

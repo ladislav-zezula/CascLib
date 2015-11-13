@@ -562,6 +562,9 @@ int main(int argc, char * argv[])
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_OpenFile(MAKE_PATH("2015 - Diablo III/30013"), "ENCODING");
 
+    if(nError == ERROR_SUCCESS)
+        nError = TestOpenStorage_OpenFile(MAKE_PATH("2015 - Diablo III/30013"), "ENCODING");
+
 //   if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_OpenFile(MAKE_PATH("2015 - Overwatch/24919/casc/data"), "ROOT");
 
