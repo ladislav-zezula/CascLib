@@ -205,6 +205,59 @@ static int InsertExtraFile(
     return RootHandler_Insert(hs->pRootHandler, szFileName, pQueryKey->pbData);
 }
 
+static int CheckIsParentDirectoryGameDirectory(TCascStorage * hs, TCHAR * currentPath)
+{
+    // on some installs, .agent.db exists only beneath the Battle.net folder, not in 
+    // game directories.  In that case, CheckGameDirectory produces false negatives 
+    // because it doesn't find the .build.info file.  If CascOpenStorage is called with
+    // the actual game data directory, this function will check the parent directory to 
+    // see if .build.info exists, and if so, succeeds initialization.
+
+    TCHAR * szCheckPath;
+    size_t nLength;
+    int nError = ERROR_NOT_ENOUGH_MEMORY;
+
+    TFileStream * fsBuildInfo;
+
+    szCheckPath = CascNewStr(currentPath, 11);
+    if (szCheckPath != NULL)
+    {
+        for (nLength = _tcslen(szCheckPath); nLength > 0; nLength--)
+        {
+            if (szCheckPath[nLength] == '\\' || szCheckPath[nLength] == '/')
+            {
+                // chop off
+                szCheckPath[nLength] = 0;
+                // append .build.info
+                szCheckPath = CombinePath(szCheckPath, _T(".build.info"));
+
+                fsBuildInfo = FileStream_OpenFile(szCheckPath, STREAM_FLAG_READ_ONLY | STREAM_PROVIDER_FLAT | BASE_PROVIDER_FILE);
+                if (fsBuildInfo == NULL)
+                {
+                    nError = ERROR_FILE_NOT_FOUND;
+                }
+                else
+                {
+                    // this is correct
+                    FileStream_Close(fsBuildInfo);
+                    fsBuildInfo = NULL;
+
+                    szCheckPath[nLength] = 0;
+                    hs->szDataPath = CascNewStr(currentPath, 0);
+                    hs->szRootPath = CascNewStr(szCheckPath, 0);
+
+                    nError = ERROR_SUCCESS;
+                    break;
+                }
+            }
+        }
+
+        CASC_FREE(szCheckPath);
+    }
+
+    return nError;
+}
+
 static int InitializeCascDirectories(TCascStorage * hs, const TCHAR * szDataPath)
 {
     TCHAR * szWorkPath;
@@ -216,9 +269,16 @@ static int InitializeCascDirectories(TCascStorage * hs, const TCHAR * szDataPath
     szWorkPath = CascNewStr(szDataPath, 0);
     if(szWorkPath != NULL)
     {
-        // Is this a game directory?
+        // Is this a game data directory already?
+        nError = CheckIsParentDirectoryGameDirectory(hs, szWorkPath);
+        if (nError == ERROR_SUCCESS)
+        {
+            CASC_FREE(szWorkPath);
+            return nError;
+        }
+        
         nError = CheckGameDirectory(hs, szWorkPath);
-        if(nError == ERROR_SUCCESS)
+        if (nError == ERROR_SUCCESS)
         {
             CASC_FREE(szWorkPath);
             return nError;
