@@ -46,7 +46,7 @@ typedef struct _FILE_ROOT_ENTRY
 typedef struct _CASC_ROOT_BLOCK
 {
     PFILE_LOCALE_BLOCK pLocaleBlockHdr;         // Pointer to the locale block
-    PDWORD pInt32Array;                         // Pointer to the array of 32-bit integers
+    PDWORD FileDataIds;                         // Pointer to the array of File Data IDs
     PFILE_ROOT_ENTRY pRootEntries;
 
 } CASC_ROOT_BLOCK, *PCASC_ROOT_BLOCK;
@@ -57,7 +57,7 @@ typedef struct _CASC_FILE_ENTRY
 {
     ENCODING_KEY EncodingKey;                       // File encoding key (MD5)
     ULONGLONG FileNameHash;                         // Jenkins hash of the file name
-    DWORD SumValue;                                 // Sum value
+    DWORD FileDataId;                               // File Data Index
     DWORD Locales;                                  // Locale flags of the file
 
 } CASC_FILE_ENTRY, *PCASC_FILE_ENTRY;
@@ -99,8 +99,8 @@ LPBYTE VerifyLocaleBlock(PCASC_ROOT_BLOCK pBlockInfo, LPBYTE pbFilePointer, LPBY
         return NULL;
 
     // Validate the array of 32-bit integers
-    pBlockInfo->pInt32Array = (PDWORD)pbFilePointer;
-    pbFilePointer = (LPBYTE)(pBlockInfo->pInt32Array + pBlockInfo->pLocaleBlockHdr->NumberOfFiles);
+    pBlockInfo->FileDataIds = (PDWORD)pbFilePointer;
+    pbFilePointer = (LPBYTE)(pBlockInfo->FileDataIds + pBlockInfo->pLocaleBlockHdr->NumberOfFiles);
     if(pbFilePointer > pbFileEnd)
         return NULL;
 
@@ -128,7 +128,7 @@ static int ParseRoot_AddRootEntries(
     PCASC_ROOT_BLOCK pRootBlock)
 {
     PCASC_FILE_ENTRY pFileEntry;
-    DWORD SumValue = 0;
+    DWORD FileDataIndex = 0;
 
     // Sanity checks
     assert(pRootHandler->FileTable.ItemArray != NULL);
@@ -144,7 +144,7 @@ static int ParseRoot_AddRootEntries(
 
         // (004147A3) Prepare the CASC_FILE_ENTRY structure
         pFileEntry->FileNameHash = pRootBlock->pRootEntries[i].FileNameHash;
-        pFileEntry->SumValue = SumValue + pRootBlock->pInt32Array[i];
+        pFileEntry->FileDataId = FileDataIndex + pRootBlock->FileDataIds[i];
         pFileEntry->Locales = pRootBlock->pLocaleBlockHdr->Locales;
         pFileEntry->EncodingKey = pRootBlock->pRootEntries[i].EncodingKey;
 
@@ -152,8 +152,8 @@ static int ParseRoot_AddRootEntries(
         Map_InsertObject(pRootHandler->pRootMap, pFileEntry, &pFileEntry->FileNameHash);
 
         // Move to the next root entry
+        FileDataIndex = pFileEntry->FileDataId + 1;
         pFileEntry++;
-        SumValue++;
     }
 
     return ERROR_SUCCESS;
@@ -279,7 +279,7 @@ static int WowHandler_Insert(
         // Fill-in the new entry
         pFileEntry->EncodingKey  = *(PENCODING_KEY)pbEncodingKey;
         pFileEntry->FileNameHash = CalcFileNameHash(szFileName);
-        pFileEntry->SumValue     = 0;
+        pFileEntry->FileDataId   = 0;
         pFileEntry->Locales      = CASC_LOCALE_ALL;
 
         // Verify collisions (debug version only)
@@ -379,7 +379,7 @@ static void TRootHandlerWoW6_Dump(
         {
             // Dump the entry
             dump_print(dc, "%08X %08X-%08X %s %s\n",
-                           (DWORD)(BlockInfo.pInt32Array[i]),
+                           (DWORD)(BlockInfo.FileDataIds[i]),
                            (DWORD)(BlockInfo.pRootEntries[i].FileNameHash >> 0x20),
                            (DWORD)(BlockInfo.pRootEntries[i].FileNameHash),
                            StringFromMD5(BlockInfo.pRootEntries[i].EncodingKey.Value, szOneLine),
