@@ -61,7 +61,7 @@ void * ListFile_OpenExternal(const TCHAR * szListFile)
     {
         // Retrieve the size of the external listfile
         FileStream_GetSize(pStream, &FileSize);
-        if(0 < FileSize && FileSize <= 0x0FFFFFFF)
+        if(0 < FileSize && FileSize <= 0x30000000)
         {
             // Create the in-memory cache for the entire listfile
             // The listfile does not have any data loaded yet
