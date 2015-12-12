@@ -221,12 +221,8 @@ static bool DoStorageSearch(TCascSearch * pSearch, PCASC_FIND_DATA pFindData)
     // State 1: Searching the list file
     if(pSearch->dwState == 1)
     {
-        // Only if we have a listfile handle
-        if(pSearch->pCache != NULL)
-        {
-            if(DoStorageSearch_RootFile(pSearch, pFindData))
-                return true;
-        }
+        if(DoStorageSearch_RootFile(pSearch, pFindData))
+            return true;
 
         // Move to the nameless search state
         pSearch->IndexLevel1 = 0;

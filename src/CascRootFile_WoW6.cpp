@@ -296,17 +296,21 @@ static LPBYTE WowHandler_Search(TRootHandler_WoW6 * pRootHandler, TCascSearch * 
 {
     PCASC_FILE_ENTRY pFileEntry;
 
-    // Keep going through the listfile
-    while(ListFile_GetNext(pSearch->pCache, pSearch->szMask, pSearch->szFileName, MAX_PATH))
+    // Only if we have a listfile
+    if(pSearch->pCache != NULL)
     {
-        // Find the root entry
-        pFileEntry = FindRootEntry(pRootHandler->pRootMap, pSearch->szFileName, NULL);
-        if(pFileEntry != NULL)
+        // Keep going through the listfile
+        while(ListFile_GetNext(pSearch->pCache, pSearch->szMask, pSearch->szFileName, MAX_PATH))
         {
-            // Give the caller the locale mask
-            if(PtrLocaleFlags != NULL)
-                PtrLocaleFlags[0] = pFileEntry->Locales;
-            return pFileEntry->EncodingKey.Value;
+            // Find the root entry
+            pFileEntry = FindRootEntry(pRootHandler->pRootMap, pSearch->szFileName, NULL);
+            if(pFileEntry != NULL)
+            {
+                // Give the caller the locale mask
+                if(PtrLocaleFlags != NULL)
+                    PtrLocaleFlags[0] = pFileEntry->Locales;
+                return pFileEntry->EncodingKey.Value;
+            }
         }
     }
 
