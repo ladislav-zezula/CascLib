@@ -685,7 +685,7 @@ static LPBYTE LoadEncodingFileToMemory(HANDLE hFile, DWORD * pcbEncodingFile)
     if(dwBytesRead == sizeof(CASC_ENCODING_HEADER))
     {
         // Check the version and sizes
-        if(EncodingHeader.Version != 0x01 || EncodingHeader.ChecksumSizeA != MD5_HASH_SIZE && EncodingHeader.ChecksumSizeB != MD5_HASH_SIZE)
+        if(EncodingHeader.Version != 0x01 || EncodingHeader.ChecksumSizeA != MD5_HASH_SIZE || EncodingHeader.ChecksumSizeB != MD5_HASH_SIZE)
         {
             assert(false);
             return NULL;
