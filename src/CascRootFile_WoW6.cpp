@@ -72,6 +72,7 @@ struct TRootHandler_WoW6 : public TRootHandler
 
     // For counting files
     DWORD dwTotalFileCount;
+    DWORD FileDataId;
 };
 
 // Prototype for root file parsing routine
@@ -80,6 +81,54 @@ typedef int (*PARSE_ROOT)(TRootHandler_WoW6 * pRootHandler, PCASC_ROOT_BLOCK pBl
 //-----------------------------------------------------------------------------
 // Local functions
 
+static bool IsFileDataIdName(const char * szFileName)
+{
+    BYTE BinaryValue[4];
+
+    // File name must begin with "File", case insensitive
+    if(AsciiToUpperTable_BkSlash[szFileName[0]] == 'F' &&
+       AsciiToUpperTable_BkSlash[szFileName[1]] == 'I' &&
+       AsciiToUpperTable_BkSlash[szFileName[2]] == 'L' &&
+       AsciiToUpperTable_BkSlash[szFileName[3]] == 'E')
+    {
+        // Then, 8 hexadecimal digits must follow
+        if(ConvertStringToBinary(szFileName + 4, 8, BinaryValue) == ERROR_SUCCESS)
+        {
+            // Must be followed by an extension or end-of-string
+            return (szFileName[0x0C] == 0 || szFileName[0x0C] == '.');
+        }
+    }
+
+    return false;
+}
+
+// Search by FileDataId
+PCASC_FILE_ENTRY FindRootEntry(DYNAMIC_ARRAY & FileTable, DWORD FileDataId)
+{
+    PCASC_FILE_ENTRY pStartEntry = (PCASC_FILE_ENTRY)FileTable.ItemArray;
+    PCASC_FILE_ENTRY pMidlEntry;
+    PCASC_FILE_ENTRY pEndEntry = pStartEntry + FileTable.ItemCount - 1;
+    int nResult;
+
+    // Perform binary search on the table
+    while(pStartEntry < pEndEntry)
+    {
+        // Calculate the middle of the interval
+        pMidlEntry = pStartEntry + ((pEndEntry - pStartEntry) / 2);
+
+        // Did we find it?
+        nResult = (int)FileDataId - (int)pMidlEntry->FileDataId;
+        if(nResult == 0)
+            return pMidlEntry;
+
+        // Move the interval to the left or right
+        (nResult < 0) ? pEndEntry = pMidlEntry : pStartEntry = pMidlEntry + 1;
+    }
+
+    return NULL;
+}
+
+// Search by file name hash
 // Also used in CascSearchFile
 PCASC_FILE_ENTRY FindRootEntry(PCASC_MAP pRootMap, const char * szFileName, DWORD * PtrTableIndex)
 {
@@ -128,7 +177,6 @@ static int ParseRoot_AddRootEntries(
     PCASC_ROOT_BLOCK pRootBlock)
 {
     PCASC_FILE_ENTRY pFileEntry;
-    DWORD FileDataIndex = 0;
 
     // Sanity checks
     assert(pRootHandler->FileTable.ItemArray != NULL);
@@ -144,15 +192,18 @@ static int ParseRoot_AddRootEntries(
 
         // (004147A3) Prepare the CASC_FILE_ENTRY structure
         pFileEntry->FileNameHash = pRootBlock->pRootEntries[i].FileNameHash;
-        pFileEntry->FileDataId = FileDataIndex + pRootBlock->FileDataIds[i];
+        pFileEntry->FileDataId = pRootHandler->FileDataId + pRootBlock->FileDataIds[i];
         pFileEntry->Locales = pRootBlock->pLocaleBlockHdr->Locales;
         pFileEntry->EncodingKey = pRootBlock->pRootEntries[i].EncodingKey;
 
         // Also, insert the entry to the map
         Map_InsertObject(pRootHandler->pRootMap, pFileEntry, &pFileEntry->FileNameHash);
 
+        // Update the local File Data Id
+        assert((pFileEntry->FileDataId + 1) > pFileEntry->FileDataId);
+        pRootHandler->FileDataId = pFileEntry->FileDataId + 1;
+
         // Move to the next root entry
-        FileDataIndex = pFileEntry->FileDataId + 1;
         pFileEntry++;
     }
 
@@ -267,6 +318,7 @@ static int WowHandler_Insert(
     LPBYTE pbEncodingKey)
 {
     PCASC_FILE_ENTRY pFileEntry;
+    DWORD FileDataId = 0;
 
     // Don't let the number of items to overflow
     if(pRootHandler->FileTable.ItemCount >= pRootHandler->FileTable.ItemCountMax)
@@ -276,10 +328,14 @@ static int WowHandler_Insert(
     pFileEntry = (PCASC_FILE_ENTRY)Array_Insert(&pRootHandler->FileTable, NULL, 1);
     if(pFileEntry != NULL)
     {
+        // Get the file data ID of the previous item (0 if this is the first one)
+        if(pRootHandler->FileTable.ItemCount > 1)
+            FileDataId = pFileEntry[-1].FileDataId;
+
         // Fill-in the new entry
         pFileEntry->EncodingKey  = *(PENCODING_KEY)pbEncodingKey;
         pFileEntry->FileNameHash = CalcFileNameHash(szFileName);
-        pFileEntry->FileDataId   = 0;
+        pFileEntry->FileDataId   = FileDataId + 1;
         pFileEntry->Locales      = CASC_LOCALE_ALL;
 
         // Verify collisions (debug version only)
@@ -320,7 +376,25 @@ static LPBYTE WowHandler_Search(TRootHandler_WoW6 * pRootHandler, TCascSearch * 
 
 static LPBYTE WowHandler_GetKey(TRootHandler_WoW6 * pRootHandler, const char * szFileName)
 {
-    PCASC_FILE_ENTRY pFileEntry = FindRootEntry(pRootHandler->pRootMap, szFileName, NULL);
+    PCASC_FILE_ENTRY pFileEntry;
+    DWORD FileDataId;
+    BYTE FileDataIdLE[4];
+
+    // Open by FileDataId. The file name must be as following:
+    // File########.xxx, where '#' are hexa-decimal numbers (case insensitive).
+    // Extension is ignored in that case
+    if(IsFileDataIdName(szFileName))
+    {
+        ConvertStringToBinary(szFileName + 4, 8, FileDataIdLE);
+        FileDataId = ConvertBytesToInteger_4(FileDataIdLE);
+
+        pFileEntry = FindRootEntry(pRootHandler->FileTable, FileDataId);
+    }
+    else
+    {
+        // Find by the file name hash
+        pFileEntry = FindRootEntry(pRootHandler->pRootMap, szFileName, NULL);
+    }
 
     return (pFileEntry != NULL) ? pFileEntry->EncodingKey.Value : NULL;
 }

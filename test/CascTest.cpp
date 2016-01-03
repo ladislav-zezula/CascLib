@@ -553,8 +553,8 @@ int main(int argc, char * argv[])
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/19342-root-file-cut/Data"), "SPELLS\\T_VFX_BLOOD06B.BLP");
 
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), "termination.html");
+    if(nError == ERROR_SUCCESS)
+        nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), "File000CD780.xxx");
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - Heroes of the Storm\\29049\\BNTData\\config\\48\\ae"), "World\\Maps\\Azeroth\\Azeroth_29_28.adt");
@@ -571,36 +571,36 @@ int main(int argc, char * argv[])
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_OpenFile(MAKE_PATH("2015 - Diablo III/30013"), "ENCODING");
 
-//   if(nError == ERROR_SUCCESS)
+//  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_OpenFile(MAKE_PATH("2015 - Overwatch/24919/casc/data"), "ROOT");
 
-    //if(nError == ERROR_SUCCESS)
-    //    nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/29049"), NULL);
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/29049"), NULL);
 
-    //if(nError == ERROR_SUCCESS)                                                                  
-    //    nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm\\30414\\HeroesData\\config\\09\\32\\"), NULL);
+//  if(nError == ERROR_SUCCESS)                                                                  
+//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm\\30414\\HeroesData\\config\\09\\32\\"), NULL);
 
-    //if(nError == ERROR_SUCCESS)
-    //    nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/31726/HeroesData"), NULL);
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/31726/HeroesData"), NULL);
 
-    //if(nError == ERROR_SUCCESS)
-    //    nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/39445/HeroesData"), NULL);
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/39445/HeroesData"), NULL);
 
-    //if(nError == ERROR_SUCCESS)
-    //    nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/18865/Data"), szListFile);
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/18865/Data"), szListFile);
 
-    //if(nError == ERROR_SUCCESS)
-    //    nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/18888/Data"), szListFile);
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/18888/Data"), szListFile);
 
-    //if(nError == ERROR_SUCCESS)
-    //    nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19116/Data"), szListFile);
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19116/Data"), szListFile);
 
-    //if(nError == ERROR_SUCCESS)
-    //    nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), szListFile);
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), szListFile);
 
     // With a non-existant listfile
-    if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), _T("huhu.txt"));
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), _T("huhu.txt"));
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Diablo III/30013/Data"), NULL);
