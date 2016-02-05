@@ -24,6 +24,7 @@
 /CMakeFiles/
 /CMakeCache.txt
 /*.cmake
+/Makefile
 
 # Visual Studio related files
 *.opensdf
