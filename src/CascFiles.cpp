@@ -580,6 +580,9 @@ static int ParseFile_BuildInfo(TCascStorage * hs, void * pvListFile)
             break;
 
         // Free the blobs
+        FreeCascBlob(&Active);
+        FreeCascBlob(&hs->CdnBuildKey);
+        FreeCascBlob(&hs->CdnConfigKey);
         FreeCascBlob(&CdnHost);
         FreeCascBlob(&CdnPath);
         FreeCascBlob(&TagString);
