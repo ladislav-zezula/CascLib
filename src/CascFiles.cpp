@@ -41,7 +41,7 @@ static const TBuildFileInfo BuildTypes[] =
     {NULL, CascBuildNone}
 };
 
-static const TCHAR * DataDirs[] = 
+static const TCHAR * DataDirs[] =
 {
     _T("SC2Data"),                                  // Starcraft II (Legacy of the Void) build 38749
     _T("Data\\Casc"),                               // Overwatch
@@ -381,7 +381,7 @@ static int LoadMultipleBlobs(PQUERY_KEY pBlob, const char * szLineBegin, const c
     size_t nLength = (szLineEnd - szLineBegin);
 
     // We expect each blob to have length of the encoding key and one space between
-    if(nLength > (dwBlobCount * MD5_STRING_SIZE) + ((dwBlobCount - 1) * sizeof(char))) 
+    if(nLength > (dwBlobCount * MD5_STRING_SIZE) + ((dwBlobCount - 1) * sizeof(char)))
         return ERROR_INVALID_PARAMETER;
 
     // Allocate the blob buffer
@@ -401,7 +401,7 @@ static int LoadMultipleBlobs(PQUERY_KEY pBlob, const char * szLineBegin, const c
 
 static int LoadSingleBlob(PQUERY_KEY pBlob, const char * szLineBegin, const char * szLineEnd)
 {
-    return LoadMultipleBlobs(pBlob, szLineBegin, szLineEnd, 1); 
+    return LoadMultipleBlobs(pBlob, szLineBegin, szLineEnd, 1);
 }
 
 static int GetGameType(TCascStorage * hs, const char * szVarBegin, const char * szLineEnd)
@@ -409,7 +409,7 @@ static int GetGameType(TCascStorage * hs, const char * szVarBegin, const char * 
     // Go through all games that we support
     for(size_t i = 0; GameIds[i].szGameInfo != NULL; i++)
     {
-        // Check the length of the variable 
+        // Check the length of the variable
         if((size_t)(szLineEnd - szVarBegin) == GameIds[i].cchGameInfo)
         {
             // Check the string
@@ -475,7 +475,7 @@ static int GetDefaultLocaleMask(TCascStorage * hs, PQUERY_KEY pTagsString)
         // Get the next part
         if(szNext == NULL)
             break;
-        
+
         // Skip spaces
         while(szNext < szTagEnd && szNext[0] == ' ')
             szNext++;
@@ -935,7 +935,7 @@ int CheckGameDirectory(TCascStorage * hs, TCHAR * szDirectory)
                     return ERROR_SUCCESS;
                 }
             }
-             
+
             CASC_FREE(szBuildFile);
         }
     }
