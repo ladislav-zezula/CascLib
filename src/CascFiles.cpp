@@ -964,7 +964,9 @@ int ParseRootFileLine(const char * szLinePtr, const char * szLineEnd, PQUERY_KEY
     // Skip the MD5
     szLinePtr += MD5_STRING_SIZE+1;
 
-    // Skip the chunk ID
+    // Skip the chunk ID, priority and MR priority
+    szLinePtr = SkipInfoVariable(szLinePtr, szLineEnd);
+    szLinePtr = SkipInfoVariable(szLinePtr, szLineEnd);
     szLinePtr = SkipInfoVariable(szLinePtr, szLineEnd);
 
     // Get the archived file name
