@@ -320,7 +320,9 @@ void FreeCascBlob(PQUERY_KEY pQueryKey);
 
 int LoadBuildInfo(TCascStorage * hs);
 int CheckGameDirectory(TCascStorage * hs, TCHAR * szDirectory);
-int ParseRootFileLine(const char * szLinePtr, const char * szLineEnd, PQUERY_KEY pEncodingKey, char * szFileName, size_t nMaxChars);
+
+int GetRootVariableIndex(const char * szLinePtr, const char * szLineEnd, const char * szVariableName, int * PtrIndex);
+int ParseRootFileLine(const char * szLinePtr, const char * szLineEnd, int nFileNameIndex, PQUERY_KEY pEncodingKey, char * szFileName, size_t nMaxChars);
 
 //-----------------------------------------------------------------------------
 // Internal file functions
