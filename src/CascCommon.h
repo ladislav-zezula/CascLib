@@ -58,7 +58,7 @@
 #define BLTE_HEADER_DELTA       0x1E            // Distance of BLTE header from begin of the header area
 #define MAX_HEADER_AREA_SIZE    0x2A            // Length of the file header area
 
-// File header area in the data.xxx:
+// File header area in the data.nnn:
 //  BYTE  HeaderHash[MD5_HASH_SIZE];            // MD5 of the frame array
 //  DWORD dwFileSize;                           // Size of the file (see comment before CascGetFileSize for details)
 //  BYTE  SomeSize[4];                          // Some size (big endian)
