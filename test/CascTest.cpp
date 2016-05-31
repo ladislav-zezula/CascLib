@@ -574,8 +574,8 @@ int main(int argc, char * argv[])
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_OpenFile(MAKE_PATH("2015 - Overwatch/24919/casc/data"), "ROOT");
 
-    if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_OpenFile(_T("c:\\Hry\\Overwatch\\data"), "ROOT");
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_OpenFile(_T("c:\\Hry\\Overwatch\\data"), "ROOT");
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/29049"), NULL);
@@ -623,6 +623,9 @@ int main(int argc, char * argv[])
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), _T("Work"), szListFile);
+
+    if(nError == ERROR_SUCCESS)
+        nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2016 - WoW/21742/Data"), _T("Work"), szListFile);
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2015 - Diablo III/Data"), _T("Work"), NULL);
