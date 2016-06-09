@@ -205,6 +205,7 @@ typedef struct _TCascStorage
     QUERY_KEY ArchivesGroup;                        // Key array of the "archive-group"
     QUERY_KEY ArchivesKey;                          // Key array of the "archives"
     QUERY_KEY PatchArchivesKey;                     // Key array of the "patch-archives"
+    QUERY_KEY PatchArchivesGroup;                   // Key array of the "patch-archive-group"
     QUERY_KEY RootKey;
     QUERY_KEY PatchKey;
     QUERY_KEY DownloadKey;

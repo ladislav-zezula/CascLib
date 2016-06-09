@@ -991,6 +991,7 @@ static TCascStorage * FreeCascStorage(TCascStorage * hs)
         FreeCascBlob(&hs->ArchivesGroup);
         FreeCascBlob(&hs->ArchivesKey);
         FreeCascBlob(&hs->PatchArchivesKey);
+        FreeCascBlob(&hs->PatchArchivesGroup);
         FreeCascBlob(&hs->RootKey);
         FreeCascBlob(&hs->PatchKey);
         FreeCascBlob(&hs->DownloadKey);
