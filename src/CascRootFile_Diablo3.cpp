@@ -887,7 +887,7 @@ static int ParseCoreTOC(
         // Find out the entry with the maximum index
         for(DWORD n = 0; n < pTocHeader->EntryCounts[i]; n++)
         {
-            if(pTocEntry->FileIndex > dwFileIndexes)
+            if(pTocEntry->FileIndex >= dwFileIndexes)
                 dwFileIndexes = pTocEntry->FileIndex + 1;
             pTocEntry++;
         }
