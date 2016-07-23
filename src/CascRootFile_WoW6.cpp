@@ -265,7 +265,7 @@ static int ParseWowRootFileInternal(
 }
 
 /*
-    // Code from WoW.exe
+    // dwRegion returned from sub_661316 (7.0.3.22210 x86 win), also referred by lua GetCurrentRegion
     if(dwRegion == CASC_REGION_EU)
     {
         // Is this english version of WoW?
