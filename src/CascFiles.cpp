@@ -523,7 +523,7 @@ static int ParseFile_BuildInfo(TCascStorage * hs, void * pvListFile)
     QUERY_KEY CdnHost = {NULL, 0};
     QUERY_KEY CdnPath = {NULL, 0};
     char szOneLine1[0x200];
-    char szOneLine2[0x400];
+    char szOneLine2[0x800];
     size_t nLength1;
     size_t nLength2;
     int nError = ERROR_BAD_FORMAT;
