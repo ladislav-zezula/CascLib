@@ -249,7 +249,7 @@ static int ParseWowRootFileInternal(
         if((RootBlock.pLocaleBlockHdr->Flags & 0x80) && bOverrideArchive == 0)
             continue;
 
-        // WoW.exe (build 19116): Entries with (flags >> 0x1F) not equal to arg_8 are skipped
+        // WoW.exe (build 19116): Entries with (flags >> 0x1F) not equal to bAudioLocale are skipped
         if((RootBlock.pLocaleBlockHdr->Flags >> 0x1F) != bAudioLocale)
             continue;
 

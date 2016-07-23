@@ -625,7 +625,7 @@ int main(int argc, char * argv[])
 //      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), _T("Work"), szListFile);
 
     if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2016 - WoW/21742/Data"), _T("Work"), szListFile);
+        nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2016 - WoW/22267/Data"), _T("Work"), szListFile);
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2015 - Diablo III/Data"), _T("Work"), NULL);
