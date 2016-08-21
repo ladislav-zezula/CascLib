@@ -916,7 +916,7 @@ int CheckGameDirectory(TCascStorage * hs, TCHAR * szDirectory)
         if(szBuildFile != NULL)
         {
             // Attempt to open the file
-            pStream = FileStream_OpenFile(szBuildFile, 0);
+            pStream = FileStream_OpenFile(szBuildFile, STREAM_FLAG_READ_ONLY);
             if(pStream != NULL)
             {
                 // Free the stream

@@ -237,7 +237,7 @@ static int CompareFile(TLogHelper & LogHelper, HANDLE hStorage, CASC_FIND_DATA &
     // Open the local file
     if(nError == ERROR_SUCCESS)
     {
-        pStream = FileStream_OpenFile(szFileName, 0);
+        pStream = FileStream_OpenFile(szFileName, STREAM_FLAG_READ_ONLY);
         if(pStream == NULL)
             nError = LogHelper.PrintError("Local file not found: %s", cf.szFileName);
     }
@@ -580,6 +580,9 @@ int main(int argc, char * argv[])
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/29049"), NULL);
 
+    if(nError == ERROR_SUCCESS)                                                                  
+        nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm\\30027\\BNTData"), NULL);
+
 //  if(nError == ERROR_SUCCESS)                                                                  
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm\\30414\\HeroesData\\config\\09\\32\\"), NULL);
 
@@ -624,8 +627,8 @@ int main(int argc, char * argv[])
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), _T("Work"), szListFile);
 
-    if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2016 - WoW/22267/Data"), _T("Work"), szListFile);
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2016 - WoW/22267/Data"), _T("Work"), szListFile);
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2015 - Diablo III/Data"), _T("Work"), NULL);
