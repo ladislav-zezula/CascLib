@@ -574,14 +574,14 @@ int main(int argc, char * argv[])
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_OpenFile(MAKE_PATH("2015 - Overwatch/24919/casc/data"), "ROOT");
 
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_OpenFile(_T("c:\\Hry\\Overwatch\\data"), "ROOT");
+    if(nError == ERROR_SUCCESS)
+        nError = TestOpenStorage_OpenFile(MAKE_PATH("2016 - Starcraft II/45364/SC2Data\\/\\"), "SC2Data/mods/novastoryassets/base.sc2maps/maps/campaign/nova/nova01.sc2map");
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/29049"), NULL);
 
-    if(nError == ERROR_SUCCESS)                                                                  
-        nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm\\30027\\BNTData"), NULL);
+//  if(nError == ERROR_SUCCESS)                                                                  
+//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm\\30027\\BNTData"), NULL);
 
 //  if(nError == ERROR_SUCCESS)                                                                  
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm\\30414\\HeroesData\\config\\09\\32\\"), NULL);
