@@ -575,7 +575,7 @@ int main(int argc, char * argv[])
 //      nError = TestOpenStorage_OpenFile(MAKE_PATH("2015 - Overwatch/24919/casc/data"), "ROOT");
 
     if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_OpenFile(MAKE_PATH("2016 - Starcraft II/45364/SC2Data\\/\\"), "SC2Data/mods/novastoryassets/base.sc2maps/maps/campaign/nova/nova01.sc2map");
+        nError = TestOpenStorage_OpenFile(MAKE_PATH("2016 - Starcraft II/45364/SC2Data\\/\\"), "mods/novastoryassets/base.sc2maps/maps/campaign/nova/nova01.sc2map");
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/29049"), NULL);
