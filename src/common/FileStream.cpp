@@ -193,7 +193,11 @@ static bool BaseFile_Read(
         // we have to update the file position
         if(ByteOffset != pStream->Base.File.FilePos)
         {
-            lseek64((intptr_t)pStream->Base.File.hFile, (off64_t)(ByteOffset), SEEK_SET);
+            if(lseek64((intptr_t)pStream->Base.File.hFile, (off64_t)(ByteOffset), SEEK_SET) == (off64_t)-1)
+            {
+                SetLastError(errno);
+                return false;
+            }
             pStream->Base.File.FilePos = ByteOffset;
         }
 
@@ -264,7 +268,11 @@ static bool BaseFile_Write(TFileStream * pStream, ULONGLONG * pByteOffset, const
         // we have to update the file position
         if(ByteOffset != pStream->Base.File.FilePos)
         {
-            lseek64((intptr_t)pStream->Base.File.hFile, (off64_t)(ByteOffset), SEEK_SET);
+            if(lseek64((intptr_t)pStream->Base.File.hFile, (off64_t)(ByteOffset), SEEK_SET) == (off64_t)-1)
+            {
+                SetLastError(errno);
+                return false;
+            }
             pStream->Base.File.FilePos = ByteOffset;
         }
 
