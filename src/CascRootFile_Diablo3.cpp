@@ -992,6 +992,12 @@ static LPBYTE D3Handler_GetKey(TRootHandler_Diablo3 * pRootHandler, const char *
     return (pFileEntry != NULL) ? pFileEntry->EncodingKey.Value : NULL;
 }
 
+static DWORD D3Handler_GetFileId(TRootHandler_Diablo3 * /* pRootHandler */, const char * /* szFileName */)
+{
+  // Not implemented for D3
+  return 0;
+}
+
 static void D3Handler_Close(TRootHandler_Diablo3 * pRootHandler)
 {
     if(pRootHandler != NULL)
@@ -1098,6 +1104,7 @@ int RootHandler_CreateDiablo3(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRoot
     pRootHandler->EndSearch   = (ROOT_ENDSEARCH)D3Handler_EndSearch;
     pRootHandler->GetKey      = (ROOT_GETKEY)D3Handler_GetKey;
     pRootHandler->Close       = (ROOT_CLOSE)D3Handler_Close;
+    pRootHandler->GetFileId   = (ROOT_GETFILEID)D3Handler_GetFileId;
 
     // Fill-in the flags
     pRootHandler->dwRootFlags |= ROOT_FLAG_HAS_NAMES;

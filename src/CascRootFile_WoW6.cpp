@@ -444,6 +444,16 @@ static void WowHandler_EndSearch(TRootHandler_WoW6 * /* pRootHandler */, TCascSe
     pSearch->pRootContext = NULL;
 }
 
+static DWORD WowHandler_GetFileId(TRootHandler_WoW6 * pRootHandler, const char * szFileName)
+{
+  PCASC_FILE_ENTRY pFileEntry;
+
+  // Find by the file name hash
+  pFileEntry = FindRootEntry(pRootHandler->pRootMap, szFileName, NULL);
+
+  return (pFileEntry != NULL) ? pFileEntry->FileDataId : NULL;
+}
+
 static void WowHandler_Close(TRootHandler_WoW6 * pRootHandler)
 {
     if(pRootHandler != NULL)
@@ -545,6 +555,7 @@ int RootHandler_CreateWoW6(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFil
     pRootHandler->EndSearch   = (ROOT_ENDSEARCH)WowHandler_EndSearch;
     pRootHandler->GetKey      = (ROOT_GETKEY)WowHandler_GetKey;
     pRootHandler->Close       = (ROOT_CLOSE)WowHandler_Close;
+    pRootHandler->GetFileId   = (ROOT_GETFILEID)WowHandler_GetFileId;
 
 #ifdef _DEBUG
     pRootHandler->Dump = TRootHandlerWoW6_Dump;    // Support for ROOT file dump

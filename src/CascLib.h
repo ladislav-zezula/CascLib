@@ -36,7 +36,7 @@ extern "C" {
 //  Y - A for ANSI version, U for Unicode version
 //  Z - S for static-linked CRT library, D for multithreaded DLL CRT library
 //
-
+/*
 #if defined(_MSC_VER) && !defined(__CASCLIB_SELF__)
 
   #ifdef _DEBUG                                 // DEBUG VERSIONS
@@ -70,7 +70,7 @@ extern "C" {
   #endif
 
 #endif
-
+*/
 //-----------------------------------------------------------------------------
 // Defines
 
@@ -196,6 +196,7 @@ bool  WINAPI CascOpenFileByIndexKey(HANDLE hStorage, PQUERY_KEY pIndexKey, DWORD
 bool  WINAPI CascOpenFileByEncodingKey(HANDLE hStorage, PQUERY_KEY pEncodingKey, DWORD dwFlags, HANDLE * phFile);
 bool  WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocale, DWORD dwFlags, HANDLE * phFile);
 DWORD WINAPI CascGetFileSize(HANDLE hFile, PDWORD pdwFileSizeHigh);
+DWORD WINAPI CascGetFileId(HANDLE hStorage, const char * szFileName);
 DWORD WINAPI CascSetFilePointer(HANDLE hFile, LONG lFilePos, LONG * plFilePosHigh, DWORD dwMoveMethod);
 bool  WINAPI CascReadFile(HANDLE hFile, void * lpBuffer, DWORD dwToRead, PDWORD pdwRead);
 bool  WINAPI CascCloseFile(HANDLE hFile);

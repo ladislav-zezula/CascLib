@@ -109,6 +109,12 @@ static LPBYTE OvrHandler_GetKey(TRootHandler_Ovr * pRootHandler, const char * sz
     return (LPBYTE)Map_FindObject(pRootHandler->pRootMap, &FileNameHash, NULL);
 }
 
+static DWORD OvrHandler_GetFileId(TRootHandler_Ovr * /* pRootHandler */, const char * /* szFileName */)
+{
+  // Not implemented for Overwatch
+  return 0;
+}
+
 static void OvrHandler_Close(TRootHandler_Ovr * pRootHandler)
 {
     if(pRootHandler != NULL)
@@ -155,6 +161,7 @@ int RootHandler_CreateOverwatch(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRo
     pRootHandler->EndSearch   = (ROOT_ENDSEARCH)OvrHandler_EndSearch;
     pRootHandler->GetKey      = (ROOT_GETKEY)OvrHandler_GetKey;
     pRootHandler->Close       = (ROOT_CLOSE)OvrHandler_Close;
+    pRootHandler->GetFileId   = (ROOT_GETFILEID)OvrHandler_GetFileId;
 
     // Fill-in the flags
     pRootHandler->dwRootFlags |= ROOT_FLAG_HAS_NAMES;
