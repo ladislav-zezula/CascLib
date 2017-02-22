@@ -79,10 +79,10 @@ void RootHandler_Close(TRootHandler * pRootHandler)
 
 DWORD RootHandler_GetFileId(TRootHandler * pRootHandler, const char * szFileName)
 {
-  // Check if the root structure is valid at all
-  if (pRootHandler == NULL)
-    return NULL;
+    // Check if the root structure is valid at all
+    if(pRootHandler == NULL)
+        return NULL;
 
-  return pRootHandler->GetFileId(pRootHandler, szFileName);
+    return pRootHandler->GetFileId(pRootHandler, szFileName);
 }
 

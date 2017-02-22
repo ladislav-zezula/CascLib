@@ -499,7 +499,7 @@ static int TestOpenStorage_GetFileDataId(const TCHAR * szStorage, const char * s
 
     // Open the storage directory
     LogHelper.PrintProgress("Opening storage ...");
-    if (!CascOpenStorage(szStorage, 0, &hStorage))
+    if(!CascOpenStorage(szStorage, 0, &hStorage))
     {
         assert(GetLastError() != ERROR_SUCCESS);
         nError = GetLastError();
@@ -509,15 +509,15 @@ static int TestOpenStorage_GetFileDataId(const TCHAR * szStorage, const char * s
         nError = ERROR_SUCCESS;
     }
 
-    if (nError == ERROR_SUCCESS)
+    if(nError == ERROR_SUCCESS)
     {
-        assert(CascGetFileId(hStorage, szFileName) == expectedId);
-        nError = GetLastError();
+        if(CascGetFileId(hStorage, szFileName) != expectedId);
+            nError = ERROR_BAD_FORMAT;
     }
-    // Close storage and return
-    if (hStorage != NULL)
-        CascCloseStorage(hStorage);
 
+    // Close storage and return
+    if(hStorage != NULL)
+        CascCloseStorage(hStorage);
     return nError;
 }
 
@@ -667,7 +667,7 @@ int main(int argc, char * argv[])
 //      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2015 - Overwatch/24919/casc/data"), MAKE_PATH("Work"), NULL);
 
     if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_GetFileDataId(MAKE_PATH("2016 - WoW/22267/Data"), "character/bloodelf/female/bloodelffemale.m2", 116921);
+        nError = TestOpenStorage_GetFileDataId(MAKE_PATH("2016 - WoW/23420/Data"), "character/bloodelf/female/bloodelffemale.m2", 116921);
 
 #ifdef _MSC_VER                                                          
     _CrtDumpMemoryLeaks();
