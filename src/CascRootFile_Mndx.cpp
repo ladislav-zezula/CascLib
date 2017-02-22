@@ -3045,7 +3045,7 @@ static int MndxHandler_Insert(TRootHandler_MNDX *, const char *, LPBYTE)
     return ERROR_NOT_SUPPORTED;
 }
 
-static LPBYTE MndxHandler_Search(TRootHandler_MNDX * pRootHandler, TCascSearch * pSearch, PDWORD PtrFileSize, PDWORD /* PtrLocaleFlags */)
+static LPBYTE MndxHandler_Search(TRootHandler_MNDX * pRootHandler, TCascSearch * pSearch, PDWORD PtrFileSize, PDWORD /* PtrLocaleFlags */, PDWORD /* PtrFileDataId */)
 {
     TMndxFindResult * pStruct1C = NULL;
     PCASC_MNDX_INFO pMndxInfo = &pRootHandler->MndxInfo;

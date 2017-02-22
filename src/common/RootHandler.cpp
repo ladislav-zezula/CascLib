@@ -23,13 +23,13 @@ int RootHandler_Insert(TRootHandler * pRootHandler, const char * szFileName, LPB
     return pRootHandler->Insert(pRootHandler, szFileName, pbEncodingKey);
 }
 
-LPBYTE RootHandler_Search(TRootHandler * pRootHandler, struct _TCascSearch * pSearch, PDWORD PtrFileSize, PDWORD PtrLocaleFlags)
+LPBYTE RootHandler_Search(TRootHandler * pRootHandler, struct _TCascSearch * pSearch, PDWORD PtrFileSize, PDWORD PtrLocaleFlags, PDWORD PtrFileDataId)
 {
     // Check if the root structure is valid at all
     if(pRootHandler == NULL)
         return NULL;
 
-    return pRootHandler->Search(pRootHandler, pSearch, PtrFileSize, PtrLocaleFlags);
+    return pRootHandler->Search(pRootHandler, pSearch, PtrFileSize, PtrLocaleFlags, PtrFileDataId);
 }
 
 void RootHandler_EndSearch(TRootHandler * pRootHandler, struct _TCascSearch * pSearch)

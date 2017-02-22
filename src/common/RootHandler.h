@@ -37,7 +37,8 @@ typedef LPBYTE (*ROOT_SEARCH)(
     struct TRootHandler * pRootHandler,             // Pointer to an initialized root handler
     struct _TCascSearch * pSearch,                  // Pointer to the initialized search structure
     PDWORD PtrFileSize,                             // Pointer to receive file size (optional)
-    PDWORD PtrLocaleFlags                           // Pointer to receive locale flags (optional)
+    PDWORD PtrLocaleFlags,                          // Pointer to receive locale flags (optional)
+    PDWORD PtrFileDataId                            // Pointer to FileDataID (optional)
     );
 
 typedef void (*ROOT_ENDSEARCH)(
@@ -85,7 +86,7 @@ struct TRootHandler
 // Public functions
 
 int    RootHandler_Insert(TRootHandler * pRootHandler, const char * szFileName, LPBYTE pbEncodingKey);
-LPBYTE RootHandler_Search(TRootHandler * pRootHandler, struct _TCascSearch * pSearch, PDWORD PtrFileSize, PDWORD PtrLocaleFlags);
+LPBYTE RootHandler_Search(TRootHandler * pRootHandler, struct _TCascSearch * pSearch, PDWORD PtrFileSize, PDWORD PtrLocaleFlags, PDWORD PtrFileDataId);
 void   RootHandler_EndSearch(TRootHandler * pRootHandler, struct _TCascSearch * pSearch);
 LPBYTE RootHandler_GetKey(TRootHandler * pRootHandler, const char * szFileName);
 void   RootHandler_Dump(struct _TCascStorage * hs, LPBYTE pbRootHandler, DWORD cbRootHandler, const TCHAR * szNameFormat, const TCHAR * szListFile, int nDumpLevel);

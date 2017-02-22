@@ -491,34 +491,34 @@ static int TestOpenStorage_ExtractFiles(const TCHAR * szStorage, const TCHAR * s
     return nError;
 }
 
-static int TestOpenStorage_GetFileDataId(const TCHAR * szStorage, const char * szFileName, int expectedId)
+static int TestOpenStorage_GetFileDataId(const TCHAR * szStorage, const char * szFileName, DWORD expectedId)
 {
-  TLogHelper LogHelper("GetFileDataId");
-  HANDLE hStorage;
-  int nError = ERROR_FILE_NOT_FOUND;
+    TLogHelper LogHelper("GetFileDataId");
+    HANDLE hStorage;
+    int nError = ERROR_FILE_NOT_FOUND;
 
-  // Open the storage directory
-  LogHelper.PrintProgress("Opening storage ...");
-  if (!CascOpenStorage(szStorage, 0, &hStorage))
-  {
-    assert(GetLastError() != ERROR_SUCCESS);
-    nError = GetLastError();
-  }
-  else
-  {
-    nError = ERROR_SUCCESS;
-  }
+    // Open the storage directory
+    LogHelper.PrintProgress("Opening storage ...");
+    if (!CascOpenStorage(szStorage, 0, &hStorage))
+    {
+        assert(GetLastError() != ERROR_SUCCESS);
+        nError = GetLastError();
+    }
+    else
+    {
+        nError = ERROR_SUCCESS;
+    }
 
-  if (nError == ERROR_SUCCESS)
-  {
-    assert(CascGetFileId(hStorage, szFileName) == expectedId);
-    nError = GetLastError();
-  }
-  // Close storage and return
-  if (hStorage != NULL)
-    CascCloseStorage(hStorage);
+    if (nError == ERROR_SUCCESS)
+    {
+        assert(CascGetFileId(hStorage, szFileName) == expectedId);
+        nError = GetLastError();
+    }
+    // Close storage and return
+    if (hStorage != NULL)
+        CascCloseStorage(hStorage);
 
-  return nError;
+    return nError;
 }
 
 static int Hack()
@@ -663,11 +663,11 @@ int main(int argc, char * argv[])
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2015 - Diablo III/Data"), _T("Work"), NULL);
 
-//   if(nError == ERROR_SUCCESS)
+//  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2015 - Overwatch/24919/casc/data"), MAKE_PATH("Work"), NULL);
 
-    if (nError == ERROR_SUCCESS)
-      nError = TestOpenStorage_GetFileDataId(MAKE_PATH("2016 - WoW/22267/Data"), _T("character/bloodelf/female/bloodelffemale.m2"), 116921);
+    if(nError == ERROR_SUCCESS)
+        nError = TestOpenStorage_GetFileDataId(MAKE_PATH("2016 - WoW/22267/Data"), "character/bloodelf/female/bloodelffemale.m2", 116921);
 
 #ifdef _MSC_VER                                                          
     _CrtDumpMemoryLeaks();

@@ -77,7 +77,7 @@ static int OvrHandler_Insert(
     return InsertFileEntry(pRootHandler, szFileName, pbEncodingKey);
 }
 
-static LPBYTE OvrHandler_Search(TRootHandler_Ovr * pRootHandler, TCascSearch * pSearch, PDWORD /* PtrFileSize */, PDWORD /* PtrLocaleFlags */)
+static LPBYTE OvrHandler_Search(TRootHandler_Ovr * pRootHandler, TCascSearch * pSearch, PDWORD /* PtrFileSize */, PDWORD /* PtrLocaleFlags */, PDWORD /* PtrFileDataId */)
 {
     PCASC_FILE_ENTRY pFileEntry;
 
