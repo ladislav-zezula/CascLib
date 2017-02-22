@@ -270,6 +270,29 @@ bool WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocal
     return (nError == ERROR_SUCCESS);
 }
 
+DWORD WINAPI CascGetFileId(HANDLE hStorage, const char * szFileName)
+{
+  TCascStorage * hs;
+  int nError = ERROR_SUCCESS;
+
+  // Validate the storage handle
+  hs = IsValidStorageHandle(hStorage);
+  if (hs == NULL)
+  {
+    SetLastError(ERROR_INVALID_HANDLE);
+    return false;
+  }
+
+  // Validate the other parameters
+  if (szFileName == NULL || szFileName[0] == 0)
+  {
+    SetLastError(ERROR_INVALID_PARAMETER);
+    return false;
+  }
+
+  return RootHandler_GetFileId(hs->pRootHandler, szFileName);
+}
+
 bool WINAPI CascCloseFile(HANDLE hFile)
 {
     TCascFile * hf;
