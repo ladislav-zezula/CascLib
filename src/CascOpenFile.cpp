@@ -102,8 +102,7 @@ static bool OpenFileByIndexKey(TCascStorage * hs, PQUERY_KEY pIndexKey, DWORD dw
     }
 #endif
 
-    if(nError != ERROR_SUCCESS)
-        SetLastError(nError);
+    SetLastError(nError);
     return (nError == ERROR_SUCCESS);
 }
 
@@ -265,8 +264,7 @@ bool WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocal
 //  }
 #endif
 
-    if(nError != ERROR_SUCCESS)
-        SetLastError(nError);
+    SetLastError(nError);
     return (nError == ERROR_SUCCESS);
 }
 
@@ -313,6 +311,7 @@ bool WINAPI CascCloseFile(HANDLE hFile)
         // Free the structure itself
         hf->szClassName = NULL;
         CASC_FREE(hf);
+        SetLastError(ERROR_SUCCESS);
         return true;
     }
 
