@@ -12,6 +12,12 @@
 #include "../CascLib.h"
 #include "../CascCommon.h"
 
+#ifndef PLATFORM_WINDOWS
+#include <sys/types.h>
+#include <dirent.h>
+#endif
+
+
 //-----------------------------------------------------------------------------
 // Public functions
 

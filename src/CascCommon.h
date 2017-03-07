@@ -37,6 +37,12 @@
 // For HashStringJenkins
 #include "jenkins/lookup.h"
 
+#ifdef __GNUC__
+#include <stddef.h>
+#undef FIELD_OFFSET
+#define FIELD_OFFSET(t,f) offsetof(t,f)
+#endif
+
 //-----------------------------------------------------------------------------
 // CascLib private defines
 

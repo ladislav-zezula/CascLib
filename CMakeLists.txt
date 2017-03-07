@@ -19,6 +19,7 @@ set(SRC_FILES
     src/common/DumpContext.cpp
     src/common/DynamicArray.cpp
     src/common/FileStream.cpp
+    src/common/HashToPtr.cpp
     src/common/ListFile.cpp
     src/common/Map.cpp
     src/common/RootHandler.cpp
