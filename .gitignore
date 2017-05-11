@@ -32,6 +32,8 @@
 *.sdf
 *.suo
 *.vcxproj.user
+*.db
+*.opendb
 
 # KDevelop related files
 *.kdev4
@@ -40,3 +42,4 @@
 /casc.dir/
 /Win32/
 /Debug/
+bin/

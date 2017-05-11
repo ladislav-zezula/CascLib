@@ -460,7 +460,7 @@ static int TestOpenStorage_ExtractFiles(const TCHAR * szStorage, const TCHAR * s
     if(nError == ERROR_SUCCESS)
     {
         LogHelper.PrintProgress("Searching storage ...");
-        hFind = CascFindFirstFile(hStorage, "*", &FindData, szListFile);
+        hFind = CascFindFirstFile(hStorage, "*.dds", &FindData, szListFile);
         if(hFind != INVALID_HANDLE_VALUE)
         {
             // Search the storage
@@ -483,6 +483,36 @@ static int TestOpenStorage_ExtractFiles(const TCHAR * szStorage, const TCHAR * s
             CascFindClose(hFind);
             LogHelper.PrintProgress("");
         }
+    }
+
+    // Close storage and return
+    if(hStorage != NULL)
+        CascCloseStorage(hStorage);
+    return nError;
+}
+
+static int TestOpenStorage_GetFileDataId(const TCHAR * szStorage, const char * szFileName, DWORD expectedId)
+{
+    TLogHelper LogHelper("GetFileDataId");
+    HANDLE hStorage;
+    int nError = ERROR_FILE_NOT_FOUND;
+
+    // Open the storage directory
+    LogHelper.PrintProgress("Opening storage ...");
+    if(!CascOpenStorage(szStorage, 0, &hStorage))
+    {
+        assert(GetLastError() != ERROR_SUCCESS);
+        nError = GetLastError();
+    }
+    else
+    {
+        nError = ERROR_SUCCESS;
+    }
+
+    if(nError == ERROR_SUCCESS)
+    {
+        if(CascGetFileId(hStorage, szFileName) != expectedId)
+            nError = ERROR_BAD_FORMAT;
     }
 
     // Close storage and return
@@ -574,8 +604,8 @@ int main(int argc, char * argv[])
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_OpenFile(MAKE_PATH("2015 - Overwatch/24919/casc/data"), "ROOT");
 
-    if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_OpenFile(MAKE_PATH("2016 - Starcraft II/45364/SC2Data\\/\\"), "mods/novastoryassets/base.sc2maps/maps/campaign/nova/nova01.sc2map");
+//    if(nError == ERROR_SUCCESS)
+//        nError = TestOpenStorage_OpenFile(MAKE_PATH("2016 - Starcraft II/45364/SC2Data\\/\\"), "mods/novastoryassets/base.sc2maps/maps/campaign/nova/nova01.sc2map");
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/29049"), NULL);
@@ -615,8 +645,8 @@ int main(int argc, char * argv[])
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Overwatch/24919/casc/data"), NULL);
 
     // Test extracting the complete storage
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2014 - Heroes of the Storm/30414/HeroesData"), _T("Work"), NULL);
+    if(nError == ERROR_SUCCESS)
+        nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2014 - Heroes of the Storm/30414/HeroesData"), _T("Work"), NULL);
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2014 - WoW/18865/Data"), _T("Work"), szListFile);
@@ -633,8 +663,11 @@ int main(int argc, char * argv[])
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2015 - Diablo III/Data"), _T("Work"), NULL);
 
-//   if(nError == ERROR_SUCCESS)
+//  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2015 - Overwatch/24919/casc/data"), MAKE_PATH("Work"), NULL);
+
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_GetFileDataId(MAKE_PATH("2016 - WoW/23420/Data"), "character/bloodelf/female/bloodelffemale.m2", 116921);
 
 #ifdef _MSC_VER                                                          
     _CrtDumpMemoryLeaks();
