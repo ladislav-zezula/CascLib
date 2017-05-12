@@ -290,6 +290,7 @@ HANDLE WINAPI CascFindFirstFile(
         pSearch = (TCascSearch *)INVALID_HANDLE_VALUE;
     }
 
+    SetLastError(nError);
     return (HANDLE)pSearch;
 }
 
@@ -307,7 +308,14 @@ bool WINAPI CascFindNextFile(
     }
 
     // Perform search
-    return DoStorageSearch(pSearch, pFindData);
+    if(!DoStorageSearch(pSearch, pFindData))
+    {
+        SetLastError(ERROR_NO_MORE_FILES);
+        return false;
+    }
+
+    SetLastError(ERROR_SUCCESS);
+    return true;
 }
 
 bool WINAPI CascFindClose(HANDLE hFind)
@@ -322,5 +330,6 @@ bool WINAPI CascFindClose(HANDLE hFind)
     }
 
     FreeSearchHandle(pSearch);
+    SetLastError(ERROR_SUCCESS);
     return true;
 }

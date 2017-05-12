@@ -386,6 +386,8 @@ DWORD WINAPI CascGetFileSize(HANDLE hFile, PDWORD pdwFileSizeHigh)
         return CASC_INVALID_SIZE;
     }
 
+    SetLastError(ERROR_SUCCESS);
+
     // Give the file size to the caller
     if(pdwFileSizeHigh != NULL)
         *pdwFileSizeHigh = 0;
@@ -449,6 +451,8 @@ DWORD WINAPI CascSetFilePointer(HANDLE hFile, LONG lFilePos, LONG * plFilePosHig
 
     // Change the file position
     hf->FilePointer = (DWORD)FilePosition;
+
+    SetLastError(ERROR_SUCCESS);
 
     // Return the new file position
     if(plFilePosHigh != NULL)
@@ -613,8 +617,7 @@ bool WINAPI CascReadFile(HANDLE hFile, void * pvBuffer, DWORD dwBytesToRead, PDW
         hf->FilePointer = dwFilePointer;
     }
 
-    if(nError != ERROR_SUCCESS)
-        SetLastError(nError);
+    SetLastError(nError);
     return (nError == ERROR_SUCCESS);
 }
 

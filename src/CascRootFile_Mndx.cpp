@@ -3101,8 +3101,9 @@ static void MndxHandler_EndSearch(TRootHandler_MNDX * /* pRootHandler */, TCascS
 
 static DWORD MndxHandler_GetFileId(TRootHandler_MNDX * /* pRootHandler */, const char * /* szFileName */)
 {
-  // Not implemented for HOTS
-  return 0;
+    // Not implemented for HOTS
+    SetLastError(ERROR_SUCCESS);
+    return 0;
 }
 
 static LPBYTE MndxHandler_GetKey(TRootHandler_MNDX * pRootHandler, const char * szFileName)

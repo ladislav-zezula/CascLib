@@ -1079,10 +1079,10 @@ bool WINAPI CascOpenStorage(const TCHAR * szDataPath, DWORD dwLocaleMask, HANDLE
     if(nError != ERROR_SUCCESS)
     {
         hs = FreeCascStorage(hs);
-        SetLastError(nError);
     }
 
     *phStorage = (HANDLE)hs;
+    SetLastError(nError);
     return (nError == ERROR_SUCCESS);
 }
 
@@ -1141,6 +1141,7 @@ bool WINAPI CascGetStorageInfo(
 
     // Give the number of files
     *(PDWORD)pvStorageInfo = dwInfoValue;
+    SetLastError(ERROR_SUCCESS);
     return true;
 }
 
@@ -1160,11 +1161,13 @@ bool WINAPI CascCloseStorage(HANDLE hStorage)
     if(hs->dwRefCount == 1)
     {
         FreeCascStorage(hs);
+        SetLastError(ERROR_SUCCESS);
         return true;
     }
 
     // Just decrement number of references
     hs->dwRefCount--;
+    SetLastError(ERROR_SUCCESS);
     return true;
 }
 
