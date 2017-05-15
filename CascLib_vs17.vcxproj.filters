@@ -65,6 +65,12 @@
     <ClInclude Include="src\common\RootHandler.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
+    <ClInclude Include="src\common\Directory.h">
+      <Filter>Source Files\common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\common\DynamicArray.h">
+      <Filter>Source Files\common</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\CascFiles.cpp">
@@ -159,6 +165,15 @@
     </ClCompile>
     <ClCompile Include="src\zlib\zutil.c">
       <Filter>Source Files\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="src\CascDecrypt.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\CascRootFile_Ovr.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\common\DynamicArray.cpp">
+      <Filter>Source Files\common</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
