@@ -34,6 +34,7 @@
 *.vcxproj.user
 *.db
 *.opendb
+.vs/
 
 # KDevelop related files
 *.kdev4
