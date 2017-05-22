@@ -266,7 +266,10 @@ bool WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocal
 #endif
 
     if(nError != ERROR_SUCCESS)
+    {
+        if(IsValidFileHandle(phFile)) CascCloseFile(phFile);
         SetLastError(nError);
+    }
     return (nError == ERROR_SUCCESS);
 }
 
