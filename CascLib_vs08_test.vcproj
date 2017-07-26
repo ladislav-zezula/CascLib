@@ -474,35 +474,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\src\CascRootFile_Mndx_x86.asm"
+				RelativePath=".\src\CascRootFile_Ovr.cpp"
 				>
-				<FileConfiguration
-					Name="Debug|x64"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="MASM"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="MASM"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release|x64"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="MASM"
-					/>
-				</FileConfiguration>
 			</File>
 			<File
-				RelativePath=".\src\CascRootFile_Ovr.cpp"
+				RelativePath=".\src\CascRootFile_SC1.cpp"
 				>
 			</File>
 			<File
