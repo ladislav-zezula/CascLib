@@ -98,7 +98,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
-      <OutputFile>$(OutDir)CascLib.dll</OutputFile>
+      <OutputFile>$(OutDir)CascLib_dll.dll</OutputFile>
       <ModuleDefinitionFile>.\src\CascLib.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
@@ -140,7 +140,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
-      <OutputFile>$(OutDir)CascLib.dll</OutputFile>
+      <OutputFile>$(OutDir)CascLib_dll.dll</OutputFile>
       <ModuleDefinitionFile>.\src\CascLib.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
@@ -191,6 +191,7 @@
     <ClCompile Include="src\CascRootFile_Diablo3.cpp" />
     <ClCompile Include="src\CascRootFile_Mndx.cpp" />
     <ClCompile Include="src\CascRootFile_Ovr.cpp" />
+    <ClCompile Include="src\CascRootFile_SC1.cpp" />
     <ClCompile Include="src\CascRootFile_WoW6.cpp" />
     <ClCompile Include="src\common\Common.cpp" />
     <ClCompile Include="src\common\Directory.cpp" />
