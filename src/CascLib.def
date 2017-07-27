@@ -4,7 +4,7 @@
 ; ladik@zezula.net
 ;
 
-LIBRARY CascLib_dll.dll
+LIBRARY CascLib.dll
 
 EXPORTS
 
