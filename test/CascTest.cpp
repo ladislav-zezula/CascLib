@@ -638,6 +638,9 @@ int main(int argc, char * argv[])
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), _T("huhu.txt"));
 
+    if(nError == ERROR_SUCCESS)
+        nError = TestOpenStorage_EnumFiles(MAKE_PATH("2017 - Starcraft1/Data"), NULL);
+
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Diablo III/30013/Data"), NULL);
 
@@ -645,8 +648,8 @@ int main(int argc, char * argv[])
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Overwatch/24919/casc/data"), NULL);
 
     // Test extracting the complete storage
-    if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2014 - Heroes of the Storm/30414/HeroesData"), _T("Work"), NULL);
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2014 - Heroes of the Storm/30414/HeroesData"), _T("Work"), NULL);
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2014 - WoW/18865/Data"), _T("Work"), szListFile);
