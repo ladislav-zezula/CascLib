@@ -136,6 +136,9 @@
     <ClCompile Include="src\common\RootHandler.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>
+    <ClCompile Include="src\CascRootFile_SC1.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\common\Common.h">

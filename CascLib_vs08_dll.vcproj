@@ -385,6 +385,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\src\CascRootFile_SC1.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\src\CascRootFile_WoW6.cpp"
 				>
 			</File>

@@ -23,6 +23,7 @@
     <ProjectGuid>{CB385198-50B1-4CF4-883B-11F042DED6AA}</ProjectGuid>
     <RootNamespace>CascLib_dll</RootNamespace>
     <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
@@ -70,6 +71,7 @@
     <OutDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</OutDir>
     <IntDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</IntDir>
     <LinkIncremental>true</LinkIncremental>
+    <TargetName>CascLib</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</OutDir>
@@ -80,6 +82,7 @@
     <OutDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</OutDir>
     <IntDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</IntDir>
     <LinkIncremental>false</LinkIncremental>
+    <TargetName>CascLib</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</OutDir>
@@ -191,6 +194,7 @@
     <ClCompile Include="src\CascRootFile_Diablo3.cpp" />
     <ClCompile Include="src\CascRootFile_Mndx.cpp" />
     <ClCompile Include="src\CascRootFile_Ovr.cpp" />
+    <ClCompile Include="src\CascRootFile_SC1.cpp" />
     <ClCompile Include="src\CascRootFile_WoW6.cpp" />
     <ClCompile Include="src\common\Common.cpp" />
     <ClCompile Include="src\common\Directory.cpp" />

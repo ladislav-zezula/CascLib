@@ -603,13 +603,16 @@
     <ClInclude Include="src\CascMndx.h" />
     <ClInclude Include="src\CascPort.h" />
     <ClInclude Include="src\common\Common.h" />
+    <ClInclude Include="src\common\Directory.h" />
     <ClInclude Include="src\common\DumpContext.h" />
+    <ClInclude Include="src\common\DynamicArray.h" />
     <ClInclude Include="src\common\ListFile.h" />
     <ClInclude Include="src\common\Map.h" />
     <ClInclude Include="src\common\RootHandler.h" />
     <ClInclude Include="src\FileStream.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\CascDecrypt.cpp" />
     <ClCompile Include="src\CascFiles.cpp" />
     <ClCompile Include="src\CascCommon.cpp" />
     <ClCompile Include="src\CascDecompress.cpp" />
@@ -620,10 +623,13 @@
     <ClCompile Include="src\CascReadFile.cpp" />
     <ClCompile Include="src\CascRootFile_Diablo3.cpp" />
     <ClCompile Include="src\CascRootFile_Mndx.cpp" />
+    <ClCompile Include="src\CascRootFile_Ovr.cpp" />
+    <ClCompile Include="src\CascRootFile_SC1.cpp" />
     <ClCompile Include="src\CascRootFile_WoW6.cpp" />
     <ClCompile Include="src\common\Common.cpp" />
     <ClCompile Include="src\common\Directory.cpp" />
     <ClCompile Include="src\common\DumpContext.cpp" />
+    <ClCompile Include="src\common\DynamicArray.cpp" />
     <ClCompile Include="src\common\FileStream.cpp" />
     <ClCompile Include="src\common\ListFile.cpp" />
     <ClCompile Include="src\common\Map.cpp" />

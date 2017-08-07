@@ -296,6 +296,7 @@
     <ClCompile Include="src\CascRootFile_Diablo3.cpp" />
     <ClCompile Include="src\CascRootFile_Mndx.cpp" />
     <ClCompile Include="src\CascRootFile_Ovr.cpp" />
+    <ClCompile Include="src\CascRootFile_SC1.cpp" />
     <ClCompile Include="src\CascRootFile_WoW6.cpp" />
     <ClCompile Include="src\common\Common.cpp" />
     <ClCompile Include="src\common\Directory.cpp" />

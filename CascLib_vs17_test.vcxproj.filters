@@ -136,11 +136,9 @@
     <ClCompile Include="src\common\RootHandler.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <MASM Include="src\CascRootFile_Mndx_x86.asm">
+    <ClCompile Include="src\CascRootFile_SC1.cpp">
       <Filter>Source Files</Filter>
-    </MASM>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\common\Common.h">

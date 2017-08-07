@@ -179,6 +179,7 @@
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention />
       <TargetMachine>MachineX64</TargetMachine>
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -225,7 +226,6 @@
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention />
       <TargetMachine>MachineX86</TargetMachine>
-      <ImageHasSafeExceptionHandlers>true</ImageHasSafeExceptionHandlers>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -273,6 +273,7 @@
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention />
       <TargetMachine>MachineX64</TargetMachine>
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -295,6 +296,7 @@
     <ClCompile Include="src\CascRootFile_Diablo3.cpp" />
     <ClCompile Include="src\CascRootFile_Mndx.cpp" />
     <ClCompile Include="src\CascRootFile_Ovr.cpp" />
+    <ClCompile Include="src\CascRootFile_SC1.cpp" />
     <ClCompile Include="src\CascRootFile_WoW6.cpp" />
     <ClCompile Include="src\common\Common.cpp" />
     <ClCompile Include="src\common\Directory.cpp" />
@@ -352,13 +354,6 @@
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Level3</WarningLevel>
     </ClCompile>
     <ClCompile Include="test\CascTest.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <MASM Include="src\CascRootFile_Mndx_x86.asm">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </MASM>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\CascCommon.h" />
