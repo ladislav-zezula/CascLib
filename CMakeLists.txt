@@ -32,6 +32,7 @@ set(SRC_FILES
     src/CascOpenFile.cpp
     src/CascOpenStorage.cpp
     src/CascReadFile.cpp
+    src/CascRootFile_SC1.cpp
     src/CascRootFile_Diablo3.cpp
     src/CascRootFile_Mndx.cpp
     src/CascRootFile_Ovr.cpp

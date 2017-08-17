@@ -86,11 +86,15 @@ static LPBYTE SC1Handler_Search(TRootHandler_SC1 * pRootHandler, TCascSearch * p
     {
         // Retrieve the file item
         pFileEntry = (PCASC_FILE_ENTRY)Array_ItemAt(&pRootHandler->FileTable, pSearch->IndexLevel1);
-        strcpy(pSearch->szFileName, (char *)Array_ItemAt(&pRootHandler->FileNames, pFileEntry->dwFileName));        
         
         // Prepare the pointer to the next search
         pSearch->IndexLevel1++;
-        return pFileEntry->EncodingKey.Value;
+		
+        char *filename = (char *)Array_ItemAt(&pRootHandler->FileNames, pFileEntry->dwFileName);
+        if (CheckWildCard(filename, pSearch->szMask)) {
+            strcpy(pSearch->szFileName, filename);
+            return pFileEntry->EncodingKey.Value;
+        }
     }
 
     // No more entries
