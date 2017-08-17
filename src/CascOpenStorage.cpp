@@ -1149,6 +1149,10 @@ bool WINAPI CascGetStorageInfo(
             dwInfoValue = hs->dwBuildNumber;
             break;
 
+        case CascStorageInstalledLocales:
+            dwInfoValue = hs->dwDefaultLocale;
+            break;
+
         default:
             SetLastError(ERROR_INVALID_PARAMETER);
             return false;
