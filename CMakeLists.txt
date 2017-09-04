@@ -105,7 +105,6 @@ if(WITH_TEST)
 endif()
 
 option(WITH_STATIC "Compile static linked library" OFF)
-message("WITH_STATIC " ${WITH_STATIC})
 if(WITH_STATIC)
 	message(STATUS "Compile static linked library")
     add_library(casc_static STATIC ${SRC_FILES} ${SRC_ADDITIONAL_FILES})
