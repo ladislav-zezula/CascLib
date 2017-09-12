@@ -86,11 +86,15 @@ static LPBYTE SC1Handler_Search(TRootHandler_SC1 * pRootHandler, TCascSearch * p
     {
         // Retrieve the file item
         pFileEntry = (PCASC_FILE_ENTRY)Array_ItemAt(&pRootHandler->FileTable, pSearch->IndexLevel1);
-        strcpy(pSearch->szFileName, (char *)Array_ItemAt(&pRootHandler->FileNames, pFileEntry->dwFileName));        
         
         // Prepare the pointer to the next search
         pSearch->IndexLevel1++;
-        return pFileEntry->EncodingKey.Value;
+		
+        char *filename = (char *)Array_ItemAt(&pRootHandler->FileNames, pFileEntry->dwFileName);
+        if (CheckWildCard(filename, pSearch->szMask)) {
+            strcpy(pSearch->szFileName, filename);
+            return pFileEntry->EncodingKey.Value;
+        }
     }
 
     // No more entries
@@ -144,9 +148,7 @@ int RootHandler_CreateSC1(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile
     void * pTextFile;
     size_t nLength;
     char szOneLine[0x200];
-    char szFileName[MAX_PATH+1];
     DWORD dwFileCountMax = (DWORD)hs->pEncodingMap->TableSize;
-    int nFileNameIndex;
     int nError = ERROR_SUCCESS;
 
     // Allocate the root handler object

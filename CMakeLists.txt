@@ -32,6 +32,7 @@ set(SRC_FILES
     src/CascOpenFile.cpp
     src/CascOpenStorage.cpp
     src/CascReadFile.cpp
+    src/CascRootFile_SC1.cpp
     src/CascRootFile_Diablo3.cpp
     src/CascRootFile_Mndx.cpp
     src/CascRootFile_Ovr.cpp
@@ -90,21 +91,34 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL Linux)
     endif()
 endif()
 
-add_library(casc SHARED ${SRC_FILES} ${SRC_ADDITIONAL_FILES})
-target_link_libraries(casc ${LINK_LIBS})
-
-option(WITH_TEST "Compile Test application" OFF)
-if(WITH_TEST)
-    add_executable(casc_test ${TEST_SRC_FILES})
-    target_link_libraries(casc_test casc)
+option(CASC_BUILD_SHARED_LIB "Compile dynamically linked library" ON)
+if(CASC_BUILD_SHARED_LIB)
+	message(STATUS "Build dynamically linked library")
+	add_library(casc SHARED ${SRC_FILES} ${SRC_ADDITIONAL_FILES})
+	target_link_libraries(casc ${LINK_LIBS})
+	install(TARGETS casc RUNTIME DESTINATION bin LIBRARY DESTINATION lib${LIB_SUFFIX} ARCHIVE DESTINATION lib${LIB_SUFFIX} FRAMEWORK DESTINATION /Library/Frameworks)
+	# On Win32, build CascLib.dll
+	if(WIN32)
+		set_target_properties(casc PROPERTIES OUTPUT_NAME CascLib)
+	endif()
 endif()
 
-option(WITH_STATIC "Compile static linked library" OFF)
-if(WITH_STATIC)
+option(CASC_BUILD_TESTS "Build Test application" OFF)
+if(CASC_BUILD_TESTS)
+	set(CASC_BUILD_STATIC_LIB ON CACHE BOOL "Force Static library building to link test app")
+	message(STATUS "Build Test application")
+    add_executable(casc_test ${TEST_SRC_FILES})
+    target_link_libraries(casc_test casc_static)
+	install(TARGETS casc_test RUNTIME DESTINATION bin)
+endif()
+
+option(CASC_BUILD_STATIC_LIB "Build static linked library" OFF)
+if(CASC_BUILD_STATIC_LIB)
+	message(STATUS "Build static linked library")
     add_library(casc_static STATIC ${SRC_FILES} ${SRC_ADDITIONAL_FILES})
     target_link_libraries(casc_static ${LINK_LIBS})
     set_target_properties(casc_static PROPERTIES OUTPUT_NAME casc)
-    install(TARGETS casc_static RUNTIME DESTINATION bin LIBRARY DESTINATION lib ARCHIVE DESTINATION lib FRAMEWORK DESTINATION /Library/Frameworks)
+	install(TARGETS casc_static RUNTIME DESTINATION bin LIBRARY DESTINATION lib${LIB_SUFFIX} ARCHIVE DESTINATION lib${LIB_SUFFIX} FRAMEWORK DESTINATION /Library/Frameworks)
 endif()
 
 if(APPLE)
@@ -118,10 +132,4 @@ if(UNIX)
     set_target_properties(casc PROPERTIES SOVERSION 1)
 endif()
 
-# On Win32, build CascLib.dll
-if(WIN32)
-    set_target_properties(casc PROPERTIES OUTPUT_NAME CascLib)
-endif()
-
-install(TARGETS casc RUNTIME DESTINATION bin LIBRARY DESTINATION lib ARCHIVE DESTINATION lib FRAMEWORK DESTINATION /Library/Frameworks)
 install(FILES src/CascLib.h src/CascPort.h DESTINATION include)
