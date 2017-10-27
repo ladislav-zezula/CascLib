@@ -2717,13 +2717,17 @@ int TFileNameDatabasePtr::CreateDatabase(LPBYTE pbMarData, DWORD cbMarData)
         return ERROR_NOT_ENOUGH_MEMORY;
 
     nError = ByteStream.SetByteBuffer(pbMarData, cbMarData);
-    if(nError != ERROR_SUCCESS)
-        return nError;
+	if (nError != ERROR_SUCCESS) {
+		delete pDatabase;
+		return nError;
+	}
 
     // HOTS: 1956E11
     nError = pDatabase->LoadFromStream_Exchange(ByteStream);
-    if(nError != ERROR_SUCCESS)
-        return nError;
+	if (nError != ERROR_SUCCESS) {
+		delete pDatabase;
+		return nError;
+	}
 
     pDB = pDatabase;
     return ERROR_SUCCESS;
