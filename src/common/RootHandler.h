@@ -8,8 +8,8 @@
 /* 09.03.15  1.00  Lad  Created                                              */
 /*****************************************************************************/
 
-#ifndef __ROOT_HANDLER_H__
-#define __ROOT_HANDLER_H__
+#ifndef ROOT_HANDLER_H_
+#define ROOT_HANDLER_H_
 
 //-----------------------------------------------------------------------------
 // Defines
@@ -93,4 +93,4 @@ void   RootHandler_Dump(struct _TCascStorage * hs, LPBYTE pbRootHandler, DWORD c
 void   RootHandler_Close(TRootHandler * pRootHandler);
 DWORD  RootHandler_GetFileId(TRootHandler * pRootHandler, const char * szFileName);
 
-#endif  // __ROOT_HANDLER_H__
+#endif  // ROOT_HANDLER_H_
