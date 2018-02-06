@@ -8,8 +8,8 @@
 /* 14.04.12  1.00  Lad  The first version of FileStream.h                    */
 /*****************************************************************************/
 
-#ifndef __FILESTREAM_H__
-#define __FILESTREAM_H__
+#ifndef FILESTREAM_H_
+#define FILESTREAM_H_
 
 //-----------------------------------------------------------------------------
 // Flags for file stream
@@ -257,4 +257,4 @@ bool FileStream_Replace(TFileStream * pStream, TFileStream * pNewStream);
 void FileStream_Close(TFileStream * pStream);
 
 
-#endif // __FILESTREAM_H__
+#endif // FILESTREAM_H_
