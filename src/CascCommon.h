@@ -8,8 +8,8 @@
 /* 29.04.14  1.00  Lad  The first version of CascCommon.h                    */
 /*****************************************************************************/
 
-#ifndef __CASCCOMMON_H__
-#define __CASCCOMMON_H__
+#ifndef CASCCOMMON_H_
+#define CASCCOMMON_H_
 
 //-----------------------------------------------------------------------------
 // Compression support
@@ -360,4 +360,4 @@ void CascDumpEncodingEntry(TCascStorage * hs, TDumpContext * dc, PCASC_ENCODING_
 void CascDumpFile(const char * szFileName, HANDLE hFile);
 #endif  // _DEBUG
 
-#endif // __CASCCOMMON_H__
+#endif // CASCCOMMON_H_
