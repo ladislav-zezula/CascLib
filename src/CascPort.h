@@ -9,8 +9,8 @@
 /* 29.04.14  1.00  Lad  Created                                              */
 /*****************************************************************************/
 
-#ifndef __CASCPORT_H__
-#define __CASCPORT_H__
+#ifndef CASCPORT_H_
+#define CASCPORT_H_
 
 #ifndef __cplusplus
   #define bool char
@@ -273,4 +273,4 @@
     #define    BSWAP_ARRAY64_UNSIGNED(a,b)      ConvertUInt64Buffer((a),(b))
 #endif
 
-#endif // __CASCPORT_H__
+#endif // CASCPORT_H_
