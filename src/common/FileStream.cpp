@@ -13,7 +13,7 @@
 /* 28.04.14  1.00  Lad  Copied from StormLib                                 */
 /*****************************************************************************/
 
-#define __CASCLIB_SELF__
+#define CASCLIB_SELF_
 #include "../CascLib.h"
 #include "../CascCommon.h"
 

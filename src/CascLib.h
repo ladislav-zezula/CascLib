@@ -36,7 +36,7 @@ extern "C" {
 //  Y - A for ANSI version, U for Unicode version
 //  Z - S for static-linked CRT library, D for multithreaded DLL CRT library
 //
-#if defined(_MSC_VER) && !defined(__CASCLIB_SELF__)
+#if defined(_MSC_VER) && !defined(CASCLIB_SELF__)
 
   #ifdef _DEBUG                                 // DEBUG VERSIONS
     #ifndef _UNICODE
