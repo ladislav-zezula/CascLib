@@ -8,8 +8,8 @@
 /* 10.05.14  1.00  Lad  The first version of ListFile.h                      */
 /*****************************************************************************/
 
-#ifndef __LISTFILE_H__
-#define __LISTFILE_H__
+#ifndef LISTFILE_H_
+#define LISTFILE_H_
 
 //-----------------------------------------------------------------------------
 // Structures
@@ -51,4 +51,4 @@ PLISTFILE_MAP ListFile_CreateMap(const TCHAR * szListFile);
 const char * ListFile_FindName(PLISTFILE_MAP pListMap, ULONGLONG FileNameHash);
 void ListFile_FreeMap(PLISTFILE_MAP pListMap);
 
-#endif // __LISTFILE_H__
+#endif // LISTFILE_H_
