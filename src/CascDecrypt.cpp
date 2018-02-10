@@ -360,7 +360,7 @@ int CascDecrypt(LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBYTE pbInBuffer, DWOR
     // Shuffle the Vector with the block index
     // Note that there's no point to go beyond 32 bits, unless the file has
     // more than 0xFFFFFFFF frames.
-    for(int i = 0; i < sizeof(dwFrameIndex); i++)
+    for(size_t i = 0; i < sizeof(dwFrameIndex); i++)
     {
         Vector[i] = Vector[i] ^ (BYTE)((dwFrameIndex >> dwShift) & 0xFF);
         dwShift += 8;
