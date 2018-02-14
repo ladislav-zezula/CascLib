@@ -10,7 +10,7 @@
 /* 04.03.15  1.00  Lad  The first version of CascRootFile_Diablo3.cpp        */
 /*****************************************************************************/
 
-#define __CASCLIB_SELF__
+#define CASCLIB_SELF_
 #include "CascLib.h"
 #include "CascCommon.h"
 

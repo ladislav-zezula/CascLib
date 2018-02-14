@@ -8,8 +8,8 @@
 /* 30.10.15  1.00  Lad  The first version of Directory.h                     */
 /*****************************************************************************/
 
-#ifndef __DIRECTORY_H__
-#define __DIRECTORY_H__
+#ifndef DIRECTORY_H_
+#define DIRECTORY_H_
 
 //-----------------------------------------------------------------------------
 // Scanning a directory
@@ -26,4 +26,4 @@ int ScanIndexDirectory(
     void * pvContext
     );
 
-#endif // __DIRECTORY_H__
+#endif // DIRECTORY_H_

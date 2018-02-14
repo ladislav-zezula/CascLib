@@ -12,8 +12,8 @@
 /* 29.04.14  1.00  Lad  Created                                              */
 /*****************************************************************************/
 
-#ifndef __CASCLIB_H__
-#define __CASCLIB_H__
+#ifndef CASCLIB_H_
+#define CASCLIB_H_
 
 #ifdef _MSC_VER
 #pragma warning(disable:4668)       // 'XXX' is not defined as a preprocessor macro, replacing with '0' for '#if/#elif'
@@ -36,7 +36,7 @@ extern "C" {
 //  Y - A for ANSI version, U for Unicode version
 //  Z - S for static-linked CRT library, D for multithreaded DLL CRT library
 //
-#if defined(_MSC_VER) && !defined(__CASCLIB_SELF__)
+#if defined(_MSC_VER) && !defined(CASCLIB_SELF__)
 
   #ifdef _DEBUG                                 // DEBUG VERSIONS
     #ifndef _UNICODE
@@ -220,4 +220,4 @@ void SetLastError(int nError);
 }   // extern "C"
 #endif
 
-#endif  // __CASCLIB_H__
+#endif  // CASCLIB_H_

@@ -8,8 +8,8 @@
 /* 29.04.14  1.00  Lad  The first version of CascCommon.h                    */
 /*****************************************************************************/
 
-#ifndef __COMMON_H__
-#define __COMMON_H__
+#ifndef COMMON_H_
+#define COMMON_H_
 
 //-----------------------------------------------------------------------------
 // Common macros
@@ -86,4 +86,4 @@ int ScanIndexDirectory(
     void * pvContext
     );
 
-#endif // __COMMON_H__
+#endif // COMMON_H_

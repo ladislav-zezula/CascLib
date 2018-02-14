@@ -8,8 +8,8 @@
 /* 10.06.14  1.00  Lad  The first version of Map.h                           */
 /*****************************************************************************/
 
-#ifndef __HASHTOPTR_H__
-#define __HASHTOPTR_H__
+#ifndef HASHTOPTR_H_
+#define HASHTOPTR_H_
 
 //-----------------------------------------------------------------------------
 // Structures
@@ -39,4 +39,4 @@ const char * Map_FindString(PCASC_MAP pMap, const char * szString, const char * 
 bool Map_InsertString(PCASC_MAP pMap, const char * szString, bool bCutExtension);
 void Map_Free(PCASC_MAP pMap);
 
-#endif // __HASHTOPTR_H__
+#endif // HASHTOPTR_H_

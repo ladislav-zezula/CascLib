@@ -8,8 +8,8 @@
 /* 16.03.15  1.00  Lad  Created                                              */
 /*****************************************************************************/
 
-#ifndef __DUMP_CONTEXT_H__
-#define __DUMP_CONTEXT_H__
+#ifndef DUMP_CONTEXT_H_
+#define DUMP_CONTEXT_H_
 
 //-----------------------------------------------------------------------------
 // Defines
@@ -35,4 +35,4 @@ TDumpContext * CreateDumpContext(struct _TCascStorage * hs, const TCHAR * szName
 int dump_print(TDumpContext * dc, const char * szFormat, ...);
 int dump_close(TDumpContext * dc);
 
-#endif  // __DUMP_CONTEXT_H__
+#endif  // DUMP_CONTEXT_H_

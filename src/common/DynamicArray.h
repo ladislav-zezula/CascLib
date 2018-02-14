@@ -8,8 +8,8 @@
 /* 30.10.15  1.00  Lad  The first version of DynamicArray.h                  */
 /*****************************************************************************/
 
-#ifndef __DYNAMIC_ARRAY_H__
-#define __DYNAMIC_ARRAY_H__
+#ifndef DYNAMIC_ARRAY_H_
+#define DYNAMIC_ARRAY_H_
 
 //-----------------------------------------------------------------------------
 // Structures
@@ -34,4 +34,4 @@ void Array_Free(PDYNAMIC_ARRAY pArray);
 
 #define Array_Create(pArray, type, ItemCountMax)    Array_Create_(pArray, sizeof(type), ItemCountMax)
 
-#endif // __DYNAMIC_ARRAY__
+#endif // DYNAMIC_ARRAY_

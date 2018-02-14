@@ -8,7 +8,7 @@
 /* 12.06.04  1.00  Lad  The first version of ListFile.cpp                    */
 /*****************************************************************************/
 
-#define __CASCLIB_SELF__
+#define CASCLIB_SELF_
 #include "../CascLib.h"
 #include "../CascCommon.h"
 

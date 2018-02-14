@@ -8,8 +8,8 @@
 /* 15.05.14  1.00  Lad  Created                                              */
 /*****************************************************************************/
 
-#ifndef __CASC_MNDX_ROOT__
-#define __CASC_MNDX_ROOT__
+#ifndef CASC_MNDX_ROOT_
+#define CASC_MNDX_ROOT_
 
 class TFileNameDatabase;
 
@@ -356,4 +356,4 @@ inline bool IS_SINGLE_CHAR_MATCH(TGenericArray & Table, DWORD ItemIndex)
     return ((Table.NameFragArray[ItemIndex].FragOffs & 0xFFFFFF00) == 0xFFFFFF00);
 }
 
-#endif  // __CASC_MNDX_ROOT__
+#endif  // CASC_MNDX_ROOT_

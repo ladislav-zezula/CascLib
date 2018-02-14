@@ -9,7 +9,7 @@
 /* 30.10.15  1.00  Lad  Renamed to CascFiles.cpp                             */
 /*****************************************************************************/
 
-#define __CASCLIB_SELF__
+#define CASCLIB_SELF_
 #include "CascLib.h"
 #include "CascCommon.h"
 
