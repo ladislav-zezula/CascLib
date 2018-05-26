@@ -102,60 +102,81 @@ static TCascSearch * AllocateSearchHandle(TCascStorage * hs, const TCHAR * szLis
 // The provider may need the listfile
 static bool DoStorageSearch_RootFile(TCascSearch * pSearch, PCASC_FIND_DATA pFindData)
 {
-    PCASC_ENCODING_ENTRY pEncodingEntry;
+    PCASC_ENCODING_ENTRY pEncodingEntry = NULL;
     PCASC_INDEX_ENTRY pIndexEntry;
+    TCascStorage * hs = pSearch->hs;
     QUERY_KEY EncodingKey;
     QUERY_KEY IndexKey;
-    LPBYTE pbEncodingKey;
-    DWORD EncodingIndex = 0;
+    LPBYTE pbQueryKey;
     DWORD ByteIndex;
+    DWORD KeyIndex = 0;
     DWORD BitMask;
 
     for(;;)
     {
-        DWORD LocaleFlags = 0;
-        DWORD FileDataId = CASC_INVALID_ID;
-        DWORD FileSize = CASC_INVALID_SIZE;
+        // Reset the search flags
+        pSearch->szFileName[0] = 0;
+        pSearch->dwFileSize = CASC_INVALID_SIZE;
+        pSearch->dwLocaleFlags = 0;
+        pSearch->dwFileDataId = CASC_INVALID_ID;
 
         // Attempt to find (the next) file from the root entry
-        pbEncodingKey = RootHandler_Search(pSearch->hs->pRootHandler, pSearch, &FileSize, &LocaleFlags, &FileDataId);
-        if(pbEncodingKey == NULL)
+        pbQueryKey = RootHandler_Search(hs->pRootHandler, pSearch);
+        if(pbQueryKey == NULL)
             return false;
 
-        // Verify whether the encoding key exists in the encoding table
-        EncodingKey.pbData = pbEncodingKey;
-        EncodingKey.cbData = MD5_HASH_SIZE;
-        pEncodingEntry = FindEncodingEntry(pSearch->hs, &EncodingKey, &EncodingIndex);
-        if(pEncodingEntry != NULL)
+        // Did the root handler give us an encoding key?
+        if(!(hs->pRootHandler->dwRootFlags & ROOT_FLAG_USES_INDEX_KEY))
         {
+            // Verify whether the encoding key exists in the encoding table
+            EncodingKey.pbData = pbQueryKey;
+            EncodingKey.cbData = MD5_HASH_SIZE;
+            pEncodingEntry = FindEncodingEntry(pSearch->hs, &EncodingKey, &KeyIndex);
+            if(pEncodingEntry == NULL)
+                continue;
+
             // Mark the item as already found
             // Note: Duplicate items are allowed while we are searching using file names
             // Do not exclude items from search if they were found before
-            ByteIndex = (DWORD)(EncodingIndex / 8);
-            BitMask   = 1 << (EncodingIndex & 0x07);
+            ByteIndex = (DWORD)(KeyIndex / 8);
+            BitMask   = 1 << (KeyIndex & 0x07);
             pSearch->BitArray[ByteIndex] |= BitMask;
 
             // Locate the index entry
             IndexKey.pbData = GET_INDEX_KEY(pEncodingEntry);
             IndexKey.cbData = MD5_HASH_SIZE;
-            pIndexEntry = FindIndexEntry(pSearch->hs, &IndexKey);
-            if(pIndexEntry == NULL)
-                continue;
-
-            // If we retrieved the file size directly from the root provider, use it
-            // Otherwise, we need to retrieve it from the encoding entry
-            if(FileSize == CASC_INVALID_SIZE)
-                FileSize = ConvertBytesToInteger_4(pEncodingEntry->FileSizeBE);
-
-            // Fill-in the found file
-            strcpy(pFindData->szFileName, pSearch->szFileName);
-            memcpy(pFindData->EncodingKey, pEncodingEntry->EncodingKey, MD5_HASH_SIZE);
-            pFindData->szPlainName = (char *)GetPlainFileName(pFindData->szFileName);
-            pFindData->dwLocaleFlags = LocaleFlags;
-            pFindData->dwFileDataId = FileDataId;
-            pFindData->dwFileSize = FileSize;
-            return true;
         }
+        else
+        {
+            // Even if the index key might be smaller than 0x10, it will be padded by zeros
+            IndexKey.pbData = pbQueryKey;
+            IndexKey.cbData = MD5_HASH_SIZE;
+        }
+
+        // Locate the index entry
+        pIndexEntry = FindIndexEntry(pSearch->hs, &IndexKey);
+        if(pIndexEntry == NULL)
+            continue;
+
+        // If we retrieved the file size directly from the root provider, use it
+        // Otherwise, we need to retrieve it from the encoding entry
+        if(pSearch->dwFileSize == CASC_INVALID_SIZE)
+        {
+            if(pEncodingEntry != NULL)
+                pSearch->dwFileSize = ConvertBytesToInteger_4(pEncodingEntry->FileSizeBE);
+            if(pIndexEntry != NULL)
+                pSearch->dwFileSize = ConvertBytesToInteger_4_LE(pIndexEntry->FileSizeLE);
+        }
+
+        // Fill-in the found file
+        strcpy(pFindData->szFileName, pSearch->szFileName);
+        memcpy(pFindData->FileKey, pbQueryKey, MD5_HASH_SIZE);
+        pFindData->szPlainName = (char *)GetPlainFileName(pFindData->szFileName);
+        pFindData->dwLocaleFlags = pSearch->dwLocaleFlags;
+        pFindData->dwFileDataId = pSearch->dwFileDataId;
+        pFindData->dwFileSize = pSearch->dwFileSize;
+        pFindData->dwOpenFlags = 0;
+        return true;
     }
 }
 
@@ -186,11 +207,13 @@ static bool DoStorageSearch_EncodingKey(TCascSearch * pSearch, PCASC_FIND_DATA p
                 if(pIndexEntry != NULL)
                 {
                     // Fill-in the found file
-                    memcpy(pFindData->EncodingKey, pEncodingEntry->EncodingKey, MD5_HASH_SIZE);
-                    pFindData->szFileName[0] = 0;
+                    StringFromBinary(pEncodingEntry->EncodingKey, MD5_HASH_SIZE, pFindData->szFileName);
+                    pFindData->szFileName[MD5_STRING_SIZE] = 0;
+                    memcpy(pFindData->FileKey, pEncodingEntry->EncodingKey, MD5_HASH_SIZE);
                     pFindData->szPlainName = pFindData->szFileName;
                     pFindData->dwLocaleFlags = CASC_LOCALE_NONE;
                     pFindData->dwFileSize = ConvertBytesToInteger_4(pEncodingEntry->FileSizeBE);
+                    pFindData->dwOpenFlags = CASC_OPEN_BY_ENCODING_KEY;
 
                     // Mark the entry as already-found
                     pSearch->BitArray[ByteIndex] |= BitMask;
@@ -230,6 +253,10 @@ static bool DoStorageSearch(TCascSearch * pSearch, PCASC_FIND_DATA pFindData)
         // Move to the nameless search state
         pSearch->IndexLevel1 = 0;
         pSearch->dwState++;
+
+        // If the root handler doesn't want to search by encoding key, skip the next phase
+        if(pSearch->hs->pRootHandler->dwRootFlags & ROOT_FLAG_DONT_SEARCH_ENCKEY)
+            pSearch->dwState++;
     }
 
     // State 2: Searching the remaining entries

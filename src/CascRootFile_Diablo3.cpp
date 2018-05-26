@@ -949,7 +949,7 @@ static int D3Handler_Insert(TRootHandler_Diablo3 * pRootHandler, const char * sz
     return (dwFileIndex != INVALID_FILE_INDEX) ? ERROR_SUCCESS : ERROR_NOT_ENOUGH_MEMORY;
 }
 
-static LPBYTE D3Handler_Search(TRootHandler_Diablo3 * pRootHandler, TCascSearch * pSearch, PDWORD /* PtrFileSize */, PDWORD /* PtrLocaleFlags */, PDWORD /* PtrFileDataId */)
+static LPBYTE D3Handler_Search(TRootHandler_Diablo3 * pRootHandler, TCascSearch * pSearch)
 {
     PCASC_FILE_ENTRY pFileEntry;
     const char * szSrcName = NULL;
@@ -997,8 +997,8 @@ static LPBYTE D3Handler_GetKey(TRootHandler_Diablo3 * pRootHandler, const char *
 
 static DWORD D3Handler_GetFileId(TRootHandler_Diablo3 * /* pRootHandler */, const char * /* szFileName */)
 {
-  // Not implemented for D3
-  return 0;
+    // Not implemented for D3
+    return 0;
 }
 
 static void D3Handler_Close(TRootHandler_Diablo3 * pRootHandler)

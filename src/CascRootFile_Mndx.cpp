@@ -3000,7 +3000,7 @@ int SearchMndxInfo(TRootHandler_MNDX * pRootHandler, const char * szFileName, DW
     return ERROR_FILE_NOT_FOUND;
 }
 
-static LPBYTE FillFindData(TRootHandler_MNDX * pRootHandler, TCascSearch * pSearch, TMndxFindResult * pStruct1C, PDWORD PtrFileSize)
+static LPBYTE FillFindData(TRootHandler_MNDX * pRootHandler, TCascSearch * pSearch, TMndxFindResult * pStruct1C)
 {
     PCASC_ROOT_ENTRY_MNDX pRootEntry = NULL;
     PCASC_MNDX_PACKAGE pPackage;
@@ -3034,8 +3034,7 @@ static LPBYTE FillFindData(TRootHandler_MNDX * pRootHandler, TCascSearch * pSear
         return NULL;
 
     // Give the file size
-    if(PtrFileSize != NULL)
-        PtrFileSize[0] = pRootEntry->FileSize;
+    pSearch->dwFileSize = pRootEntry->FileSize;
     return pRootEntry->EncodingKey;
 }
 
@@ -3044,7 +3043,7 @@ static int MndxHandler_Insert(TRootHandler_MNDX *, const char *, LPBYTE)
     return ERROR_NOT_SUPPORTED;
 }
 
-static LPBYTE MndxHandler_Search(TRootHandler_MNDX * pRootHandler, TCascSearch * pSearch, PDWORD PtrFileSize, PDWORD /* PtrLocaleFlags */, PDWORD /* PtrFileDataId */)
+static LPBYTE MndxHandler_Search(TRootHandler_MNDX * pRootHandler, TCascSearch * pSearch)
 {
     TMndxFindResult * pStruct1C = NULL;
     PCASC_MNDX_INFO pMndxInfo = &pRootHandler->MndxInfo;
@@ -3088,7 +3087,7 @@ static LPBYTE MndxHandler_Search(TRootHandler_MNDX * pRootHandler, TCascSearch *
     }
 
     // Give the file size and encoding key
-    return FillFindData(pRootHandler, pSearch, pStruct1C, PtrFileSize);
+    return FillFindData(pRootHandler, pSearch, pStruct1C);
 }
 
 static void MndxHandler_EndSearch(TRootHandler_MNDX * /* pRootHandler */, TCascSearch * pSearch)

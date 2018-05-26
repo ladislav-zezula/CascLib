@@ -28,10 +28,29 @@ typedef struct _BLOCK_SIZE_AND_HASH
 
 } BLOCK_SIZE_AND_HASH, *PBLOCK_SIZE_AND_HASH;
 
+// The index entry from the ".idx" files (1st block)
+typedef struct _FILE_INDEX_ENTRY_V2
+{
+    BYTE IndexKey[CASC_FILE_KEY_SIZE];              // The first 9 bytes of the encoding key
+    BYTE FileOffsetBE[5];                           // Index of data file and offset within (big endian).
+    BYTE FileSizeLE[4];                             // Size occupied in the storage file (data.###). See comment before CascGetFileSize for details
+} FILE_INDEX_ENTRY_V2, *PFILE_INDEX_ENTRY_V2;
+
+// The index entry from the ".idx" files (2nd block)
+typedef struct _FILE_INDEX_ENTRY_V3
+{
+    DWORD DataHash;                                 // Jenkins hash of (IndexKey+FileOffsetBE+FileSizeLE)
+
+    BYTE IndexKey[CASC_FILE_KEY_SIZE];              // The first 9 bytes of the encoding key
+    BYTE FileOffsetBE[5];                           // Index of data file and offset within (big endian).
+    BYTE FileSizeLE[4];                             // Size occupied in the storage file (data.###). See comment before CascGetFileSize for details
+    BYTE Unknown[2];
+} FILE_INDEX_ENTRY_V3, *PFILE_INDEX_ENTRY_V3;
+
 typedef struct _FILE_INDEX_HEADER_V1
 {
     USHORT field_0;
-    BYTE  KeyIndex;                             // Key index (0 for data.i0x, 1 for data.i1x, 2 for data.i2x etc.)
+    BYTE  KeyIndex;                                 // Key index (0 for data.i0x, 1 for data.i1x, 2 for data.i2x etc.)
     BYTE  align_3;
     DWORD field_4;
     ULONGLONG field_8;
@@ -39,7 +58,7 @@ typedef struct _FILE_INDEX_HEADER_V1
     BYTE  SpanSizeBytes;
     BYTE  SpanOffsBytes;
     BYTE  KeyBytes;
-    BYTE  SegmentBits;                          // Number of bits for file offset
+    BYTE  SegmentBits;                              // Number of bits for file offset
     DWORD KeyCount1;
     DWORD KeyCount2;
     DWORD KeysHash1;
@@ -49,16 +68,23 @@ typedef struct _FILE_INDEX_HEADER_V1
 
 typedef struct _FILE_INDEX_HEADER_V2
 {
-    USHORT IndexVersion;                        // Must be 0x07
-    BYTE   KeyIndex;                            // Must be equal to the file key index
-    BYTE   ExtraBytes;                          // (?) Extra bytes in the key record
-    BYTE   SpanSizeBytes;                       // Size of field with file size
-    BYTE   SpanOffsBytes;                       // Size of field with file offset
-    BYTE   KeyBytes;                            // Size of the file key (bytes)
-    BYTE   SegmentBits;                         // Number of bits for the file offset (rest is archive index)
+    BLOCK_SIZE_AND_HASH BlockHeader;                // Length and hash of the data following BlockHeader
+    USHORT IndexVersion;                            // Must be 0x07
+    BYTE   KeyIndex;                                // Must be equal to the file key index
+    BYTE   ExtraBytes;                              // (?) Extra bytes in the key record
+    BYTE   SpanSizeBytes;                           // Size of field with file size
+    BYTE   SpanOffsBytes;                           // Size of field with file offset
+    BYTE   KeyBytes;                                // Size of the file key (bytes)
+    BYTE   SegmentBits;                             // Number of bits for the file offset (rest is archive index)
     ULONGLONG MaxFileOffset;
 
 } FILE_INDEX_HEADER_V2, *PFILE_INDEX_HEADER_V2;
+
+typedef struct _FILE_INDEX_ENTRIES1
+{
+    BLOCK_SIZE_AND_HASH BlockHeader;                // Length and hash of the data following BlockHeader
+    FILE_INDEX_ENTRY_V2 IndexEntry[1];              // Variable number of index entries
+} FILE_INDEX_ENTRIES1, *PFILE_INDEX_ENTRIES1;
 
 typedef struct _FILE_ENCODING_SEGMENT
 {
@@ -66,6 +92,9 @@ typedef struct _FILE_ENCODING_SEGMENT
     BYTE SegmentHash[MD5_HASH_SIZE];            // MD5 hash of the entire segment
 
 } FILE_ENCODING_SEGMENT, *PFILE_ENCODING_SEGMENT;
+
+#define FILE_INDEX_HASH_LENGTH  (CASC_FILE_KEY_SIZE + 5 + 4 + 1)
+#define FILE_INDEX_BLOCK_SIZE    0x200
 
 //-----------------------------------------------------------------------------
 // Local variables
@@ -185,6 +214,22 @@ static bool IsCascIndexHeader_V2(LPBYTE pbFileData, DWORD cbFileData)
     return (HashHigh == pSizeAndHash->dwBlockHash);
 }
 
+static bool CheckAvailableDataSize(PCASC_MAPPING_TABLE pKeyMapping, ULONG Offset)
+{
+    PBLOCK_SIZE_AND_HASH pBlockHeader;
+
+    // Capture and check the block header
+    if((Offset + sizeof(BLOCK_SIZE_AND_HASH)) > pKeyMapping->cbFileData)
+        return false;
+    pBlockHeader = (PBLOCK_SIZE_AND_HASH)(pKeyMapping->pbFileData + Offset);
+
+    // Capture and check the data
+    if((Offset + sizeof(BLOCK_SIZE_AND_HASH) + pBlockHeader->cbBlockSize) > pKeyMapping->cbFileData)
+        return false;
+
+    return true;
+}
+
 static bool CutLastPathPart(TCHAR * szWorkPath)
 {
     size_t nLength = _tcslen(szWorkPath);
@@ -219,14 +264,19 @@ static int InsertExtraFile(
     const char * szFileName,
     PQUERY_KEY pQueryKey)
 {
+    PCASC_ENCODING_ENTRY pEncodingEntry = NULL;
+    PCASC_INDEX_ENTRY pIndexEntry;
+    QUERY_KEY IndexKey;
+    LPBYTE pbQueryKey = pQueryKey->pbData;
+
+    // Check if we really have the key
+    if(pQueryKey->pbData == NULL || pQueryKey->cbData == 0)
+        return ERROR_FILE_NOT_FOUND;
+
     // If the given key is not encoding key (aka, it's an index key),
     // we need to create a fake encoding entry
     if(pQueryKey->cbData == MD5_HASH_SIZE * 2)
     {
-        PCASC_ENCODING_ENTRY pNewEntry;
-        PCASC_INDEX_ENTRY pIndexEntry;
-        QUERY_KEY IndexKey;
-
         // Find the entry in the index table in order to get the file size
         IndexKey.pbData = pQueryKey->pbData + MD5_HASH_SIZE;
         IndexKey.cbData = MD5_HASH_SIZE;
@@ -235,26 +285,42 @@ static int InsertExtraFile(
             return ERROR_FILE_NOT_FOUND;
 
         // Create a fake entry in the encoding map
-        pNewEntry = (PCASC_ENCODING_ENTRY)Array_Insert(&hs->ExtraEntries, NULL, 1);
-        if(pNewEntry == NULL)
+        pEncodingEntry = (PCASC_ENCODING_ENTRY)Array_Insert(&hs->ExtraEntries, NULL, 1);
+        if(pEncodingEntry == NULL)
             return ERROR_NOT_ENOUGH_MEMORY;
 
         // Fill the encoding entry
-        pNewEntry->KeyCount = 1;
-        pNewEntry->FileSizeBE[0] = pIndexEntry->FileSizeLE[3];
-        pNewEntry->FileSizeBE[1] = pIndexEntry->FileSizeLE[2];
-        pNewEntry->FileSizeBE[2] = pIndexEntry->FileSizeLE[1];
-        pNewEntry->FileSizeBE[3] = pIndexEntry->FileSizeLE[0];
-        memcpy(pNewEntry->EncodingKey, pQueryKey->pbData, MD5_HASH_SIZE);
-        memcpy(pNewEntry + 1, pQueryKey->pbData + MD5_HASH_SIZE, MD5_HASH_SIZE);
+        pEncodingEntry->KeyCount = 1;
+        pEncodingEntry->FileSizeBE[0] = pIndexEntry->FileSizeLE[3];
+        pEncodingEntry->FileSizeBE[1] = pIndexEntry->FileSizeLE[2];
+        pEncodingEntry->FileSizeBE[2] = pIndexEntry->FileSizeLE[1];
+        pEncodingEntry->FileSizeBE[3] = pIndexEntry->FileSizeLE[0];
+        memcpy(pEncodingEntry->EncodingKey, pQueryKey->pbData, MD5_HASH_SIZE);
+        memcpy(pEncodingEntry + 1, pQueryKey->pbData + MD5_HASH_SIZE, MD5_HASH_SIZE);
 
         // Insert the entry to the map of encoding keys
-        Map_InsertObject(hs->pEncodingMap, pNewEntry, pNewEntry->EncodingKey);
+        Map_InsertObject(hs->pEncodingMap, pEncodingEntry, pEncodingEntry->EncodingKey);
+    }
+
+    // If the root handler uses index keys instead of encoding keys, 
+    // we need to transform the encoding key into an index key 
+    if(hs->pRootHandler->dwRootFlags & ROOT_FLAG_USES_INDEX_KEY)
+    {
+        // If we don't have encoding entry, we need to find it
+        if(pEncodingEntry == NULL)
+        {
+            pEncodingEntry = FindEncodingEntry(hs, pQueryKey, NULL);
+            if(pEncodingEntry == NULL)
+                return ERROR_FILE_NOT_FOUND;
+        }
+
+        // Give the index key
+        pbQueryKey = GET_INDEX_KEY(pEncodingEntry);
     }
 
     // Now we need to insert the entry to the root handler in order
     // to be able to translate file name to encoding key
-    return RootHandler_Insert(hs->pRootHandler, szFileName, pQueryKey->pbData);
+    return RootHandler_Insert(hs->pRootHandler, szFileName, pbQueryKey);
 }
 
 static int InitializeCascDirectories(TCascStorage * hs, const TCHAR * szDataPath)
@@ -306,28 +372,15 @@ static bool IndexDirectory_OnFileFound(
     // Auto-detect the format of the index file name
     if(hs->szIndexFormat == NULL)
     {
-        if(IsIndexFileName_V1(szFileName))
-            hs->szIndexFormat = szIndexFormat_V1;
-        else if(IsIndexFileName_V2(szFileName))
+        if(IsIndexFileName_V2(szFileName))
             hs->szIndexFormat = szIndexFormat_V2;
+        else if(IsIndexFileName_V1(szFileName))
+            hs->szIndexFormat = szIndexFormat_V1;
         else
             return false;
     }
 
-    if(hs->szIndexFormat == szIndexFormat_V1)
-    {
-        // Check the index file name format
-        if(!IsIndexFileName_V1(szFileName))
-            return false;
-
-        // Get the main index from the first two digits
-        if(ConvertDigitToInt32(szFileName + 6, &IndexValue) != ERROR_SUCCESS)
-            return false;
-        if(ConvertDigitToInt32(szFileName + 7, &IndexVersion) != ERROR_SUCCESS)
-            return false;
-    }
-
-    else if(hs->szIndexFormat == szIndexFormat_V2)
+    if(hs->szIndexFormat == szIndexFormat_V2)
     {
         // Check the index file name format
         if(!IsIndexFileName_V2(szFileName))
@@ -337,6 +390,18 @@ static bool IndexDirectory_OnFileFound(
         if(ConvertStringToInt32(szFileName, 2, &IndexValue) != ERROR_SUCCESS)
             return false;
         if(ConvertStringToInt32(szFileName + 2, 8, &IndexVersion) != ERROR_SUCCESS)
+            return false;
+    }
+    else if(hs->szIndexFormat == szIndexFormat_V1)
+    {
+        // Check the index file name format
+        if(!IsIndexFileName_V1(szFileName))
+            return false;
+
+        // Get the main index from the first two digits
+        if(ConvertDigitToInt32(szFileName + 6, &IndexValue) != ERROR_SUCCESS)
+            return false;
+        if(ConvertDigitToInt32(szFileName + 7, &IndexVersion) != ERROR_SUCCESS)
             return false;
     }
     else
@@ -424,28 +489,35 @@ static int VerifyAndParseKeyMapping_V1(PCASC_MAPPING_TABLE pKeyMapping, DWORD Ke
 
 static int VerifyAndParseKeyMapping_V2(PCASC_MAPPING_TABLE pKeyMapping, DWORD KeyIndex)
 {
-    PFILE_INDEX_HEADER_V2 pIndexHeader = (PFILE_INDEX_HEADER_V2)pKeyMapping->pbFileData;
+    PFILE_INDEX_HEADER_V2 pIndexHeader;
+    PFILE_INDEX_ENTRIES1 pIndexEntries1;
     PBLOCK_SIZE_AND_HASH pSizeAndHash;
-    LPBYTE pbLastPartEnd;
-    LPBYTE pbLastPart;
-    DWORD FilePosition;
-    DWORD LastPartLength;
-    unsigned int HashHigh = 0;
-    unsigned int HashLow = 0;
+    PCASC_INDEX_ENTRY pTargetEntry;
+    DWORD IndexEntriesLength;
+    DWORD FilePosition = 0;
+    unsigned int HashValue;
 
-    // The index header v2 begins after the SizeAndHash
-    pSizeAndHash = (PBLOCK_SIZE_AND_HASH)pKeyMapping->pbFileData;
-    pIndexHeader = (PFILE_INDEX_HEADER_V2)(pSizeAndHash + 1);
-    if(pIndexHeader->IndexVersion != 0x07 || pIndexHeader->KeyIndex != KeyIndex)
+    // Verify the the header data length
+    pIndexHeader = (PFILE_INDEX_HEADER_V2)(pKeyMapping->pbFileData + FilePosition);
+    if(!CheckAvailableDataSize(pKeyMapping, FilePosition))
         return ERROR_BAD_FORMAT;
 
-    if(pIndexHeader->ExtraBytes    != 0x00 ||
-       pIndexHeader->SpanSizeBytes != 0x04 ||
-       pIndexHeader->SpanOffsBytes != 0x05 ||
+    // Verify the header hash
+    pSizeAndHash = &pIndexHeader->BlockHeader;
+    HashValue = hashlittle((pSizeAndHash + 1), pSizeAndHash->cbBlockSize, 0);
+    if(HashValue != pSizeAndHash->dwBlockHash)
+        return ERROR_BAD_FORMAT;
+
+    // Verify the content of the index header
+    if(pIndexHeader->IndexVersion  != 0x07     ||
+       pIndexHeader->KeyIndex      != KeyIndex ||
+       pIndexHeader->ExtraBytes    != 0x00     ||
+       pIndexHeader->SpanSizeBytes != 0x04     ||
+       pIndexHeader->SpanOffsBytes != 0x05     ||
        pIndexHeader->KeyBytes  != CASC_FILE_KEY_SIZE)
         return ERROR_BAD_FORMAT;
 
-    // Remember the sizes
+    // Capture the values from the index header
     pKeyMapping->ExtraBytes    = pIndexHeader->ExtraBytes;
     pKeyMapping->SpanSizeBytes = pIndexHeader->SpanSizeBytes;
     pKeyMapping->SpanOffsBytes = pIndexHeader->SpanOffsBytes;
@@ -453,60 +525,82 @@ static int VerifyAndParseKeyMapping_V2(PCASC_MAPPING_TABLE pKeyMapping, DWORD Ke
     pKeyMapping->SegmentBits   = pIndexHeader->SegmentBits;
     pKeyMapping->MaxFileOffset = pIndexHeader->MaxFileOffset;
 
-    // Get the data position
-    FilePosition = (sizeof(BLOCK_SIZE_AND_HASH) + pSizeAndHash->cbBlockSize + 0x0F) & 0xFFFFFFF0;
-    if((FilePosition + 0x08) > pKeyMapping->cbFileData)
-        return ERROR_BAD_FORMAT;
+    // Move past the index header
+    FilePosition = FilePosition + sizeof(BLOCK_SIZE_AND_HASH) + pIndexHeader->BlockHeader.cbBlockSize;
 
-    // Get the pointer to "size+hash" block
-    pSizeAndHash = (PBLOCK_SIZE_AND_HASH)(pKeyMapping->pbFileData + FilePosition);
-    FilePosition += 0x08;
-
-    if((FilePosition + pSizeAndHash->cbBlockSize) > pKeyMapping->cbFileData)
-        return ERROR_BAD_FORMAT;
-    if(pSizeAndHash->cbBlockSize < sizeof(CASC_INDEX_ENTRY))
-        return ERROR_BAD_FORMAT;
-
-    // Remember the array of file keys
-    pKeyMapping->pIndexEntries = (PCASC_INDEX_ENTRY)(pKeyMapping->pbFileData + FilePosition);
-    pKeyMapping->nIndexEntries = pSizeAndHash->cbBlockSize / sizeof(CASC_INDEX_ENTRY);
-    FilePosition += pSizeAndHash->cbBlockSize;
-
-    // Verify the integrity of the key array
-    for(DWORD i = 0; i < pKeyMapping->nIndexEntries; i++)
-        hashlittle2(pKeyMapping->pIndexEntries + i, sizeof(CASC_INDEX_ENTRY), &HashHigh, &HashLow);
-    if(HashHigh != pSizeAndHash->dwBlockHash)
-        return ERROR_BAD_FORMAT;
-
-    // Align the data position up to next 0x1000
-    FilePosition = ALIGN_TO_SIZE(FilePosition, 0x1000);
-    if(FilePosition > pKeyMapping->cbFileData)
-        return ERROR_BAD_FORMAT;
-
-    LastPartLength = pKeyMapping->cbFileData - FilePosition;
-    if(LastPartLength < 0x7800)
-        return ERROR_BAD_FORMAT;
-
-    pbLastPart = pKeyMapping->pbFileData + FilePosition;
-    pbLastPartEnd = pbLastPart + ((LastPartLength >> 0x09) << 0x09);
-
-    while(pbLastPart < pbLastPartEnd)
+    // Get the pointer to the first block of index entries
+    pIndexEntries1 = (PFILE_INDEX_ENTRIES1)(pKeyMapping->pbFileData + ALIGN_TO_SIZE(FilePosition, 0x10));
+    if(CheckAvailableDataSize(pKeyMapping, FilePosition) && pIndexEntries1->BlockHeader.cbBlockSize != 0)
     {
-        for(int i = 0; i < 0x1F8; i += 0x18)
-        {
-            PDWORD PtrLastPart = (PDWORD)pbLastPart;
-            if(PtrLastPart[0] == 0)
-                return ERROR_SUCCESS;
+        PFILE_INDEX_ENTRY_V2 pSourceEntry = pIndexEntries1->IndexEntry;
+        unsigned int HashHigh = 0;
+        unsigned int HashLow = 0;
+        DWORD dwIndexEntries;
 
-            HashLow = hashlittle(PtrLastPart + i, 0x13, 0) | 0x80000000;
-            if(HashLow != PtrLastPart[0])
-                return ERROR_BAD_FORMAT;
-        }
+        // Load and verify the CASC index entries
+        if(pIndexEntries1->BlockHeader.cbBlockSize < sizeof(FILE_INDEX_ENTRY_V2))
+            return ERROR_BAD_FORMAT;
+        dwIndexEntries = (pIndexEntries1->BlockHeader.cbBlockSize / sizeof(FILE_INDEX_ENTRY_V2));
 
-        pbLastPart += 0x200;
+        // Hash all entries
+        for(DWORD i = 0; i < dwIndexEntries; i++)
+            hashlittle2(pSourceEntry+i, sizeof(FILE_INDEX_ENTRY_V2), &HashHigh, &HashLow);
+        if(HashHigh != pIndexEntries1->BlockHeader.dwBlockHash)
+            return ERROR_BAD_FORMAT;
+
+        // FILE_INDEX_ENTRY_V2 and CASC_INDEX_ENTRY are equal structures,
+        // so we can assign one to another without memory copy
+        pKeyMapping->pIndexEntries = (PCASC_INDEX_ENTRY)pIndexEntries1->IndexEntry;
+        pKeyMapping->nIndexEntries = dwIndexEntries;
+        return ERROR_SUCCESS;
     }
 
-    return ERROR_SUCCESS;
+    // Get the pointer to the second block of index entries
+    FilePosition = ALIGN_TO_SIZE(FilePosition, 0x1000);
+    IndexEntriesLength = pKeyMapping->cbFileData - FilePosition;
+    if(IndexEntriesLength >= 0x7800)
+    {
+        DWORD dwMaxIndexEntries = IndexEntriesLength / sizeof(FILE_INDEX_ENTRY_V3);
+
+        // Allocate the array of index entries
+        pKeyMapping->pIndexEntries = pTargetEntry = CASC_ALLOC(CASC_INDEX_ENTRY, dwMaxIndexEntries);
+        if(pKeyMapping->pIndexEntries == NULL)
+            return ERROR_NOT_ENOUGH_MEMORY;
+
+        // Parse the chunks with the index entries
+        while(FilePosition < pKeyMapping->cbFileData)
+        {
+            PFILE_INDEX_ENTRY_V3 pSourceEntry = (PFILE_INDEX_ENTRY_V3)(pKeyMapping->pbFileData + FilePosition);
+            DWORD DataHash;
+
+            for(int i = 0; i < (FILE_INDEX_BLOCK_SIZE / sizeof(FILE_INDEX_ENTRY_V3)); i++)
+            {
+                // Check for end marker
+                if(pSourceEntry->DataHash == 0)
+                    break;
+
+                // Check the hash of the index entry
+                DataHash = hashlittle(&pSourceEntry->IndexKey, sizeof(FILE_INDEX_ENTRY_V2)+1, 0) | 0x80000000;
+                if(DataHash != pSourceEntry->DataHash)
+                    return ERROR_BAD_FORMAT;
+
+                // Copy the entry
+                memcpy(pTargetEntry, pSourceEntry->IndexKey, sizeof(CASC_INDEX_ENTRY));
+                pTargetEntry++;
+                pSourceEntry++;
+            }
+
+            // Move to the next chunk
+            FilePosition = FilePosition + FILE_INDEX_BLOCK_SIZE;
+        }
+
+        // Calculate the proper number of index entries
+        pKeyMapping->nIndexEntries = (DWORD)(pTargetEntry - pKeyMapping->pIndexEntries);
+        pKeyMapping->FreeIndexEntries = true;
+        return ERROR_SUCCESS;
+    }
+
+    return ERROR_NOT_SUPPORTED;
 }
 
 static int VerifyAndParseKeyMapping(PCASC_MAPPING_TABLE pKeyMapping, DWORD KeyIndex)
@@ -935,6 +1029,10 @@ static int LoadRootFile(TCascStorage * hs, DWORD dwLocaleMask)
                 nError = RootHandler_CreateOverwatch(hs, pbRootFile, cbRootFile);
                 break;
 
+            case CASC_TVFS_ROOT_SIGNATURE:
+                nError = RootHandler_CreateTVFS(hs, pbRootFile, cbRootFile);
+                break;
+
             default:
                 if(IsRootFile_Starcraft1(pbRootFile, cbRootFile))
                     nError = RootHandler_CreateSC1(hs, pbRootFile, cbRootFile);
@@ -1009,6 +1107,8 @@ static TCascStorage * FreeCascStorage(TCascStorage * hs)
                 CASC_FREE(hs->KeyMapping[i].szFileName);
             if(hs->KeyMapping[i].pbFileData != NULL)
                 CASC_FREE(hs->KeyMapping[i].pbFileData);
+            if(hs->KeyMapping[i].pIndexEntries && hs->KeyMapping[i].FreeIndexEntries)
+                CASC_FREE(hs->KeyMapping[i].pIndexEntries);
             hs->KeyMapping[i].pIndexEntries = NULL;
         }
 

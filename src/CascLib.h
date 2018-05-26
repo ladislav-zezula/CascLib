@@ -72,14 +72,17 @@ extern "C" {
 //-----------------------------------------------------------------------------
 // Defines
 
-#define CASCLIB_VERSION                 0x0100  // Current version of CascLib (1.0)
-#define CASCLIB_VERSION_STRING          "1.00"  // String version of CascLib version
+#define CASCLIB_VERSION                 0x010A  // Current version of CascLib (1.10)
+#define CASCLIB_VERSION_STRING          "1.10"  // String version of CascLib version
 
 // Values for CascOpenStorage
 #define CASC_STOR_XXXXX             0x00000001  // Not used
 
 // Values for CascOpenFile
+#define CASC_OPEN_BY_NAME           0x00000000  // Open the file by name. This is the default value
 #define CASC_OPEN_BY_ENCODING_KEY   0x00000001  // The name is just the encoding key; skip ROOT file processing
+#define CASC_OPEN_BY_INDEX_KEY      0x00000002  // The name is just the index key; skip ROOT file processing
+#define CASC_OPEN_TYPE_MASK         0x0000000F  // The mask which gets open type from the dwFlags
 
 #define CASC_LOCALE_ALL             0xFFFFFFFF
 #define CASC_LOCALE_NONE            0x00000000
@@ -166,12 +169,29 @@ typedef struct _QUERY_KEY
 // Structure for SFileFindFirstFile and SFileFindNextFile
 typedef struct _CASC_FIND_DATA
 {
-    char   szFileName[MAX_PATH];                // Full name of the found file
-    char * szPlainName;                         // Plain name of the found file
-    BYTE   EncodingKey[MD5_HASH_SIZE];          // Encoding key
-    DWORD  dwLocaleFlags;                       // Locale flags (WoW only)
-    DWORD  dwFileDataId;                        // File data ID (WoW only)
-    DWORD  dwFileSize;                          // Size of the file
+    // Full name of the found file. In case when this is encoding/index key,
+    // this will be just string representation of the key stored in 'FileKey'
+    char   szFileName[MAX_PATH];
+    
+    // Plain name of the found file. Pointing inside the 'szFileName' array
+    char * szPlainName;
+
+    // Encoding/Index key. The type can be determined by dwOpenFlags
+    // (CASC_OPEN_BY_ENCODING_KEY vs CASC_OPEN_BY_INDEX_KEY)
+    BYTE   FileKey[MD5_HASH_SIZE];
+
+    // Locale flags. Only for games that support locale flags (WoW)
+    DWORD  dwLocaleFlags;
+
+    // File data ID. Only for games that support File data ID (WoW)
+    DWORD  dwFileDataId;
+    
+    // Size of the file, as retrieved from encoding entry or index entry
+    DWORD  dwFileSize;
+
+    // It is recommended to use this value for subsequent CascOpenFile
+    // Contains valid value if the 'szFileName' contains file key.
+    DWORD  dwOpenFlags;
 
 } CASC_FIND_DATA, *PCASC_FIND_DATA;
 

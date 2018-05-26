@@ -451,7 +451,7 @@ static int GetBuildNumber(TCascStorage * hs, const char * szVarBegin, const char
         szVarBegin++;
     }
 
-    assert(dwBuildNumber != 0);
+//  assert(dwBuildNumber != 0);
     hs->dwBuildNumber = dwBuildNumber;
     return (dwBuildNumber != 0) ? ERROR_SUCCESS : ERROR_BAD_FORMAT;
 }

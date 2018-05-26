@@ -386,12 +386,7 @@ static int WowHandler_Insert(
     return ERROR_SUCCESS;
 }
 
-static LPBYTE WowHandler_Search(
-    TRootHandler_WoW6 * pRootHandler,
-    TCascSearch * pSearch,
-    PDWORD /* PtrFileSize */,
-    PDWORD PtrLocaleFlags,
-    PDWORD PtrFileDataId)
+static LPBYTE WowHandler_Search(TRootHandler_WoW6 * pRootHandler, TCascSearch * pSearch)
 {
     PCASC_FILE_ENTRY pFileEntry;
 
@@ -405,11 +400,9 @@ static LPBYTE WowHandler_Search(
             pFileEntry = FindRootEntry(pRootHandler->pRootMap, pSearch->szFileName, NULL);
             if(pFileEntry != NULL)
             {
-                // Give the caller the locale mask
-                if(PtrLocaleFlags != NULL)
-                    PtrLocaleFlags[0] = pFileEntry->Locales;
-                if(PtrFileDataId != NULL)
-                    PtrFileDataId[0] = pFileEntry->FileDataId;
+                // Give the caller the locale mask and file data ID
+                pSearch->dwLocaleFlags = pFileEntry->Locales;
+                pSearch->dwFileDataId = pFileEntry->FileDataId;
                 return pFileEntry->EncodingKey.Value;
             }
         }

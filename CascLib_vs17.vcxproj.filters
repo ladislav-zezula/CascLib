@@ -175,6 +175,9 @@
     <ClCompile Include="src\CascRootFile_SC1.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\CascRootFile_TVFS.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="src\common\DynamicArray.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>

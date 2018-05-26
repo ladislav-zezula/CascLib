@@ -15,14 +15,18 @@
 // Defines
 
 #define CASC_MNDX_ROOT_SIGNATURE        0x58444E4D  // 'MNDX'
+#define CASC_TVFS_ROOT_SIGNATURE        0x53465654  // 'TVFS'
 #define CASC_DIABLO3_ROOT_SIGNATURE     0x8007D0C4
 #define CASC_OVERWATCH_ROOT_SIGNATURE   0x35444D23  // '#MD5'
 
 #define ROOT_FLAG_HAS_NAMES             0x00000001  // The root file contains file names
+#define ROOT_FLAG_USES_INDEX_KEY        0x00000002  // ROOT_SEARCH and ROOT_GETKEY returns index key instead of encoding key
+#define ROOT_FLAG_DONT_SEARCH_ENCKEY    0x00000004  // Disable searching the files by encoding key
 
-#define DUMP_LEVEL_ROOT_FILE                    1   // Dump root file
-#define DUMP_LEVEL_ENCODING_FILE                2   // Dump root file + encoding file
-#define DUMP_LEVEL_INDEX_ENTRIES                3   // Dump root file + encoding file + index entries
+
+#define DUMP_LEVEL_ROOT_FILE                     1  // Dump root file
+#define DUMP_LEVEL_ENCODING_FILE                 2  // Dump root file + encoding file
+#define DUMP_LEVEL_INDEX_ENTRIES                 3  // Dump root file + encoding file + index entries
 
 //-----------------------------------------------------------------------------
 // Root file function prototypes
@@ -35,10 +39,7 @@ typedef int (*ROOT_INSERT)(
 
 typedef LPBYTE (*ROOT_SEARCH)(
     struct TRootHandler * pRootHandler,             // Pointer to an initialized root handler
-    struct _TCascSearch * pSearch,                  // Pointer to the initialized search structure
-    PDWORD PtrFileSize,                             // Pointer to receive file size (optional)
-    PDWORD PtrLocaleFlags,                          // Pointer to receive locale flags (optional)
-    PDWORD PtrFileDataId                            // Pointer to FileDataID (optional)
+    struct _TCascSearch * pSearch                   // Pointer to the initialized search structure
     );
 
 typedef void (*ROOT_ENDSEARCH)(
@@ -85,8 +86,8 @@ struct TRootHandler
 //-----------------------------------------------------------------------------
 // Public functions
 
-int    RootHandler_Insert(TRootHandler * pRootHandler, const char * szFileName, LPBYTE pbEncodingKey);
-LPBYTE RootHandler_Search(TRootHandler * pRootHandler, struct _TCascSearch * pSearch, PDWORD PtrFileSize, PDWORD PtrLocaleFlags, PDWORD PtrFileDataId);
+int    RootHandler_Insert(TRootHandler * pRootHandler, const char * szFileName, LPBYTE pbQueryKey);
+LPBYTE RootHandler_Search(TRootHandler * pRootHandler, struct _TCascSearch * pSearch);
 void   RootHandler_EndSearch(TRootHandler * pRootHandler, struct _TCascSearch * pSearch);
 LPBYTE RootHandler_GetKey(TRootHandler * pRootHandler, const char * szFileName);
 void   RootHandler_Dump(struct _TCascStorage * hs, LPBYTE pbRootHandler, DWORD cbRootHandler, const TCHAR * szNameFormat, const TCHAR * szListFile, int nDumpLevel);

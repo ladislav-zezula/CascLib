@@ -77,7 +77,7 @@ static int SC1Handler_Insert(
     return InsertFileEntry(pRootHandler, szFileName, pbEncodingKey);
 }
 
-static LPBYTE SC1Handler_Search(TRootHandler_SC1 * pRootHandler, TCascSearch * pSearch, PDWORD /* PtrFileSize */, PDWORD /* PtrLocaleFlags */, PDWORD /* PtrFileDataId */)
+static LPBYTE SC1Handler_Search(TRootHandler_SC1 * pRootHandler, TCascSearch * pSearch)
 {
     PCASC_FILE_ENTRY pFileEntry;
 
@@ -143,8 +143,8 @@ static void SC1Handler_Close(TRootHandler_SC1 * pRootHandler)
 int RootHandler_CreateSC1(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile)
 {
     TRootHandler_SC1 * pRootHandler;
-    ENCODING_KEY KeyBuffer;
-    QUERY_KEY EncodingKey = {KeyBuffer.Value, MD5_HASH_SIZE};
+//  ENCODING_KEY KeyBuffer;
+//  QUERY_KEY EncodingKey = {KeyBuffer.Value, MD5_HASH_SIZE};
     void * pTextFile;
     size_t nLength;
     char szOneLine[0x200];

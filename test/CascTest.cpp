@@ -109,7 +109,6 @@ static int ExtractFile(HANDLE hStorage, CASC_FIND_DATA & cf, const TCHAR * szLoc
     HANDLE hFile = NULL;
     BYTE Buffer[0x1000];
     DWORD dwBytesRead = 1;
-    DWORD dwFlags = 0;
     bool bResult;
     int nError = ERROR_SUCCESS;
 
@@ -117,21 +116,10 @@ static int ExtractFile(HANDLE hStorage, CASC_FIND_DATA & cf, const TCHAR * szLoc
     CASCLIB_UNUSED(szLocalPath);
 
     // Open the CASC file
-    if(nError == ERROR_SUCCESS)
+    if(!CascOpenFile(hStorage, cf.szFileName, cf.dwLocaleFlags, cf.dwOpenFlags, &hFile))
     {
-        // Replace with encoding key
-        if(cf.szFileName[0] == 0)
-        {
-            StringFromBinary(cf.EncodingKey, MD5_HASH_SIZE, cf.szFileName);
-            dwFlags |= CASC_OPEN_BY_ENCODING_KEY;
-        }
-
-        // Open a file
-        if(!CascOpenFile(hStorage, cf.szFileName, cf.dwLocaleFlags, dwFlags, &hFile))
-        {
-            assert(GetLastError() != ERROR_SUCCESS);
-            nError = GetLastError();
-        }
+        assert(GetLastError() != ERROR_SUCCESS);
+        nError = GetLastError();
     }
 
     // Create the local file
@@ -166,6 +154,9 @@ static int ExtractFile(HANDLE hStorage, CASC_FIND_DATA & cf, const TCHAR * szLoc
             nError = GetLastError();
             break;
         }
+
+        if(dwBytesRead == 0)
+            break;
 
         // Write the local file
 //      if(dwBytesRead != 0)
@@ -213,11 +204,11 @@ static int CompareFile(TLogHelper & LogHelper, HANDLE hStorage, CASC_FIND_DATA &
     // If we don't know the name, use the encoding key as name
     if(cf.szFileName[0] == 0)
     {
-        StringFromBinary(cf.EncodingKey, MD5_HASH_SIZE, cf.szFileName);
+        StringFromBinary(cf.FileKey, MD5_HASH_SIZE, cf.szFileName);
         dwFlags |= CASC_OPEN_BY_ENCODING_KEY;
 
         CopyString(szTempBuff, cf.szFileName, MAX_PATH);
-        _stprintf(szFileName, _T("%s\\unknown\\%02X\\%s"), szLocalPath, cf.EncodingKey[0], szTempBuff);
+        _stprintf(szFileName, _T("%s\\unknown\\%02X\\%s"), szLocalPath, cf.FileKey[0], szTempBuff);
     }
     else
     {
@@ -460,7 +451,7 @@ static int TestOpenStorage_ExtractFiles(const TCHAR * szStorage, const TCHAR * s
     if(nError == ERROR_SUCCESS)
     {
         LogHelper.PrintProgress("Searching storage ...");
-        hFind = CascFindFirstFile(hStorage, "*.dds", &FindData, szListFile);
+        hFind = CascFindFirstFile(hStorage, "*", &FindData, szListFile);
         if(hFind != INVALID_HANDLE_VALUE)
         {
             // Search the storage
@@ -638,14 +629,20 @@ int main(int argc, char * argv[])
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), _T("huhu.txt"));
 
-    if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_EnumFiles(MAKE_PATH("2017 - Starcraft1/Data"), NULL);
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2017 - Starcraft1/Data"), NULL);
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Diablo III/30013/Data"), NULL);
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Overwatch/24919/casc/data"), NULL);
+
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2016 - WoW/23420/Data"), _T("huhu.txt"));
+
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2018 - New CASC\\War3"), NULL);
 
     // Test extracting the complete storage
 //  if(nError == ERROR_SUCCESS)
@@ -670,7 +667,11 @@ int main(int argc, char * argv[])
 //      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2015 - Overwatch/24919/casc/data"), MAKE_PATH("Work"), NULL);
 
 //  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_GetFileDataId(MAKE_PATH("2016 - WoW/23420/Data"), "character/bloodelf/female/bloodelffemale.m2", 116921);
+//      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2016 - WoW/23420/Data"), _T("Work"), NULL);
+
+    if(nError == ERROR_SUCCESS)
+        nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2018 - New CASC\\War3"), _T("Work"), NULL);
+
 
 #ifdef _MSC_VER                                                          
     _CrtDumpMemoryLeaks();

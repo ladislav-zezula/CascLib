@@ -15,6 +15,17 @@
 //-----------------------------------------------------------------------------
 // Conversion of big-endian to integer
 
+// Read the 16-bit big-endian offset into ULONGLONG
+DWORD ConvertBytesToInteger_2(LPBYTE ValueAsBytes)
+{
+    USHORT Value = 0;
+
+    Value = (Value << 0x08) | ValueAsBytes[0];
+    Value = (Value << 0x08) | ValueAsBytes[1];
+
+    return Value;
+}
+
 // Read the 24-bit big-endian offset into ULONGLONG
 DWORD ConvertBytesToInteger_3(LPBYTE ValueAsBytes)
 {
@@ -36,6 +47,23 @@ DWORD ConvertBytesToInteger_4(LPBYTE ValueAsBytes)
     Value = (Value << 0x08) | ValueAsBytes[1];
     Value = (Value << 0x08) | ValueAsBytes[2];
     Value = (Value << 0x08) | ValueAsBytes[3];
+
+    return Value;
+}
+
+// Converts the variable-size big-endian into integer
+DWORD ConvertBytesToInteger_X(LPBYTE ValueAsBytes, DWORD dwByteSize)
+{
+    DWORD Value = 0;
+
+    if(dwByteSize > 0)
+        Value = (Value << 0x08) | ValueAsBytes[0];
+    if(dwByteSize > 1)
+        Value = (Value << 0x08) | ValueAsBytes[1];
+    if(dwByteSize > 2)
+        Value = (Value << 0x08) | ValueAsBytes[2];
+    if(dwByteSize > 3)
+        Value = (Value << 0x08) | ValueAsBytes[3];
 
     return Value;
 }

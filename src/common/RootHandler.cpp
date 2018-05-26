@@ -15,21 +15,26 @@
 //-----------------------------------------------------------------------------
 // Common support
 
-int RootHandler_Insert(TRootHandler * pRootHandler, const char * szFileName, LPBYTE pbEncodingKey)
+int RootHandler_Insert(TRootHandler * pRootHandler, const char * szFileName, LPBYTE pbQueryKey)
 {
-    if(pRootHandler == NULL || pRootHandler->Insert == NULL || pbEncodingKey == NULL)
+    // Check if we have everything needed
+    if(pRootHandler == NULL || pRootHandler->Insert == NULL)
         return ERROR_NOT_SUPPORTED;
 
-    return pRootHandler->Insert(pRootHandler, szFileName, pbEncodingKey);
+    // The pbQueryKey parameter must be valid
+    assert(pbQueryKey != NULL);
+
+    // Ask the root folder to insert the key
+    return pRootHandler->Insert(pRootHandler, szFileName, pbQueryKey);
 }
 
-LPBYTE RootHandler_Search(TRootHandler * pRootHandler, struct _TCascSearch * pSearch, PDWORD PtrFileSize, PDWORD PtrLocaleFlags, PDWORD PtrFileDataId)
+LPBYTE RootHandler_Search(TRootHandler * pRootHandler, struct _TCascSearch * pSearch)
 {
     // Check if the root structure is valid at all
     if(pRootHandler == NULL)
         return NULL;
 
-    return pRootHandler->Search(pRootHandler, pSearch, PtrFileSize, PtrLocaleFlags, PtrFileDataId);
+    return pRootHandler->Search(pRootHandler, pSearch);
 }
 
 void RootHandler_EndSearch(TRootHandler * pRootHandler, struct _TCascSearch * pSearch)
@@ -85,4 +90,3 @@ DWORD RootHandler_GetFileId(TRootHandler * pRootHandler, const char * szFileName
 
     return pRootHandler->GetFileId(pRootHandler, szFileName);
 }
-

@@ -74,7 +74,6 @@
 #define CASCLIB_MIN(a, b) ((a < b) ? a : b)
 #define CASCLIB_MAX(a, b) ((a > b) ? a : b)
 #define CASCLIB_UNUSED(p) ((void)(p))
-
 #define CASC_PACKAGE_BUFFER     0x1000
 
 #ifndef _maxchars
@@ -100,6 +99,7 @@ typedef struct _ENCODING_KEY
 
 } ENCODING_KEY, *PENCODING_KEY;
 
+// Index entry in the .idx files (part 1)
 typedef struct _CASC_INDEX_ENTRY
 {
     BYTE IndexKey[CASC_FILE_KEY_SIZE];              // The first 9 bytes of the encoding key
@@ -117,6 +117,7 @@ typedef struct _CASC_MAPPING_TABLE
     BYTE   SpanOffsBytes;                           // Size of field with file offset
     BYTE   KeyBytes;                                // Size of the file key
     BYTE   SegmentBits;                             // Number of bits for the file offset (rest is archive index)
+    bool   FreeIndexEntries;                        // If true, then we need to free the index entry map
     ULONGLONG MaxFileOffset;
 
     PCASC_INDEX_ENTRY pIndexEntries;                // Sorted array of index entries
@@ -268,6 +269,9 @@ typedef struct _TCascSearch
     void * pCache;                                  // Listfile cache
     char * szMask;                                  // Search mask
     char szFileName[MAX_PATH];                      // Buffer for the file name
+    DWORD dwFileSize;                               // For file size
+    DWORD dwLocaleFlags;                            // For locale flags
+    DWORD dwFileDataId;                             // For File Data ID
 
     // Provider-specific data
     void * pRootContext;                            // Root-specific search context
@@ -309,8 +313,10 @@ typedef struct _TCascSearch
 //-----------------------------------------------------------------------------
 // Big endian number manipulation
 
+DWORD ConvertBytesToInteger_2(LPBYTE ValueAsBytes);
 DWORD ConvertBytesToInteger_3(LPBYTE ValueAsBytes);
 DWORD ConvertBytesToInteger_4(LPBYTE ValueAsBytes);
+DWORD ConvertBytesToInteger_X(LPBYTE ValueAsBytes, DWORD dwByteSize);
 DWORD ConvertBytesToInteger_4_LE(LPBYTE ValueAsBytes);
 ULONGLONG ConvertBytesToInteger_5(LPBYTE ValueAsBytes);
 
@@ -343,6 +349,7 @@ int CascDirectCopy(LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBYTE pbInBuffer, D
 // Support for ROOT file
 
 int RootHandler_CreateMNDX(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
+int RootHandler_CreateTVFS(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
 int RootHandler_CreateDiablo3(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
 int RootHandler_CreateOverwatch(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
 int RootHandler_CreateWoW6(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile, DWORD dwLocaleMask);

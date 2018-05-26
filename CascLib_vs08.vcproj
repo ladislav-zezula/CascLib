@@ -2253,6 +2253,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\src\CascRootFile_TVFS.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\src\CascRootFile_WoW6.cpp"
 				>
 				<FileConfiguration

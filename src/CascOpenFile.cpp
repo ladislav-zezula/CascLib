@@ -196,9 +196,11 @@ bool WINAPI CascOpenFileByEncodingKey(HANDLE hStorage, PQUERY_KEY pEncodingKey, 
 bool WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocale, DWORD dwFlags, HANDLE * phFile)
 {
     TCascStorage * hs;
-    QUERY_KEY EncodingKey;
-    LPBYTE pbEncodingKey;
+    QUERY_KEY QueryKey;
+    LPBYTE pbQueryKey = NULL;
     BYTE KeyBuffer[MD5_HASH_SIZE];
+    DWORD dwOpenMode = 0;
+    bool bOpenResult = false;
     int nError = ERROR_SUCCESS;
 
     CASCLIB_UNUSED(dwLocale);
@@ -218,53 +220,86 @@ bool WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocal
         return false;
     }
 
-    // If the user is opening the file via encoding key, skip the ROOT file processing
-    if((dwFlags & CASC_OPEN_BY_ENCODING_KEY) == 0)
+    // Retrieve the encoding/index key from the file name in different modes
+    switch(dwFlags & CASC_OPEN_TYPE_MASK)
     {
-        // Let the root directory provider get us the encoding key
-        pbEncodingKey = RootHandler_GetKey(hs->pRootHandler, szFileName);
-        if(pbEncodingKey == NULL)
-        {
-            SetLastError(ERROR_FILE_NOT_FOUND);
-            return false;
-        }
+        case CASC_OPEN_BY_NAME:
+            
+            // Retrieve the file encoding/index key
+            pbQueryKey = RootHandler_GetKey(hs->pRootHandler, szFileName);
+            if(pbQueryKey == NULL)
+            {
+                nError = ERROR_FILE_NOT_FOUND;
+                break;
+            }
 
-        // Setup the encoding key
-        EncodingKey.pbData = pbEncodingKey;
-        EncodingKey.cbData = MD5_HASH_SIZE;
+            // Set the proper open mode
+            dwOpenMode = (hs->pRootHandler->dwRootFlags & ROOT_FLAG_USES_INDEX_KEY) ? CASC_OPEN_BY_INDEX_KEY : CASC_OPEN_BY_ENCODING_KEY;
+            break;
+
+        case CASC_OPEN_BY_ENCODING_KEY:
+
+            // Convert the string to binary
+            nError = ConvertStringToBinary(szFileName, MD5_STRING_SIZE, KeyBuffer);
+            if(nError != ERROR_SUCCESS)
+                break;
+            
+            // Proceed opening by encoding key
+            dwOpenMode = CASC_OPEN_BY_ENCODING_KEY;
+            pbQueryKey = KeyBuffer;
+            break;
+
+        case CASC_OPEN_BY_INDEX_KEY:
+
+            // Convert the string to binary
+            nError = ConvertStringToBinary(szFileName, MD5_STRING_SIZE, KeyBuffer);
+            if(nError != ERROR_SUCCESS)
+                break;
+            
+            // Proceed opening by encoding key
+            dwOpenMode = CASC_OPEN_BY_INDEX_KEY;
+            pbQueryKey = KeyBuffer;
+            break;
+
+        default:
+
+            // Unknown open mode
+            nError = ERROR_INVALID_PARAMETER;
+            break;
     }
-    else
-    {
-        // Check the length of the file name
-        if(strlen(szFileName) < MD5_STRING_SIZE)
-        {
-            SetLastError(ERROR_INVALID_PARAMETER);
-            return false;
-        }
 
-        // Convert the file name to binary blob
-        EncodingKey.pbData = KeyBuffer;
-        EncodingKey.cbData = MD5_HASH_SIZE;
-        nError = ConvertStringToBinary(szFileName, MD5_STRING_SIZE, KeyBuffer);
-    }
-
-    // Use the encoding key to find the file in the encoding table entry
+    // Perform the open operation
     if(nError == ERROR_SUCCESS)
     {
-        if(!OpenFileByEncodingKey(hs, &EncodingKey, dwFlags, (TCascFile **)phFile))
+        // Setup the encoding key
+        QueryKey.pbData = pbQueryKey;
+        QueryKey.cbData = MD5_HASH_SIZE;
+
+        // Either open by index key or by encoding key
+        switch(dwOpenMode)
+        {
+            case CASC_OPEN_BY_INDEX_KEY:
+                bOpenResult = OpenFileByIndexKey(hs, &QueryKey, dwFlags, (TCascFile **)phFile);
+                break;
+
+            case CASC_OPEN_BY_ENCODING_KEY:
+                bOpenResult = OpenFileByEncodingKey(hs, &QueryKey, dwFlags, (TCascFile **)phFile);
+                break;
+
+            default:
+                SetLastError(ERROR_INVALID_PARAMETER);
+                break;
+        }
+
+        // Handle the error code
+        if(!bOpenResult)
         {
             assert(GetLastError() != ERROR_SUCCESS);
             nError = GetLastError();
         }
     }
 
-#ifdef CASCLIB_TEST
-//  if(phFile[0] != NULL && pRootEntryMndx != NULL)
-//  {
-//      ((TCascFile *)(phFile[0]))->FileSize_RootEntry = pRootEntryMndx->FileSize;
-//  }
-#endif
-
+    // Set the last error and return
     if(nError != ERROR_SUCCESS)
         SetLastError(nError);
     return (nError == ERROR_SUCCESS);
