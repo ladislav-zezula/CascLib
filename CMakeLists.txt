@@ -102,6 +102,19 @@ if(CASC_BUILD_SHARED_LIB)
 	if(WIN32)
 		set_target_properties(casc PROPERTIES OUTPUT_NAME CascLib)
 	endif()
+	
+	
+if(APPLE)
+    set_target_properties(casc PROPERTIES FRAMEWORK true)
+    set_target_properties(casc PROPERTIES PUBLIC_HEADER "src/CascLib.h src/CascPort.h")
+    set_target_properties(casc PROPERTIES LINK_FLAGS "-framework Carbon")
+endif()
+
+if(UNIX)
+    set_target_properties(casc PROPERTIES VERSION 1.0.0)
+    set_target_properties(casc PROPERTIES SOVERSION 1)
+endif()
+
 endif()
 
 option(CASC_BUILD_TESTS "Build Test application" OFF)
@@ -120,17 +133,19 @@ if(CASC_BUILD_STATIC_LIB)
     target_link_libraries(casc_static ${LINK_LIBS})
     set_target_properties(casc_static PROPERTIES OUTPUT_NAME casc)
 	install(TARGETS casc_static RUNTIME DESTINATION bin LIBRARY DESTINATION lib${LIB_SUFFIX} ARCHIVE DESTINATION lib${LIB_SUFFIX} FRAMEWORK DESTINATION /Library/Frameworks)
-endif()
-
-if(APPLE)
-    set_target_properties(casc PROPERTIES FRAMEWORK true)
-    set_target_properties(casc PROPERTIES PUBLIC_HEADER "src/CascLib.h src/CascPort.h")
-    set_target_properties(casc PROPERTIES LINK_FLAGS "-framework Carbon")
+	
+	if(APPLE)
+    set_target_properties(casc_static PROPERTIES FRAMEWORK true)
+    set_target_properties(casc_static PROPERTIES PUBLIC_HEADER "src/CascLib.h src/CascPort.h")
+    set_target_properties(casc_static PROPERTIES LINK_FLAGS "-framework Carbon")
 endif()
 
 if(UNIX)
-    set_target_properties(casc PROPERTIES VERSION 1.0.0)
-    set_target_properties(casc PROPERTIES SOVERSION 1)
+    set_target_properties(casc_static PROPERTIES VERSION 1.0.0)
+    set_target_properties(casc_static PROPERTIES SOVERSION 1)
 endif()
+
+endif()
+
 
 install(FILES src/CascLib.h src/CascPort.h DESTINATION include)
