@@ -36,7 +36,7 @@ static int EnsureDataStreamIsOpen(TCascFile * hf)
     TCHAR szPlainName[0x40];
 
     // If the file is not open yet, do it
-    if(hs->DataFileArray[hf->ArchiveIndex] == NULL)
+    if(hs->DataFiles[hf->ArchiveIndex] == NULL)
     {
         // Prepare the name of the data file
         _stprintf(szPlainName, _T("data.%03u"), hf->ArchiveIndex);
@@ -47,13 +47,13 @@ static int EnsureDataStreamIsOpen(TCascFile * hf)
         {
             // Open the stream
             pStream = FileStream_OpenFile(szDataFile, STREAM_FLAG_READ_ONLY | STREAM_PROVIDER_FLAT | BASE_PROVIDER_FILE);
-            hs->DataFileArray[hf->ArchiveIndex] = pStream;
+            hs->DataFiles[hf->ArchiveIndex] = pStream;
             CASC_FREE(szDataFile);
         }
     }
 
     // Return error or success
-    hf->pStream = hs->DataFileArray[hf->ArchiveIndex];
+    hf->pStream = hs->DataFiles[hf->ArchiveIndex];
     return (hf->pStream != NULL) ? ERROR_SUCCESS : ERROR_FILE_NOT_FOUND;
 }
 

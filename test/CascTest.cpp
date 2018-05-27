@@ -450,6 +450,9 @@ static int TestOpenStorage_ExtractFiles(const TCHAR * szStorage, const TCHAR * s
 
     if(nError == ERROR_SUCCESS)
     {
+        // Dump the storage
+        CascDumpStorage(hStorage, "E:\\storage-dump.txt");
+
         LogHelper.PrintProgress("Searching storage ...");
         hFind = CascFindFirstFile(hStorage, "*", &FindData, szListFile);
         if(hFind != INVALID_HANDLE_VALUE)

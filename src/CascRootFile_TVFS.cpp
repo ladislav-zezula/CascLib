@@ -74,7 +74,7 @@ struct TRootHandler_TVFS : public TRootHandler
     // File header, normalized to little endian
     TVFS_FILE_HEADER Header;
 
-    // Global map of FileName -> FileEntry. Used for fast search of a file name
+    // Global map of FileNameHash -> FileEntry. Used for fast search of a file entry
     PCASC_MAP pRootMap;
 
     // Linear global list of all files. Used for file enumeration

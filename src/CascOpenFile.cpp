@@ -44,7 +44,7 @@ PCASC_ENCODING_ENTRY FindEncodingEntry(TCascStorage * hs, PQUERY_KEY pEncodingKe
 
 static TCascFile * CreateFileHandle(TCascStorage * hs, PCASC_INDEX_ENTRY pIndexEntry)
 {
-    ULONGLONG FileOffsMask = ((ULONGLONG)1 << hs->KeyMapping[0].SegmentBits) - 1;
+    ULONGLONG FileOffsMask = ((ULONGLONG)1 << hs->IndexFile[0].SegmentBits) - 1;
     ULONGLONG FileOffset = ConvertBytesToInteger_5(pIndexEntry->FileOffsetBE);
     TCascFile * hf;
 
@@ -54,7 +54,7 @@ static TCascFile * CreateFileHandle(TCascStorage * hs, PCASC_INDEX_ENTRY pIndexE
     {
         // Initialize the structure
         memset(hf, 0, sizeof(TCascFile));
-        hf->ArchiveIndex = (DWORD)(FileOffset >> hs->KeyMapping[0].SegmentBits);
+        hf->ArchiveIndex = (DWORD)(FileOffset >> hs->IndexFile[0].SegmentBits);
         hf->HeaderOffset = (DWORD)(FileOffset & FileOffsMask);
         hf->szClassName = "TCascFile";
 

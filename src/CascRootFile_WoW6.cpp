@@ -517,7 +517,7 @@ static void TRootHandlerWoW6_Dump(
                 EncodingKey.pbData = BlockInfo.pRootEntries[i].EncodingKey.Value;
                 EncodingKey.cbData = MD5_HASH_SIZE;
                 pEncodingEntry = FindEncodingEntry(hs, &EncodingKey, NULL);
-                CascDumpEncodingEntry(hs, dc, pEncodingEntry, nDumpLevel);
+//              CascDumpEncodingEntry(hs, dc, pEncodingEntry, nDumpLevel);
             }
         }
 

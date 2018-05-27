@@ -749,7 +749,7 @@ static int LoadCdnBuildFile(TCascStorage * hs, void * pvListFile)
         szVarBegin = CheckLineVariable(szLineBegin, szLineEnd, "root");
         if(szVarBegin != NULL)
         {
-            LoadSingleBlob(&hs->RootKey, szVarBegin, szLineEnd);
+            LoadSingleBlob(&hs->RootFile, szVarBegin, szLineEnd);
             continue;
         }
 
@@ -757,7 +757,7 @@ static int LoadCdnBuildFile(TCascStorage * hs, void * pvListFile)
         szVarBegin = CheckLineVariable(szLineBegin, szLineEnd, "patch");
         if(szVarBegin != NULL)
         {
-            LoadSingleBlob(&hs->PatchKey, szVarBegin, szLineEnd);
+            LoadSingleBlob(&hs->PatchFile, szVarBegin, szLineEnd);
             continue;
         }
 
@@ -765,7 +765,7 @@ static int LoadCdnBuildFile(TCascStorage * hs, void * pvListFile)
         szVarBegin = CheckLineVariable(szLineBegin, szLineEnd, "download");
         if(szVarBegin != NULL)
         {
-            LoadSingleBlob(&hs->DownloadKey, szVarBegin, szLineEnd);
+            LoadSingleBlob(&hs->DownloadFile, szVarBegin, szLineEnd);
             continue;
         }
 
@@ -773,7 +773,7 @@ static int LoadCdnBuildFile(TCascStorage * hs, void * pvListFile)
         szVarBegin = CheckLineVariable(szLineBegin, szLineEnd, "install");
         if(szVarBegin != NULL)
         {
-            LoadSingleBlob(&hs->InstallKey, szVarBegin, szLineEnd);
+            LoadSingleBlob(&hs->InstallFile, szVarBegin, szLineEnd);
             continue;
         }
 
@@ -781,13 +781,13 @@ static int LoadCdnBuildFile(TCascStorage * hs, void * pvListFile)
         szVarBegin = CheckLineVariable(szLineBegin, szLineEnd, "encoding");
         if(szVarBegin != NULL)
         {
-            nError = LoadMultipleBlobs(&hs->EncodingKey, szVarBegin, szLineEnd, 2);
+            nError = LoadMultipleBlobs(&hs->EncodingFile, szVarBegin, szLineEnd, 2);
             continue;
         }
     }
 
     // Check the encoding keys
-    if(hs->EncodingKey.pbData == NULL || hs->EncodingKey.cbData != MD5_HASH_SIZE * 2)
+    if(hs->EncodingFile.pbData == NULL || hs->EncodingFile.cbData != MD5_HASH_SIZE * 2)
         return ERROR_BAD_FORMAT;
     return nError;
 }

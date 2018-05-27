@@ -107,7 +107,7 @@ typedef struct _CASC_INDEX_ENTRY
     BYTE FileSizeLE[4];                             // Size occupied in the storage file (data.###). See comment before CascGetFileSize for details
 } CASC_INDEX_ENTRY, *PCASC_INDEX_ENTRY;
 
-typedef struct _CASC_MAPPING_TABLE
+typedef struct _CASC_INDEX_FILE
 {
     TCHAR * szFileName;                             // Name of the key mapping file
     LPBYTE  pbFileData;                             // Pointer to the file data
@@ -123,7 +123,7 @@ typedef struct _CASC_MAPPING_TABLE
     PCASC_INDEX_ENTRY pIndexEntries;                // Sorted array of index entries
     DWORD nIndexEntries;                            // Number of index entries
 
-} CASC_MAPPING_TABLE, *PCASC_MAPPING_TABLE;
+} CASC_INDEX_FILE, *PCASC_INDEX_FILE;
 
 typedef struct _CASC_FILE_FRAME
 {
@@ -208,19 +208,19 @@ typedef struct _TCascStorage
     QUERY_KEY ArchivesKey;                          // Key array of the "archives"
     QUERY_KEY PatchArchivesKey;                     // Key array of the "patch-archives"
     QUERY_KEY PatchArchivesGroup;                   // Key array of the "patch-archive-group"
-    QUERY_KEY RootKey;
-    QUERY_KEY PatchKey;
-    QUERY_KEY DownloadKey;
-    QUERY_KEY InstallKey;
-    QUERY_KEY EncodingKey;
+    QUERY_KEY RootFile;                             // Encoding key of the ROOT file
+    QUERY_KEY PatchFile;                            // Encoding key of the PATCH file
+    QUERY_KEY DownloadFile;                         // Encoding+Index key of the DOWNLOAD file
+    QUERY_KEY InstallFile;                          // Encoding+Index key of the INSTALL file
+    QUERY_KEY EncodingFile;                         // Encoding+Index key of the ENCODING file
 
-    TFileStream * DataFileArray[CASC_MAX_DATA_FILES]; // Data file handles
+    TFileStream * DataFiles[CASC_MAX_DATA_FILES];   // Array of open data files
 
-    CASC_MAPPING_TABLE KeyMapping[CASC_INDEX_COUNT]; // Key mapping
+    CASC_INDEX_FILE IndexFile[CASC_INDEX_COUNT];    // Array of index files
     PCASC_MAP pIndexEntryMap;                       // Map of index entries
 
-    QUERY_KEY EncodingFile;                         // Content of the ENCODING file
-    PCASC_MAP pEncodingMap;                         // Map of encoding entries
+    PCASC_MAP pEncodingMap;                         // Map of encoding entries. Used for fast-find of an encoding key
+    QUERY_KEY EncodingData;                         // Content of the ENCODING file. Keep this in for encoding table.
     DYNAMIC_ARRAY ExtraEntries;                     // Extra encoding entries
 
     TRootHandler * pRootHandler;                    // Common handler for various ROOT file formats
@@ -359,12 +359,8 @@ int RootHandler_CreateSC1(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile
 // Dumping CASC data structures
 
 #ifdef _DEBUG
-void CascDumpSparseArray(const char * szFileName, void * pvSparseArray);
-void CascDumpNameFragTable(const char * szFileName, void * pvMarFile);
-void CascDumpFileNames(const char * szFileName, void * pvMarFile);
-void CascDumpIndexEntries(const char * szFileName, TCascStorage * hs);
-void CascDumpEncodingEntry(TCascStorage * hs, TDumpContext * dc, PCASC_ENCODING_ENTRY pEncodingEntry, int nDumpLevel);
-void CascDumpFile(const char * szFileName, HANDLE hFile);
+void CascDumpFile(HANDLE hFile, const char * szDumpFile = NULL);
+void CascDumpStorage(HANDLE hStorage, const char * szDumpFile = NULL);
 #endif  // _DEBUG
 
 #endif // __CASCCOMMON_H__
