@@ -381,7 +381,7 @@ static int LoadMultipleBlobs(PQUERY_KEY pBlob, const char * szLineBegin, const c
 {
     size_t nLength = (szLineEnd - szLineBegin);
 
-    // We expect each blob to have length of the encoding key and one space between
+    // We expect each blob to have length of the content key and one space between
     if(nLength > (dwBlobCount * MD5_STRING_SIZE) + ((dwBlobCount - 1) * sizeof(char)))
         return ERROR_INVALID_PARAMETER;
 
@@ -745,7 +745,7 @@ static int LoadCdnBuildFile(TCascStorage * hs, void * pvListFile)
             continue;
         }
 
-        // Root
+        // ROOT file
         szVarBegin = CheckLineVariable(szLineBegin, szLineEnd, "root");
         if(szVarBegin != NULL)
         {
@@ -753,7 +753,7 @@ static int LoadCdnBuildFile(TCascStorage * hs, void * pvListFile)
             continue;
         }
 
-        // Patch
+        // PATCH file
         szVarBegin = CheckLineVariable(szLineBegin, szLineEnd, "patch");
         if(szVarBegin != NULL)
         {
@@ -761,7 +761,7 @@ static int LoadCdnBuildFile(TCascStorage * hs, void * pvListFile)
             continue;
         }
 
-        // Download
+        // DOWNLOAD file
         szVarBegin = CheckLineVariable(szLineBegin, szLineEnd, "download");
         if(szVarBegin != NULL)
         {
@@ -769,7 +769,7 @@ static int LoadCdnBuildFile(TCascStorage * hs, void * pvListFile)
             continue;
         }
 
-        // Install
+        // INSTALL file
         szVarBegin = CheckLineVariable(szLineBegin, szLineEnd, "install");
         if(szVarBegin != NULL)
         {
@@ -777,7 +777,7 @@ static int LoadCdnBuildFile(TCascStorage * hs, void * pvListFile)
             continue;
         }
 
-        // Encoding keys
+        // ENCODING file
         szVarBegin = CheckLineVariable(szLineBegin, szLineEnd, "encoding");
         if(szVarBegin != NULL)
         {
@@ -786,7 +786,7 @@ static int LoadCdnBuildFile(TCascStorage * hs, void * pvListFile)
         }
     }
 
-    // Check the encoding keys
+    // Check the encoding file data
     if(hs->EncodingFile.pbData == NULL || hs->EncodingFile.cbData != MD5_HASH_SIZE * 2)
         return ERROR_BAD_FORMAT;
     return nError;
@@ -978,18 +978,18 @@ int GetRootVariableIndex(const char * szLinePtr, const char * szLineEnd, const c
 }
 
 // Parses single line from Overwatch.
-int ParseRootFileLine(const char * szLinePtr, const char * szLineEnd, int nFileNameIndex, PQUERY_KEY PtrEncodingKey, char * szFileName, size_t nMaxChars)
+int ParseRootFileLine(const char * szLinePtr, const char * szLineEnd, int nFileNameIndex, PQUERY_KEY pCKey, char * szFileName, size_t nMaxChars)
 {
     int nIndex = 0;
     int nError;
 
-    // Extract the MD5 (aka encoding key)
+    // Extract the MD5 (aka CKey)
     if(szLinePtr[MD5_STRING_SIZE] != '|')
         return ERROR_BAD_FORMAT;
 
-    // Convert the encoding key to binary
-    PtrEncodingKey->cbData = MD5_HASH_SIZE;
-    nError = ConvertStringToBinary(szLinePtr, MD5_STRING_SIZE, PtrEncodingKey->pbData);
+    // Convert the CKey to binary
+    pCKey->cbData = MD5_HASH_SIZE;
+    nError = ConvertStringToBinary(szLinePtr, MD5_STRING_SIZE, pCKey->pbData);
     if(nError != ERROR_SUCCESS)
         return nError;
 

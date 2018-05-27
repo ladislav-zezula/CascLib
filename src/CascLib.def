@@ -12,8 +12,10 @@ EXPORTS
     CascGetStorageInfo
     CascCloseStorage
 
-    CascOpenFileByIndexKey
-    CascOpenFileByEncodingKey
+    CascOpenFileByEKey
+    CascOpenFileByIndexKey = CascOpenFileByEKey
+    CascOpenFileByCKey
+    CascOpenFileByEncodingKey = CascOpenFileByCKey
     CascOpenFile
     CascGetFileSize
     CascSetFilePointer

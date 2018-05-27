@@ -63,9 +63,9 @@ typedef struct _TVFS_FILE_ENTRY
 // A structure describing the file span
 typedef struct _TVFS_SPAN_ENTRY
 {
-    ENCODING_KEY EKey;                              // Encoding/Index key for the span
+    CONTENT_KEY EKey;                               // CKey/EKey for the span
     DWORD dwFileOffset;                             // Offset into the reference file
-    DWORD dwSpanSize;                               // Size of the file span. Higher bit is set if the SpanKey is an index key (as opposite to encoding key)
+    DWORD dwSpanSize;                               // Size of the file span
 
 } TVFS_SPAN_ENTRY, *PTVFS_SPAN_ENTRY;
 
@@ -564,7 +564,7 @@ static int RebuildFileMap(TRootHandler_TVFS * pRootHandler)
 //-----------------------------------------------------------------------------
 // Implementation of TVFS root file
 
-static int TVFS_Insert(TRootHandler_TVFS * pRootHandler, const char * szFileName, LPBYTE pbEncodingKey)
+static int TVFS_Insert(TRootHandler_TVFS * pRootHandler, const char * szFileName, LPBYTE pbEKey)
 {
     PTVFS_FILE_ENTRY pFileEntry;
     PTVFS_SPAN_ENTRY pSpanEntry;
@@ -592,8 +592,8 @@ static int TVFS_Insert(TRootHandler_TVFS * pRootHandler, const char * szFileName
         pSpanEntry = (PTVFS_SPAN_ENTRY)Array_Insert(&pRootHandler->SpanList, NULL, 1);
         if(pSpanEntry != NULL)
         {
-            // Set the Index key of the span entry
-            memcpy(pSpanEntry->EKey.Value, pbEncodingKey, MD5_HASH_SIZE);
+            // Set the EKey of the span entry
+            memcpy(pSpanEntry->EKey.Value, pbEKey, MD5_HASH_SIZE);
 
             // Set the span offset and count
             pFileEntry->dwSpanOffset = Array_IndexOf(&pRootHandler->SpanList, pSpanEntry);
@@ -673,7 +673,7 @@ static LPBYTE TVFS_GetKey(TRootHandler_TVFS * pRootHandler, const char * szFileN
         pSpanEntry = (PTVFS_SPAN_ENTRY)Array_ItemAt(&pRootHandler->SpanList, pFileEntry->dwSpanOffset);
         if(pSpanEntry != NULL)
         {
-            // Give the encoding/index key
+            // Give the CKey/EKey
             return pSpanEntry->EKey.Value;            
         }
     }
@@ -729,8 +729,8 @@ int RootHandler_CreateTVFS(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFil
     pRootHandler->Close       = (ROOT_CLOSE)TVFS_Close;
     pRootHandler->GetFileId   = (ROOT_GETFILEID)TVFS_GetFileId;
 
-    // We have file names. We return index keys, not encoding keys
-    pRootHandler->dwRootFlags |= (ROOT_FLAG_HAS_NAMES | ROOT_FLAG_USES_INDEX_KEY | ROOT_FLAG_DONT_SEARCH_ENCKEY);
+    // We have file names. We return EKeys, not CKeys
+    pRootHandler->dwRootFlags |= (ROOT_FLAG_HAS_NAMES | ROOT_FLAG_USES_EKEY | ROOT_FLAG_DONT_SEARCH_CKEY);
 
     // Check and capture the TVFS header
     nError = CaptureFileHeader(&pRootHandler->Header, pbRootFile, cbRootFile);

@@ -18,8 +18,8 @@
 //-----------------------------------------------------------------------------
 // Forward definitions
 
-void DumpEncodingFile(TCascStorage * hs, FILE * fp);
-void DumpIndexEntries(TCascStorage * hs, FILE * fp);
+void DumpCKeyEntries(TCascStorage * hs, FILE * fp);
+void DumpEKeyEntries(TCascStorage * hs, FILE * fp);
 
 //-----------------------------------------------------------------------------
 // Local functions
@@ -228,11 +228,11 @@ void CascDumpStorage(HANDLE hStorage, const char * szDumpFile)
         fprintf(fp, "DOWNLOAD file:  %s\n", StringFromBinary(hs->DownloadFile.pbData, hs->DownloadFile.cbData, szStringBuff));
         fprintf(fp, "INSTALL file:   %s\n\n", StringFromBinary(hs->InstallFile.pbData, hs->InstallFile.cbData, szStringBuff));
 
-        // Dump the list of encoding keys
-        DumpEncodingFile(hs, fp);
+        // Dump the list of content key entries
+        DumpCKeyEntries(hs, fp);
 
-        // Dump list of index entries
-        DumpIndexEntries(hs, fp);
+        // Dump the list of encoded key entries
+        DumpEKeyEntries(hs, fp);
 
         // Close the dump file
         CloseDumpFile(szDumpFile, fp);

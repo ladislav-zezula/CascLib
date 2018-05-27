@@ -52,14 +52,14 @@
 // On-disk structure for a file given by file number
 typedef struct _DIABLO3_FILEID1_ENTRY
 {
-    ENCODING_KEY EncodingKey;                       // Encoding key for the file
+    CONTENT_KEY CKey;                              // Content key for the file
     DWORD FileIndex;                                // File index
 } DIABLO3_FILEID1_ENTRY, *PDIABLO3_FILEID1_ENTRY;
 
 // On-disk structure for a file given by file number and suffix
 typedef struct _DIABLO3_FILEID2_ENTRY
 {
-    ENCODING_KEY EncodingKey;                       // Encoding key for the file
+    CONTENT_KEY CKey;                              // Content key for the file
     DWORD FileIndex;                                // File index
     DWORD SubIndex;                                 // File subindex, like "SoundBank\3D Ambience\0000.smp"
 } DIABLO3_FILEID2_ENTRY, *PDIABLO3_FILEID2_ENTRY;
@@ -67,7 +67,7 @@ typedef struct _DIABLO3_FILEID2_ENTRY
 // On-disk structure of the named entry
 typedef struct _DIABLO3_NAMED_ENTRY
 {
-    ENCODING_KEY EncodingKey;                       // Encoding key for the file
+    CONTENT_KEY CKey;                              // Content key for the file
     BYTE szFileName[1];                             // ASCIIZ file name (variable length)
 } DIABLO3_NAMED_ENTRY, *PDIABLO3_NAMED_ENTRY;
 
@@ -129,7 +129,7 @@ typedef const DIABLO3_ASSET_INFO * PDIABLO3_ASSET_INFO;
 // In-memory structure of a file entry in the linear file list
 typedef struct _CASC_FILE_ENTRY
 {
-    ENCODING_KEY EncodingKey;                       // Encoding key
+    CONTENT_KEY CKey;                               // Content key
     ULONGLONG FileNameHash;                         // Hash of the full file name
     DWORD  dwFileName;                              // Offset of the name (in name's dynamic array)
     DWORD  dwFlags;                                 // Entry flags (see CASC_ENTRY_XXXX)
@@ -418,7 +418,7 @@ static PCASC_MAP CreatePackageMap(
 // Insert an entry with file name as-is
 static int InsertFileEntry(
     TRootHandler_Diablo3 * pRootHandler,
-    ENCODING_KEY & EncodingKey,
+    CONTENT_KEY & CKey,
     const char * szFileName,
     size_t cchFileName)
 {
@@ -443,7 +443,7 @@ static int InsertFileEntry(
     assert(pFileEntry != NULL);
 
     // Store the info into the file entry
-    pFileEntry->EncodingKey  = EncodingKey;
+    pFileEntry->CKey         = CKey;
     pFileEntry->FileNameHash = CalcFileNameHash(szFileName);
     pFileEntry->dwFileName   = (DWORD)Array_IndexOf(&pRootHandler->FileNames, szFileName);
     pFileEntry->dwFlags      = 0;
@@ -482,7 +482,7 @@ static int ParseDirEntries_FileId1(
         assert(pFileEntry != NULL);
 
         // Fill the index entry
-        pFileEntry->EncodingKey  = pEntry->EncodingKey;
+        pFileEntry->CKey         = pEntry->CKey;
         pFileEntry->FileNameHash = MAKE_INDEX64(dwRootDirIndex, pEntry->FileIndex, 0);
         pFileEntry->dwFlags      = CASC_ENTRY_SHORT_NAME;
     }
@@ -514,7 +514,7 @@ static int ParseDirEntries_FileId2(
         assert(pFileEntry != NULL);
 
         // Fill the index entry
-        pFileEntry->EncodingKey  = pEntry->EncodingKey;
+        pFileEntry->CKey         = pEntry->CKey;
         pFileEntry->FileNameHash = MAKE_INDEX64(dwRootDirIndex, pEntry->FileIndex, pEntry->SubIndex);
         pFileEntry->dwFlags      = CASC_ENTRY_SHORT_NAME | CASC_ENTRY_HAS_SUBINDEX;
     }
@@ -570,12 +570,12 @@ static int ParseDirEntries_Named(
         // Append the file name to the prepared file name
         // This way we obtain the full name and the name lookup
         // will be fully operational
-        memcpy(szNamePtr, pNamedEntry->szFileName, (cbFileEntry - sizeof(ENCODING_KEY)));
-        cchFileName = (DWORD)((szNamePtr - szFileName) + (cbFileEntry - sizeof(ENCODING_KEY)));
+        memcpy(szNamePtr, pNamedEntry->szFileName, (cbFileEntry - sizeof(CONTENT_KEY)));
+        cchFileName = (DWORD)((szNamePtr - szFileName) + (cbFileEntry - sizeof(CONTENT_KEY)));
 
         // Insert the named entry to the global file table
         nError = InsertFileEntry(pRootHandler,
-                                 pNamedEntry->EncodingKey,
+                                 pNamedEntry->CKey,
                                  szFileName,
                                  cchFileName);
         if(nError != ERROR_SUCCESS)
@@ -648,18 +648,18 @@ static void ResolveFullFileNames(
     }
 }
 
-static LPBYTE LoadFileToMemory(TCascStorage * hs, LPBYTE pbEncodingKey, DWORD * pcbFileData)
+static LPBYTE LoadFileToMemory(TCascStorage * hs, LPBYTE pbCKey, DWORD * pcbFileData)
 {
-    QUERY_KEY EncodingKey;
+    QUERY_KEY CKey;
     LPBYTE pbFileData = NULL;
     HANDLE hFile;
     DWORD cbBytesRead = 0;
     DWORD cbFileData = 0;
 
-    // Open the file by encoding key
-    EncodingKey.pbData = pbEncodingKey;
-    EncodingKey.cbData = MD5_HASH_SIZE;
-    if(CascOpenFileByEncodingKey((HANDLE)hs, &EncodingKey, 0, &hFile))
+    // Open the file by CKey
+    CKey.pbData = pbCKey;
+    CKey.cbData = MD5_HASH_SIZE;
+    if(CascOpenFileByCKey((HANDLE)hs, &CKey, 0, &hFile))
     {
         // Retrieve the file size
         cbFileData = CascGetFileSize(hFile, NULL);
@@ -684,13 +684,13 @@ static LPBYTE LoadFileToMemory(TCascStorage * hs, LPBYTE pbEncodingKey, DWORD * 
 
 static LPBYTE LoadFileToMemory(TCascStorage * hs, const char * szFileName, DWORD * pcbFileData)
 {
-    LPBYTE pbEncodingKey = NULL;
+    LPBYTE pbCKey = NULL;
     LPBYTE pbFileData = NULL;
 
-    // Try to find encoding key for the file
-    pbEncodingKey = RootHandler_GetKey(hs->pRootHandler, szFileName);
-    if(pbEncodingKey != NULL)
-        pbFileData = LoadFileToMemory(hs, pbEncodingKey, pcbFileData);
+    // Try to find CKey for the file
+    pbCKey = RootHandler_GetKey(hs->pRootHandler, szFileName);
+    if(pbCKey != NULL)
+        pbFileData = LoadFileToMemory(hs, pbCKey, pcbFileData);
 
     return pbFileData;
 }
@@ -788,7 +788,7 @@ static DWORD ScanDirectoryFile(
         RootHeader.pbEntries3 += cbNamedEntry;
 
         // Load the subdirectory to memory
-        pbSubDir = LoadFileToMemory(hs, pNamedEntry->EncodingKey.Value, &cbSubDir);
+        pbSubDir = LoadFileToMemory(hs, pNamedEntry->CKey.Value, &cbSubDir);
         if(pbSubDir != NULL)
         {
             // Count the files in the subdirectory
@@ -931,9 +931,9 @@ static int ParseCoreTOC(
 //-----------------------------------------------------------------------------
 // Implementation of Diablo III root file
 
-static int D3Handler_Insert(TRootHandler_Diablo3 * pRootHandler, const char * szFileName, LPBYTE pbEncodingKey)
+static int D3Handler_Insert(TRootHandler_Diablo3 * pRootHandler, const char * szFileName, LPBYTE pbCKey)
 {
-    ENCODING_KEY EncodingKey;
+    CONTENT_KEY CKey;
     DWORD dwFileIndex;
 
     // Don't let the number of items to overflow
@@ -941,9 +941,9 @@ static int D3Handler_Insert(TRootHandler_Diablo3 * pRootHandler, const char * sz
         return ERROR_NOT_ENOUGH_MEMORY;
 
     // Insert the item
-    EncodingKey = *(PENCODING_KEY)pbEncodingKey;
+    CKey = *(PCONTENT_KEY)pbCKey;
     dwFileIndex = InsertFileEntry(pRootHandler,
-                                  EncodingKey,
+                                  CKey,
                                   szFileName,
                                   strlen(szFileName) + 1);
     return (dwFileIndex != INVALID_FILE_INDEX) ? ERROR_SUCCESS : ERROR_NOT_ENOUGH_MEMORY;
@@ -973,7 +973,7 @@ static LPBYTE D3Handler_Search(TRootHandler_Diablo3 * pRootHandler, TCascSearch 
 
         // Prepare for the next search
         pSearch->IndexLevel1++;
-        return pFileEntry->EncodingKey.Value;
+        return pFileEntry->CKey.Value;
     }
 
     // No more entries
@@ -992,7 +992,7 @@ static LPBYTE D3Handler_GetKey(TRootHandler_Diablo3 * pRootHandler, const char *
 
     // Find the file in the name table
     pFileEntry = (PCASC_FILE_ENTRY)Map_FindObject(pRootHandler->pRootMap, &FileNameHash, NULL);
-    return (pFileEntry != NULL) ? pFileEntry->EncodingKey.Value : NULL;
+    return (pFileEntry != NULL) ? pFileEntry->CKey.Value : NULL;
 }
 
 static DWORD D3Handler_GetFileId(TRootHandler_Diablo3 * /* pRootHandler */, const char * /* szFileName */)
@@ -1030,7 +1030,7 @@ static void DumpRootFile(TDumpContext * dc, LPBYTE pbFileData, LPBYTE pbFileData
         return;
     pbFileData += sizeof(DWORD);
 
-    // Dump items that contain EncodingKey + AssetId
+    // Dump items that contain CKey + AssetId
     dwItemCount = *(PDWORD)pbFileData;
     pbFileData += sizeof(DWORD);
     for(i = 0; i < dwItemCount; i++)
@@ -1041,13 +1041,13 @@ static void DumpRootFile(TDumpContext * dc, LPBYTE pbFileData, LPBYTE pbFileData
             return;
         pbFileData += sizeof(*pEntry);
 
-        dump_print(dc, "%s %08X\n", StringFromMD5(pEntry->EncodingKey, szMD5Buffer), pEntry->AssetId);
+        dump_print(dc, "%s %08X\n", StringFromMD5(pEntry->CKey, szMD5Buffer), pEntry->AssetId);
     }
 
     // Terminate with two newlines
     dump_print(dc, "\n");
 
-    // Dump items that contain EncodingKey + AssetId + FileNumber
+    // Dump items that contain CKey + AssetId + FileNumber
     dwItemCount = *(PDWORD)pbFileData;
     pbFileData += sizeof(DWORD);
     for(i = 0; i < dwItemCount; i++)
@@ -1058,13 +1058,13 @@ static void DumpRootFile(TDumpContext * dc, LPBYTE pbFileData, LPBYTE pbFileData
             return;
         pbFileData += sizeof(*pEntry);
 
-        dump_print(dc, "%s %08X %08X\n", StringFromMD5((LPBYTE)pEntry->EncodingKey, szMD5Buffer), pEntry->AssetId, pEntry->FileNumber);
+        dump_print(dc, "%s %08X %08X\n", StringFromMD5((LPBYTE)pEntry->CKey, szMD5Buffer), pEntry->AssetId, pEntry->FileNumber);
     }
 
     // Terminate with two newlines
     dump_print(dc, "\n");
 
-    // Dump items that contain EncodingKey + FileName
+    // Dump items that contain CKey + FileName
     dwItemCount = *(PDWORD)pbFileData;
     pbFileData += sizeof(DWORD);
     for(i = 0; i < dwItemCount; i++)
@@ -1076,7 +1076,7 @@ static void DumpRootFile(TDumpContext * dc, LPBYTE pbFileData, LPBYTE pbFileData
             return;
         pbFileData += dwEntrySize;
 
-        dump_print(dc, "%s %s\n", StringFromMD5((LPBYTE)pEntry->EncodingKey, szMD5Buffer), pEntry->szFileName);
+        dump_print(dc, "%s %s\n", StringFromMD5((LPBYTE)pEntry->CKey, szMD5Buffer), pEntry->szFileName);
     }
 
     dump_print(dc, "\n\n");
@@ -1151,7 +1151,7 @@ int RootHandler_CreateDiablo3(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRoot
             PCASC_FILE_ENTRY pRootEntry = (PCASC_FILE_ENTRY)Array_ItemAt(&pRootHandler->FileTable, i);
 
             // Load the entire file to memory
-            pbRootFile = LoadFileToMemory(hs, pRootEntry->EncodingKey.Value, &cbRootFile);
+            pbRootFile = LoadFileToMemory(hs, pRootEntry->CKey.Value, &cbRootFile);
             if(pbRootFile != NULL)
             {
                 nError = ParseDirectoryFile(pRootHandler, pbRootFile, pbRootFile + cbRootFile, i);

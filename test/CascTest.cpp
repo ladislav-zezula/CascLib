@@ -59,11 +59,11 @@ static const char szCircleChar[] = "|/-\\";
 //-----------------------------------------------------------------------------
 // Local functions
 
-static bool IsEncodingKey(const char * szFileName)
+static bool IsFileKey(const char * szFileName)
 {
     BYTE KeyBuffer[MD5_HASH_SIZE];
 
-    // The length must be at least the length of the encoding key
+    // The length must be at least the length of the CKey
     if(strlen(szFileName) < MD5_STRING_SIZE)
         return false;
 
@@ -194,18 +194,22 @@ static int CompareFile(TLogHelper & LogHelper, HANDLE hStorage, CASC_FIND_DATA &
     LPBYTE pbFileData1 = NULL;
     LPBYTE pbFileData2 = NULL;
     TCHAR szFileName[MAX_PATH+1];
-    TCHAR szTempBuff[MAX_PATH+1];
     DWORD dwFileSize1;
     DWORD dwFileSize2;
     DWORD dwBytesRead;
-    DWORD dwFlags = 0;
     int nError = ERROR_SUCCESS;
 
-    // If we don't know the name, use the encoding key as name
+    // If we don't know the name, use the CKey as name
+    if(cf.dwOpenFlags & CASC_OPEN_TYPE_MASK)
+        _stprintf(szFileName, _T("%s\\unknown\\%02X\\%s"), szLocalPath, cf.FileKey[0], cf.szFileName);
+    else
+        _stprintf(szFileName, _T("%s\\%s"), szLocalPath, cf.szFileName);
+
+/*
     if(cf.szFileName[0] == 0)
     {
         StringFromBinary(cf.FileKey, MD5_HASH_SIZE, cf.szFileName);
-        dwFlags |= CASC_OPEN_BY_ENCODING_KEY;
+        dwFlags |= CASC_OPEN_BY_CKEY;
 
         CopyString(szTempBuff, cf.szFileName, MAX_PATH);
         _stprintf(szFileName, _T("%s\\unknown\\%02X\\%s"), szLocalPath, cf.FileKey[0], szTempBuff);
@@ -213,15 +217,14 @@ static int CompareFile(TLogHelper & LogHelper, HANDLE hStorage, CASC_FIND_DATA &
     else
     {
         CopyString(szTempBuff, cf.szFileName, MAX_PATH);
-        _stprintf(szFileName, _T("%s\\%s"), szLocalPath, szTempBuff);
     }
-
+*/
     LogHelper.PrintProgress("Comparing %s ...", cf.szFileName);
 
     // Open the CASC file
     if(nError == ERROR_SUCCESS)
     {
-        if(!CascOpenFile(hStorage, cf.szFileName, cf.dwLocaleFlags, dwFlags, &hCascFile))
+        if(!CascOpenFile(hStorage, cf.szFileName, cf.dwLocaleFlags, cf.dwOpenFlags, &hCascFile))
             nError = LogHelper.PrintError("CASC file not found: %s", cf.szFileName);
     }
 
@@ -332,9 +335,9 @@ static int TestOpenStorage_OpenFile(const TCHAR * szStorage, const char * szFile
 
     if(nError == ERROR_SUCCESS && szFileName != NULL)
     {
-        // Check whether the name is the encoding key
-        if(IsEncodingKey(szFileName))
-            dwFlags |= CASC_OPEN_BY_ENCODING_KEY;
+        // Check whether the name is the CKey
+        if(IsFileKey(szFileName))
+            dwFlags |= CASC_OPEN_BY_CKEY;
 
         // Open a file
         LogHelper.PrintProgress("Opening file %s...", szFileName);
@@ -451,7 +454,7 @@ static int TestOpenStorage_ExtractFiles(const TCHAR * szStorage, const TCHAR * s
     if(nError == ERROR_SUCCESS)
     {
         // Dump the storage
-        CascDumpStorage(hStorage, "E:\\storage-dump.txt");
+//      CascDumpStorage(hStorage, "E:\\storage-dump.txt");
 
         LogHelper.PrintProgress("Searching storage ...");
         hFind = CascFindFirstFile(hStorage, "*", &FindData, szListFile);

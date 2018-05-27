@@ -37,7 +37,7 @@ typedef struct _FILE_LOCALE_BLOCK
 // On-disk version of root entry
 typedef struct _FILE_ROOT_ENTRY
 {
-    ENCODING_KEY EncodingKey;                   // MD5 of the file
+    CONTENT_KEY CKey;                           // MD5 of the file
     ULONGLONG FileNameHash;                     // Jenkins hash of the file name
 
 } FILE_ROOT_ENTRY, *PFILE_ROOT_ENTRY;
@@ -55,10 +55,10 @@ typedef struct _CASC_ROOT_BLOCK
 // Does not match to the in-file structure of the root entry
 typedef struct _CASC_FILE_ENTRY
 {
-    ENCODING_KEY EncodingKey;                       // File encoding key (MD5)
-    ULONGLONG FileNameHash;                         // Jenkins hash of the file name
-    DWORD FileDataId;                               // File Data Index
-    DWORD Locales;                                  // Locale flags of the file
+    CONTENT_KEY CKey;                           // File content key (MD5)
+    ULONGLONG FileNameHash;                     // Jenkins hash of the file name
+    DWORD FileDataId;                           // File Data Index
+    DWORD Locales;                              // Locale flags of the file
 
 } CASC_FILE_ENTRY, *PCASC_FILE_ENTRY;
 
@@ -206,7 +206,7 @@ static int ParseRoot_AddRootEntries(
         pFileEntry->FileNameHash = pRootBlock->pRootEntries[i].FileNameHash;
         pFileEntry->FileDataId = dwFileDataId + pRootBlock->FileDataIds[i];
         pFileEntry->Locales = pRootBlock->pLocaleBlockHdr->Locales;
-        pFileEntry->EncodingKey = pRootBlock->pRootEntries[i].EncodingKey;
+        pFileEntry->CKey = pRootBlock->pRootEntries[i].CKey;
 
         // Also, insert the entry to the map
         Map_InsertObject(pRootHandler->pRootMap, pFileEntry, &pFileEntry->FileNameHash);
@@ -348,7 +348,7 @@ static int ParseWowRootFile(
 static int WowHandler_Insert(
     TRootHandler_WoW6 * pRootHandler,
     const char * szFileName,
-    LPBYTE pbEncodingKey)
+    LPBYTE pbCKey)
 {
     PCASC_FILE_ENTRY pFileEntry;
     DWORD FileDataId = 0;
@@ -371,7 +371,7 @@ static int WowHandler_Insert(
             FileDataId = pFileEntry[-1].FileDataId;
 
         // Fill-in the new entry
-        pFileEntry->EncodingKey  = *(PENCODING_KEY)pbEncodingKey;
+        pFileEntry->CKey         = *(PCONTENT_KEY)pbCKey;
         pFileEntry->FileNameHash = CalcFileNameHash(szFileName);
         pFileEntry->FileDataId   = FileDataId + 1;
         pFileEntry->Locales      = CASC_LOCALE_ALL;
@@ -403,7 +403,7 @@ static LPBYTE WowHandler_Search(TRootHandler_WoW6 * pRootHandler, TCascSearch * 
                 // Give the caller the locale mask and file data ID
                 pSearch->dwLocaleFlags = pFileEntry->Locales;
                 pSearch->dwFileDataId = pFileEntry->FileDataId;
-                return pFileEntry->EncodingKey.Value;
+                return pFileEntry->CKey.Value;
             }
         }
     }
@@ -434,7 +434,7 @@ static LPBYTE WowHandler_GetKey(TRootHandler_WoW6 * pRootHandler, const char * s
         pFileEntry = FindRootEntry(pRootHandler->pRootMap, szFileName, NULL);
     }
 
-    return (pFileEntry != NULL) ? pFileEntry->EncodingKey.Value : NULL;
+    return (pFileEntry != NULL) ? pFileEntry->CKey.Value : NULL;
 }
 
 static void WowHandler_EndSearch(TRootHandler_WoW6 * /* pRootHandler */, TCascSearch * pSearch)
@@ -476,7 +476,7 @@ static void TRootHandlerWoW6_Dump(
     PCASC_ENCODING_ENTRY pEncodingEntry;
     CASC_ROOT_BLOCK BlockInfo;
     PLISTFILE_MAP pListMap;
-    QUERY_KEY EncodingKey;
+    QUERY_KEY CKey;
     LPBYTE pbRootFileEnd = pbRootFile + cbRootFile;
     LPBYTE pbFilePointer;
     char szOneLine[0x100];
@@ -500,7 +500,7 @@ static void TRootHandlerWoW6_Dump(
                        BlockInfo.pLocaleBlockHdr->Locales,
                        BlockInfo.pLocaleBlockHdr->NumberOfFiles);
 
-        // Dump the hashes and encoding keys
+        // Dump the hashes and CKeys
         for(i = 0; i < BlockInfo.pLocaleBlockHdr->NumberOfFiles; i++)
         {
             // Dump the entry
@@ -508,15 +508,15 @@ static void TRootHandlerWoW6_Dump(
                            (DWORD)(BlockInfo.FileDataIds[i]),
                            (DWORD)(BlockInfo.pRootEntries[i].FileNameHash >> 0x20),
                            (DWORD)(BlockInfo.pRootEntries[i].FileNameHash),
-                           StringFromMD5(BlockInfo.pRootEntries[i].EncodingKey.Value, szOneLine),
+                           StringFromMD5(BlockInfo.pRootEntries[i].CKey.Value, szOneLine),
                            ListFile_FindName(pListMap, BlockInfo.pRootEntries[i].FileNameHash));
 
             // Find the encoding entry in the encoding table
             if(nDumpLevel >= DUMP_LEVEL_ENCODING_FILE)
             {
-                EncodingKey.pbData = BlockInfo.pRootEntries[i].EncodingKey.Value;
-                EncodingKey.cbData = MD5_HASH_SIZE;
-                pEncodingEntry = FindEncodingEntry(hs, &EncodingKey, NULL);
+                CKey.pbData = BlockInfo.pRootEntries[i].CKey.Value;
+                CKey.cbData = MD5_HASH_SIZE;
+                pEncodingEntry = FindEncodingEntry(hs, &CKey, NULL);
 //              CascDumpEncodingEntry(hs, dc, pEncodingEntry, nDumpLevel);
             }
         }

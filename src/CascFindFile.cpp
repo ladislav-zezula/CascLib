@@ -105,8 +105,8 @@ static bool DoStorageSearch_RootFile(TCascSearch * pSearch, PCASC_FIND_DATA pFin
     PCASC_ENCODING_ENTRY pEncodingEntry = NULL;
     PCASC_INDEX_ENTRY pIndexEntry;
     TCascStorage * hs = pSearch->hs;
-    QUERY_KEY EncodingKey;
-    QUERY_KEY IndexKey;
+    QUERY_KEY CKey;
+    QUERY_KEY EKey;
     LPBYTE pbQueryKey;
     DWORD ByteIndex;
     DWORD KeyIndex = 0;
@@ -125,13 +125,13 @@ static bool DoStorageSearch_RootFile(TCascSearch * pSearch, PCASC_FIND_DATA pFin
         if(pbQueryKey == NULL)
             return false;
 
-        // Did the root handler give us an encoding key?
-        if(!(hs->pRootHandler->dwRootFlags & ROOT_FLAG_USES_INDEX_KEY))
+        // Did the root handler give us a CKey?
+        if(!(hs->pRootHandler->dwRootFlags & ROOT_FLAG_USES_EKEY))
         {
-            // Verify whether the encoding key exists in the encoding table
-            EncodingKey.pbData = pbQueryKey;
-            EncodingKey.cbData = MD5_HASH_SIZE;
-            pEncodingEntry = FindEncodingEntry(pSearch->hs, &EncodingKey, &KeyIndex);
+            // Verify whether the CKey exists in the encoding table
+            CKey.pbData = pbQueryKey;
+            CKey.cbData = MD5_HASH_SIZE;
+            pEncodingEntry = FindEncodingEntry(pSearch->hs, &CKey, &KeyIndex);
             if(pEncodingEntry == NULL)
                 continue;
 
@@ -143,18 +143,18 @@ static bool DoStorageSearch_RootFile(TCascSearch * pSearch, PCASC_FIND_DATA pFin
             pSearch->BitArray[ByteIndex] |= BitMask;
 
             // Locate the index entry
-            IndexKey.pbData = GET_INDEX_KEY(pEncodingEntry);
-            IndexKey.cbData = MD5_HASH_SIZE;
+            EKey.pbData = GET_EKEY(pEncodingEntry);
+            EKey.cbData = MD5_HASH_SIZE;
         }
         else
         {
-            // Even if the index key might be smaller than 0x10, it will be padded by zeros
-            IndexKey.pbData = pbQueryKey;
-            IndexKey.cbData = MD5_HASH_SIZE;
+            // Even if the EKey might be smaller than 0x10, it will be padded by zeros
+            EKey.pbData = pbQueryKey;
+            EKey.cbData = MD5_HASH_SIZE;
         }
 
         // Locate the index entry
-        pIndexEntry = FindIndexEntry(pSearch->hs, &IndexKey);
+        pIndexEntry = FindIndexEntry(pSearch->hs, &EKey);
         if(pIndexEntry == NULL)
             continue;
 
@@ -180,16 +180,16 @@ static bool DoStorageSearch_RootFile(TCascSearch * pSearch, PCASC_FIND_DATA pFin
     }
 }
 
-static bool DoStorageSearch_EncodingKey(TCascSearch * pSearch, PCASC_FIND_DATA pFindData)
+static bool DoStorageSearch_CKey(TCascSearch * pSearch, PCASC_FIND_DATA pFindData)
 {
     PCASC_ENCODING_ENTRY pEncodingEntry;
     PCASC_INDEX_ENTRY pIndexEntry;
     TCascStorage * hs = pSearch->hs;
-    QUERY_KEY IndexKey;
+    QUERY_KEY EKey;
     DWORD ByteIndex;
     DWORD BitMask;
 
-    // Check for encoding keys that haven't been found yet
+    // Check for CKeys that haven't been found yet
     while(pSearch->IndexLevel1 < hs->pEncodingMap->TableSize)
     {
         // Check if that entry has been reported before
@@ -201,19 +201,19 @@ static bool DoStorageSearch_EncodingKey(TCascSearch * pSearch, PCASC_FIND_DATA p
             pEncodingEntry  = (PCASC_ENCODING_ENTRY)hs->pEncodingMap->HashTable[pSearch->IndexLevel1];
             if(pEncodingEntry != NULL)
             {
-                IndexKey.pbData = GET_INDEX_KEY(pEncodingEntry);
-                IndexKey.cbData = MD5_HASH_SIZE;
-                pIndexEntry = FindIndexEntry(pSearch->hs, &IndexKey);
+                EKey.pbData = GET_EKEY(pEncodingEntry);
+                EKey.cbData = MD5_HASH_SIZE;
+                pIndexEntry = FindIndexEntry(pSearch->hs, &EKey);
                 if(pIndexEntry != NULL)
                 {
                     // Fill-in the found file
-                    StringFromBinary(pEncodingEntry->EncodingKey, MD5_HASH_SIZE, pFindData->szFileName);
+                    StringFromBinary(pEncodingEntry->CKey, MD5_HASH_SIZE, pFindData->szFileName);
                     pFindData->szFileName[MD5_STRING_SIZE] = 0;
-                    memcpy(pFindData->FileKey, pEncodingEntry->EncodingKey, MD5_HASH_SIZE);
+                    memcpy(pFindData->FileKey, pEncodingEntry->CKey, MD5_HASH_SIZE);
                     pFindData->szPlainName = pFindData->szFileName;
                     pFindData->dwLocaleFlags = CASC_LOCALE_NONE;
                     pFindData->dwFileSize = ConvertBytesToInteger_4(pEncodingEntry->FileSizeBE);
-                    pFindData->dwOpenFlags = CASC_OPEN_BY_ENCODING_KEY;
+                    pFindData->dwOpenFlags = CASC_OPEN_BY_CKEY;
 
                     // Mark the entry as already-found
                     pSearch->BitArray[ByteIndex] |= BitMask;
@@ -254,15 +254,15 @@ static bool DoStorageSearch(TCascSearch * pSearch, PCASC_FIND_DATA pFindData)
         pSearch->IndexLevel1 = 0;
         pSearch->dwState++;
 
-        // If the root handler doesn't want to search by encoding key, skip the next phase
-        if(pSearch->hs->pRootHandler->dwRootFlags & ROOT_FLAG_DONT_SEARCH_ENCKEY)
+        // If the root handler doesn't want to search by CKey, skip the next phase
+        if(pSearch->hs->pRootHandler->dwRootFlags & ROOT_FLAG_DONT_SEARCH_CKEY)
             pSearch->dwState++;
     }
 
-    // State 2: Searching the remaining entries
+    // State 2: Searching the remaining entries by CKey
     if(pSearch->dwState == 2 && (pSearch->szMask == NULL || !strcmp(pSearch->szMask, "*")))
     {
-        if(DoStorageSearch_EncodingKey(pSearch, pFindData))
+        if(DoStorageSearch_CKey(pSearch, pFindData))
             return true;
 
         // Move to the final search state

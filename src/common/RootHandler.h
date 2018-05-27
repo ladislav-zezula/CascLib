@@ -20,8 +20,8 @@
 #define CASC_OVERWATCH_ROOT_SIGNATURE   0x35444D23  // '#MD5'
 
 #define ROOT_FLAG_HAS_NAMES             0x00000001  // The root file contains file names
-#define ROOT_FLAG_USES_INDEX_KEY        0x00000002  // ROOT_SEARCH and ROOT_GETKEY returns index key instead of encoding key
-#define ROOT_FLAG_DONT_SEARCH_ENCKEY    0x00000004  // Disable searching the files by encoding key
+#define ROOT_FLAG_USES_EKEY             0x00000002  // ROOT_SEARCH and ROOT_GETKEY returns EKey instead of CKey
+#define ROOT_FLAG_DONT_SEARCH_CKEY      0x00000004  // Disable searching the files by CKey
 
 
 #define DUMP_LEVEL_ROOT_FILE                     1  // Dump root file
@@ -34,7 +34,7 @@
 typedef int (*ROOT_INSERT)(
     struct TRootHandler * pRootHandler,             // Pointer to an initialized root handler
     const char * szFileName,                        // Pointer to the file name
-    LPBYTE pbEncodingKey                            // Pointer to the encoding key of the file name
+    LPBYTE pbFileKey                                // Pointer to the CKey or EKey of the file
     );
 
 typedef LPBYTE (*ROOT_SEARCH)(
@@ -75,7 +75,7 @@ struct TRootHandler
     ROOT_INSERT    Insert;                          // Inserts an existing file name
     ROOT_SEARCH    Search;                          // Performs the root file search
     ROOT_ENDSEARCH EndSearch;                       // Performs cleanup after searching
-    ROOT_GETKEY    GetKey;                          // Retrieves encoding key for a file name
+    ROOT_GETKEY    GetKey;                          // Retrieves CKey/EKey for a file by name
     ROOT_DUMP      Dump;
     ROOT_CLOSE     Close;                           // Closing the root file
     ROOT_GETFILEID GetFileId;                       // Returns File Id for a given Filename

@@ -17,7 +17,7 @@
 
 typedef struct _CASC_FILE_ENTRY
 {
-    ENCODING_KEY EncodingKey;                       // Encoding key
+    CONTENT_KEY CKey;                               // Content key
     ULONGLONG FileNameHash;                         // File name hash
     DWORD dwFileName;                               // Offset of the file name in the name cache
 } CASC_FILE_ENTRY, *PCASC_FILE_ENTRY;
@@ -40,7 +40,7 @@ struct TRootHandler_SC1 : public TRootHandler
 static int InsertFileEntry(
     TRootHandler_SC1 * pRootHandler,
     const char * szFileName,
-    LPBYTE pbEncodingKey)
+    LPBYTE pbCKey)
 {
     PCASC_FILE_ENTRY pFileEntry;
     size_t nLength = strlen(szFileName);
@@ -56,7 +56,7 @@ static int InsertFileEntry(
         return ERROR_NOT_ENOUGH_MEMORY;
 
     // Fill the file entry
-    pFileEntry->EncodingKey  = *(PENCODING_KEY)pbEncodingKey;
+    pFileEntry->CKey         = *(PCONTENT_KEY)pbCKey;
     pFileEntry->FileNameHash = CalcFileNameHash(szFileName);
     pFileEntry->dwFileName   = (DWORD)Array_IndexOf(&pRootHandler->FileNames, szFileName);
 
@@ -72,9 +72,9 @@ static int InsertFileEntry(
 static int SC1Handler_Insert(
     TRootHandler_SC1 * pRootHandler,
     const char * szFileName,
-    LPBYTE pbEncodingKey)
+    LPBYTE pbCKey)
 {
-    return InsertFileEntry(pRootHandler, szFileName, pbEncodingKey);
+    return InsertFileEntry(pRootHandler, szFileName, pbCKey);
 }
 
 static LPBYTE SC1Handler_Search(TRootHandler_SC1 * pRootHandler, TCascSearch * pSearch)
@@ -93,7 +93,7 @@ static LPBYTE SC1Handler_Search(TRootHandler_SC1 * pRootHandler, TCascSearch * p
         char *filename = (char *)Array_ItemAt(&pRootHandler->FileNames, pFileEntry->dwFileName);
         if (CheckWildCard(filename, pSearch->szMask)) {
             strcpy(pSearch->szFileName, filename);
-            return pFileEntry->EncodingKey.Value;
+            return pFileEntry->CKey.Value;
         }
     }
 
@@ -143,8 +143,8 @@ static void SC1Handler_Close(TRootHandler_SC1 * pRootHandler)
 int RootHandler_CreateSC1(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile)
 {
     TRootHandler_SC1 * pRootHandler;
-//  ENCODING_KEY KeyBuffer;
-//  QUERY_KEY EncodingKey = {KeyBuffer.Value, MD5_HASH_SIZE};
+//  CONTENT_KEY KeyBuffer;
+//  QUERY_KEY CKey = {KeyBuffer.Value, MD5_HASH_SIZE};
     void * pTextFile;
     size_t nLength;
     char szOneLine[0x200];
@@ -190,18 +190,18 @@ int RootHandler_CreateSC1(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile
         // Parse the next lines
         while((nLength = ListFile_GetNextLine(pTextFile, szOneLine, _maxchars(szOneLine))) > 0)
         {
-            LPSTR szEncodingKey;
-            BYTE EncodingKey[MD5_HASH_SIZE];
+            LPSTR szCKey;
+            BYTE CKey[MD5_HASH_SIZE];
 
-            szEncodingKey = strchr(szOneLine, _T('|'));
-            if(szEncodingKey != NULL)
+            szCKey = strchr(szOneLine, _T('|'));
+            if(szCKey != NULL)
             {
-                // Split the name and encoding key
-                *szEncodingKey++ = 0;
+                // Split the name and CKey
+                *szCKey++ = 0;
 
                 // Insert the entry to the map
-                ConvertStringToBinary(szEncodingKey, MD5_STRING_SIZE, EncodingKey);
-                InsertFileEntry(pRootHandler, szOneLine, EncodingKey);
+                ConvertStringToBinary(szCKey, MD5_STRING_SIZE, CKey);
+                InsertFileEntry(pRootHandler, szOneLine, CKey);
             }
         }
 

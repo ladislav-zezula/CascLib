@@ -22,22 +22,22 @@ TCascFile * IsValidFileHandle(HANDLE hFile)
     return (hf != NULL && hf->hs != NULL && hf->szClassName != NULL && !strcmp(hf->szClassName, "TCascFile")) ? hf : NULL;
 }
 
-PCASC_INDEX_ENTRY FindIndexEntry(TCascStorage * hs, PQUERY_KEY pIndexKey)
+PCASC_INDEX_ENTRY FindIndexEntry(TCascStorage * hs, PQUERY_KEY pEKey)
 {
     PCASC_INDEX_ENTRY pIndexEntry = NULL;
 
     if(hs->pIndexEntryMap != NULL)
-        pIndexEntry = (PCASC_INDEX_ENTRY)Map_FindObject(hs->pIndexEntryMap, pIndexKey->pbData, NULL);
+        pIndexEntry = (PCASC_INDEX_ENTRY)Map_FindObject(hs->pIndexEntryMap, pEKey->pbData, NULL);
 
     return pIndexEntry;
 }
 
-PCASC_ENCODING_ENTRY FindEncodingEntry(TCascStorage * hs, PQUERY_KEY pEncodingKey, PDWORD PtrIndex)
+PCASC_ENCODING_ENTRY FindEncodingEntry(TCascStorage * hs, PQUERY_KEY pCKey, PDWORD PtrIndex)
 {
     PCASC_ENCODING_ENTRY pEncodingEntry = NULL;
 
     if(hs->pEncodingMap != NULL)
-        pEncodingEntry = (PCASC_ENCODING_ENTRY)Map_FindObject(hs->pEncodingMap, pEncodingKey->pbData, PtrIndex);
+        pEncodingEntry = (PCASC_ENCODING_ENTRY)Map_FindObject(hs->pEncodingMap, pCKey->pbData, PtrIndex);
 
     return pEncodingEntry;
 }
@@ -75,7 +75,7 @@ static TCascFile * CreateFileHandle(TCascStorage * hs, PCASC_INDEX_ENTRY pIndexE
     return hf;
 }
 
-static bool OpenFileByIndexKey(TCascStorage * hs, PQUERY_KEY pIndexKey, DWORD dwFlags, TCascFile ** ppCascFile)
+static bool OpenFileByEKey(TCascStorage * hs, PQUERY_KEY pEKey, DWORD dwFlags, TCascFile ** ppCascFile)
 {
     PCASC_INDEX_ENTRY pIndexEntry;
     int nError = ERROR_SUCCESS;
@@ -83,7 +83,7 @@ static bool OpenFileByIndexKey(TCascStorage * hs, PQUERY_KEY pIndexKey, DWORD dw
     CASCLIB_UNUSED(dwFlags);
 
     // Find the key entry in the array of file keys
-    pIndexEntry = FindIndexEntry(hs, pIndexKey);
+    pIndexEntry = FindIndexEntry(hs, pEKey);
     if(pIndexEntry == NULL)
         nError = ERROR_FILE_NOT_FOUND;
 
@@ -107,13 +107,13 @@ static bool OpenFileByIndexKey(TCascStorage * hs, PQUERY_KEY pIndexKey, DWORD dw
     return (nError == ERROR_SUCCESS);
 }
 
-static bool OpenFileByEncodingKey(TCascStorage * hs, PQUERY_KEY pEncodingKey, DWORD dwFlags, TCascFile ** ppCascFile)
+static bool OpenFileByCKey(TCascStorage * hs, PQUERY_KEY pCKey, DWORD dwFlags, TCascFile ** ppCascFile)
 {
     PCASC_ENCODING_ENTRY pEncodingEntry;
-    QUERY_KEY IndexKey;
+    QUERY_KEY EKey;
 
     // Find the encoding entry
-    pEncodingEntry = FindEncodingEntry(hs, pEncodingKey, NULL);
+    pEncodingEntry = FindEncodingEntry(hs, pCKey, NULL);
     if(pEncodingEntry == NULL)
     {
         SetLastError(ERROR_FILE_NOT_FOUND);
@@ -121,11 +121,11 @@ static bool OpenFileByEncodingKey(TCascStorage * hs, PQUERY_KEY pEncodingKey, DW
     }
 
     // Prepare the file index and open the file by index
-    // Note: We don't know what to do if there is more than just one index key
+    // Note: We don't know what to do if there is more than just one EKey
     // We always take the first file present. Is that correct?
-    IndexKey.pbData = GET_INDEX_KEY(pEncodingEntry);
-    IndexKey.cbData = MD5_HASH_SIZE;
-    if(OpenFileByIndexKey(hs, &IndexKey, dwFlags, ppCascFile))
+    EKey.pbData = GET_EKEY(pEncodingEntry);
+    EKey.cbData = MD5_HASH_SIZE;
+    if(OpenFileByEKey(hs, &EKey, dwFlags, ppCascFile))
     {
         // Check if the file handle was created
         if(ppCascFile[0] != NULL)
@@ -147,7 +147,7 @@ static bool OpenFileByEncodingKey(TCascStorage * hs, PQUERY_KEY pEncodingKey, DW
 //-----------------------------------------------------------------------------
 // Public functions
 
-bool WINAPI CascOpenFileByIndexKey(HANDLE hStorage, PQUERY_KEY pIndexKey, DWORD dwFlags, HANDLE * phFile)
+bool WINAPI CascOpenFileByEKey(HANDLE hStorage, PQUERY_KEY pEKey, DWORD dwFlags, HANDLE * phFile)
 {
     TCascStorage * hs;
 
@@ -160,17 +160,17 @@ bool WINAPI CascOpenFileByIndexKey(HANDLE hStorage, PQUERY_KEY pIndexKey, DWORD 
     }
 
     // Validate the other parameters
-    if(pIndexKey == NULL || pIndexKey->pbData == NULL || pIndexKey->cbData == 0 || phFile == NULL)
+    if(pEKey == NULL || pEKey->pbData == NULL || pEKey->cbData == 0 || phFile == NULL)
     {
         SetLastError(ERROR_INVALID_PARAMETER);
         return false;
     }
 
     // Use the internal function to open the file
-    return OpenFileByIndexKey(hs, pIndexKey, dwFlags, (TCascFile **)phFile);
+    return OpenFileByEKey(hs, pEKey, dwFlags, (TCascFile **)phFile);
 }
 
-bool WINAPI CascOpenFileByEncodingKey(HANDLE hStorage, PQUERY_KEY pEncodingKey, DWORD dwFlags, HANDLE * phFile)
+bool WINAPI CascOpenFileByCKey(HANDLE hStorage, PQUERY_KEY pCKey, DWORD dwFlags, HANDLE * phFile)
 {
     TCascStorage * hs;
 
@@ -183,14 +183,14 @@ bool WINAPI CascOpenFileByEncodingKey(HANDLE hStorage, PQUERY_KEY pEncodingKey, 
     }
 
     // Validate the other parameters
-    if(pEncodingKey == NULL || pEncodingKey->pbData == NULL || pEncodingKey->cbData == 0 || phFile == NULL)
+    if(pCKey == NULL || pCKey->pbData == NULL || pCKey->cbData == 0 || phFile == NULL)
     {
         SetLastError(ERROR_INVALID_PARAMETER);
         return false;
     }
 
     // Use the internal function fo open the file
-    return OpenFileByEncodingKey(hs, pEncodingKey, dwFlags, (TCascFile **)phFile);
+    return OpenFileByCKey(hs, pCKey, dwFlags, (TCascFile **)phFile);
 }
 
 bool WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocale, DWORD dwFlags, HANDLE * phFile)
@@ -220,12 +220,12 @@ bool WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocal
         return false;
     }
 
-    // Retrieve the encoding/index key from the file name in different modes
+    // Retrieve the CKey/EKey from the file name in different modes
     switch(dwFlags & CASC_OPEN_TYPE_MASK)
     {
         case CASC_OPEN_BY_NAME:
             
-            // Retrieve the file encoding/index key
+            // Retrieve the file CKey/EKey
             pbQueryKey = RootHandler_GetKey(hs->pRootHandler, szFileName);
             if(pbQueryKey == NULL)
             {
@@ -234,30 +234,30 @@ bool WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocal
             }
 
             // Set the proper open mode
-            dwOpenMode = (hs->pRootHandler->dwRootFlags & ROOT_FLAG_USES_INDEX_KEY) ? CASC_OPEN_BY_INDEX_KEY : CASC_OPEN_BY_ENCODING_KEY;
+            dwOpenMode = (hs->pRootHandler->dwRootFlags & ROOT_FLAG_USES_EKEY) ? CASC_OPEN_BY_EKEY : CASC_OPEN_BY_CKEY;
             break;
 
-        case CASC_OPEN_BY_ENCODING_KEY:
+        case CASC_OPEN_BY_CKEY:
 
             // Convert the string to binary
             nError = ConvertStringToBinary(szFileName, MD5_STRING_SIZE, KeyBuffer);
             if(nError != ERROR_SUCCESS)
                 break;
             
-            // Proceed opening by encoding key
-            dwOpenMode = CASC_OPEN_BY_ENCODING_KEY;
+            // Proceed opening by CKey
+            dwOpenMode = CASC_OPEN_BY_CKEY;
             pbQueryKey = KeyBuffer;
             break;
 
-        case CASC_OPEN_BY_INDEX_KEY:
+        case CASC_OPEN_BY_EKEY:
 
             // Convert the string to binary
             nError = ConvertStringToBinary(szFileName, MD5_STRING_SIZE, KeyBuffer);
             if(nError != ERROR_SUCCESS)
                 break;
             
-            // Proceed opening by encoding key
-            dwOpenMode = CASC_OPEN_BY_INDEX_KEY;
+            // Proceed opening by EKey
+            dwOpenMode = CASC_OPEN_BY_EKEY;
             pbQueryKey = KeyBuffer;
             break;
 
@@ -271,19 +271,19 @@ bool WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocal
     // Perform the open operation
     if(nError == ERROR_SUCCESS)
     {
-        // Setup the encoding key
+        // Setup the CKey/EKey
         QueryKey.pbData = pbQueryKey;
         QueryKey.cbData = MD5_HASH_SIZE;
 
-        // Either open by index key or by encoding key
+        // Either open by CKey or EKey
         switch(dwOpenMode)
         {
-            case CASC_OPEN_BY_INDEX_KEY:
-                bOpenResult = OpenFileByIndexKey(hs, &QueryKey, dwFlags, (TCascFile **)phFile);
+            case CASC_OPEN_BY_CKEY:
+                bOpenResult = OpenFileByCKey(hs, &QueryKey, dwFlags, (TCascFile **)phFile);
                 break;
 
-            case CASC_OPEN_BY_ENCODING_KEY:
-                bOpenResult = OpenFileByEncodingKey(hs, &QueryKey, dwFlags, (TCascFile **)phFile);
+            case CASC_OPEN_BY_EKEY:
+                bOpenResult = OpenFileByEKey(hs, &QueryKey, dwFlags, (TCascFile **)phFile);
                 break;
 
             default:

@@ -80,8 +80,8 @@ extern "C" {
 
 // Values for CascOpenFile
 #define CASC_OPEN_BY_NAME           0x00000000  // Open the file by name. This is the default value
-#define CASC_OPEN_BY_ENCODING_KEY   0x00000001  // The name is just the encoding key; skip ROOT file processing
-#define CASC_OPEN_BY_INDEX_KEY      0x00000002  // The name is just the index key; skip ROOT file processing
+#define CASC_OPEN_BY_CKEY           0x00000001  // The name is just the content key; skip ROOT file processing
+#define CASC_OPEN_BY_EKEY           0x00000002  // The name is just the encoded key; skip ROOT file processing
 #define CASC_OPEN_TYPE_MASK         0x0000000F  // The mask which gets open type from the dwFlags
 
 #define CASC_LOCALE_ALL             0xFFFFFFFF
@@ -169,15 +169,15 @@ typedef struct _QUERY_KEY
 // Structure for SFileFindFirstFile and SFileFindNextFile
 typedef struct _CASC_FIND_DATA
 {
-    // Full name of the found file. In case when this is encoding/index key,
+    // Full name of the found file. In case when this is CKey/EKey,
     // this will be just string representation of the key stored in 'FileKey'
     char   szFileName[MAX_PATH];
     
     // Plain name of the found file. Pointing inside the 'szFileName' array
     char * szPlainName;
 
-    // Encoding/Index key. The type can be determined by dwOpenFlags
-    // (CASC_OPEN_BY_ENCODING_KEY vs CASC_OPEN_BY_INDEX_KEY)
+    // Content/Encoded key. The type can be determined by dwOpenFlags
+    // (CASC_OPEN_BY_CKEY vs CASC_OPEN_BY_EKEY)
     BYTE   FileKey[MD5_HASH_SIZE];
 
     // Locale flags. Only for games that support locale flags (WoW)
@@ -213,8 +213,8 @@ bool  WINAPI CascOpenStorage(const TCHAR * szDataPath, DWORD dwLocaleMask, HANDL
 bool  WINAPI CascGetStorageInfo(HANDLE hStorage, CASC_STORAGE_INFO_CLASS InfoClass, void * pvStorageInfo, size_t cbStorageInfo, size_t * pcbLengthNeeded);
 bool  WINAPI CascCloseStorage(HANDLE hStorage);
 
-bool  WINAPI CascOpenFileByIndexKey(HANDLE hStorage, PQUERY_KEY pIndexKey, DWORD dwFlags, HANDLE * phFile);
-bool  WINAPI CascOpenFileByEncodingKey(HANDLE hStorage, PQUERY_KEY pEncodingKey, DWORD dwFlags, HANDLE * phFile);
+bool  WINAPI CascOpenFileByEKey(HANDLE hStorage, PQUERY_KEY pIndexKey, DWORD dwFlags, HANDLE * phFile);
+bool  WINAPI CascOpenFileByCKey(HANDLE hStorage, PQUERY_KEY pCKey, DWORD dwFlags, HANDLE * phFile);
 bool  WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocale, DWORD dwFlags, HANDLE * phFile);
 DWORD WINAPI CascGetFileSize(HANDLE hFile, PDWORD pdwFileSizeHigh);
 DWORD WINAPI CascGetFileId(HANDLE hStorage, const char * szFileName);
@@ -225,6 +225,10 @@ bool  WINAPI CascCloseFile(HANDLE hFile);
 HANDLE WINAPI CascFindFirstFile(HANDLE hStorage, const char * szMask, PCASC_FIND_DATA pFindData, const TCHAR * szListFile);
 bool  WINAPI CascFindNextFile(HANDLE hFind, PCASC_FIND_DATA pFindData);
 bool  WINAPI CascFindClose(HANDLE hFind);
+
+// Backward compatibility
+#define CascOpenFileByIndexKey CascOpenFileByEKey
+#define CascOpenFileByEncodingKey CascOpenFileByCKey
 
 //-----------------------------------------------------------------------------
 // GetLastError/SetLastError support for non-Windows platform

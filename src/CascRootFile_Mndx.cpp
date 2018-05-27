@@ -85,7 +85,7 @@ typedef struct _CASC_MNDX_PACKAGES
 typedef struct _CASC_ROOT_ENTRY_MNDX
 {
     DWORD Flags;                                    // High 8 bits: Flags, low 24 bits: package index
-    BYTE  EncodingKey[MD5_HASH_SIZE];               // Encoding key for the file
+    BYTE  CKey[MD5_HASH_SIZE];                      // Content key for the file
     DWORD FileSize;                                 // Uncompressed file size, in bytes
 
 } CASC_ROOT_ENTRY_MNDX, *PCASC_ROOT_ENTRY_MNDX;
@@ -3035,7 +3035,7 @@ static LPBYTE FillFindData(TRootHandler_MNDX * pRootHandler, TCascSearch * pSear
 
     // Give the file size
     pSearch->dwFileSize = pRootEntry->FileSize;
-    return pRootEntry->EncodingKey;
+    return pRootEntry->CKey;
 }
 
 static int MndxHandler_Insert(TRootHandler_MNDX *, const char *, LPBYTE)
@@ -3086,7 +3086,7 @@ static LPBYTE MndxHandler_Search(TRootHandler_MNDX * pRootHandler, TCascSearch *
             break;
     }
 
-    // Give the file size and encoding key
+    // Give the file size and CKey
     return FillFindData(pRootHandler, pSearch, pStruct1C);
 }
 
@@ -3129,8 +3129,8 @@ static LPBYTE MndxHandler_GetKey(TRootHandler_MNDX * pRootHandler, const char * 
     if(nError != ERROR_SUCCESS || pRootEntry == NULL)
         return NULL;
 
-    // Return the encoding key
-    return pRootEntry->EncodingKey;
+    // Return the CKey
+    return pRootEntry->CKey;
 }
 
 static void MndxHandler_Close(TRootHandler_MNDX * pRootHandler)

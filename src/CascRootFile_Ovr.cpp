@@ -17,7 +17,7 @@
 
 typedef struct _CASC_FILE_ENTRY
 {
-    ENCODING_KEY EncodingKey;                       // Encoding key
+    CONTENT_KEY CKey;                               // Content key
     ULONGLONG FileNameHash;                         // File name hash
     DWORD dwFileName;                               // Offset of the file name in the name cache
 } CASC_FILE_ENTRY, *PCASC_FILE_ENTRY;
@@ -40,7 +40,7 @@ struct TRootHandler_Ovr : public TRootHandler
 static int InsertFileEntry(
     TRootHandler_Ovr * pRootHandler,
     const char * szFileName,
-    LPBYTE pbEncodingKey)
+    LPBYTE pbCKey)
 {
     PCASC_FILE_ENTRY pFileEntry;
     size_t nLength = strlen(szFileName);
@@ -56,7 +56,7 @@ static int InsertFileEntry(
         return ERROR_NOT_ENOUGH_MEMORY;
 
     // Fill the file entry
-    pFileEntry->EncodingKey  = *(PENCODING_KEY)pbEncodingKey;
+    pFileEntry->CKey  = *(PCONTENT_KEY)pbCKey;
     pFileEntry->FileNameHash = CalcFileNameHash(szFileName);
     pFileEntry->dwFileName   = (DWORD)Array_IndexOf(&pRootHandler->FileNames, szFileName);
 
@@ -72,9 +72,9 @@ static int InsertFileEntry(
 static int OvrHandler_Insert(
     TRootHandler_Ovr * pRootHandler,
     const char * szFileName,
-    LPBYTE pbEncodingKey)
+    LPBYTE pbCKey)
 {
-    return InsertFileEntry(pRootHandler, szFileName, pbEncodingKey);
+    return InsertFileEntry(pRootHandler, szFileName, pbCKey);
 }
 
 static LPBYTE OvrHandler_Search(TRootHandler_Ovr * pRootHandler, TCascSearch * pSearch)
@@ -90,7 +90,7 @@ static LPBYTE OvrHandler_Search(TRootHandler_Ovr * pRootHandler, TCascSearch * p
         
         // Prepare the pointer to the next search
         pSearch->IndexLevel1++;
-        return pFileEntry->EncodingKey.Value;
+        return pFileEntry->CKey.Value;
     }
 
     // No more entries
@@ -139,8 +139,8 @@ static void OvrHandler_Close(TRootHandler_Ovr * pRootHandler)
 int RootHandler_CreateOverwatch(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile)
 {
     TRootHandler_Ovr * pRootHandler;
-    ENCODING_KEY KeyBuffer;
-    QUERY_KEY EncodingKey = {KeyBuffer.Value, MD5_HASH_SIZE};
+    CONTENT_KEY KeyBuffer;
+    QUERY_KEY CKey = {KeyBuffer.Value, MD5_HASH_SIZE};
     void * pTextFile;
     size_t nLength;
     char szOneLine[0x200];
@@ -196,7 +196,7 @@ int RootHandler_CreateOverwatch(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRo
             while((nLength = ListFile_GetNextLine(pTextFile, szOneLine, _maxchars(szOneLine))) > 0)
             {
                 // Parse the line
-                nError = ParseRootFileLine(szOneLine, szOneLine + nLength, nFileNameIndex, &EncodingKey, szFileName, _maxchars(szFileName));
+                nError = ParseRootFileLine(szOneLine, szOneLine + nLength, nFileNameIndex, &CKey, szFileName, _maxchars(szFileName));
                 if(nError == ERROR_SUCCESS)
                 {
                     InsertFileEntry(pRootHandler, szFileName, KeyBuffer.Value);
