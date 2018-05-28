@@ -143,15 +143,15 @@ static int CaptureFileHeader(PTVFS_FILE_HEADER pHeader, LPBYTE pbBuffer, DWORD c
     pHeader->dwFlags = ConvertBytesToInteger_4_LE((LPBYTE)(&pHeader->dwFlags));
 
     // Swap the offset table values
-    pHeader->dwPathTableOffset      = ConvertBytesToInteger_4((LPBYTE)(&pHeader->dwPathTableOffset));
-    pHeader->dwPathTableSize        = ConvertBytesToInteger_4((LPBYTE)(&pHeader->dwPathTableSize));
-    pHeader->dwVfsTableOffset       = ConvertBytesToInteger_4((LPBYTE)(&pHeader->dwVfsTableOffset));
-    pHeader->dwVfsTableSize         = ConvertBytesToInteger_4((LPBYTE)(&pHeader->dwVfsTableSize));
-    pHeader->dwCftTableOffset       = ConvertBytesToInteger_4((LPBYTE)(&pHeader->dwCftTableOffset));
-    pHeader->dwCftTableSize         = ConvertBytesToInteger_4((LPBYTE)(&pHeader->dwCftTableSize));
-    pHeader->MaxDepth               = (USHORT)ConvertBytesToInteger_2((LPBYTE)(&pHeader->MaxDepth));
-    pHeader->dwEstTableOffset       = ConvertBytesToInteger_4((LPBYTE)(&pHeader->dwEstTableOffset));
-    pHeader->dwEstTableSize         = ConvertBytesToInteger_4((LPBYTE)(&pHeader->dwEstTableSize));
+    pHeader->dwPathTableOffset = ConvertBytesToInteger_4((LPBYTE)(&pHeader->dwPathTableOffset));
+    pHeader->dwPathTableSize   = ConvertBytesToInteger_4((LPBYTE)(&pHeader->dwPathTableSize));
+    pHeader->dwVfsTableOffset  = ConvertBytesToInteger_4((LPBYTE)(&pHeader->dwVfsTableOffset));
+    pHeader->dwVfsTableSize    = ConvertBytesToInteger_4((LPBYTE)(&pHeader->dwVfsTableSize));
+    pHeader->dwCftTableOffset  = ConvertBytesToInteger_4((LPBYTE)(&pHeader->dwCftTableOffset));
+    pHeader->dwCftTableSize    = ConvertBytesToInteger_4((LPBYTE)(&pHeader->dwCftTableSize));
+    pHeader->MaxDepth          = (USHORT)ConvertBytesToInteger_2((LPBYTE)(&pHeader->MaxDepth));
+    pHeader->dwEstTableOffset  = ConvertBytesToInteger_4((LPBYTE)(&pHeader->dwEstTableOffset));
+    pHeader->dwEstTableSize    = ConvertBytesToInteger_4((LPBYTE)(&pHeader->dwEstTableSize));
     return ERROR_SUCCESS;
 }
 

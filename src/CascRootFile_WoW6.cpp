@@ -51,25 +51,25 @@ typedef struct _CASC_ROOT_BLOCK
 
 } CASC_ROOT_BLOCK, *PCASC_ROOT_BLOCK;
 
-// Root file entry for CASC storages without MNDX root file (World of Warcraft 6.0+)
+// Root file entry for CASC storages (World of Warcraft 6.0+)
 // Does not match to the in-file structure of the root entry
-typedef struct _CASC_FILE_ENTRY
+typedef struct _WOW_FILE_ENTRY
 {
     CONTENT_KEY CKey;                           // File content key (MD5)
     ULONGLONG FileNameHash;                     // Jenkins hash of the file name
-    DWORD FileDataId;                           // File Data Index
+    DWORD FileDataId;                           // File Data ID
     DWORD Locales;                              // Locale flags of the file
 
-} CASC_FILE_ENTRY, *PCASC_FILE_ENTRY;
+} WOW_FILE_ENTRY, *PWOW_FILE_ENTRY;
 
 struct TRootHandler_WoW6 : public TRootHandler
 {
     // Linear global list of file entries
     DYNAMIC_ARRAY FileTable;
-    DYNAMIC_ARRAY FileDataIdLookupTable;
 
-    // Global map of FileName -> FileEntry
-    PCASC_MAP pRootMap;
+    // Lookup map of FileDataId->FileEntry and FileNameHash -> FileEntry
+    PCASC_MAP pDataIdMap;
+    PCASC_MAP pNameMap;
 
     // For counting files
     DWORD dwTotalFileCount;
@@ -100,48 +100,6 @@ static bool IsFileDataIdName(const char * szFileName)
     }
 
     return false;
-}
-
-static int FileDataIdCompare(const void *, const void * pvFile1, const void * pvFile2)
-{
-    return ((PCASC_FILE_ENTRY)pvFile1)->FileDataId - ((PCASC_FILE_ENTRY)pvFile2)->FileDataId;
-}
-
-// Search by FileDataId
-PCASC_FILE_ENTRY FindRootEntry(DYNAMIC_ARRAY & FileTable, DWORD FileDataId)
-{
-    PCASC_FILE_ENTRY* pStartEntry = (PCASC_FILE_ENTRY*)FileTable.ItemArray;
-    PCASC_FILE_ENTRY* pMidlEntry;
-    PCASC_FILE_ENTRY* pEndEntry = pStartEntry + FileTable.ItemCount - 1;
-    int nResult;
-
-    // Perform binary search on the table
-    while(pStartEntry < pEndEntry)
-    {
-        // Calculate the middle of the interval
-        pMidlEntry = pStartEntry + ((pEndEntry - pStartEntry) / 2);
-
-        // Did we find it?
-        nResult = (int)FileDataId - (int)(*pMidlEntry)->FileDataId;
-        if(nResult == 0)
-            return *pMidlEntry;
-
-        // Move the interval to the left or right
-        (nResult < 0) ? pEndEntry = pMidlEntry : pStartEntry = pMidlEntry + 1;
-    }
-
-    return NULL;
-}
-
-// Search by file name hash
-// Also used in CascSearchFile
-PCASC_FILE_ENTRY FindRootEntry(PCASC_MAP pRootMap, const char * szFileName, DWORD * PtrTableIndex)
-{
-    // Calculate the HASH value of the normalized file name
-    ULONGLONG FileNameHash = CalcFileNameHash(szFileName);
-
-    // Perform the hash search
-    return (PCASC_FILE_ENTRY)Map_FindObject(pRootMap, &FileNameHash, PtrTableIndex);
 }
 
 LPBYTE VerifyLocaleBlock(PCASC_ROOT_BLOCK pBlockInfo, LPBYTE pbFilePointer, LPBYTE pbFileEnd)
@@ -181,14 +139,12 @@ static int ParseRoot_AddRootEntries(
     TRootHandler_WoW6 * pRootHandler,
     PCASC_ROOT_BLOCK pRootBlock)
 {
-    PCASC_FILE_ENTRY pFileEntry;
+    PWOW_FILE_ENTRY pFileEntry;
     DWORD dwFileDataId = 0;
 
     // Sanity checks
     assert(pRootHandler->FileTable.ItemArray != NULL);
     assert(pRootHandler->FileTable.ItemCountMax != 0);
-    assert(pRootHandler->FileDataIdLookupTable.ItemArray != NULL);
-    assert(pRootHandler->FileDataIdLookupTable.ItemCountMax != 0);
 
     // WoW.exe (build 19116): Blocks with zero files are skipped
     for(DWORD i = 0; i < pRootBlock->pLocaleBlockHdr->NumberOfFiles; i++)
@@ -196,20 +152,17 @@ static int ParseRoot_AddRootEntries(
         // Create new entry, with overflow check
         if(pRootHandler->FileTable.ItemCount >= pRootHandler->FileTable.ItemCountMax)
             return ERROR_INSUFFICIENT_BUFFER;
-        pFileEntry = (PCASC_FILE_ENTRY)Array_Insert(&pRootHandler->FileTable, NULL, 1);
+        pFileEntry = (PWOW_FILE_ENTRY)Array_Insert(&pRootHandler->FileTable, NULL, 1);
 
-        if (pRootHandler->FileDataIdLookupTable.ItemCount >= pRootHandler->FileDataIdLookupTable.ItemCountMax)
-            return ERROR_INSUFFICIENT_BUFFER;
-        Array_Insert(&pRootHandler->FileDataIdLookupTable, &pFileEntry, 1);
-
-        // (004147A3) Prepare the CASC_FILE_ENTRY structure
+        // (004147A3) Prepare the WOW_FILE_ENTRY structure
         pFileEntry->FileNameHash = pRootBlock->pRootEntries[i].FileNameHash;
         pFileEntry->FileDataId = dwFileDataId + pRootBlock->FileDataIds[i];
         pFileEntry->Locales = pRootBlock->pLocaleBlockHdr->Locales;
         pFileEntry->CKey = pRootBlock->pRootEntries[i].CKey;
 
         // Also, insert the entry to the map
-        Map_InsertObject(pRootHandler->pRootMap, pFileEntry, &pFileEntry->FileNameHash);
+        Map_InsertObject(pRootHandler->pDataIdMap, pFileEntry, &pFileEntry->FileDataId);
+        Map_InsertObject(pRootHandler->pNameMap, pFileEntry, &pFileEntry->FileNameHash);
 
         // Update the local File Data Id
         assert((pFileEntry->FileDataId + 1) > pFileEntry->FileDataId);
@@ -342,6 +295,46 @@ static int ParseWowRootFile(
     return ERROR_SUCCESS;
 }
 
+static int RebuildFileMaps(TRootHandler_WoW6 * pRootHandler)
+{
+    PWOW_FILE_ENTRY pFileEntry;
+    DWORD dwTotalFileCount = pRootHandler->FileTable.ItemCount;
+    int nError = ERROR_SUCCESS;
+
+    // Free the current NameMap, if exists
+    if(pRootHandler->pNameMap != NULL)
+        Map_Free(pRootHandler->pNameMap);
+    pRootHandler->pNameMap = NULL;
+
+    // Free the current DataIdMap, if exists
+    if(pRootHandler->pDataIdMap != NULL)
+        Map_Free(pRootHandler->pDataIdMap);
+    pRootHandler->pDataIdMap = NULL;
+
+    // Create new NameMap (FileNameHash -> WOW_FILE_ENTRY)
+    pRootHandler->pDataIdMap = Map_Create(dwTotalFileCount + CASC_EXTRA_FILES, sizeof(DWORD), FIELD_OFFSET(WOW_FILE_ENTRY, FileDataId));
+    pRootHandler->pNameMap = Map_Create(dwTotalFileCount + CASC_EXTRA_FILES, sizeof(ULONGLONG), FIELD_OFFSET(WOW_FILE_ENTRY, FileNameHash));
+    if(pRootHandler->pDataIdMap && pRootHandler->pNameMap)
+    {
+        // Parse the entire file table and put items to the map
+        for(DWORD i = 0; i < dwTotalFileCount; i++)
+        {
+            pFileEntry = (PWOW_FILE_ENTRY)Array_ItemAt(&pRootHandler->FileTable, i);
+            if(pFileEntry != NULL && pFileEntry->FileNameHash != 0)
+            {
+                Map_InsertObject(pRootHandler->pDataIdMap, pFileEntry, &pFileEntry->FileDataId);
+                Map_InsertObject(pRootHandler->pNameMap, pFileEntry, &pFileEntry->FileNameHash);
+            }
+        }
+    }
+    else
+    {
+        nError = ERROR_NOT_ENOUGH_MEMORY;
+    }
+
+    return nError;
+}
+
 //-----------------------------------------------------------------------------
 // Implementation of WoW6 root file
 
@@ -350,22 +343,18 @@ static int WowHandler_Insert(
     const char * szFileName,
     LPBYTE pbCKey)
 {
-    PCASC_FILE_ENTRY pFileEntry;
+    PWOW_FILE_ENTRY pFileEntry;
+    char * SaveItemArray = pRootHandler->FileTable.ItemArray;
     DWORD FileDataId = 0;
 
     // Don't let the number of items to overflow
     if(pRootHandler->FileTable.ItemCount >= pRootHandler->FileTable.ItemCountMax)
         return ERROR_NOT_ENOUGH_MEMORY;
 
-    if (pRootHandler->FileDataIdLookupTable.ItemCount >= pRootHandler->FileDataIdLookupTable.ItemCountMax)
-        return ERROR_NOT_ENOUGH_MEMORY;
-
     // Insert the item to the linear file list
-    pFileEntry = (PCASC_FILE_ENTRY)Array_Insert(&pRootHandler->FileTable, NULL, 1);
+    pFileEntry = (PWOW_FILE_ENTRY)Array_Insert(&pRootHandler->FileTable, NULL, 1);
     if(pFileEntry != NULL)
     {
-        Array_Insert(&pRootHandler->FileDataIdLookupTable, &pFileEntry, 1);
-
         // Get the file data ID of the previous item (0 if this is the first one)
         if(pRootHandler->FileTable.ItemCount > 1)
             FileDataId = pFileEntry[-1].FileDataId;
@@ -377,10 +366,18 @@ static int WowHandler_Insert(
         pFileEntry->Locales      = CASC_LOCALE_ALL;
 
         // Verify collisions (debug version only)
-        assert(Map_FindObject(pRootHandler->pRootMap, &pFileEntry->FileNameHash, NULL) == NULL);
+        assert(Map_FindObject(pRootHandler->pNameMap, &pFileEntry->FileNameHash, NULL) == NULL);
 
-        // Insert the entry to the map
-        Map_InsertObject(pRootHandler->pRootMap, pFileEntry, &pFileEntry->FileNameHash);
+        // Insert the entry to the maps
+        Map_InsertObject(pRootHandler->pDataIdMap, pFileEntry, &pFileEntry->FileDataId);
+        Map_InsertObject(pRootHandler->pNameMap, pFileEntry, &pFileEntry->FileNameHash);
+
+        // If the file map had to reallocate itself, the pointers in the file maps
+        // are no longer valid. We need to rebuild both maps
+        if(pRootHandler->FileTable.ItemArray != SaveItemArray)
+        {
+            RebuildFileMaps(pRootHandler);
+        }
     }
 
     return ERROR_SUCCESS;
@@ -388,7 +385,8 @@ static int WowHandler_Insert(
 
 static LPBYTE WowHandler_Search(TRootHandler_WoW6 * pRootHandler, TCascSearch * pSearch)
 {
-    PCASC_FILE_ENTRY pFileEntry;
+    PWOW_FILE_ENTRY pFileEntry;
+    ULONGLONG FileNameHash;    
 
     // Only if we have a listfile
     if(pSearch->pCache != NULL)
@@ -396,8 +394,11 @@ static LPBYTE WowHandler_Search(TRootHandler_WoW6 * pRootHandler, TCascSearch * 
         // Keep going through the listfile
         while(ListFile_GetNext(pSearch->pCache, pSearch->szMask, pSearch->szFileName, MAX_PATH))
         {
-            // Find the root entry
-            pFileEntry = FindRootEntry(pRootHandler->pRootMap, pSearch->szFileName, NULL);
+            // Calculate the hash of the file name
+            FileNameHash = CalcFileNameHash(pSearch->szFileName);
+
+            // Find the root entry by name hash
+            pFileEntry = (PWOW_FILE_ENTRY)Map_FindObject(pRootHandler->pNameMap, &FileNameHash, NULL);
             if(pFileEntry != NULL)
             {
                 // Give the caller the locale mask and file data ID
@@ -414,7 +415,7 @@ static LPBYTE WowHandler_Search(TRootHandler_WoW6 * pRootHandler, TCascSearch * 
 
 static LPBYTE WowHandler_GetKey(TRootHandler_WoW6 * pRootHandler, const char * szFileName)
 {
-    PCASC_FILE_ENTRY pFileEntry;
+    PWOW_FILE_ENTRY pFileEntry;
     DWORD FileDataId;
     BYTE FileDataIdLE[4];
 
@@ -426,12 +427,15 @@ static LPBYTE WowHandler_GetKey(TRootHandler_WoW6 * pRootHandler, const char * s
         ConvertStringToBinary(szFileName + 4, 8, FileDataIdLE);
         FileDataId = ConvertBytesToInteger_4(FileDataIdLE);
 
-        pFileEntry = FindRootEntry(pRootHandler->FileDataIdLookupTable, FileDataId);
+        pFileEntry = (PWOW_FILE_ENTRY)Map_FindObject(pRootHandler->pDataIdMap, &FileDataId, NULL);
     }
     else
     {
-        // Find by the file name hash
-        pFileEntry = FindRootEntry(pRootHandler->pRootMap, szFileName, NULL);
+        // Calculate the HASH value of the normalized file name
+        ULONGLONG FileNameHash = CalcFileNameHash(szFileName);
+
+        // Perform the hash search
+        pFileEntry = (PWOW_FILE_ENTRY)Map_FindObject(pRootHandler->pNameMap, &FileNameHash, NULL);
     }
 
     return (pFileEntry != NULL) ? pFileEntry->CKey.Value : NULL;
@@ -446,10 +450,11 @@ static void WowHandler_EndSearch(TRootHandler_WoW6 * /* pRootHandler */, TCascSe
 
 static DWORD WowHandler_GetFileId(TRootHandler_WoW6 * pRootHandler, const char * szFileName)
 {
-    PCASC_FILE_ENTRY pFileEntry;
+    PWOW_FILE_ENTRY pFileEntry;
+    ULONGLONG FileNameHash = CalcFileNameHash(szFileName);
 
     // Find by the file name hash
-    pFileEntry = FindRootEntry(pRootHandler->pRootMap, szFileName, NULL);
+    pFileEntry = (PWOW_FILE_ENTRY)Map_FindObject(pRootHandler->pNameMap, &FileNameHash, NULL);
     return (pFileEntry != NULL) ? pFileEntry->FileDataId : 0;
 }
 
@@ -458,8 +463,8 @@ static void WowHandler_Close(TRootHandler_WoW6 * pRootHandler)
     if(pRootHandler != NULL)
     {
         Array_Free(&pRootHandler->FileTable);
-        Array_Free(&pRootHandler->FileDataIdLookupTable);
-        Map_Free(pRootHandler->pRootMap);
+        Map_Free(pRootHandler->pDataIdMap);
+        Map_Free(pRootHandler->pNameMap);
         CASC_FREE(pRootHandler);
     }
 }
@@ -564,25 +569,16 @@ int RootHandler_CreateWoW6(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFil
     ParseWowRootFile(pRootHandler, ParseRoot_CountFiles, pbRootFile, pbRootFileEnd, dwLocaleMask);
     pRootHandler->dwTotalFileCount += CASC_EXTRA_FILES;
 
-    // Create linear table that will contain all root items
-    nError = Array_Create(&pRootHandler->FileTable, CASC_FILE_ENTRY, pRootHandler->dwTotalFileCount);
+    // Create linear table that will contain all file items
+    nError = Array_Create(&pRootHandler->FileTable, WOW_FILE_ENTRY, pRootHandler->dwTotalFileCount + CASC_EXTRA_FILES);
     if(nError != ERROR_SUCCESS)
         return nError;
 
-    // Create sorted table that will contain all root items to lookup by FileDataId
-    nError = Array_Create(&pRootHandler->FileDataIdLookupTable, PCASC_FILE_ENTRY, pRootHandler->dwTotalFileCount);
-    if (nError != ERROR_SUCCESS)
+    // Parse the root file again and insert all files to the map
+    nError = ParseWowRootFile(pRootHandler, ParseRoot_AddRootEntries, pbRootFile, pbRootFileEnd, dwLocaleMask);
+    if(nError != ERROR_SUCCESS)
         return nError;
 
-    // Create the map of FileHash ->FileEntry
-    pRootHandler->pRootMap = Map_Create(pRootHandler->dwTotalFileCount, sizeof(ULONGLONG), FIELD_OFFSET(CASC_FILE_ENTRY, FileNameHash));
-    if(pRootHandler->pRootMap == NULL)
-        return ERROR_NOT_ENOUGH_MEMORY;
-
-    // Parse the root file again and insert all files to the map
-    ParseWowRootFile(pRootHandler, ParseRoot_AddRootEntries, pbRootFile, pbRootFileEnd, dwLocaleMask);
-
-    // Sort entries by FileDataId for searches
-    qsort_pointer_array((void**)pRootHandler->FileDataIdLookupTable.ItemArray, pRootHandler->FileDataIdLookupTable.ItemCount, &FileDataIdCompare, NULL);
-    return ERROR_SUCCESS;
+    // Rebuild the maps
+    return RebuildFileMaps(pRootHandler);
 }

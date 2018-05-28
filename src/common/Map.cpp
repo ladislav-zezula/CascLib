@@ -27,15 +27,9 @@ static DWORD CalcHashIndex_Key(PCASC_MAP pMap, void * pvKey)
     LPBYTE pbKey = (LPBYTE)pvKey;
     DWORD dwHash = 0x7EEE7EEE;
 
-    // Construct the hash from the first 8 digits
-    dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbKey[0];
-    dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbKey[1];
-    dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbKey[2];
-    dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbKey[3];
-    dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbKey[4];
-    dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbKey[5];
-    dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbKey[6];
-    dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbKey[7];
+    // Construct the hash from the key
+    for(DWORD i = 0; i < pMap->KeyLength; i++)
+        dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbKey[i];
 
     // Return the hash limited by the table size
     return (dwHash % pMap->TableSize);

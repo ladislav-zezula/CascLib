@@ -111,8 +111,8 @@ static LPBYTE OvrHandler_GetKey(TRootHandler_Ovr * pRootHandler, const char * sz
 
 static DWORD OvrHandler_GetFileId(TRootHandler_Ovr * /* pRootHandler */, const char * /* szFileName */)
 {
-  // Not implemented for Overwatch
-  return 0;
+    // Not implemented for Overwatch
+    return 0;
 }
 
 static void OvrHandler_Close(TRootHandler_Ovr * pRootHandler)
@@ -176,7 +176,7 @@ int RootHandler_CreateOverwatch(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRo
     if(nError != ERROR_SUCCESS)
         return nError;
 
-    // Create map of ROOT_ENTRY -> FileEntry
+    // Create map of FileName -> FileEntry
     pRootHandler->pRootMap = Map_Create(dwFileCountMax, sizeof(ULONGLONG), FIELD_OFFSET(CASC_FILE_ENTRY, FileNameHash));
     if(pRootHandler->pRootMap == NULL)
         return ERROR_NOT_ENOUGH_MEMORY;
