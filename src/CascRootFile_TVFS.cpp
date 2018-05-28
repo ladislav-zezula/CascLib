@@ -537,7 +537,7 @@ static int RebuildFileMap(TRootHandler_TVFS * pRootHandler)
     if(dwTotalFileCount != NULL)
     {
         // Create map of FileName -> TVFS_FILE_ENTRY
-        pRootMap = Map_Create(dwTotalFileCount, sizeof(ULONGLONG), FIELD_OFFSET(TVFS_FILE_ENTRY, FileNameHash));
+        pRootMap = Map_Create(dwTotalFileCount + CASC_EXTRA_FILES, sizeof(ULONGLONG), FIELD_OFFSET(TVFS_FILE_ENTRY, FileNameHash));
         if(pRootMap != NULL)
         {
             // Parse the entire file table and put items to the map

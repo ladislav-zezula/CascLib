@@ -29,6 +29,7 @@ typedef struct _DYNAMIC_ARRAY
 int Array_Create_(PDYNAMIC_ARRAY pArray, size_t ItemSize, size_t ItemCountMax);
 void * Array_Insert(PDYNAMIC_ARRAY pArray, const void * NewItems, size_t NewItemCount);
 void * Array_ItemAt(PDYNAMIC_ARRAY pArray, size_t ItemIndex);
+bool   Array_CheckMember(PDYNAMIC_ARRAY pArray, const void * ArrayPtr);
 size_t Array_IndexOf(PDYNAMIC_ARRAY pArray, const void * ArrayPtr);
 void Array_Free(PDYNAMIC_ARRAY pArray);
 

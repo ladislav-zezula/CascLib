@@ -49,6 +49,7 @@
 #define CASC_GAME_MASK       0xFFFF0000         // Mask for getting game ID
 
 #define CASC_INDEX_COUNT          0x10
+#define CASC_CKEY_SIZE            0x10          // Size of the content key
 #define CASC_EKEY_SIZE            0x09          // Size of the encoded key
 #define CASC_MAX_DATA_FILES      0x100
 #define CASC_EXTRA_FILES          0x20          // Number of extra entries to be reserved for additionally inserted files
@@ -100,28 +101,28 @@ typedef struct _CONTENT_KEY
 } CONTENT_KEY, *PCONTENT_KEY;
 
 // Index entry in the .idx files (part 1)
-typedef struct _CASC_INDEX_ENTRY
+typedef struct _CASC_EKEY_ENTRY
 {
     BYTE EKey[CASC_EKEY_SIZE];                      // The first 9 bytes of the encoded key
     BYTE FileOffsetBE[5];                           // Index of data file and offset within (big endian).
     BYTE FileSizeLE[4];                             // Size occupied in the storage file (data.###). See comment before CascGetFileSize for details
-} CASC_INDEX_ENTRY, *PCASC_INDEX_ENTRY;
+} CASC_EKEY_ENTRY, *PCASC_EKEY_ENTRY;
 
 typedef struct _CASC_INDEX_FILE
 {
-    TCHAR * szFileName;                             // Name of the key mapping file
+    TCHAR * szFileName;                             // Name of the index file
     LPBYTE  pbFileData;                             // Pointer to the file data
     DWORD   cbFileData;                             // Length of the file data
     BYTE   ExtraBytes;                              // (?) Extra bytes in the key record
-    BYTE   SpanSizeBytes;                           // Size of field with file size
-    BYTE   SpanOffsBytes;                           // Size of field with file offset
-    BYTE   KeyBytes;                                // Size of the file key
-    BYTE   SegmentBits;                             // Number of bits for the file offset (rest is archive index)
-    bool   FreeIndexEntries;                        // If true, then we need to free the index entry map
-    ULONGLONG MaxFileOffset;
+    BYTE   SpanSizeBytes;                           // Byte size of the "file size" field. Expected to be 5
+    BYTE   SpanOffsBytes;                           // Byte size of the "archive+offset" field. Expected to be 5
+    BYTE   KeyBytes;                                // Size of the file key. Expected to be 9
+    BYTE   FileOffsetBits;                          // Number of bits for the file offset (rest is archive index). Usually 0x1E
+    bool   FreeEKeyEntries;                         // If true, then we need to free the EKey map
+    ULONGLONG MaxFileSize;
 
-    PCASC_INDEX_ENTRY pIndexEntries;                // Sorted array of index entries
-    DWORD nIndexEntries;                            // Number of index entries
+    PCASC_EKEY_ENTRY pEKeyEntries;                  // Sorted array of EKey entries
+    DWORD nEKeyEntries;                             // Number of EKey entries
 
 } CASC_INDEX_FILE, *PCASC_INDEX_FILE;
 
@@ -134,52 +135,30 @@ typedef struct _CASC_FILE_FRAME
     BYTE  md5[MD5_HASH_SIZE];                       // MD5 hash of the file sector
 } CASC_FILE_FRAME, *PCASC_FILE_FRAME;
 
-// The encoding file is in the form of:
-// * File header
-// * String block #1
-// * Table A header
-// * Table A entries
-// * Table B header
-// * Table B entries
-// * String block #2
-// http://pxr.dk/wowdev/wiki/index.php?title=CASC#Key_CASC_Files
 typedef struct _CASC_ENCODING_HEADER
 {
-    BYTE Magic[2];                                  // "EN"
-    BYTE Version;                                   // Expected to be 1 by CascLib
-    BYTE ChecksumSizeA;                             // The length of the checksums in Encoding Table
-    BYTE ChecksumSizeB;                             // The length of the checksums in Encoding Layout Table
-    BYTE Flags_TableA[2];                           // Flags for Encoding Table
-    BYTE Flags_TableB[2];                           // Flags for Encoding Layout Table
-    BYTE Entries_TableA[4];                         // Number of segments in Encoding Table (big endian)
-    BYTE Entries_TableB[4];                         // Number of segments in Encoding Layout Table (big endian)
-    BYTE field_11;
-    BYTE Size_StringTable1[4];                      // Size of the string block #1
-
+    USHORT Version;                                 // Expected to be 1 by CascLib
+    BYTE   CKeyLength;                              // The content key length in ENCODING file. Usually 0x10
+    BYTE   EKeyLength;                              // The encoded key length in ENCODING file. Usually 0x10
+    DWORD  CKeyPageSize;                            // Size of the CKey page in bytes
+    DWORD  EKeyPageSize;                            // Size of the CKey page in bytes
+    DWORD  CKeyPageCount;                           // Number of CKey pages in the page table
+    DWORD  EKeyPageCount;                           // Number of EKey pages in the page table
+    DWORD  ESpecBlockSize;                          // Size of the ESpec string block, in bytes
 } CASC_ENCODING_HEADER, *PCASC_ENCODING_HEADER;
 
-typedef struct _CASC_ENCODING_ENTRY
+typedef struct _CASC_CKEY_ENTRY
 {
     USHORT KeyCount;                                // Number of EKeys
     BYTE FileSizeBE[4];                             // Compressed file size (header area + frame headers + compressed frames), in bytes
-    BYTE CKey[MD5_HASH_SIZE];                       // File content key. This is MD5 of the file data
+    BYTE CKey[CASC_CKEY_SIZE];                      // File content key. This is MD5 of the uncompressed file data
 
     // Followed by the EKey (KeyCount = number of EKeys)
 
-} CASC_ENCODING_ENTRY, *PCASC_ENCODING_ENTRY;
+} CASC_CKEY_ENTRY, *PCASC_CKEY_ENTRY;
 
-// A version of CASC_ENCODING_ENTRY with one EKey
-typedef struct _CASC_ENCODING_ENTRY_1
-{
-    USHORT KeyCount;                                // Number of EKeys
-    BYTE FileSizeBE[4];                             // Compressed file size (header area + frame headers + compressed frames), in bytes
-    BYTE CKey[MD5_HASH_SIZE];                       // File content key. This is MD5 of the file data
-    BYTE EKey[MD5_HASH_SIZE];                       // File encoded key. This is trimmed MD5 hash of the file header, containing which MD5 hashes of all the logical blocks of the file
-
-} CASC_ENCODING_ENTRY_1, *PCASC_ENCODING_ENTRY_1;
-
-#define GET_EKEY(pEncodingEntry)  (pEncodingEntry->CKey + MD5_HASH_SIZE)
-#define FAKE_ENCODING_ENTRY_SIZE  (sizeof(CASC_ENCODING_ENTRY) + MD5_HASH_SIZE)
+#define GET_EKEY(pCKeyEntry)      (pCKeyEntry->CKey + CASC_CKEY_SIZE)
+#define FAKE_ENCODING_ENTRY_SIZE  (sizeof(CASC_CKEY_ENTRY) + MD5_HASH_SIZE)
 
 //-----------------------------------------------------------------------------
 // Structures for CASC storage and CASC file
@@ -201,12 +180,15 @@ typedef struct _TCascStorage
 
     CBLD_TYPE BuildFileType;                        // Type of the build file
 
-    QUERY_KEY CdnConfigKey;
-    QUERY_KEY CdnBuildKey;
-    QUERY_KEY ArchivesGroup;                        // Key array of the "archive-group"
+    QUERY_KEY CdnConfigKey;                         // Currently selected CDN config file. Points to "confi\g\%02X\%02X\%s
+    QUERY_KEY CdnBuildKey;                          // Currently selected CDN build file. Points to "confi\g\%02X\%02X\%s
+
+    QUERY_KEY ArchiveGroup;                         // Key array of the "archive-group"
     QUERY_KEY ArchivesKey;                          // Key array of the "archives"
     QUERY_KEY PatchArchivesKey;                     // Key array of the "patch-archives"
     QUERY_KEY PatchArchivesGroup;                   // Key array of the "patch-archive-group"
+    QUERY_KEY BuildFiles;                           // List of supported build files.
+
     QUERY_KEY RootFile;                             // CKey of the ROOT file
     QUERY_KEY PatchFile;                            // CKey of the PATCH file
     QUERY_KEY DownloadFile;                         // CKey+EKey of the DOWNLOAD file
@@ -216,9 +198,9 @@ typedef struct _TCascStorage
     TFileStream * DataFiles[CASC_MAX_DATA_FILES];   // Array of open data files
 
     CASC_INDEX_FILE IndexFile[CASC_INDEX_COUNT];    // Array of index files
-    PCASC_MAP pIndexEntryMap;                       // Map of index entries
+    PCASC_MAP pEKeyEntryMap;                        // Map of EKey entries
 
-    PCASC_MAP pEncodingMap;                         // Map of CKey -> CASC_ENCODING_ENTRY
+    PCASC_MAP pCKeyEntryMap;                        // Map of CKey -> CASC_CKEY_ENTRY
     QUERY_KEY EncodingData;                         // Content of the ENCODING file. Keep this in for encoding table.
     DYNAMIC_ARRAY ExtraCKeys;                       // Extra CKey entries
 
@@ -337,8 +319,8 @@ int ParseRootFileLine(const char * szLinePtr, const char * szLineEnd, int nFileN
 TCascStorage * IsValidStorageHandle(HANDLE hStorage);
 TCascFile * IsValidFileHandle(HANDLE hFile);
 
-PCASC_ENCODING_ENTRY FindEncodingEntry(TCascStorage * hs, PQUERY_KEY pCKey, PDWORD PtrIndex);
-PCASC_INDEX_ENTRY    FindIndexEntry(TCascStorage * hs, PQUERY_KEY pEKey);
+PCASC_CKEY_ENTRY FindCKeyEntry(TCascStorage * hs, PQUERY_KEY pCKey, PDWORD PtrIndex);
+PCASC_EKEY_ENTRY FindEKeyEntry(TCascStorage * hs, PQUERY_KEY pEKey);
 
 int CascDecompress(LPBYTE pvOutBuffer, PDWORD pcbOutBuffer, LPBYTE pvInBuffer, DWORD cbInBuffer);
 int CascDecrypt   (LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBYTE pbInBuffer, DWORD cbInBuffer, DWORD dwFrameIndex);

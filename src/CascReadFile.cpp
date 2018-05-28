@@ -294,7 +294,7 @@ static int ProcessFileFrame(
         pbWorkBuffer = (dwStepCount & 0x01) ? pbOutBuffer : pbTempBuffer;
         cbWorkBuffer = (dwStepCount & 0x01) ? cbOutBuffer : cbTempBuffer;
 
-        // Perform the operation specific to the operation ID
+        // Perform the operation specific by the first byte
         switch(pbInBuffer[0])
         {
             case 'E':   // Encrypted files
@@ -303,7 +303,15 @@ static int ProcessFileFrame(
                 break;
 
             case 'Z':   // ZLIB compressed files
+                
+                // If we decompressed less than expected, we simply fill the rest with zeros
+                // Example: INSTALL file from the TACT CASC storage
                 nError = CascDecompress(pbWorkBuffer, &cbWorkBuffer, pbInBuffer + 1, cbInBuffer - 1);
+                if(nError == ERROR_SUCCESS && cbWorkBuffer < cbOutBuffer)
+                {
+                    memset(pbWorkBuffer + cbWorkBuffer, 0, (cbOutBuffer - cbWorkBuffer));
+                    cbWorkBuffer = cbOutBuffer;
+                }
                 bWorkComplete = true;
                 break;
 
@@ -336,7 +344,7 @@ static int ProcessFileFrame(
     {
         if(cbWorkBuffer != cbOutBuffer)
             nError = ERROR_INSUFFICIENT_BUFFER;
-        memcpy(pbOutBuffer, pbWorkBuffer, cbOutBuffer);
+        memcpy(pbOutBuffer, pbWorkBuffer, cbWorkBuffer);
     }
 
     // Free the temporary buffer
@@ -528,10 +536,20 @@ bool WINAPI CascReadFile(HANDLE hFile, void * pvBuffer, DWORD dwBytesToRead, PDW
                 // Shall we reallocate the cache buffer?
                 if(pFrame->FrameSize > hf->cbFileCache)
                 {
+                    // Free the current file cache
                     if(hf->pbFileCache != NULL)
                         CASC_FREE(hf->pbFileCache);
-
+                    hf->cbFileCache = 0;
+                    
+                    // Allocate a new file cache
                     hf->pbFileCache = CASC_ALLOC(BYTE, pFrame->FrameSize);
+                    if(hf->pbFileCache == NULL)
+                    {
+                        nError = ERROR_NOT_ENOUGH_MEMORY;
+                        break;
+                    }
+
+                    // Set the file cache length
                     hf->cbFileCache = pFrame->FrameSize;
                 }
 

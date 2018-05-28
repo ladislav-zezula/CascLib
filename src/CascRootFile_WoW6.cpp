@@ -473,7 +473,7 @@ static void TRootHandlerWoW6_Dump(
     const TCHAR * szListFile,
     int nDumpLevel)
 {
-    PCASC_ENCODING_ENTRY pEncodingEntry;
+    PCASC_CKEY_ENTRY pCKeyEntry;
     CASC_ROOT_BLOCK BlockInfo;
     PLISTFILE_MAP pListMap;
     QUERY_KEY CKey;
@@ -516,8 +516,8 @@ static void TRootHandlerWoW6_Dump(
             {
                 CKey.pbData = BlockInfo.pRootEntries[i].CKey.Value;
                 CKey.cbData = MD5_HASH_SIZE;
-                pEncodingEntry = FindEncodingEntry(hs, &CKey, NULL);
-//              CascDumpEncodingEntry(hs, dc, pEncodingEntry, nDumpLevel);
+                pCKeyEntry = FindCKeyEntry(hs, &CKey, NULL);
+//              CascDumpCKeyEntry(hs, dc, pCKeyEntry, nDumpLevel);
             }
         }
 

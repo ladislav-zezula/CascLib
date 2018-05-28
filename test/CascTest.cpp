@@ -394,6 +394,9 @@ static int TestOpenStorage_EnumFiles(const TCHAR * szStorage, const TCHAR * szLi
 
     if(nError == ERROR_SUCCESS)
     {
+        // Dump the storage
+        CascDumpStorage(hStorage, "E:\\storage-dump.txt");
+
         // Retrieve the total number of files
         CascGetStorageInfo(hStorage, CascStorageFileCount, &dwTotalFiles, sizeof(dwTotalFiles), NULL);
 
@@ -454,7 +457,7 @@ static int TestOpenStorage_ExtractFiles(const TCHAR * szStorage, const TCHAR * s
     if(nError == ERROR_SUCCESS)
     {
         // Dump the storage
-//      CascDumpStorage(hStorage, "E:\\storage-dump.txt");
+        CascDumpStorage(hStorage, "E:\\storage-dump.txt");
 
         LogHelper.PrintProgress("Searching storage ...");
         hFind = CascFindFirstFile(hStorage, "*", &FindData, szListFile);
@@ -641,8 +644,8 @@ int main(int argc, char * argv[])
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Diablo III/30013/Data"), NULL);
 
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Overwatch/24919/casc/data"), NULL);
+    if(nError == ERROR_SUCCESS)
+        nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Overwatch/24919/casc/data"), NULL);
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2016 - WoW/23420/Data"), _T("huhu.txt"));
@@ -673,10 +676,10 @@ int main(int argc, char * argv[])
 //      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2015 - Overwatch/24919/casc/data"), MAKE_PATH("Work"), NULL);
 
 //  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2016 - WoW/23420/Data"), _T("Work"), NULL);
+//      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2016 - WoW/21742/Data"), _T("Work"), NULL);
 
-    if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2018 - New CASC\\War3"), _T("Work"), NULL);
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2018 - New CASC\\War3"), _T("Work"), NULL);
 
 
 #ifdef _MSC_VER                                                          

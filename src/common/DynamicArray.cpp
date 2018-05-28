@@ -84,6 +84,15 @@ void * Array_ItemAt(PDYNAMIC_ARRAY pArray, size_t ItemIndex)
     return pArray->ItemArray + (ItemIndex * pArray->ItemSize);
 }
 
+bool Array_CheckMember(PDYNAMIC_ARRAY pArray, const void * ArrayPtr)
+{
+    LPBYTE pbArrayStart = (LPBYTE)pArray->ItemArray;
+    LPBYTE pbArrayPtr = (LPBYTE)ArrayPtr;
+    LPBYTE pbArrayEnd = pbArrayStart + (pArray->ItemCount * pArray->ItemSize);
+
+    return (pbArrayStart <= pbArrayPtr && pbArrayPtr < pbArrayEnd);
+}
+
 size_t Array_IndexOf(PDYNAMIC_ARRAY pArray, const void * ArrayPtr)
 {
     char * ArrayItem = (char *)ArrayPtr;
