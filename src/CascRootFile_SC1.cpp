@@ -37,6 +37,32 @@ struct TRootHandler_SC1 : public TRootHandler
 //-----------------------------------------------------------------------------
 // Local functions
 
+static bool IsRootFile_Starcraft1(void * pTextFile)
+{
+    const char * szLineBegin;
+    const char * szLineEnd;
+    char szFileName[MAX_PATH+1];
+    CONTENT_KEY CKey;
+    bool bResult = false;
+
+    // Get the first line from the listfile
+    if(ListFile_GetNextLine(pTextFile, &szLineBegin, &szLineEnd))
+    {
+        // We check the line length; if the line is too long, we ignore it
+        if((szLineEnd - szLineBegin) < (MAX_PATH + MD5_STRING_SIZE + 1))
+        {
+            if(CSV_GetNameAndCKey(szLineBegin, szLineEnd, 0, 1, szFileName, MAX_PATH, &CKey) == ERROR_SUCCESS)
+            {
+                bResult = true;
+            }
+        }
+    }
+
+    // We need to reset the listfile to the begin position
+    ListFile_Reset(pTextFile);
+    return bResult;
+}
+
 static int InsertFileEntry(
     TRootHandler_SC1 * pRootHandler,
     const char * szFileName,
@@ -139,76 +165,80 @@ static void SC1Handler_Close(TRootHandler_SC1 * pRootHandler)
 
 //-----------------------------------------------------------------------------
 // Public functions
+//
+// Starcraft ROOT file is a text file with the following format:
+// HD2/portraits/NBluCrit/NLCFID01.webm|c2795b120592355d45eba9cdc37f691e
+// locales/enUS/Assets/campaign/EXPZerg/Zerg08/staredit/wav/zovtra01.ogg|316b0274bf2dabaa8db60c3ff1270c85
+// locales/zhCN/Assets/sound/terran/ghost/tghdth01.wav|6637ed776bd22089e083b8b0b2c0374c
+//
 
 int RootHandler_CreateSC1(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile)
 {
     TRootHandler_SC1 * pRootHandler;
-//  CONTENT_KEY KeyBuffer;
-//  QUERY_KEY CKey = {KeyBuffer.Value, MD5_HASH_SIZE};
+    const char * szLineBegin;
+    const char * szLineEnd;
     void * pTextFile;
     size_t nLength;
-    char szOneLine[0x200];
     DWORD dwFileCountMax = (DWORD)hs->pCKeyEntryMap->TableSize;
-    int nError = ERROR_SUCCESS;
+    int nError = ERROR_BAD_FORMAT;
 
-    // Allocate the root handler object
-    hs->pRootHandler = pRootHandler = CASC_ALLOC(TRootHandler_SC1, 1);
-    if(pRootHandler == NULL)
-        return ERROR_NOT_ENOUGH_MEMORY;
-
-    // Fill-in the handler functions
-    memset(pRootHandler, 0, sizeof(TRootHandler_SC1));
-    pRootHandler->Insert      = (ROOT_INSERT)SC1Handler_Insert;
-    pRootHandler->Search      = (ROOT_SEARCH)SC1Handler_Search;
-    pRootHandler->EndSearch   = (ROOT_ENDSEARCH)SC1Handler_EndSearch;
-    pRootHandler->GetKey      = (ROOT_GETKEY)SC1Handler_GetKey;
-    pRootHandler->Close       = (ROOT_CLOSE)SC1Handler_Close;
-    pRootHandler->GetFileId   = (ROOT_GETFILEID)SC1Handler_GetFileId;
-
-    // Fill-in the flags
-    pRootHandler->dwRootFlags |= ROOT_FLAG_HAS_NAMES;
-
-    // Allocate the linear array of file entries
-    nError = Array_Create(&pRootHandler->FileTable, CASC_FILE_ENTRY, 0x10000);
-    if(nError != ERROR_SUCCESS)
-        return nError;
-
-    // Allocate the buffer for the file names
-    nError = Array_Create(&pRootHandler->FileNames, char, 0x10000);
-    if(nError != ERROR_SUCCESS)
-        return nError;
-
-    // Create map of ROOT_ENTRY -> FileEntry
-    pRootHandler->pRootMap = Map_Create(dwFileCountMax, sizeof(ULONGLONG), FIELD_OFFSET(CASC_FILE_ENTRY, FileNameHash));
-    if(pRootHandler->pRootMap == NULL)
-        return ERROR_NOT_ENOUGH_MEMORY;
-
-    // Parse the ROOT file
+    // Parse the ROOT file first in order to see whether we have the correct format
     pTextFile = ListFile_FromBuffer(pbRootFile, cbRootFile);
     if(pTextFile != NULL)
     {
-        // Parse the next lines
-        while((nLength = ListFile_GetNextLine(pTextFile, szOneLine, _maxchars(szOneLine))) > 0)
+        // Verify whether this looks like a Starcraft I root file
+        if(IsRootFile_Starcraft1(pTextFile))
         {
-            LPSTR szCKey;
-            BYTE CKey[MD5_HASH_SIZE];
+            // Allocate the root handler object
+            hs->pRootHandler = pRootHandler = CASC_ALLOC(TRootHandler_SC1, 1);
+            if(pRootHandler == NULL)
+                return ERROR_NOT_ENOUGH_MEMORY;
 
-            szCKey = strchr(szOneLine, _T('|'));
-            if(szCKey != NULL)
+            // Fill-in the handler functions
+            memset(pRootHandler, 0, sizeof(TRootHandler_SC1));
+            pRootHandler->Insert      = (ROOT_INSERT)SC1Handler_Insert;
+            pRootHandler->Search      = (ROOT_SEARCH)SC1Handler_Search;
+            pRootHandler->EndSearch   = (ROOT_ENDSEARCH)SC1Handler_EndSearch;
+            pRootHandler->GetKey      = (ROOT_GETKEY)SC1Handler_GetKey;
+            pRootHandler->Close       = (ROOT_CLOSE)SC1Handler_Close;
+            pRootHandler->GetFileId   = (ROOT_GETFILEID)SC1Handler_GetFileId;
+
+            // Fill-in the flags
+            pRootHandler->dwRootFlags |= ROOT_FLAG_HAS_NAMES;
+
+            // Allocate the linear array of file entries
+            nError = Array_Create(&pRootHandler->FileTable, CASC_FILE_ENTRY, 0x10000);
+            if(nError != ERROR_SUCCESS)
+                return nError;
+
+            // Allocate the buffer for the file names
+            nError = Array_Create(&pRootHandler->FileNames, char, 0x10000);
+            if(nError != ERROR_SUCCESS)
+                return nError;
+
+            // Create map of ROOT_ENTRY -> FileEntry
+            pRootHandler->pRootMap = Map_Create(dwFileCountMax, sizeof(ULONGLONG), FIELD_OFFSET(CASC_FILE_ENTRY, FileNameHash));
+            if(pRootHandler->pRootMap == NULL)
+                return ERROR_NOT_ENOUGH_MEMORY;
+
+            // Parse the next lines
+            while((nLength = ListFile_GetNextLine(pTextFile, &szLineBegin, &szLineEnd)) > 0)
             {
-                // Split the name and CKey
-                *szCKey++ = 0;
+                CONTENT_KEY CKey;
+                char szFileName[MAX_PATH];
 
-                // Insert the entry to the map
-                ConvertStringToBinary(szCKey, MD5_STRING_SIZE, CKey);
-                InsertFileEntry(pRootHandler, szOneLine, CKey);
+                // Split the line to the file name and CKey
+                nError = CSV_GetNameAndCKey(szLineBegin, szLineEnd, 0, 1, szFileName, MAX_PATH, &CKey);
+                if(nError == ERROR_SUCCESS)
+                {
+                    InsertFileEntry(pRootHandler, szFileName, CKey.Value);
+                }
             }
         }
-
-        // Free the listfile
+        
+        // Free the listfile object
         ListFile_Free(pTextFile);
     }
 
-    // Succeeded
     return nError;
 }

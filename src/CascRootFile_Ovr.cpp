@@ -135,76 +135,97 @@ static void OvrHandler_Close(TRootHandler_Ovr * pRootHandler)
 
 //-----------------------------------------------------------------------------
 // Public functions
+//
+// Overwatch ROOT file (build 24919):
+// -------------------------------------
+// #MD5|CHUNK_ID|FILENAME|INSTALLPATH
+// FE3AD8A77EEF77B383DF4929AED816FD|0|RetailClient/GameClientApp.exe|GameClientApp.exe
+// 5EDDEFECA544B6472C5CD52BE63BC02F|0|RetailClient/Overwatch Launcher.exe|Overwatch Launcher.exe
+// 6DE09F0A67F33F874F2DD8E2AA3B7AAC|0|RetailClient/ca-bundle.crt|ca-bundle.crt
+// 99FE9EB6A4BB20209202F8C7884859D9|0|RetailClient/ortp_x64.dll|ortp_x64.dll
+//
+// Overwatch ROOT file (build 47161):
+// -------------------------------------
+// #FILEID|MD5|CHUNK_ID|PRIORITY|MPRIORITY|FILENAME|INSTALLPATH
+// RetailClient/Overwatch.exe|807F96661280C07E762A8C129FEBDA6F|0|0|255|RetailClient/Overwatch.exe|Overwatch.exe
+// RetailClient/Overwatch Launcher.exe|5EDDEFECA544B6472C5CD52BE63BC02F|0|0|255|RetailClient/Overwatch Launcher.exe|Overwatch Launcher.exe
+// RetailClient/ortp_x64.dll|7D1B5DEC267480F3E8DAD6B95143A59C|0|0|255|RetailClient/ortp_x64.dll|ortp_x64.dll
+//
 
 int RootHandler_CreateOverwatch(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile)
 {
     TRootHandler_Ovr * pRootHandler;
-    CONTENT_KEY KeyBuffer;
-    QUERY_KEY CKey = {KeyBuffer.Value, MD5_HASH_SIZE};
+    CONTENT_KEY CKey;
+    const char * szLineBegin;
+    const char * szLineEnd;
     void * pTextFile;
     size_t nLength;
-    char szOneLine[0x200];
     char szFileName[MAX_PATH+1];
     DWORD dwFileCountMax = (DWORD)hs->pCKeyEntryMap->TableSize;
-    int nFileNameIndex;
-    int nError = ERROR_SUCCESS;
+    int nFileNameIndex = 0;
+    int nCKeyIndex = 0;
+    int nError = ERROR_BAD_FORMAT;
 
-    // Allocate the root handler object
-    hs->pRootHandler = pRootHandler = CASC_ALLOC(TRootHandler_Ovr, 1);
-    if(pRootHandler == NULL)
-        return ERROR_NOT_ENOUGH_MEMORY;
-
-    // Fill-in the handler functions
-    memset(pRootHandler, 0, sizeof(TRootHandler_Ovr));
-    pRootHandler->Insert      = (ROOT_INSERT)OvrHandler_Insert;
-    pRootHandler->Search      = (ROOT_SEARCH)OvrHandler_Search;
-    pRootHandler->EndSearch   = (ROOT_ENDSEARCH)OvrHandler_EndSearch;
-    pRootHandler->GetKey      = (ROOT_GETKEY)OvrHandler_GetKey;
-    pRootHandler->Close       = (ROOT_CLOSE)OvrHandler_Close;
-    pRootHandler->GetFileId   = (ROOT_GETFILEID)OvrHandler_GetFileId;
-
-    // Fill-in the flags
-    pRootHandler->dwRootFlags |= ROOT_FLAG_HAS_NAMES;
-
-    // Allocate the linear array of file entries
-    nError = Array_Create(&pRootHandler->FileTable, CASC_FILE_ENTRY, 0x10000);
-    if(nError != ERROR_SUCCESS)
-        return nError;
-
-    // Allocate the buffer for the file names
-    nError = Array_Create(&pRootHandler->FileNames, char, 0x10000);
-    if(nError != ERROR_SUCCESS)
-        return nError;
-
-    // Create map of FileName -> FileEntry
-    pRootHandler->pRootMap = Map_Create(dwFileCountMax, sizeof(ULONGLONG), FIELD_OFFSET(CASC_FILE_ENTRY, FileNameHash));
-    if(pRootHandler->pRootMap == NULL)
-        return ERROR_NOT_ENOUGH_MEMORY;
-
-    // Parse the ROOT file
+    // Verify whether the ROOT file seems line overwarch root file
     pTextFile = ListFile_FromBuffer(pbRootFile, cbRootFile);
     if(pTextFile != NULL)
     {
         // Get the initial line, containing variable names
-        nLength = ListFile_GetNextLine(pTextFile, szOneLine, _maxchars(szOneLine));
-        
-        // Determine the index of the "FILENAME" variable
-        nError = GetRootVariableIndex(szOneLine, szOneLine + nLength, "FILENAME", &nFileNameIndex);
-        if(nError == ERROR_SUCCESS)
-        {
-            // Parse the next lines
-            while((nLength = ListFile_GetNextLine(pTextFile, szOneLine, _maxchars(szOneLine))) > 0)
+        nLength = ListFile_GetNextLine(pTextFile, &szLineBegin, &szLineEnd);
+        if(nLength != 0)
+        {        
+            // Determine the index of the "FILENAME" variable
+            nError = CSV_GetHeaderIndex(szLineBegin, szLineEnd, "FILENAME", &nFileNameIndex);
+            if(nError == ERROR_SUCCESS)
             {
-                // Parse the line
-                nError = ParseRootFileLine(szOneLine, szOneLine + nLength, nFileNameIndex, &CKey, szFileName, _maxchars(szFileName));
+                nError = CSV_GetHeaderIndex(szLineBegin, szLineEnd, "MD5", &nCKeyIndex);
                 if(nError == ERROR_SUCCESS)
                 {
-                    InsertFileEntry(pRootHandler, szFileName, KeyBuffer.Value);
+                    // Allocate the root handler object
+                    hs->pRootHandler = pRootHandler = CASC_ALLOC(TRootHandler_Ovr, 1);
+                    if(pRootHandler == NULL)
+                        return ERROR_NOT_ENOUGH_MEMORY;
+
+                    // Fill-in the handler functions
+                    memset(pRootHandler, 0, sizeof(TRootHandler_Ovr));
+                    pRootHandler->Insert      = (ROOT_INSERT)OvrHandler_Insert;
+                    pRootHandler->Search      = (ROOT_SEARCH)OvrHandler_Search;
+                    pRootHandler->EndSearch   = (ROOT_ENDSEARCH)OvrHandler_EndSearch;
+                    pRootHandler->GetKey      = (ROOT_GETKEY)OvrHandler_GetKey;
+                    pRootHandler->Close       = (ROOT_CLOSE)OvrHandler_Close;
+                    pRootHandler->GetFileId   = (ROOT_GETFILEID)OvrHandler_GetFileId;
+
+                    // Fill-in the flags
+                    pRootHandler->dwRootFlags |= ROOT_FLAG_HAS_NAMES;
+
+                    // Allocate the linear array of file entries
+                    nError = Array_Create(&pRootHandler->FileTable, CASC_FILE_ENTRY, 0x10000);
+                    if(nError != ERROR_SUCCESS)
+                        return nError;
+
+                    // Allocate the buffer for the file names
+                    nError = Array_Create(&pRootHandler->FileNames, char, 0x10000);
+                    if(nError != ERROR_SUCCESS)
+                        return nError;
+
+                    // Create map of FileName -> FileEntry
+                    pRootHandler->pRootMap = Map_Create(dwFileCountMax, sizeof(ULONGLONG), FIELD_OFFSET(CASC_FILE_ENTRY, FileNameHash));
+                    if(pRootHandler->pRootMap == NULL)
+                        return ERROR_NOT_ENOUGH_MEMORY;
+
+                    // Parse the next lines
+                    while((nLength = ListFile_GetNextLine(pTextFile, &szLineBegin, &szLineEnd)) > 0)
+                    {
+                        // Parse the line
+                        nError = CSV_GetNameAndCKey(szLineBegin, szLineEnd, nFileNameIndex, nCKeyIndex, szFileName, _maxchars(szFileName), &CKey);
+                        if(nError == ERROR_SUCCESS)
+                        {
+                            InsertFileEntry(pRootHandler, szFileName, CKey.Value);
+                        }
+                    }
                 }
             }
         }
-
-        // Free the listfile
         ListFile_Free(pTextFile);
     }
 

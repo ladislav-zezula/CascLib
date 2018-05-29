@@ -187,29 +187,6 @@ static bool IsIndexFileName_V2(const TCHAR * szFileName)
             _tcsicmp(szFileName + 0x0A, _T(".idx")) == 0);
 }
 
-static bool IsRootFile_Starcraft1(LPBYTE pbFileData, DWORD cbFileData)
-{
-    LPBYTE pbFileEnd = pbFileData + cbFileData;
-    LPBYTE pbHashName;
-    LPBYTE pbHashEnd;
-
-    // Skip the file name
-    while(pbFileData < pbFileEnd && pbFileData[0] != '|')
-        pbFileData++;
-    if(pbFileData[0] != '|')
-        return false;
-
-    // Then, a MD5 must follow
-    pbHashName = pbHashEnd = pbFileData + 1;
-    while(pbHashEnd < pbFileEnd && pbHashEnd[0] != 0x0A)
-        pbHashEnd++;
-    if(pbHashEnd[0] != 0x0A)
-        return false;
-
-    // The length must be exactly 32 characters
-    return ((pbHashEnd - pbHashName) == 32);
-}
-
 static bool IsCascIndexHeader_V1(LPBYTE pbFileData, DWORD cbFileData)
 {
     PFILE_INDEX_HEADER_V1 pIndexHeader = (PFILE_INDEX_HEADER_V1)pbFileData;
@@ -1044,19 +1021,26 @@ static int LoadRootFile(TCascStorage * hs, DWORD dwLocaleMask)
                 nError = RootHandler_CreateDiablo3(hs, pbRootFile, cbRootFile);
                 break;
 
-            case CASC_OVERWATCH_ROOT_SIGNATURE:
-                nError = RootHandler_CreateOverwatch(hs, pbRootFile, cbRootFile);
-                break;
-
             case CASC_TVFS_ROOT_SIGNATURE:
                 nError = RootHandler_CreateTVFS(hs, pbRootFile, cbRootFile);
                 break;
 
             default:
-                if(IsRootFile_Starcraft1(pbRootFile, cbRootFile))
+
+                //
+                // Each of these handler creators must verify their format first.
+                // If the format was not recognized, they need to return ERROR_BAD_FORMAT
+                //
+
+                nError = RootHandler_CreateOverwatch(hs, pbRootFile, cbRootFile);
+                if(nError == ERROR_BAD_FORMAT)
+                {
                     nError = RootHandler_CreateSC1(hs, pbRootFile, cbRootFile);
-                else
-                    nError = RootHandler_CreateWoW6(hs, pbRootFile, cbRootFile, dwLocaleMask);
+                    if(nError == ERROR_BAD_FORMAT)
+                    {
+                        nError = RootHandler_CreateWoW6(hs, pbRootFile, cbRootFile, dwLocaleMask);
+                    }
+                }
                 break;
         }
     }

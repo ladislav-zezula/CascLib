@@ -921,13 +921,15 @@ int CheckGameDirectory(TCascStorage * hs, TCHAR * szDirectory)
 }
 
 //-----------------------------------------------------------------------------
-// Helpers for a config files that have multiple variables separated by "|"
-// The line structure is (Overwatch 24919): "#MD5|CHUNK_ID|FILENAME|INSTALLPATH"
-// The line structure is (Overwatch 27759): "#MD5|CHUNK_ID|PRIORITY|MPRIORITY|FILENAME|INSTALLPATH"
-// The line has all preceding spaces removed
+// Helpers for a CSV files that have multiple variables separated by "|".
+// All preceding whitespaces have been removed
+//
+// Example (Overwatch 24919): "#MD5|CHUNK_ID|FILENAME|INSTALLPATH"
+// Example (Overwatch 27759): "#MD5|CHUNK_ID|PRIORITY|MPRIORITY|FILENAME|INSTALLPATH"
+// Example (Overwatch 47161): "#FILEID|MD5|CHUNK_ID|PRIORITY|MPRIORITY|FILENAME|INSTALLPATH"
 
-// Retrieves the index of a variable from the initial line
-int GetRootVariableIndex(const char * szLinePtr, const char * szLineEnd, const char * szVariableName, int * PtrIndex)
+// Parses a CSV file header line and retrieves index of a variable
+int CSV_GetHeaderIndex(const char * szLinePtr, const char * szLineEnd, const char * szVariableName, int * PtrIndex)
 {
     size_t nLength = strlen(szVariableName);
     int nIndex = 0;
@@ -955,41 +957,64 @@ int GetRootVariableIndex(const char * szLinePtr, const char * szLineEnd, const c
     return ERROR_BAD_FORMAT;
 }
 
-// Parses single line from Overwatch.
-int ParseRootFileLine(const char * szLinePtr, const char * szLineEnd, int nFileNameIndex, PQUERY_KEY pCKey, char * szFileName, size_t nMaxChars)
+// Parses CSV line and returns a file name and CKey
+int CSV_GetNameAndCKey(const char * szLinePtr, const char * szLineEnd, int nFileNameIndex, int nCKeyIndex, char * szFileName, size_t nMaxChars, PCONTENT_KEY pCKey)
 {
-    int nIndex = 0;
-    int nError;
+    char * szFileNameEnd = szFileName + nMaxChars - 1;
+    int nVarsRetrieved = 0;
+    int nVarIndex = 0;
 
-    // Extract the MD5 (aka CKey)
-    if(szLinePtr[MD5_STRING_SIZE] != '|')
-        return ERROR_BAD_FORMAT;
-
-    // Convert the CKey to binary
-    pCKey->cbData = MD5_HASH_SIZE;
-    nError = ConvertStringToBinary(szLinePtr, MD5_STRING_SIZE, pCKey->pbData);
-    if(nError != ERROR_SUCCESS)
-        return nError;
-
-    // Skip the variable
-    szLinePtr += MD5_STRING_SIZE + 1;
-    nIndex = 1;
-
-    // Skip the variables until we find the file name
-    while(szLinePtr < szLineEnd && nIndex < nFileNameIndex)
+    // Parse the entire line. Note that the line is not zero-terminated
+    while(szLinePtr < szLineEnd && nVarsRetrieved < 2)
     {
-        if(szLinePtr[0] == '|')
-            nIndex++;
-        szLinePtr++;
+        const char * szVarBegin = szLinePtr;
+        const char * szVarEnd;
+
+        // Get the variable span
+        while(szLinePtr < szLineEnd && szLinePtr[0] != '|')
+            szLinePtr++;
+        szVarEnd = szLinePtr;
+
+        // Check the variable indices
+        if(nVarIndex == nFileNameIndex)
+        {
+            // Check the length of the variable
+            if(szVarBegin >= szVarEnd)
+                return ERROR_BAD_FORMAT;
+
+            // Copy the file name
+            while(szVarBegin < szVarEnd && szFileName < szFileNameEnd)
+            {
+                if(szVarBegin[0] == 0)
+                    return ERROR_BAD_FORMAT;
+                *szFileName++ = *szVarBegin++;
+            }
+
+            // Increment the number of variables retrieved
+            szFileName[0] = 0;
+            nVarsRetrieved++;
+        }
+
+        // Check the index of the CKey
+        if(nVarIndex == nCKeyIndex)
+        {
+            // Check the length
+            if((szVarEnd - szVarBegin) != MD5_STRING_SIZE)
+                return ERROR_BAD_FORMAT;
+
+            // Convert the CKey
+            if(ConvertStringToBinary(szVarBegin, MD5_STRING_SIZE, pCKey->Value) != ERROR_SUCCESS)
+                return ERROR_BAD_FORMAT;
+
+            // Increment the number of variables retrieved
+            nVarsRetrieved++;
+        }
+
+        // Skip the separator, if any
+        if(szLinePtr < szLineEnd && szLinePtr[0] == '|')
+            szLinePtr++;
+        nVarIndex++;
     }
 
-    // Extract the file name
-    while(szLinePtr < szLineEnd && szLinePtr[0] != '|' && nMaxChars > 1)
-    {
-        *szFileName++ = *szLinePtr++;
-        nMaxChars--;
-    }
-
-    *szFileName = 0;
-    return ERROR_SUCCESS;
+    return (nVarsRetrieved == 2) ? ERROR_SUCCESS : ERROR_BAD_FORMAT;
 }

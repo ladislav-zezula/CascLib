@@ -42,13 +42,14 @@ bool   ListFile_VerifyMD5(void * pvListFile, LPBYTE pbHashMD5);
 size_t ListFile_GetNextLine(void * pvListFile, const char ** pszLineBegin, const char ** pszLineEnd);
 size_t ListFile_GetNextLine(void * pvListFile, char * szBuffer, size_t nMaxChars);
 size_t ListFile_GetNext(void * pvListFile, const char * szMask, char * szBuffer, size_t nMaxChars);
+void ListFile_Reset(void * pvListFile);
 void ListFile_Free(void * pvListFile);
 
 //-----------------------------------------------------------------------------
 // Functions for creating a listfile map
 
-PLISTFILE_MAP ListFile_CreateMap(const TCHAR * szListFile);
-const char * ListFile_FindName(PLISTFILE_MAP pListMap, ULONGLONG FileNameHash);
-void ListFile_FreeMap(PLISTFILE_MAP pListMap);
+PLISTFILE_MAP ListMap_Create(const TCHAR * szListFile);
+const char * ListMap_FindName(PLISTFILE_MAP pListMap, ULONGLONG FileNameHash);
+void ListMap_Free(PLISTFILE_MAP pListMap);
 
 #endif // __LISTFILE_H__

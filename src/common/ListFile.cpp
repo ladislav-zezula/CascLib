@@ -198,6 +198,17 @@ size_t ListFile_GetNext(void * pvListFile, const char * szMask, char * szBuffer,
     return nLength;
 }
 
+// Resets the listfile to the begin
+void ListFile_Reset(void * pvListFile)
+{
+    PLISTFILE_CACHE pCache = (PLISTFILE_CACHE)pvListFile;
+
+    if(pCache != NULL)
+    {
+        pCache->pPos = pCache->pBegin;
+    }
+}
+
 void ListFile_Free(void * pvListFile)
 {
     if(pvListFile != NULL)
@@ -278,7 +289,7 @@ static PLISTFILE_MAP ListMap_Finish(PLISTFILE_MAP pListMap)
     pListMap->pNameMap = pMap = Map_Create((DWORD)pListMap->nEntries, sizeof(ULONGLONG), 0);
     if(pListMap->pNameMap == NULL)
     {
-        ListFile_FreeMap(pListMap);
+        ListMap_Free(pListMap);
         return NULL;
     }
 
@@ -297,7 +308,7 @@ static PLISTFILE_MAP ListMap_Finish(PLISTFILE_MAP pListMap)
     return pListMap;
 }
 
-PLISTFILE_MAP ListFile_CreateMap(const TCHAR * szListFile)
+PLISTFILE_MAP ListMap_Create(const TCHAR * szListFile)
 {
     PLISTFILE_MAP pListMap = NULL;
     void * pvListFile;
@@ -340,7 +351,7 @@ PLISTFILE_MAP ListFile_CreateMap(const TCHAR * szListFile)
     return pListMap;
 }
 
-const char * ListFile_FindName(PLISTFILE_MAP pListMap, ULONGLONG FileNameHash)
+const char * ListMap_FindName(PLISTFILE_MAP pListMap, ULONGLONG FileNameHash)
 {
     PLISTFILE_ENTRY pListEntry = NULL;
 
@@ -349,7 +360,7 @@ const char * ListFile_FindName(PLISTFILE_MAP pListMap, ULONGLONG FileNameHash)
     return (pListEntry != NULL) ? pListEntry->szFileName : "";
 }
 
-void ListFile_FreeMap(PLISTFILE_MAP pListMap)
+void ListMap_Free(PLISTFILE_MAP pListMap)
 {
     if(pListMap != NULL)
     {
