@@ -200,9 +200,9 @@ typedef struct _TCascStorage
     CASC_INDEX_FILE IndexFile[CASC_INDEX_COUNT];    // Array of index files
     PCASC_MAP pEKeyEntryMap;                        // Map of EKey entries
 
-    PCASC_MAP pCKeyEntryMap;                        // Map of CKey -> CASC_CKEY_ENTRY
-    QUERY_KEY EncodingData;                         // Content of the ENCODING file. Keep this in for encoding table.
-    DYNAMIC_ARRAY ExtraCKeys;                       // Extra CKey entries
+    PCASC_MAP  pCKeyEntryMap;                       // Map of CKey -> CASC_CKEY_ENTRY
+    QUERY_KEY  EncodingData;                        // Content of the ENCODING file. Keep this in for encoding table.
+    CASC_ARRAY ExtraCKeys;                          // Extra CKey entries
 
     TRootHandler * pRootHandler;                    // Common handler for various ROOT file formats
 

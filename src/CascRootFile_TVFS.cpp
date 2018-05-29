@@ -78,16 +78,16 @@ struct TRootHandler_TVFS : public TRootHandler
     PCASC_MAP pRootMap;
 
     // Linear global list of all files. Used for file enumeration
-    DYNAMIC_ARRAY FileTable;
+    CASC_ARRAY FileTable;
 
     // Linear global list of plain names. Used for constructing full path
-    DYNAMIC_ARRAY NameList;
+    CASC_ARRAY NameList;
 
     // Linear list of all file spans
-    DYNAMIC_ARRAY SpanList;
+    CASC_ARRAY SpanList;
 
     // Buffer for merging the full file name during loading the root directory
-    DYNAMIC_ARRAY PathBuffer;
+    CASC_ARRAY PathBuffer;
 
     // Used during parsing the root file
     LPBYTE pbRootFile;

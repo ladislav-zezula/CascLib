@@ -15,7 +15,7 @@
 //-----------------------------------------------------------------------------
 // Local functions
 
-static bool EnlargeArray(PDYNAMIC_ARRAY pArray, size_t NewItemCount)
+static bool EnlargeArray(PCASC_ARRAY pArray, size_t NewItemCount)
 {
     char * NewItemArray;
     size_t ItemCountMax;
@@ -48,7 +48,7 @@ static bool EnlargeArray(PDYNAMIC_ARRAY pArray, size_t NewItemCount)
 //-----------------------------------------------------------------------------
 // Public functions
 
-int Array_Create_(PDYNAMIC_ARRAY pArray, size_t ItemSize, size_t ItemCountMax)
+int Array_Create_(PCASC_ARRAY pArray, size_t ItemSize, size_t ItemCountMax)
 {
     pArray->ItemArray = CASC_ALLOC(char, (ItemSize * ItemCountMax));
     if(pArray->ItemArray == NULL)
@@ -60,7 +60,7 @@ int Array_Create_(PDYNAMIC_ARRAY pArray, size_t ItemSize, size_t ItemCountMax)
     return ERROR_SUCCESS;
 }
 
-void * Array_Insert(PDYNAMIC_ARRAY pArray, const void * NewItems, size_t NewItemCount)
+void * Array_Insert(PCASC_ARRAY pArray, const void * NewItems, size_t NewItemCount)
 {
     char * NewItemPtr;
 
@@ -78,13 +78,13 @@ void * Array_Insert(PDYNAMIC_ARRAY pArray, const void * NewItems, size_t NewItem
     return NewItemPtr;
 }
 
-void * Array_ItemAt(PDYNAMIC_ARRAY pArray, size_t ItemIndex)
+void * Array_ItemAt(PCASC_ARRAY pArray, size_t ItemIndex)
 {
     assert(ItemIndex < pArray->ItemCount);
     return pArray->ItemArray + (ItemIndex * pArray->ItemSize);
 }
 
-bool Array_CheckMember(PDYNAMIC_ARRAY pArray, const void * ArrayPtr)
+bool Array_CheckMember(PCASC_ARRAY pArray, const void * ArrayPtr)
 {
     LPBYTE pbArrayStart = (LPBYTE)pArray->ItemArray;
     LPBYTE pbArrayPtr = (LPBYTE)ArrayPtr;
@@ -93,7 +93,7 @@ bool Array_CheckMember(PDYNAMIC_ARRAY pArray, const void * ArrayPtr)
     return (pbArrayStart <= pbArrayPtr && pbArrayPtr < pbArrayEnd);
 }
 
-size_t Array_IndexOf(PDYNAMIC_ARRAY pArray, const void * ArrayPtr)
+size_t Array_IndexOf(PCASC_ARRAY pArray, const void * ArrayPtr)
 {
     char * ArrayItem = (char *)ArrayPtr;
 
@@ -101,7 +101,7 @@ size_t Array_IndexOf(PDYNAMIC_ARRAY pArray, const void * ArrayPtr)
     return ((ArrayItem - pArray->ItemArray) / pArray->ItemSize);
 }
 
-void Array_Free(PDYNAMIC_ARRAY pArray)
+void Array_Free(PCASC_ARRAY pArray)
 {
     if(pArray != NULL && pArray->ItemArray != NULL)
     {

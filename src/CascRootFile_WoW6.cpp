@@ -65,7 +65,7 @@ typedef struct _WOW_FILE_ENTRY
 struct TRootHandler_WoW6 : public TRootHandler
 {
     // Linear global list of file entries
-    DYNAMIC_ARRAY FileTable;
+    CASC_ARRAY FileTable;
 
     // Lookup map of FileDataId->FileEntry and FileNameHash -> FileEntry
     PCASC_MAP pDataIdMap;

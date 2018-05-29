@@ -25,10 +25,10 @@ typedef struct _CASC_FILE_ENTRY
 struct TRootHandler_Ovr : public TRootHandler
 {
     // Linear global list of file entries
-    DYNAMIC_ARRAY FileTable;
+    CASC_ARRAY FileTable;
 
     // Linear global list of names
-    DYNAMIC_ARRAY FileNames;
+    CASC_ARRAY FileNames;
 
     // Global map of FileName -> FileEntry
     PCASC_MAP pRootMap;

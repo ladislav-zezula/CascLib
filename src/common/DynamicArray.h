@@ -14,24 +14,24 @@
 //-----------------------------------------------------------------------------
 // Structures
 
-typedef struct _DYNAMIC_ARRAY
+typedef struct _CASC_ARRAY
 {
     char * ItemArray;                               // Pointer to items
     size_t ItemCountMax;                            // Current number of items
     size_t ItemCount;                               // Total size of the buffer
     size_t ItemSize;                                // Size of the single item
 
-} DYNAMIC_ARRAY, *PDYNAMIC_ARRAY;
+} CASC_ARRAY, *PCASC_ARRAY;
 
 //-----------------------------------------------------------------------------
 // Functions for managing the array
 
-int Array_Create_(PDYNAMIC_ARRAY pArray, size_t ItemSize, size_t ItemCountMax);
-void * Array_Insert(PDYNAMIC_ARRAY pArray, const void * NewItems, size_t NewItemCount);
-void * Array_ItemAt(PDYNAMIC_ARRAY pArray, size_t ItemIndex);
-bool   Array_CheckMember(PDYNAMIC_ARRAY pArray, const void * ArrayPtr);
-size_t Array_IndexOf(PDYNAMIC_ARRAY pArray, const void * ArrayPtr);
-void Array_Free(PDYNAMIC_ARRAY pArray);
+int Array_Create_(PCASC_ARRAY pArray, size_t ItemSize, size_t ItemCountMax);
+void * Array_Insert(PCASC_ARRAY pArray, const void * NewItems, size_t NewItemCount);
+void * Array_ItemAt(PCASC_ARRAY pArray, size_t ItemIndex);
+bool   Array_CheckMember(PCASC_ARRAY pArray, const void * ArrayPtr);
+size_t Array_IndexOf(PCASC_ARRAY pArray, const void * ArrayPtr);
+void Array_Free(PCASC_ARRAY pArray);
 
 #define Array_Create(pArray, type, ItemCountMax)    Array_Create_(pArray, sizeof(type), ItemCountMax)
 
