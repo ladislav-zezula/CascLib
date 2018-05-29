@@ -2155,101 +2155,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\src\CascRootFile_Ovr.cpp"
-				>
-				<FileConfiguration
-					Name="DebugAD|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="2"
-						PrecompiledHeaderThrough="CascCommon.h"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugAD|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="2"
-						PrecompiledHeaderThrough="CascCommon.h"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugAS|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="2"
-						PrecompiledHeaderThrough="CascCommon.h"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseAD|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="2"
-						PrecompiledHeaderThrough="CascCommon.h"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseAS|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="2"
-						PrecompiledHeaderThrough="CascCommon.h"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugUD|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="2"
-						PrecompiledHeaderThrough="CascCommon.h"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugUS|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="2"
-						PrecompiledHeaderThrough="CascCommon.h"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="DebugUS|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="2"
-						PrecompiledHeaderThrough="CascCommon.h"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseUD|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="2"
-						PrecompiledHeaderThrough="CascCommon.h"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="ReleaseUS|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="2"
-						PrecompiledHeaderThrough="CascCommon.h"
-					/>
-				</FileConfiguration>
-			</File>
-			<File
-				RelativePath=".\src\CascRootFile_SC1.cpp"
+				RelativePath=".\src\CascRootFile_Text.cpp"
 				>
 			</File>
 			<File
@@ -2405,7 +2311,7 @@
 					>
 				</File>
 				<File
-					RelativePath=".\src\common\DynamicArray.cpp"
+					RelativePath=".\src\common\Array.cpp"
 					>
 					<FileConfiguration
 						Name="DebugAD|Win32"
@@ -2418,7 +2324,7 @@
 					</FileConfiguration>
 				</File>
 				<File
-					RelativePath=".\src\common\DynamicArray.h"
+					RelativePath=".\src\common\Array.h"
 					>
 				</File>
 				<File
@@ -2436,6 +2342,14 @@
 				</File>
 				<File
 					RelativePath=".\src\FileStream.h"
+					>
+				</File>
+				<File
+					RelativePath=".\src\common\FileTree.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\src\common\FileTree.h"
 					>
 				</File>
 				<File

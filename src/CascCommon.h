@@ -23,8 +23,9 @@
 
 #include "CascPort.h"
 #include "common/Common.h"
-#include "common/DynamicArray.h"
+#include "common/Array.h"
 #include "common/Map.h"
+#include "common/FileTree.h"
 #include "common/FileStream.h"
 #include "common/Directory.h"
 #include "common/ListFile.h"
@@ -93,12 +94,6 @@ typedef enum _CBLD_TYPE
     CascBuildInfo,                                  // .build.info
     CascBuildDb,                                    // .build.db (older storages)
 } CBLD_TYPE, *PCBLD_TYPE;
-
-typedef struct _CONTENT_KEY
-{
-    BYTE Value[MD5_HASH_SIZE];                      // MD5 of the file
-
-} CONTENT_KEY, *PCONTENT_KEY;
 
 // Index entry in the .idx files (part 1)
 typedef struct _CASC_EKEY_ENTRY
@@ -332,9 +327,9 @@ int CascDirectCopy(LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBYTE pbInBuffer, D
 int RootHandler_CreateMNDX(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
 int RootHandler_CreateTVFS(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
 int RootHandler_CreateDiablo3(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
-int RootHandler_CreateOverwatch(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
 int RootHandler_CreateWoW6(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile, DWORD dwLocaleMask);
-int RootHandler_CreateSC1(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
+int RootHandler_CreateOverwatch(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
+int RootHandler_CreateStarcraft1(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
 
 //-----------------------------------------------------------------------------
 // Dumping CASC data structures

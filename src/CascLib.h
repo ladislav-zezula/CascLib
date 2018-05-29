@@ -138,6 +138,7 @@ extern "C" {
 #endif
 
 // Return value for CascGetFileSize and CascSetFilePointer
+#define CASC_INVALID_INDEX          0xFFFFFFFF
 #define CASC_INVALID_SIZE           0xFFFFFFFF
 #define CASC_INVALID_POS            0xFFFFFFFF
 #define CASC_INVALID_ID             0xFFFFFFFF

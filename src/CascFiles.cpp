@@ -933,7 +933,12 @@ int CSV_GetHeaderIndex(const char * szLinePtr, const char * szLineEnd, const cha
 {
     size_t nLength = strlen(szVariableName);
     int nIndex = 0;
-    
+
+    // Skip the hashtag at the beginning
+    while((szLinePtr < szLineEnd) && (szLinePtr[0] == '#'))
+        szLinePtr++;
+
+    // Parse the line header
     while(szLinePtr < szLineEnd)
     {
         // Check the variable there

@@ -140,7 +140,7 @@
     <ClCompile Include="src\zlib\zutil.c">
       <Filter>Source Files\zlib</Filter>
     </ClCompile>
-    <ClCompile Include="src\CascRootFile_SC1.cpp">
+    <ClCompile Include="src\CascRootFile_Text.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

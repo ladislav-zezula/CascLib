@@ -84,24 +84,24 @@ static bool CompareObject_String(
 //-----------------------------------------------------------------------------
 // Public functions
 
-PCASC_MAP Map_Create(DWORD dwMaxItems, DWORD dwKeyLength, DWORD dwKeyOffset)
+PCASC_MAP Map_Create(size_t MaxItems, size_t KeyLength, size_t KeyOffset)
 {
     PCASC_MAP pMap;
     size_t cbToAllocate;
-    size_t dwTableSize;
+    size_t TableSize;
 
     // Calculate the size of the table
-    dwTableSize = (dwMaxItems * 3 / 2) | 0x01;
+    TableSize = (MaxItems * 3 / 2) | 0x01;
 
     // Allocate new map for the objects
-    cbToAllocate = sizeof(CASC_MAP) + (dwTableSize * sizeof(void *));
+    cbToAllocate = sizeof(CASC_MAP) + (TableSize * sizeof(void *));
     pMap = (PCASC_MAP)CASC_ALLOC(LPBYTE, cbToAllocate);
     if(pMap != NULL)
     {
         memset(pMap, 0, cbToAllocate);
-        pMap->KeyLength = dwKeyLength;
-        pMap->TableSize = dwTableSize;
-        pMap->KeyOffset = dwKeyOffset;
+        pMap->KeyLength = KeyLength;
+        pMap->TableSize = TableSize;
+        pMap->KeyOffset = KeyOffset;
     }
 
     // Return the allocated map

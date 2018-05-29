@@ -172,7 +172,7 @@
     <ClCompile Include="src\CascRootFile_Ovr.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\CascRootFile_SC1.cpp">
+    <ClCompile Include="src\CascRootFile_Text.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\CascRootFile_TVFS.cpp">

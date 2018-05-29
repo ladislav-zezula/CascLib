@@ -1035,7 +1035,7 @@ static int LoadRootFile(TCascStorage * hs, DWORD dwLocaleMask)
                 nError = RootHandler_CreateOverwatch(hs, pbRootFile, cbRootFile);
                 if(nError == ERROR_BAD_FORMAT)
                 {
-                    nError = RootHandler_CreateSC1(hs, pbRootFile, cbRootFile);
+                    nError = RootHandler_CreateStarcraft1(hs, pbRootFile, cbRootFile);
                     if(nError == ERROR_BAD_FORMAT)
                     {
                         nError = RootHandler_CreateWoW6(hs, pbRootFile, cbRootFile, dwLocaleMask);

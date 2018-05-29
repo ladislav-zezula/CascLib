@@ -7,7 +7,9 @@ set(HEADER_FILES
     src/CascMndx.h
     src/CascPort.h
     src/common/Common.h
+    src/common/Array.h
     src/common/FileStream.h
+    src/common/FileTree.h
     src/common/ListFile.h
     src/common/Map.h
     src/jenkins/lookup.h
@@ -15,10 +17,11 @@ set(HEADER_FILES
 
 set(SRC_FILES
     src/common/Common.cpp
+    src/common/Array.cpp
     src/common/Directory.cpp
     src/common/DumpContext.cpp
-    src/common/DynamicArray.cpp
     src/common/FileStream.cpp
+    src/common/FileTree.cpp
     src/common/ListFile.cpp
     src/common/Map.cpp
     src/common/RootHandler.cpp
@@ -32,11 +35,10 @@ set(SRC_FILES
     src/CascOpenFile.cpp
     src/CascOpenStorage.cpp
     src/CascReadFile.cpp
-    src/CascRootFile_SC1.cpp
     src/CascRootFile_Diablo3.cpp
-    src/CascRootFile_TVFS.cpp
     src/CascRootFile_Mndx.cpp
-    src/CascRootFile_Ovr.cpp
+    src/CascRootFile_Text.cpp
+    src/CascRootFile_TVFS.cpp
     src/CascRootFile_WoW6.cpp
 )
 

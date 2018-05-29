@@ -46,6 +46,7 @@ TCHAR * CombinePathAndString(const TCHAR * szPath, const char * szString, size_t
 size_t NormalizeFileName_UpperBkSlash(char * szNormName, const char * szFileName, size_t cchMaxChars);
 size_t NormalizeFileName_LowerSlash(char * szNormName, const char * szFileName, size_t cchMaxChars);
 
+ULONGLONG CalcNormNameHash(const char * szNormName, size_t nLength);
 ULONGLONG CalcFileNameHash(const char * szFileName);
 
 int ConvertDigitToInt32(const TCHAR * szString, PDWORD PtrValue);

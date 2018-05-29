@@ -282,7 +282,7 @@ static int CaptureVfsSpanEntries(TRootHandler_TVFS * pRootHandler, PTVFS_FILE_EN
             // Insert the offset of the first list in the span table
             if(i == 0)
             {
-                pFileEntry->dwSpanOffset = Array_IndexOf(&pRootHandler->SpanList, pSpanEntry);
+                pFileEntry->dwSpanOffset = (DWORD)Array_IndexOf(&pRootHandler->SpanList, pSpanEntry);
             }
 
             // Capture the span entry
@@ -430,7 +430,7 @@ static int ParseCB_LoadPathItem(TRootHandler_TVFS * pRootHandler, const char * s
             Array_Insert(&pRootHandler->PathBuffer, &chBackslash, 1);
 
             // Update the parent folder index
-            pRootHandler->dwCurrentFolder = Array_IndexOf(&pRootHandler->FileTable, pFileEntry);
+            pRootHandler->dwCurrentFolder = (DWORD)Array_IndexOf(&pRootHandler->FileTable, pFileEntry);
         }
 
         // Set the parent folder
@@ -439,7 +439,7 @@ static int ParseCB_LoadPathItem(TRootHandler_TVFS * pRootHandler, const char * s
         // Insert the plain name to the name list and remember the name offset
         szFileName = (const char *)Array_Insert(&pRootHandler->NameList, szNamePtr, (szNameEnd - szNamePtr));
         Array_Insert(&pRootHandler->NameList, &chZeroChar, 1);
-        pFileEntry->dwNameOffset = Array_IndexOf(&pRootHandler->NameList, szFileName);
+        pFileEntry->dwNameOffset = (DWORD)Array_IndexOf(&pRootHandler->NameList, szFileName);
 
         // TODO: If this item is a file, we need to get the list of spans
         if(!(dwNodeValue & TVFS_FOLDER_NODE))
@@ -524,7 +524,7 @@ static int RebuildFileMap(TRootHandler_TVFS * pRootHandler)
 {
     PTVFS_FILE_ENTRY pFileEntry;
     PCASC_MAP pRootMap = pRootHandler->pRootMap;
-    DWORD dwTotalFileCount = pRootHandler->FileTable.ItemCount;
+    size_t dwTotalFileCount;
     int nError = ERROR_SUCCESS;
 
     // Free the existing file map
@@ -586,7 +586,7 @@ static int TVFS_Insert(TRootHandler_TVFS * pRootHandler, const char * szFileName
         nLength = strlen(szFileName);
         szPlainName = (const char *)Array_Insert(&pRootHandler->NameList, szFileName, nLength+1);
         if(szPlainName != NULL)
-            pFileEntry->dwNameOffset = Array_IndexOf(&pRootHandler->NameList, szPlainName);
+            pFileEntry->dwNameOffset = (DWORD)Array_IndexOf(&pRootHandler->NameList, szPlainName);
 
         // Insert the file span
         pSpanEntry = (PTVFS_SPAN_ENTRY)Array_Insert(&pRootHandler->SpanList, NULL, 1);
@@ -596,7 +596,7 @@ static int TVFS_Insert(TRootHandler_TVFS * pRootHandler, const char * szFileName
             memcpy(pSpanEntry->EKey.Value, pbEKey, MD5_HASH_SIZE);
 
             // Set the span offset and count
-            pFileEntry->dwSpanOffset = Array_IndexOf(&pRootHandler->SpanList, pSpanEntry);
+            pFileEntry->dwSpanOffset = (DWORD)Array_IndexOf(&pRootHandler->SpanList, pSpanEntry);
             pFileEntry->dwSpanCount = 1;
 
             // Insert the item to the map

@@ -474,11 +474,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\src\CascRootFile_Ovr.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\src\CascRootFile_SC1.cpp"
+				RelativePath=".\src\CascRootFile_Text.cpp"
 				>
 			</File>
 			<File
@@ -809,11 +805,11 @@
 					>
 				</File>
 				<File
-					RelativePath=".\src\common\DynamicArray.cpp"
+					RelativePath=".\src\common\Array.cpp"
 					>
 				</File>
 				<File
-					RelativePath=".\src\common\DynamicArray.h"
+					RelativePath=".\src\common\Array.h"
 					>
 				</File>
 				<File
@@ -822,6 +818,14 @@
 				</File>
 				<File
 					RelativePath=".\src\common\FileStream.h"
+					>
+				</File>
+				<File
+					RelativePath=".\src\common\FileTree.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\src\common\FileTree.h"
 					>
 				</File>
 				<File

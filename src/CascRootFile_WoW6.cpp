@@ -308,7 +308,7 @@ static int ParseWowRootFile(
 static int RebuildFileMaps(TRootHandler_WoW6 * pRootHandler)
 {
     PWOW_FILE_ENTRY pFileEntry;
-    DWORD dwTotalFileCount = pRootHandler->FileTable.ItemCount;
+    size_t dwTotalFileCount = pRootHandler->FileTable.ItemCount;
     int nError = ERROR_SUCCESS;
 
     // Free the current NameMap, if exists

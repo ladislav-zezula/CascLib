@@ -638,8 +638,8 @@ int main(int argc, char * argv[])
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), _T("huhu.txt"));
 
-    if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_EnumFiles(MAKE_PATH("2016 - WoW/21742/Data"), NULL);
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2016 - WoW/21742/Data"), NULL);
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2016 - WoW/23420/Data"), _T("huhu.txt"));
@@ -650,8 +650,8 @@ int main(int argc, char * argv[])
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Diablo III/30013/Data"), NULL);
 
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Overwatch/24919/casc/data"), NULL);
+    if(nError == ERROR_SUCCESS)
+        nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Overwatch/24919/casc/data"), NULL);
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Overwatch/47161/casc/data"), NULL);

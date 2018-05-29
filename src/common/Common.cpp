@@ -257,19 +257,26 @@ size_t NormalizeFileName_LowerSlash(char * szNormName, const char * szFileName, 
     return NormalizeFileName(AsciiToLowerTable_Slash, szNormName, szFileName, cchMaxChars);
 }
 
+ULONGLONG CalcNormNameHash(const char * szNormName, size_t nLength)
+{
+    uint32_t dwHashHigh = 0;
+    uint32_t dwHashLow = 0;
+
+    // Calculate the HASH value of the normalized file name
+    hashlittle2(szNormName, nLength, &dwHashHigh, &dwHashLow);
+    return ((ULONGLONG)dwHashHigh << 0x20) | dwHashLow;
+}
+
 ULONGLONG CalcFileNameHash(const char * szFileName)
 {
     char szNormName[MAX_PATH+1];
-    uint32_t dwHashHigh = 0;
-    uint32_t dwHashLow = 0;
     size_t nLength;
 
     // Normalize the file name - convert to uppercase, slashes to backslashes
     nLength = NormalizeFileName_UpperBkSlash(szNormName, szFileName, MAX_PATH);
 
-    // Calculate the HASH value of the normalized file name
-    hashlittle2(szNormName, nLength, &dwHashHigh, &dwHashLow);
-    return ((ULONGLONG)dwHashHigh << 0x20) | dwHashLow;
+    // Calculate hash from the normalized name
+    return CalcNormNameHash(szNormName, nLength);
 }
 
 int ConvertDigitToInt32(const TCHAR * szString, PDWORD PtrValue)
