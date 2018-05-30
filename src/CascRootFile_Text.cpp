@@ -52,7 +52,7 @@ static bool IsRootFile_Starcraft1(void * pTextFile)
 //-----------------------------------------------------------------------------
 // Implementation of text root file
 
-static int TextHandler_Insert(
+static int FileTreeHandler_Insert(
     TRootHandler_Text * pRootHandler,
     const char * szFileName,
     LPBYTE pbCKey)
@@ -63,7 +63,7 @@ static int TextHandler_Insert(
     return (pItem != NULL) ? ERROR_SUCCESS : ERROR_CAN_NOT_COMPLETE;
 }
 
-static LPBYTE TextHandler_Search(TRootHandler_Text * pRootHandler, TCascSearch * pSearch)
+static LPBYTE FileTreeHandler_Search(TRootHandler_Text * pRootHandler, TCascSearch * pSearch)
 {
     PCASC_FILE_NODE pFileNode;
     size_t ItemCount = FileTree_GetCount(&pRootHandler->FileTree);
@@ -88,12 +88,12 @@ static LPBYTE TextHandler_Search(TRootHandler_Text * pRootHandler, TCascSearch *
     return NULL;
 }
 
-static void TextHandler_EndSearch(TRootHandler_Text * /* pRootHandler */, TCascSearch * /* pSearch */)
+static void FileTreeHandler_EndSearch(TRootHandler_Text * /* pRootHandler */, TCascSearch * /* pSearch */)
 {
     // Do nothing
 }
 
-static LPBYTE TextHandler_GetKey(TRootHandler_Text * pRootHandler, const char * szFileName)
+static LPBYTE FileTreeHandler_GetKey(TRootHandler_Text * pRootHandler, const char * szFileName)
 {
     PCASC_FILE_NODE pFileNode;
 
@@ -101,13 +101,13 @@ static LPBYTE TextHandler_GetKey(TRootHandler_Text * pRootHandler, const char * 
     return (pFileNode != NULL) ? pFileNode->CKey.Value : NULL;
 }
 
-static DWORD TextHandler_GetFileId(TRootHandler_Text * /* pRootHandler */, const char * /* szFileName */)
+static DWORD FileTreeHandler_GetFileId(TRootHandler_Text * /* pRootHandler */, const char * /* szFileName */)
 {
     // Not implemented for text roots
     return 0;
 }
 
-static void TextHandler_Close(TRootHandler_Text * pRootHandler)
+static void FileTreeHandler_Close(TRootHandler_Text * pRootHandler)
 {
     if(pRootHandler != NULL)
     {
@@ -188,6 +188,21 @@ static void TestFileMap(LPBYTE pbRootFile, DWORD cbRootFile)
 
 //-----------------------------------------------------------------------------
 // Public functions
+
+void InitRootHandler_FileTree(TRootHandler * pRootHandler, size_t nStructSize)
+{
+    // Fill the entire structure with zeros
+    memset(pRootHandler, 0, nStructSize);
+
+    // Supply the Text handler pointers
+    pRootHandler->Insert      = (ROOT_INSERT)FileTreeHandler_Insert;
+    pRootHandler->Search      = (ROOT_SEARCH)FileTreeHandler_Search;
+    pRootHandler->EndSearch   = (ROOT_ENDSEARCH)FileTreeHandler_EndSearch;
+    pRootHandler->GetKey      = (ROOT_GETKEY)FileTreeHandler_GetKey;
+    pRootHandler->Close       = (ROOT_CLOSE)FileTreeHandler_Close;
+    pRootHandler->GetFileId   = (ROOT_GETFILEID)FileTreeHandler_GetFileId;
+}
+
 //
 // Starcraft ROOT file is a text file with the following format:
 // HD2/portraits/NBluCrit/NLCFID01.webm|c2795b120592355d45eba9cdc37f691e
@@ -218,13 +233,7 @@ int RootHandler_CreateStarcraft1(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbR
                 return ERROR_NOT_ENOUGH_MEMORY;
 
             // Fill-in the handler functions
-            memset(pRootHandler, 0, sizeof(TRootHandler_Text));
-            pRootHandler->Insert      = (ROOT_INSERT)TextHandler_Insert;
-            pRootHandler->Search      = (ROOT_SEARCH)TextHandler_Search;
-            pRootHandler->EndSearch   = (ROOT_ENDSEARCH)TextHandler_EndSearch;
-            pRootHandler->GetKey      = (ROOT_GETKEY)TextHandler_GetKey;
-            pRootHandler->Close       = (ROOT_CLOSE)TextHandler_Close;
-            pRootHandler->GetFileId   = (ROOT_GETFILEID)TextHandler_GetFileId;
+            InitRootHandler_FileTree(pRootHandler, sizeof(TRootHandler_Text));
 
             // Allocate the generic file tree
             nError = FileTree_Create(&pRootHandler->FileTree);
@@ -312,13 +321,7 @@ int RootHandler_CreateOverwatch(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRo
                         return ERROR_NOT_ENOUGH_MEMORY;
 
                     // Fill-in the handler functions
-                    memset(pRootHandler, 0, sizeof(TRootHandler_Text));
-                    pRootHandler->Insert      = (ROOT_INSERT)TextHandler_Insert;
-                    pRootHandler->Search      = (ROOT_SEARCH)TextHandler_Search;
-                    pRootHandler->EndSearch   = (ROOT_ENDSEARCH)TextHandler_EndSearch;
-                    pRootHandler->GetKey      = (ROOT_GETKEY)TextHandler_GetKey;
-                    pRootHandler->Close       = (ROOT_CLOSE)TextHandler_Close;
-                    pRootHandler->GetFileId   = (ROOT_GETFILEID)TextHandler_GetFileId;
+                    InitRootHandler_FileTree(pRootHandler, sizeof(TRootHandler_Text));
 
                     // Allocate the generic file tree
                     nError = FileTree_Create(&pRootHandler->FileTree);

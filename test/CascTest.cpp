@@ -457,7 +457,7 @@ static int TestOpenStorage_ExtractFiles(const TCHAR * szStorage, const TCHAR * s
     if(nError == ERROR_SUCCESS)
     {
         // Dump the storage
-        CascDumpStorage(hStorage, "E:\\storage-dump.txt");
+//      CascDumpStorage(hStorage, "E:\\storage-dump.txt");
 
         LogHelper.PrintProgress("Searching storage ...");
         hFind = CascFindFirstFile(hStorage, "*", &FindData, szListFile);
@@ -599,9 +599,6 @@ int main(int argc, char * argv[])
 //      nError = TestOpenStorage_OpenFile(MAKE_PATH("2015 - Diablo III/30013"), "ENCODING");
 
 //  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_OpenFile(MAKE_PATH("2015 - Diablo III/30013"), "ENCODING");
-
-//  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_OpenFile(MAKE_PATH("2015 - Overwatch/24919/casc/data"), "ROOT");
 
 //    if(nError == ERROR_SUCCESS)
@@ -647,11 +644,11 @@ int main(int argc, char * argv[])
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2017 - Starcraft1/4037"), NULL);
 
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Diablo III/30013/Data"), NULL);
-
     if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Overwatch/24919/casc/data"), NULL);
+        nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Diablo III/30013/Data"), NULL);
+
+//  if(nError == ERROR_SUCCESS)
+//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Overwatch/24919/casc/data"), NULL);
 
 //  if(nError == ERROR_SUCCESS)
 //      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Overwatch/47161/casc/data"), NULL);

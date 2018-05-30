@@ -324,6 +324,8 @@ int CascDirectCopy(LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBYTE pbInBuffer, D
 //-----------------------------------------------------------------------------
 // Support for ROOT file
 
+void InitRootHandler_FileTree(TRootHandler * pRootHandler, size_t nStructSize);
+
 int RootHandler_CreateMNDX(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
 int RootHandler_CreateTVFS(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
 int RootHandler_CreateDiablo3(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);

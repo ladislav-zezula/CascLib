@@ -79,6 +79,50 @@ void SetLastError(int nError)
 #endif
 
 //-----------------------------------------------------------------------------
+// Linear data stream manipulation
+
+LPBYTE CaptureInteger32(LPBYTE pbDataPtr, LPBYTE pbDataEnd, PDWORD PtrValue)
+{
+    // Is there enough data?
+    if((pbDataPtr + sizeof(DWORD)) > pbDataEnd)
+        return NULL;
+
+    // Give data
+    PtrValue[0] = *(PDWORD)pbDataPtr;
+
+    // Return the pointer to data following after the integer
+    return pbDataPtr + sizeof(DWORD);
+}
+
+LPBYTE CaptureContentKey(LPBYTE pbDataPtr, LPBYTE pbDataEnd, PCONTENT_KEY * PtrCKey)
+{
+    // Is there enough data?
+    if((pbDataPtr + sizeof(CONTENT_KEY)) > pbDataEnd)
+        return NULL;
+
+    // Give data
+    PtrCKey[0] = (PCONTENT_KEY)pbDataPtr;
+
+    // Return the pointer to data following after the integer
+    return pbDataPtr + sizeof(CONTENT_KEY);
+}
+
+LPBYTE CaptureArray_(LPBYTE pbDataPtr, LPBYTE pbDataEnd, LPBYTE * PtrArray, size_t ItemSize, size_t ItemCount)
+{
+    size_t ArraySize = ItemSize * ItemCount;
+
+    // Is there enough data?
+    if((pbDataPtr + ArraySize) > pbDataEnd)
+        return NULL;
+
+    // Give data
+    PtrArray[0] = pbDataPtr;
+
+    // Return the pointer to data following after the array
+    return pbDataPtr + ArraySize;
+}
+
+//-----------------------------------------------------------------------------
 // String manipulation
 
 void CopyString(char * szTarget, const char * szSource, size_t cchLength)

@@ -16,12 +16,7 @@
 
 #define CFN_FLAG_FOLDER             0x0001          // This item is a folder
 
-typedef struct _CONTENT_KEY
-{
-    BYTE Value[MD5_HASH_SIZE];                      // MD5 of the file
-
-} CONTENT_KEY, *PCONTENT_KEY;
-
+// Common structure for holding a single folder/file node
 typedef struct _CASC_FILE_NODE
 {
     // Item management
@@ -30,7 +25,7 @@ typedef struct _CASC_FILE_NODE
     DWORD DataId;                                   // Item data ID
     DWORD Parent;                                   // The index of a parent directory. If CASC_INVALID_INDEX, then this is the root item
     DWORD NameIndex;                                // Index of the node name. If CASC_INVALID_INDEX, then this node has no name
-    USHORT NameLength;                              // Length of the name, (without the zero terminator)
+    USHORT NameLength;                              // Length of the node name (without the zero terminator)
     USHORT Flags;                                   // See CFE_FLAG_XXX
 
 } CASC_FILE_NODE, *PCASC_FILE_NODE;
@@ -56,6 +51,7 @@ void * FileTree_ItemAt(PCASC_FILE_TREE pFileTree, size_t nItemIndex);
 void * FileTree_PathAt(PCASC_FILE_TREE pFileTree, char * szBuffer, size_t cchBuffer, size_t nItemIndex);
 void * FileTree_Find(PCASC_FILE_TREE pFileTree, const char * szFullPath);
 size_t FileTree_GetCount(PCASC_FILE_TREE pFileTree);
+size_t FileTree_IndexOf(PCASC_FILE_TREE pFileTree, const void * TreeNode);
 void   FileTree_Free(PCASC_FILE_TREE pFileTree);
 
 #endif // __FILETREE_H__

@@ -22,11 +22,32 @@
 #endif
 
 //-----------------------------------------------------------------------------
+// Common structures
+
+// Structure for both static content key (CKey) and encoded key (EKey)
+// The CKey is a MD5 hash of the file data.
+// The EKey is (shortened) MD5 hash of the file header, which contains MD5 hashes of all the logical blocks of the file.
+typedef struct _CONTENT_KEY
+{
+    BYTE Value[MD5_HASH_SIZE];                      // MD5 of the file
+
+} CONTENT_KEY, *PCONTENT_KEY, ENCODED_KEY, *PENCODED_KEY;
+
+//-----------------------------------------------------------------------------
 // Conversion tables
 
 extern unsigned char AsciiToLowerTable_Slash[256];
 extern unsigned char AsciiToUpperTable_BkSlash[256];
 extern unsigned char IntToHexChar[];
+
+//-----------------------------------------------------------------------------
+// Linear data stream manipulation
+
+LPBYTE CaptureInteger32(LPBYTE pbDataPtr, LPBYTE pbDataEnd, PDWORD PtrValue);
+LPBYTE CaptureContentKey(LPBYTE pbDataPtr, LPBYTE pbDataEnd, PCONTENT_KEY * PtrCKey);
+LPBYTE CaptureArray_(LPBYTE pbDataPtr, LPBYTE pbDataEnd, LPBYTE * PtrArray, size_t ItemSize, size_t ItemCount);
+
+#define CaptureArray(pbDataPtr, pbDataEnd, PtrArray, type, count) CaptureArray_(pbDataPtr, pbDataEnd, PtrArray, sizeof(type), count) 
 
 //-----------------------------------------------------------------------------
 // String manipulation

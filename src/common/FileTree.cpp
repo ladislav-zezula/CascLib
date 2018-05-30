@@ -303,6 +303,12 @@ size_t FileTree_GetCount(PCASC_FILE_TREE pFileTree)
     return Count;
 }
 
+size_t FileTree_IndexOf(PCASC_FILE_TREE pFileTree, const void * TreeNode)
+{
+    assert(pFileTree != NULL);
+    return Array_IndexOf(&pFileTree->FileTable, TreeNode);
+}
+
 void FileTree_Free(PCASC_FILE_TREE pFileTree)
 {
     if(pFileTree != NULL)

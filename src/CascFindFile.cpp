@@ -162,10 +162,10 @@ static bool DoStorageSearch_RootFile(TCascSearch * pSearch, PCASC_FIND_DATA pFin
         // Otherwise, we need to retrieve it from the encoding entry
         if(pSearch->dwFileSize == CASC_INVALID_SIZE)
         {
-            if(pCKeyEntry != NULL)
-                pSearch->dwFileSize = ConvertBytesToInteger_4(pCKeyEntry->FileSizeBE);
             if(pEKeyEntry != NULL)
                 pSearch->dwFileSize = ConvertBytesToInteger_4_LE(pEKeyEntry->FileSizeLE);
+            if(pCKeyEntry != NULL)
+                pSearch->dwFileSize = ConvertBytesToInteger_4(pCKeyEntry->FileSizeBE);
         }
 
         // Fill-in the found file
