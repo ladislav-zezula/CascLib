@@ -388,8 +388,16 @@ static DWORD ParsePathFileTable(
         // Structure of the path table entry:
         // (1byte) File name length
         // (?byte) File name
+        // (1byte) Zero terminator, if this is the last fragment in the node name
         // (1byte) Name terminator (0xFF)
         // (4byte) Node Value
+        //
+        // Note: The path "data\archive\maps\file.bmp" could be cut into nodes like:
+        //                 data\0 (or data with subdirectory)
+        //                   arc
+        //                     hive\0
+        //                       maps\0 (or folder data)
+        //                         file.bmp
         //
 
         pbPathTablePtr = CapturePathEntry(PathEntry, pbPathTablePtr, pbPathTableEnd);
