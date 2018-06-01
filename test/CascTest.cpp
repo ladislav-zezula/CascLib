@@ -535,7 +535,7 @@ static int TestOpenStorage_GetFileDataId(const TCHAR * szStorage, const char * s
 
 static STORAGE_INFO StorageInfo[] = 
 {
-
+/*
     {MAKE_PATH("2014 - Heroes of the Storm/29049"), "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_autoai1.dds"},
     {MAKE_PATH("2014 - Heroes of the Storm/30027"), "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_claim1.dds"},
     {MAKE_PATH("2014 - Heroes of the Storm\\30414\\HeroesData\\config\\09\\32"), "mods\\heromods\\murky.stormmod\\base.stormdata\\gamedata\\buttondata.xml"},
@@ -568,8 +568,8 @@ static STORAGE_INFO StorageInfo[] =
 
     {MAKE_PATH("2017 - Starcraft1/2457"), "music\\radiofreezerg.ogg"},
     {MAKE_PATH("2017 - Starcraft1/4037"), "music\\radiofreezerg.ogg"},
-
-    {MAKE_PATH("2018 - New CASC/00001"), "ROOT"},
+*/
+//  {MAKE_PATH("2018 - New CASC/00001"), "ROOT"},
     {MAKE_PATH("2018 - New CASC/00002"), "ENCODING"},
 
     {NULL}

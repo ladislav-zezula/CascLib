@@ -88,6 +88,7 @@ typedef struct _TVFS_PATH_TABLE_ENTRY
     LPBYTE pbNamePtr;                               // Pointer to the begin of the node name
     LPBYTE pbNameEnd;                               // Pointer to the end of the file name
     DWORD NodeValue;                                // Node value
+    DWORD EndOfNode;                                // If TRUE, then this node is an end node (aka end of path fragment)
 } TVFS_PATH_TABLE_ENTRY, *PTVFS_PATH_TABLE_ENTRY;
 
 // Structure for the root handler
@@ -151,7 +152,8 @@ static bool PathBuffer_AppendNode(PATH_BUFFER & PathBuffer, TVFS_PATH_TABLE_ENTR
         PathBuffer.szPtr += nLength;
 
         // Append backslash, if needed
-        if(PathEntry.NodeValue & TVFS_FOLDER_NODE)
+//      if(PathEntry.NodeValue & TVFS_FOLDER_NODE)
+        if(PathEntry.EndOfNode)
         {
             if(PathBuffer.szPtr >= PathBuffer.szEnd)
                 return false;
@@ -283,8 +285,6 @@ static int CaptureVfsSpanEntries(TVFS_DIRECTORY_HEADER & DirHeader, PENCODED_KEY
 
 static LPBYTE CapturePathEntry(TVFS_PATH_TABLE_ENTRY & PathEntry, LPBYTE pbPathTablePtr, LPBYTE pbPathTableEnd)
 {
-    size_t bHasTerminatingZero;
-
     // We expect there to be a nonzero, and non-FF length
     if(pbPathTablePtr[0] == 0 || pbPathTablePtr[0] == 0xFF)
         return NULL;
@@ -294,17 +294,19 @@ static LPBYTE CapturePathEntry(TVFS_PATH_TABLE_ENTRY & PathEntry, LPBYTE pbPathT
     // Fill the path entry
     PathEntry.pbNamePtr = pbPathTablePtr + 1;
     PathEntry.pbNameEnd = pbPathTablePtr + 1 + pbPathTablePtr[0];
+    pbPathTablePtr = PathEntry.pbNameEnd;
 
-    // Extra '\0' characters are allowed at the end of the name
-    bHasTerminatingZero = (PathEntry.pbNameEnd[0] == 0x00) ? 1 : 0;
+    // The '\0' character means that this is the end of the node
+    PathEntry.EndOfNode = (pbPathTablePtr[0] == 0x00) ? 1 : 0;
+    pbPathTablePtr += PathEntry.EndOfNode;
         
     // Check the proper terminator
-    if(PathEntry.pbNameEnd[bHasTerminatingZero] != 0xFF)
+    if(pbPathTablePtr[0] != 0xFF)
         return NULL;
 
     // Fill the node value
-    PathEntry.NodeValue = ConvertBytesToInteger_4(PathEntry.pbNameEnd + bHasTerminatingZero + 1);
-    return PathEntry.pbNameEnd + bHasTerminatingZero + 1 + sizeof(DWORD);
+    PathEntry.NodeValue = ConvertBytesToInteger_4(pbPathTablePtr + 1);
+    return pbPathTablePtr + 1 + sizeof(DWORD);
 }
 
 // This function verifies whether a file is actually a sub-directory.
