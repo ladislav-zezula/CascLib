@@ -79,6 +79,96 @@ void SetLastError(int nError)
 #endif
 
 //-----------------------------------------------------------------------------
+// Conversion of big-endian to integer
+
+// Read the 16-bit big-endian offset into ULONGLONG
+DWORD ConvertBytesToInteger_2(LPBYTE ValueAsBytes)
+{
+    USHORT Value = 0;
+
+    Value = (Value << 0x08) | ValueAsBytes[0];
+    Value = (Value << 0x08) | ValueAsBytes[1];
+
+    return Value;
+}
+
+// Read the 24-bit big-endian offset into ULONGLONG
+DWORD ConvertBytesToInteger_3(LPBYTE ValueAsBytes)
+{
+    DWORD Value = 0;
+
+    Value = (Value << 0x08) | ValueAsBytes[0];
+    Value = (Value << 0x08) | ValueAsBytes[1];
+    Value = (Value << 0x08) | ValueAsBytes[2];
+
+    return Value;
+}
+
+// Read the 32-bit big-endian offset into ULONGLONG
+DWORD ConvertBytesToInteger_4(LPBYTE ValueAsBytes)
+{
+    DWORD Value = 0;
+
+    Value = (Value << 0x08) | ValueAsBytes[0];
+    Value = (Value << 0x08) | ValueAsBytes[1];
+    Value = (Value << 0x08) | ValueAsBytes[2];
+    Value = (Value << 0x08) | ValueAsBytes[3];
+
+    return Value;
+}
+
+// Converts the variable-size big-endian into integer
+DWORD ConvertBytesToInteger_X(LPBYTE ValueAsBytes, DWORD dwByteSize)
+{
+    DWORD Value = 0;
+
+    if(dwByteSize > 0)
+        Value = (Value << 0x08) | ValueAsBytes[0];
+    if(dwByteSize > 1)
+        Value = (Value << 0x08) | ValueAsBytes[1];
+    if(dwByteSize > 2)
+        Value = (Value << 0x08) | ValueAsBytes[2];
+    if(dwByteSize > 3)
+        Value = (Value << 0x08) | ValueAsBytes[3];
+
+    return Value;
+}
+
+DWORD ConvertBytesToInteger_4_LE(LPBYTE ValueAsBytes)
+{
+    DWORD Value = 0;
+
+    Value = (Value << 0x08) | ValueAsBytes[3];
+    Value = (Value << 0x08) | ValueAsBytes[2];
+    Value = (Value << 0x08) | ValueAsBytes[1];
+    Value = (Value << 0x08) | ValueAsBytes[0];
+
+    return Value;
+}
+
+// Read the 40-bit big-endian offset into ULONGLONG
+ULONGLONG ConvertBytesToInteger_5(LPBYTE ValueAsBytes)
+{
+    ULONGLONG Value = 0;
+
+    Value = (Value << 0x08) | ValueAsBytes[0];
+    Value = (Value << 0x08) | ValueAsBytes[1];
+    Value = (Value << 0x08) | ValueAsBytes[2];
+    Value = (Value << 0x08) | ValueAsBytes[3];
+    Value = (Value << 0x08) | ValueAsBytes[4];
+
+    return Value;
+}
+
+void ConvertIntegerToBytes_4(DWORD Value, LPBYTE ValueAsBytes)
+{
+    ValueAsBytes[0] = (Value >> 0x18) & 0xFF;
+    ValueAsBytes[1] = (Value >> 0x10) & 0xFF;
+    ValueAsBytes[2] = (Value >> 0x08) & 0xFF;
+    ValueAsBytes[3] = (Value >> 0x00) & 0xFF;
+}
+
+//-----------------------------------------------------------------------------
 // Linear data stream manipulation
 
 LPBYTE CaptureInteger32(LPBYTE pbDataPtr, LPBYTE pbDataEnd, PDWORD PtrValue)
@@ -92,6 +182,32 @@ LPBYTE CaptureInteger32(LPBYTE pbDataPtr, LPBYTE pbDataEnd, PDWORD PtrValue)
 
     // Return the pointer to data following after the integer
     return pbDataPtr + sizeof(DWORD);
+}
+
+LPBYTE CaptureInteger32_BE(LPBYTE pbDataPtr, LPBYTE pbDataEnd, PDWORD PtrValue)
+{
+    // Is there enough data?
+    if((pbDataPtr + sizeof(DWORD)) > pbDataEnd)
+        return NULL;
+
+    // Convert data from Little endian to 
+    PtrValue[0] = ConvertBytesToInteger_4(pbDataPtr);
+
+    // Return the pointer to data following after the integer
+    return pbDataPtr + sizeof(DWORD);
+}
+
+LPBYTE CaptureByteArray(LPBYTE pbDataPtr, LPBYTE pbDataEnd, size_t nLength, LPBYTE pbOutput)
+{
+    // Is there enough data?
+    if((pbDataPtr + nLength) > pbDataEnd)
+        return NULL;
+
+    // Give data
+    memcpy(pbOutput, pbDataPtr, nLength);
+
+    // Return the pointer to data following after the integer
+    return pbDataPtr + nLength;
 }
 
 LPBYTE CaptureContentKey(LPBYTE pbDataPtr, LPBYTE pbDataEnd, PCONTENT_KEY * PtrCKey)

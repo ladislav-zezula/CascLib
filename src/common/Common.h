@@ -33,6 +33,14 @@ typedef struct _CONTENT_KEY
 
 } CONTENT_KEY, *PCONTENT_KEY, ENCODED_KEY, *PENCODED_KEY;
 
+// Helper structure for merging file paths
+typedef struct _PATH_BUFFER
+{
+    char * szBegin;
+    char * szPtr;
+    char * szEnd;
+} PATH_BUFFER, *PPATH_BUFFER;
+
 //-----------------------------------------------------------------------------
 // Conversion tables
 
@@ -41,9 +49,22 @@ extern unsigned char AsciiToUpperTable_BkSlash[256];
 extern unsigned char IntToHexChar[];
 
 //-----------------------------------------------------------------------------
+// Big endian number manipulation
+
+DWORD ConvertBytesToInteger_2(LPBYTE ValueAsBytes);
+DWORD ConvertBytesToInteger_3(LPBYTE ValueAsBytes);
+DWORD ConvertBytesToInteger_4(LPBYTE ValueAsBytes);
+DWORD ConvertBytesToInteger_X(LPBYTE ValueAsBytes, DWORD dwByteSize);
+DWORD ConvertBytesToInteger_4_LE(LPBYTE ValueAsBytes);
+ULONGLONG ConvertBytesToInteger_5(LPBYTE ValueAsBytes);
+void ConvertIntegerToBytes_4(DWORD Value, LPBYTE ValueAsBytes);
+
+//-----------------------------------------------------------------------------
 // Linear data stream manipulation
 
 LPBYTE CaptureInteger32(LPBYTE pbDataPtr, LPBYTE pbDataEnd, PDWORD PtrValue);
+LPBYTE CaptureInteger32_BE(LPBYTE pbDataPtr, LPBYTE pbDataEnd, PDWORD PtrValue);
+LPBYTE CaptureByteArray(LPBYTE pbDataPtr, LPBYTE pbDataEnd, size_t nLength, LPBYTE pbOutput);
 LPBYTE CaptureContentKey(LPBYTE pbDataPtr, LPBYTE pbDataEnd, PCONTENT_KEY * PtrCKey);
 LPBYTE CaptureArray_(LPBYTE pbDataPtr, LPBYTE pbDataEnd, LPBYTE * PtrArray, size_t ItemSize, size_t ItemCount);
 

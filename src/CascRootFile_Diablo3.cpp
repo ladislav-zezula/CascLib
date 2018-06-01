@@ -23,14 +23,6 @@
 #define DIABLO3_MAX_ASSETS         70               // Maximum possible number of assets
 #define DIABLO3_MAX_ROOT_FOLDERS   0x20             // Maximum count of root directory named entries
 
-// Helper structure for merging file paths
-typedef struct _PATH_BUFFER
-{
-    char * szBegin;
-    char * szPtr;
-    char * szEnd;
-} PATH_BUFFER, *PPATH_BUFFER;
-
 // On-disk structure for a file given by file number
 typedef struct _DIABLO3_ASSET_ENTRY
 {
@@ -246,49 +238,16 @@ static char * FindPackageName(
     return (char *)Map_FindString(pPackageMap, szFileName, szFileName + nLength);
 }
 
-static LPBYTE LoadFileToMemory(TCascStorage * hs, LPBYTE pbCKey, DWORD * pcbFileData)
-{
-    QUERY_KEY CKey;
-    LPBYTE pbFileData = NULL;
-    HANDLE hFile;
-    DWORD cbBytesRead = 0;
-    DWORD cbFileData = 0;
-
-    // Open the file by CKey
-    CKey.pbData = pbCKey;
-    CKey.cbData = MD5_HASH_SIZE;
-    if(CascOpenFileByCKey((HANDLE)hs, &CKey, 0, &hFile))
-    {
-        // Retrieve the file size
-        cbFileData = CascGetFileSize(hFile, NULL);
-        if(cbFileData > 0)
-        {
-            pbFileData = CASC_ALLOC(BYTE, cbFileData);
-            if(pbFileData != NULL)
-            {
-                CascReadFile(hFile, pbFileData, cbFileData, &cbBytesRead);
-            }
-        }
-
-        // Close the file
-        CascCloseFile(hFile);
-    }
-
-    // Give the file to the caller
-    if(pcbFileData != NULL)
-        pcbFileData[0] = cbBytesRead;
-    return pbFileData;
-}
-
 static LPBYTE LoadFileToMemory(TCascStorage * hs, const char * szFileName, DWORD * pcbFileData)
 {
     LPBYTE pbCKey = NULL;
     LPBYTE pbFileData = NULL;
+    DWORD dwDummy;
 
     // Try to find CKey for the file
-    pbCKey = RootHandler_GetKey(hs->pRootHandler, szFileName);
+    pbCKey = RootHandler_GetKey(hs->pRootHandler, szFileName, &dwDummy);
     if(pbCKey != NULL)
-        pbFileData = LoadFileToMemory(hs, pbCKey, pcbFileData);
+        pbFileData = LoadInternalFileToMemory(hs, pbCKey, CASC_OPEN_BY_CKEY, pcbFileData);
 
     return pbFileData;
 }
@@ -435,7 +394,7 @@ static int LoadDirectoryFile(TRootHandler_Diablo3 * pRootHandler, size_t nIndex,
         return ERROR_NOT_ENOUGH_MEMORY;
 
     // Load the n-th folder
-    pbData = LoadFileToMemory(pRootHandler->hs, pCKey->Value, &cbData);
+    pbData = LoadInternalFileToMemory(pRootHandler->hs, pCKey->Value, CASC_OPEN_BY_CKEY, &cbData);
     if(pbData && cbData)
     {
         if(CaptureDirectoryData(&pRootHandler->RootFolders[nIndex], pbData, cbData) == NULL)
@@ -557,6 +516,7 @@ static int ParseAssetEntries(
             if(CreateAssetFileName(pRootHandler, PathBuffer, pEntry->FileIndex, CASC_INVALID_INDEX))
             {
                 // Insert the entry to the file tree
+//              fprintf(fp, "%08u %s\n", pEntry->FileIndex, PathBuffer.szBegin);
                 FileTree_Insert(&pRootHandler->FileTree, &pEntry->CKey, PathBuffer.szBegin);
             }
         }
@@ -583,6 +543,7 @@ static int ParseAssetAndIdxEntries(
             if(CreateAssetFileName(pRootHandler, PathBuffer, pEntry->FileIndex, pEntry->SubIndex))
             {
                 // Insert the entry to the file tree
+//              fprintf(fp, "%08u %04u %s\n", pEntry->FileIndex, pEntry->SubIndex, PathBuffer.szBegin);
                 FileTree_Insert(&pRootHandler->FileTree, &pEntry->CKey, PathBuffer.szBegin);
             }
         }
@@ -677,6 +638,8 @@ static int ParseDirectory_Phase2(TRootHandler_Diablo3 * pRootHandler)
                 PathBuffer.szPtr = PathBuffer.szBegin + strlen(szPathBuffer);
             }
 
+//          FILE * fp = fopen("E:\\FileIndex.txt", "wt");
+
             // Array of DIABLO3_ASSET_ENTRY entries.
             // These are for files belonging to an asset, without subitem number.
             // Example: "SoundBank\SoundFile.smp"
@@ -686,6 +649,8 @@ static int ParseDirectory_Phase2(TRootHandler_Diablo3 * pRootHandler)
             // These are for files belonging to an asset, with a subitem number.
             // Example: "SoundBank\SoundFile\0001.smp"
             ParseAssetAndIdxEntries(pRootHandler, pRootHandler->RootFolders[i], PathBuffer);
+
+//          fclose(fp);
         }
     }
 
@@ -753,6 +718,9 @@ static int CreateMapOfFileIndices(TRootHandler_Diablo3 * pRootHandler, const cha
     return ERROR_SUCCESS;
 }
 
+// Packages.dat contains a list of full file names (without locale prefix).
+// They are not sorted, nor they correspond to file IDs.
+// Does the sort order mean something? Perhaps we could use them as listfile?
 static int CreateMapOfRealNames(TRootHandler_Diablo3 * pRootHandler, const char * szFileName)
 {
     PCASC_MAP pPackageMap;

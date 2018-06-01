@@ -163,9 +163,9 @@ static bool DoStorageSearch_RootFile(TCascSearch * pSearch, PCASC_FIND_DATA pFin
         if(pSearch->dwFileSize == CASC_INVALID_SIZE)
         {
             if(pEKeyEntry != NULL)
-                pSearch->dwFileSize = ConvertBytesToInteger_4_LE(pEKeyEntry->FileSizeLE);
+                pSearch->dwFileSize = ConvertBytesToInteger_4_LE(pEKeyEntry->EncodedSize);
             if(pCKeyEntry != NULL)
-                pSearch->dwFileSize = ConvertBytesToInteger_4(pCKeyEntry->FileSizeBE);
+                pSearch->dwFileSize = ConvertBytesToInteger_4(pCKeyEntry->ContentSize);
         }
 
         // Fill-in the found file
@@ -212,7 +212,7 @@ static bool DoStorageSearch_CKey(TCascSearch * pSearch, PCASC_FIND_DATA pFindDat
                     memcpy(pFindData->FileKey, pCKeyEntry->CKey, MD5_HASH_SIZE);
                     pFindData->szPlainName = pFindData->szFileName;
                     pFindData->dwLocaleFlags = CASC_LOCALE_NONE;
-                    pFindData->dwFileSize = ConvertBytesToInteger_4(pCKeyEntry->FileSizeBE);
+                    pFindData->dwFileSize = ConvertBytesToInteger_4(pCKeyEntry->ContentSize);
                     pFindData->dwOpenFlags = CASC_OPEN_BY_CKEY;
 
                     // Mark the entry as already-found

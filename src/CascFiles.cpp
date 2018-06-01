@@ -163,17 +163,18 @@ static bool IsInfoVariable(const char * szLineBegin, const char * szLineEnd, con
     return false;
 }
 
-static const char * SkipInfoVariable(const char * szLineBegin, const char * szLineEnd)
+// Note that this must support empty variables ("||")
+static const char * SkipInfoVariable(const char * szLinePtr, const char * szLineEnd)
 {
-    while(szLineBegin < szLineEnd)
-    {
-        if(szLineBegin[0] == '|')
-            return szLineBegin + 1;
+    // Go until we find separator
+    while(szLinePtr < szLineEnd && szLinePtr[0] != '|')
+        szLinePtr++;
 
-        szLineBegin++;
-    }
+    // Did we find a separator?
+    if(szLinePtr < szLineEnd && szLinePtr[0] == '|')
+        szLinePtr++;
 
-    return NULL;
+    return (szLinePtr < szLineEnd) ? szLinePtr : NULL;
 }
 
 static TCHAR * CheckForIndexDirectory(TCascStorage * hs, const TCHAR * szSubDir)
@@ -537,16 +538,16 @@ static int ParseFile_BuildInfo(TCascStorage * hs, void * pvListFile)
     QUERY_KEY TagString = {NULL, 0};
     QUERY_KEY CdnHost = {NULL, 0};
     QUERY_KEY CdnPath = {NULL, 0};
+    const char * szLineBegin1;
     const char * szLinePtr1;
     const char * szLineEnd1;
     const char * szLinePtr2;
     const char * szLineEnd2;
     size_t nLength1;
     size_t nLength2;
-    int nError = ERROR_BAD_FORMAT;
 
     // Extract the first line, cotaining the headers
-    nLength1 = ListFile_GetNextLine(pvListFile, &szLinePtr1, &szLineEnd1);
+    nLength1 = ListFile_GetNextLine(pvListFile, &szLineBegin1, &szLineEnd1);
     if(nLength1 == 0)
         return ERROR_BAD_FORMAT;
 
@@ -554,10 +555,11 @@ static int ParseFile_BuildInfo(TCascStorage * hs, void * pvListFile)
     // with "Active" set to 1
     for(;;)
     {
-        // Read the next line
+        // Read the next line and reset header line
         nLength2 = ListFile_GetNextLine(pvListFile, &szLinePtr2, &szLineEnd2);
         if(nLength2 == 0)
             break;
+        szLinePtr1 = szLineBegin1;
 
         // Parse all variables
         while(szLinePtr1 < szLineEnd1)
@@ -565,15 +567,15 @@ static int ParseFile_BuildInfo(TCascStorage * hs, void * pvListFile)
             // Check for variables we need
             if(IsInfoVariable(szLinePtr1, szLineEnd1, "Active", "DEC"))
                 LoadInfoVariable(&Active, szLinePtr2, szLineEnd2, false);
-            if(IsInfoVariable(szLinePtr1, szLineEnd1, "Build Key", "HEX"))
+            else if(IsInfoVariable(szLinePtr1, szLineEnd1, "Build Key", "HEX"))
                 LoadInfoVariable(&hs->CdnBuildKey, szLinePtr2, szLineEnd2, true);
-            if(IsInfoVariable(szLinePtr1, szLineEnd1, "CDN Key", "HEX"))
+            else if(IsInfoVariable(szLinePtr1, szLineEnd1, "CDN Key", "HEX"))
                 LoadInfoVariable(&hs->CdnConfigKey, szLinePtr2, szLineEnd2, true);
-            if(IsInfoVariable(szLinePtr1, szLineEnd1, "CDN Hosts", "STRING"))
+            else if(IsInfoVariable(szLinePtr1, szLineEnd1, "CDN Hosts", "STRING"))
                 LoadInfoVariable(&CdnHost, szLinePtr2, szLineEnd2, false);
-            if(IsInfoVariable(szLinePtr1, szLineEnd1, "CDN Path", "STRING"))
+            else if(IsInfoVariable(szLinePtr1, szLineEnd1, "CDN Path", "STRING"))
                 LoadInfoVariable(&CdnPath, szLinePtr2, szLineEnd2, false);
-            if(IsInfoVariable(szLinePtr1, szLineEnd1, "Tags", "STRING"))
+            else if(IsInfoVariable(szLinePtr1, szLineEnd1, "Tags", "STRING"))
                 LoadInfoVariable(&TagString, szLinePtr2, szLineEnd2, false);
 
             // Move both line pointers
@@ -597,16 +599,10 @@ static int ParseFile_BuildInfo(TCascStorage * hs, void * pvListFile)
         FreeCascBlob(&CdnHost);
         FreeCascBlob(&CdnPath);
         FreeCascBlob(&TagString);
-
-        // Rewind column names pointer back to start of line
-        szLinePtr1 = szLineEnd1 - nLength1;
     }
 
-    // All four must be present
-    if(hs->CdnBuildKey.pbData != NULL &&
-       hs->CdnConfigKey.pbData != NULL &&
-       CdnHost.pbData != NULL &&
-       CdnPath.pbData != NULL)
+    // If we have CDN path and CDN host, then we get the URL from it
+    if(CdnHost.pbData && CdnHost.cbData && CdnPath.pbData && CdnPath.cbData)
     {
         // Merge the CDN host and CDN path
         hs->szUrlPath = CASC_ALLOC(TCHAR, CdnHost.cbData + CdnPath.cbData + 1);
@@ -614,19 +610,23 @@ static int ParseFile_BuildInfo(TCascStorage * hs, void * pvListFile)
         {
             CopyString(hs->szUrlPath, (char *)CdnHost.pbData, CdnHost.cbData);
             CopyString(hs->szUrlPath + CdnHost.cbData, (char *)CdnPath.pbData, CdnPath.cbData);
-            nError = ERROR_SUCCESS;
         }
     }
 
     // If we found tags, we can extract language build from it
     if(TagString.pbData != NULL)
+    {
         GetDefaultLocaleMask(hs, &TagString);
+    }
 
+    // Free the blobs that we used
     FreeCascBlob(&CdnHost);
     FreeCascBlob(&CdnPath);
     FreeCascBlob(&TagString);
     FreeCascBlob(&Active);
-    return nError;
+
+    // Build and Config keys are the ones we do really need
+    return (hs->CdnConfigKey.cbData == MD5_HASH_SIZE && hs->CdnBuildKey.cbData == MD5_HASH_SIZE) ? ERROR_SUCCESS : ERROR_BAD_FORMAT;
 }
 
 static int ParseFile_BuildDb(TCascStorage * hs, void * pvListFile)

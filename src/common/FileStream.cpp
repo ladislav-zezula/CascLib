@@ -1344,7 +1344,10 @@ static TFileStream * FlatStream_Open(const TCHAR * szFileName, DWORD dwStreamFla
     // Create new empty stream
     pStream = (TBlockStream *)AllocateFileStream(szFileName, sizeof(TBlockStream), dwStreamFlags);
     if(pStream == NULL)
+    {
+        SetLastError(ERROR_NOT_ENOUGH_MEMORY);
         return NULL;
+    }
 
     // Do we have a master stream?
     if(pStream->pMaster != NULL)

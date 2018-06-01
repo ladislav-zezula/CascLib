@@ -55,22 +55,6 @@
 #define CASC_MAX_DATA_FILES      0x100
 #define CASC_EXTRA_FILES          0x20          // Number of extra entries to be reserved for additionally inserted files
 
-#define CASC_SEARCH_HAVE_NAME   0x0001          // Indicated that previous search found a name
-
-#define BLTE_HEADER_SIGNATURE   0x45544C42      // 'BLTE' header in the data files
-#define BLTE_HEADER_DELTA       0x1E            // Distance of BLTE header from begin of the header area
-#define MAX_HEADER_AREA_SIZE    0x2A            // Length of the file header area
-
-// File header area in the data.nnn:
-//  BYTE  HeaderHash[MD5_HASH_SIZE];            // MD5 of the frame array
-//  DWORD dwFileSize;                           // Size of the file (see comment before CascGetFileSize for details)
-//  BYTE  SomeSize[4];                          // Some size (big endian)
-//  BYTE  Padding[6];                           // Padding (?)
-//  DWORD dwSignature;                          // Must be "BLTE"
-//  BYTE  HeaderSizeAsBytes[4];                 // Header size in bytes (big endian)
-//  BYTE  MustBe0F;                             // Must be 0x0F. Optional, only if HeaderSizeAsBytes != 0
-//  BYTE  FrameCount[3];                        // Frame count (big endian). Optional, only if HeaderSizeAsBytes != 0
-
 // Prevent problems with CRT "min" and "max" functions,
 // as they are not defined on all platforms
 #define CASCLIB_MIN(a, b) ((a < b) ? a : b)
@@ -95,12 +79,12 @@ typedef enum _CBLD_TYPE
     CascBuildDb,                                    // .build.db (older storages)
 } CBLD_TYPE, *PCBLD_TYPE;
 
-// Index entry in the .idx files (part 1)
+// Encoded file entry
 typedef struct _CASC_EKEY_ENTRY
 {
-    BYTE EKey[CASC_EKEY_SIZE];                      // The first 9 bytes of the encoded key
-    BYTE FileOffsetBE[5];                           // Index of data file and offset within (big endian).
-    BYTE FileSizeLE[4];                             // Size occupied in the storage file (data.###). See comment before CascGetFileSize for details
+    BYTE EKey[CASC_EKEY_SIZE];                      // The first 9 bytes of the encoded key. The encoded key is MD5 hash of the file header, which contains MD5 hashes of all the logical blocks of the file
+    BYTE ArchiveAndOffset[5];                       // Combined value of ArchiveIndex + EncodedHeader offset (big endian)
+    BYTE EncodedSize[4];                            // Encoded size (little endian). This is the size of encoded header, all file frame headers and all file frames
 } CASC_EKEY_ENTRY, *PCASC_EKEY_ENTRY;
 
 typedef struct _CASC_INDEX_FILE
@@ -123,11 +107,11 @@ typedef struct _CASC_INDEX_FILE
 
 typedef struct _CASC_FILE_FRAME
 {
-    DWORD FrameArchiveOffset;                       // Archive file pointer corresponding to the begin of the frame
-    DWORD FrameFileOffset;                          // File pointer corresponding to the begin of the frame
-    DWORD CompressedSize;                           // Compressed size of the file
-    DWORD FrameSize;                                // Size of the frame
-    BYTE  md5[MD5_HASH_SIZE];                       // MD5 hash of the file sector
+    BYTE  FrameHash[MD5_HASH_SIZE];                 // MD5 hash of the file frame
+    DWORD DataFileOffset;                           // Offset in the data file (data.###)
+    DWORD FileOffset;                               // File offset of this frame
+    DWORD EncodedSize;                              // Encoded size of the frame
+    DWORD ContentSize;                              // Content size of the frame
 } CASC_FILE_FRAME, *PCASC_FILE_FRAME;
 
 typedef struct _CASC_ENCODING_HEADER
@@ -144,9 +128,9 @@ typedef struct _CASC_ENCODING_HEADER
 
 typedef struct _CASC_CKEY_ENTRY
 {
-    USHORT KeyCount;                                // Number of EKeys
-    BYTE FileSizeBE[4];                             // Compressed file size (header area + frame headers + compressed frames), in bytes
-    BYTE CKey[CASC_CKEY_SIZE];                      // File content key. This is MD5 of the uncompressed file data
+    USHORT EKeyCount;                               // Number of EKeys
+    BYTE ContentSize[4];                            // Content file size.
+    BYTE CKey[CASC_CKEY_SIZE];                      // Content key. This is MD5 of the file content
 
     // Followed by the EKey (KeyCount = number of EKeys)
 
@@ -170,7 +154,7 @@ typedef struct _TCascStorage
     DWORD dwRefCount;                               // Number of references
     DWORD dwGameInfo;                               // Game type
     DWORD dwBuildNumber;                            // Game build number
-    DWORD dwFileBeginDelta;                         // This is number of bytes to shift back from archive offset (from index entry) to actual begin of file data
+    DWORD dwHeaderDelta;                            // This is number of bytes to subtract from CASC_EKEY_ENTRY::ArchiveAndOffset to get the begin of the encoded header
     DWORD dwDefaultLocale;                          // Default locale, read from ".build.info"
 
     CBLD_TYPE BuildFileType;                        // Type of the build file
@@ -209,17 +193,14 @@ typedef struct _TCascFile
     TFileStream * pStream;                          // An open data stream
     const char * szClassName;                       // "TCascFile"
 
-    DWORD FilePointer;                              // Current file pointer
-
-    DWORD ArchiveIndex;                             // Index of the archive (data.###)
-    DWORD HeaderOffset;                             // Offset of the BLTE header, relative to the begin of the archive
-    DWORD HeaderSize;                               // Length of the BLTE header
-    DWORD FramesOffset;                             // Offset of the frame data, relative to the begin of the archive
-    DWORD CompressedSize;                           // Compressed size of the file (in bytes)
-    DWORD FileSize;                                 // Size of file, in bytes
-    BYTE FrameArrayHash[MD5_HASH_SIZE];             // MD5 hash of the frame array
-
     PCASC_FILE_FRAME pFrames;                       // Array of file frames
+    CONTENT_KEY CKey;                               // Content key of the file. Effectively a MD5 hash of the file content
+    ENCODED_KEY EKey;                               // Encoded key of the file. MD5 hash of the encoded header + frame headers
+    DWORD ArchiveIndex;                             // Index of the archive (data.###)
+    DWORD ArchiveOffset;                            // Offset in the archive (data.###)
+    DWORD FilePointer;                              // Current file pointer
+    DWORD EncodedSize;                              // Encoded size. This is the size of encoded header, all file frame headers and all file frames
+    DWORD ContentSize;                              // Content size. This is the size of the file content, aka the file size
     DWORD FrameCount;                               // Number of the file frames
 
     LPBYTE pbFileCache;                             // Pointer to file cache
@@ -227,10 +208,10 @@ typedef struct _TCascFile
     DWORD CacheStart;                               // Starting offset in the cache
     DWORD CacheEnd;                                 // Ending offset in the cache
 
-#ifdef CASCLIB_TEST     // Extra fields for analyzing the file size problem
+#ifdef CASCLIB_TEST                                 // 
     DWORD FileSize_RootEntry;                       // File size, from the root entry
-    DWORD FileSize_EncEntry;                        // File size, from the encoding entry
-    DWORD FileSize_IdxEntry;                        // File size, from the index entry
+    DWORD FileSize_CEntry;                          // File size, from the CONTENT entry
+    DWORD FileSize_EEntry;                          // File size, from the ENCODED entry
     DWORD FileSize_HdrArea;                         // File size, as stated in the file header area
     DWORD FileSize_FrameSum;                        // File size as sum of frame sizes
 #endif
@@ -287,20 +268,10 @@ typedef struct _TCascSearch
 #endif
 
 //-----------------------------------------------------------------------------
-// Big endian number manipulation
-
-DWORD ConvertBytesToInteger_2(LPBYTE ValueAsBytes);
-DWORD ConvertBytesToInteger_3(LPBYTE ValueAsBytes);
-DWORD ConvertBytesToInteger_4(LPBYTE ValueAsBytes);
-DWORD ConvertBytesToInteger_X(LPBYTE ValueAsBytes, DWORD dwByteSize);
-DWORD ConvertBytesToInteger_4_LE(LPBYTE ValueAsBytes);
-ULONGLONG ConvertBytesToInteger_5(LPBYTE ValueAsBytes);
-
-void ConvertIntegerToBytes_4(DWORD Value, LPBYTE ValueAsBytes);
-void FreeCascBlob(PQUERY_KEY pQueryKey);
-
-//-----------------------------------------------------------------------------
 // Text file parsing (CascFiles.cpp)
+
+LPBYTE LoadInternalFileToMemory(TCascStorage * hs, LPBYTE pbQueryKey, DWORD dwOpenFlags, DWORD * pcbFileData);
+void FreeCascBlob(PQUERY_KEY pQueryKey);
 
 int LoadBuildInfo(TCascStorage * hs);
 int CheckGameDirectory(TCascStorage * hs, TCHAR * szDirectory);

@@ -423,7 +423,7 @@ static LPBYTE WowHandler_Search(TRootHandler_WoW6 * pRootHandler, TCascSearch * 
     return NULL;
 }
 
-static LPBYTE WowHandler_GetKey(TRootHandler_WoW6 * pRootHandler, const char * szFileName)
+static LPBYTE WowHandler_GetKey(TRootHandler_WoW6 * pRootHandler, const char * szFileName, PDWORD /* PtrFileSize */)
 {
     PWOW_FILE_ENTRY pFileEntry;
     DWORD FileDataId;

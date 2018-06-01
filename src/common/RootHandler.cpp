@@ -46,13 +46,13 @@ void RootHandler_EndSearch(TRootHandler * pRootHandler, struct _TCascSearch * pS
     }
 }
 
-LPBYTE RootHandler_GetKey(TRootHandler * pRootHandler, const char * szFileName)
+LPBYTE RootHandler_GetKey(TRootHandler * pRootHandler, const char * szFileName, PDWORD PtrFileSize)
 {
     // Check if the root structure is valid at all
     if(pRootHandler == NULL)
         return NULL;
 
-    return pRootHandler->GetKey(pRootHandler, szFileName);
+    return pRootHandler->GetKey(pRootHandler, szFileName, PtrFileSize);
 }
 
 void RootHandler_Dump(TCascStorage * hs, LPBYTE pbRootHandler, DWORD cbRootHandler, const TCHAR * szNameFormat, const TCHAR * szListFile, int nDumpLevel)

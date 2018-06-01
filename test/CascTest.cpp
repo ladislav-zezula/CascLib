@@ -57,6 +57,15 @@ static const char szCircleChar[] = "|/-\\";
 #endif
 
 //-----------------------------------------------------------------------------
+// Local structures
+
+typedef struct _STORAGE_INFO
+{
+    const TCHAR * szPath;
+    const char * szFile;
+} STORAGE_INFO, *PSTORAGE_INFO;
+
+//-----------------------------------------------------------------------------
 // Local functions
 
 static bool IsFileKey(const char * szFileName)
@@ -164,14 +173,14 @@ static int ExtractFile(HANDLE hStorage, CASC_FIND_DATA & cf, const TCHAR * szLoc
     }
 
     // Log the file sizes
-#ifdef CASCLIB_TEST
+#ifdef CASCLIB_TEST_FILE_SIZES
 //  if(nError == ERROR_SUCCESS)
 //  {
 //      TCascFile * hf = IsValidFileHandle(hFile);
 //
 //      fprintf(fp, "%8u %8u %8u %8u %8u %s\n", hf->FileSize_RootEntry,
-//                                              hf->FileSize_EncEntry,
-//                                              hf->FileSize_IdxEntry,
+//                                              hf->FileSize_CEntry,
+//                                              hf->FileSize_EEntry,
 //                                              hf->FileSize_HdrArea,
 //                                              hf->FileSize_FrameSum,
 //                                              szFileName);
@@ -521,41 +530,50 @@ static int TestOpenStorage_GetFileDataId(const TCHAR * szStorage, const char * s
     return nError;
 }
 
-static int Hack()
+//-----------------------------------------------------------------------------
+// Storage list
+
+static STORAGE_INFO StorageInfo[] = 
 {
-/*
-    HANDLE hFile;
-    BYTE Buffer[0x100];
-    hash_state md5_state;
-    LPBYTE pbStartHash = &Buffer[BLTE_HEADER_DELTA];
-    BYTE md5_hash[MD5_HASH_SIZE];
-    uint32_t dwHashHigh = 0;
-    uint32_t dwHashLow = 0;
-    DWORD dwBytesRead = 0;
 
-    hFile = CreateFile(_T("e:\\Multimedia\\MPQs\\2014 - WoW\\18888\\Data\\data\\data.017"), GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL);
-    if(hFile != INVALID_HANDLE_VALUE)
-    {
-        SetFilePointer(hFile, 0x34CBFE8C, NULL, FILE_BEGIN);
-        ReadFile(hFile, Buffer, sizeof(Buffer), &dwBytesRead, NULL);
-        CloseHandle(hFile);
+    {MAKE_PATH("2014 - Heroes of the Storm/29049"), "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_autoai1.dds"},
+    {MAKE_PATH("2014 - Heroes of the Storm/30027"), "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_claim1.dds"},
+    {MAKE_PATH("2014 - Heroes of the Storm\\30414\\HeroesData\\config\\09\\32"), "mods\\heromods\\murky.stormmod\\base.stormdata\\gamedata\\buttondata.xml"},
+    {MAKE_PATH("2014 - Heroes of the Storm/30414/"), "mods\\heroesdata.stormmod\\base.stormdata\\cutscenes\\frameabathur.stormcutscene"},
+    {MAKE_PATH("2014 - Heroes of the Storm/31726"), "mods\\heroes.stormmod\\base.stormassets\\Assets\\modeltextures.db"},
+    {MAKE_PATH("2014 - Heroes of the Storm/39445/HeroesData"), "versions.osxarchive\\Versions\\Base39153\\Heroes.app\\Contents\\_CodeSignature\\CodeResources"},
+    {MAKE_PATH("2014 - Heroes of the Storm/50286/HeroesData"), "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
 
-        for(int i = 1; i < 4+4+16; i++)
-        {
-            dwHashHigh = dwHashLow = 0;
-            hashlittle2(pbStartHash, i, &dwHashHigh, &dwHashLow);
+    {MAKE_PATH("2015 - Diablo III/30013"), "ENCODING"},
 
-            md5_init(&md5_state);
-            md5_process(&md5_state, pbStartHash, i);
-            md5_done(&md5_state, md5_hash);
+    {MAKE_PATH("2015 - Overwatch/24919/casc/data"), "ROOT"},
+    {MAKE_PATH("2015 - Overwatch/47161"), "TactManifest\\Win_SPWin_RCN_LesMX_EExt.apm"},
 
-            if((dwHashHigh & 0xFF) == 0xAF)
-                DebugBreak();
-        }
-    }
-*/
-    return ERROR_SUCCESS;
-}
+    {MAKE_PATH("2016 - Starcraft II/45364/\\/\\/\\"), "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
+
+    {MAKE_PATH("2016 - WoW/18125"), "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {MAKE_PATH("2016 - WoW/18379"), "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {MAKE_PATH("2016 - WoW/18865"), "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {MAKE_PATH("2016 - WoW/18888"), "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {MAKE_PATH("2016 - WoW/19116"), "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {MAKE_PATH("2016 - WoW/19342-root-file-cut"), "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {MAKE_PATH("2016 - WoW/19342-with-patch"), "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {MAKE_PATH("2016 - WoW/19678-after-patch"), "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+
+    {MAKE_PATH("2016 - WoW/21742"), "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+
+    {MAKE_PATH("2016 - WoW/22267"), "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {MAKE_PATH("2016 - WoW/19678-after-patch"), "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {MAKE_PATH("2016 - WoW/23420"), "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+
+    {MAKE_PATH("2017 - Starcraft1/2457"), "music\\radiofreezerg.ogg"},
+    {MAKE_PATH("2017 - Starcraft1/4037"), "music\\radiofreezerg.ogg"},
+
+    {MAKE_PATH("2018 - New CASC/00001"), "ROOT"},
+    {MAKE_PATH("2018 - New CASC/00002"), "ENCODING"},
+
+    {NULL}
+};
 
 //-----------------------------------------------------------------------------
 // Main
@@ -574,116 +592,30 @@ int main(int argc, char * argv[])
     _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif  // defined(_MSC_VER) && defined(_DEBUG)
 
-//  if(nError == ERROR_SUCCESS)
-//      nError = Hack();
+    //
+    // Tests for OpenStorage + ExtractFile
+    //
 
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/18888/Data"), "SPELLS\\T_VFX_BLOOD06B.BLP");
+    for(size_t i = 0; StorageInfo[i].szPath != NULL; i++)
+    {
+        // Attempt to open the storage and extract single file
+        nError = TestOpenStorage_OpenFile(StorageInfo[i].szPath, StorageInfo[i].szFile);
+        if(nError != ERROR_SUCCESS)
+            break;
+    }
 
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/19342-root-file-cut/Data"), "SPELLS\\T_VFX_BLOOD06B.BLP");
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), "File000CD780.###");
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - Heroes of the Storm/29049/BNTData/config/48/ae"), "World\\Maps\\Azeroth\\Azeroth_29_28.adt");
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - Heroes of the Storm/30414/HeroesData"), "World\\Maps\\Azeroth\\Azeroth_29_28.adt");
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_OpenFile(MAKE_PATH("2014 - Heroes of the Storm/39445/HeroesData"), "World\\Maps\\Azeroth\\Azeroth_29_28.adt");
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_OpenFile(MAKE_PATH("2015 - Diablo III/30013"), "ENCODING");
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_OpenFile(MAKE_PATH("2015 - Overwatch/24919/casc/data"), "ROOT");
-
-//    if(nError == ERROR_SUCCESS)
-//        nError = TestOpenStorage_OpenFile(MAKE_PATH("2016 - Starcraft II/45364/SC2Data\\/\\"), "mods/novastoryassets/base.sc2maps/maps/campaign/nova/nova01.sc2map");
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/29049"), NULL);
-
-//  if(nError == ERROR_SUCCESS)                                                                  
-//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/30027/BNTData"), NULL);
-
-//  if(nError == ERROR_SUCCESS)                                                                  
-//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/30414/HeroesData/config/09/32/"), NULL);
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/31726/HeroesData"), NULL);
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - Heroes of the Storm/39445/HeroesData"), NULL);
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/18865/Data"), szListFile);
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/18888/Data"), szListFile);
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19116/Data"), szListFile);
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), szListFile);
-
-    // With a non-existant listfile
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), _T("huhu.txt"));
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2016 - WoW/21742/Data"), NULL);
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2016 - WoW/23420/Data"), _T("huhu.txt"));
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2017 - Starcraft1/4037"), NULL);
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Diablo III/30013/Data"), NULL);
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Overwatch/24919/casc/data"), NULL);
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_EnumFiles(MAKE_PATH("2015 - Overwatch/47161/casc/data"), NULL);
-
-    if(nError == ERROR_SUCCESS)
-        nError = TestOpenStorage_EnumFiles(MAKE_PATH("2018 - New CASC/00001"), NULL);
-
-    // Test extracting the complete storage
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2014 - Heroes of the Storm/30414/HeroesData"), _T("Work"), NULL);
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2014 - WoW/18865/Data"), _T("Work"), szListFile);
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2014 - WoW/18888/Data"), _T("Work"), szListFile);
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2014 - WoW/19678-after-patch/Data"), _T("Work"), szListFile);
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2016 - WoW/21742/Data"), _T("Work"), NULL);
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2016 - WoW/22267/Data"), _T("Work"), szListFile);
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2015 - Diablo III/Data"), _T("Work"), NULL);
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2015 - Overwatch/24919/casc/data"), MAKE_PATH("Work"), NULL);
-
-//  if(nError == ERROR_SUCCESS)
-//      nError = TestOpenStorage_ExtractFiles(MAKE_PATH("2018 - New CASC/00001"), _T("Work"), NULL);
-
+    //
+    // Tests for OpenStorage + EnumAllFiles + ExtractAllFiles
+    //
+/*
+    for(size_t i = 0; StorageInfo[i].szPath != NULL; i++)
+    {
+        // Attempt to open the storage and extract single file
+        nError = TestOpenStorage_ExtractFiles(StorageInfo[i].szPath, NULL);
+        if(nError != ERROR_SUCCESS)
+            break;
+    }
+*/
 
 #ifdef _MSC_VER                                                          
     _CrtDumpMemoryLeaks();

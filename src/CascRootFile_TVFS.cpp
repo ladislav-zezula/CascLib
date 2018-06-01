@@ -26,79 +26,82 @@
 //-----------------------------------------------------------------------------
 // Local structures
 
-// All fields in the in-file layout are big-endian
-typedef struct _TVFS_FILE_HEADER
+// In-memory layout of the TVFS file header
+typedef struct _TVFS_DIRECTORY_HEADER
 {
-    DWORD dwSignature;                              // Must be CASC_TVFS_ROOT_SIGNATURE
+    DWORD Signature;                                // Must be CASC_TVFS_ROOT_SIGNATURE
     BYTE  FormatVersion;                            // Version of the format. Should be 1.
     BYTE  HeaderSize;                               // Size of the header, in bytes
     BYTE  EKeySize;                                 // Size of an E-Key. TACT uses 9-byte E-keys
     BYTE  PatchKeySize;                             // Size of a patch key. TACT uses 9-byte P-keys
-    DWORD dwFlags;                                  // Flags. See TVFS_FLAG_XXX
+    DWORD Flags;                                    // Flags. See TVFS_FLAG_XXX
 
     // Followed by the offset table (variable length)
-    DWORD  dwPathTableOffset;                       // Offset of the path table
-    DWORD  dwPathTableSize;                         // Size of the path table
-    DWORD  dwVfsTableOffset;                        // Offset of the VFS table
-    DWORD  dwVfsTableSize;                          // Size of the VFS table
-    DWORD  dwCftTableOffset;                        // Offset of the container file table
-    DWORD  dwCftTableSize;                          // Size of the container file table
+    DWORD  PathTableOffset;                         // Offset of the path table
+    DWORD  PathTableSize;                           // Size of the path table
+    DWORD  VfsTableOffset;                          // Offset of the VFS table
+    DWORD  VfsTableSize;                            // Size of the VFS table
+    DWORD  CftTableOffset;                          // Offset of the container file table
+    DWORD  CftTableSize;                            // Size of the container file table
     USHORT MaxDepth;                                // The maximum depth of the path prefix tree stored in the path table
-    DWORD  dwEstTableOffset;                        // The offset of the encoding specifier table. Only if the write-support bit is set in the header flag
-    DWORD  dwEstTableSize;                          // The size of the encoding specifier table. Only if the write-support bit is set in the header flag
+    DWORD  EstTableOffset;                          // The offset of the encoding specifier table. Only if the write-support bit is set in the header flag
+    DWORD  EstTableSize;                            // The size of the encoding specifier table. Only if the write-support bit is set in the header flag
 
-} TVFS_FILE_HEADER, *PTVFS_FILE_HEADER;
+    DWORD  CftOffsSize;                             // Byte length of the offset in the Content File Table entry
+    DWORD  EstOffsSize;                             // Byte length of the offset in the Encoding Specifier Table entry
 
-// In-memory structure of a file entry in the linear file list
-typedef struct _TVFS_FILE_ENTRY
+    LPBYTE pbDirectoryData;                         // Pointer to the begin of directory data
+    LPBYTE pbDirectoryEnd;                          // Pointer to the end of directory data
+
+//  LPBYTE pbPathFileTable;                         // Begin and end of the path table
+//  LPBYTE pbPathTableEnd;
+
+//  LPBYTE pbVfsFileTable;                          // Begin and end of the VFS file table
+//  LPBYTE pbVfsTableEnd;
+
+//  LPBYTE pbCftFileTable;                          // Begin and end of the content file table
+//  LPBYTE pbCftTableEnd;
+
+} TVFS_DIRECTORY_HEADER, *PTVFS_DIRECTORY_HEADER;
+
+// Minimum size of a valid path table entry. 1 byte + 1-byte name + 1 byte + DWORD
+#define TVFS_HEADER_LENGTH FIELD_OFFSET(TVFS_DIRECTORY_HEADER, CftOffsSize)
+
+// Minimum size of a valid path table entry. 1 byte + 1-byte name + 1 byte + DWORD
+#define TVFS_MIN_PATH_ENTRY (1 + 1 + 1 + sizeof(DWORD)) 
+
+// Minimum size of the VFS entry (SpanCount + FileOffset + SpanLength + CftOffset)
+#define TVFS_MIN_VFS_ENTRY (1 + sizeof(DWORD) + sizeof(DWORD) + 1)
+
+// Minimum size of the Content File Table entry (CASC_EKEY_SIZE + EncodedSize + ContentSize)
+#define TVFS_MIN_CFT_ENTRY (CASC_EKEY_SIZE + sizeof(DWORD) + sizeof(DWORD))
+
+// Minimum size of the TVFS folder data
+#define TVFS_MIN_FILE_SIZE (TVFS_HEADER_LENGTH + TVFS_MIN_PATH_ENTRY + TVFS_MIN_VFS_ENTRY + TVFS_MIN_CFT_ENTRY)
+
+// Maximum estimated file table. Empirically set to 8 MB, increase if needed.
+#define TVFS_MAX_FILE_SIZE 0x00800000
+
+// In-memory layout of the path table entry
+typedef struct _TVFS_PATH_TABLE_ENTRY
 {
-    ULONGLONG FileNameHash;                         // Hash of the full file name
-    DWORD dwParentFolder;
-    DWORD dwNameOffset;                             // Offset of the name (in name's dynamic array). 0 = no name (i.e. root folder)
-    DWORD dwSpanOffset;                             // Offset of the span array
-    DWORD dwSpanCount;                              // Number of file spans
+    LPBYTE pbNamePtr;                               // Pointer to the begin of the node name
+    LPBYTE pbNameEnd;                               // Pointer to the end of the file name
+    DWORD NodeValue;                                // Node value
+} TVFS_PATH_TABLE_ENTRY, *PTVFS_PATH_TABLE_ENTRY;
 
-} TVFS_FILE_ENTRY, *PTVFS_FILE_ENTRY;
-
-// A structure describing the file span
-typedef struct _TVFS_SPAN_ENTRY
-{
-    CONTENT_KEY EKey;                               // CKey/EKey for the span
-    DWORD dwFileOffset;                             // Offset into the reference file
-    DWORD dwSpanSize;                               // Size of the file span
-
-} TVFS_SPAN_ENTRY, *PTVFS_SPAN_ENTRY;
-
+// Structure for the root handler
 struct TRootHandler_TVFS : public TRootHandler
 {
-    // File header, normalized to little endian
-    TVFS_FILE_HEADER Header;
+    // File tree of the entire storage
+    CASC_FILE_TREE FileTree;
 
-    // Global map of FileNameHash -> FileEntry. Used for fast search of a file entry
-    PCASC_MAP pRootMap;
-
-    // Linear global list of all files. Used for file enumeration
-    CASC_ARRAY FileTable;
-
-    // Linear global list of plain names. Used for constructing full path
-    CASC_ARRAY NameList;
-
-    // Linear list of all file spans
-    CASC_ARRAY SpanList;
-
-    // Buffer for merging the full file name during loading the root directory
-    CASC_ARRAY PathBuffer;
-
-    // Used during parsing the root file
-    LPBYTE pbRootFile;
-    LPBYTE pbRootFileEnd;
-    DWORD dwCurrentFolder;
-    DWORD dwPathFragment;
-    DWORD dwCftOffsSize;                            // Size of the "Container File Table Offset" entry in VFS table
-    DWORD dwEstOffsSize;                            // Size of the "Encoding Specifier Table Entry" entry in Container File Table
+    // Back pointer to the storage
+    TCascStorage * hs;
 };
 
-typedef int (*PARSE_FILE_CB)(TRootHandler_TVFS * pRootHandler, const char * szNamePtr, const char * szNameEnd, DWORD dwNodeValue);
+// Recursive function to parse directory data
+static int ParseDirectoryData(TRootHandler_TVFS * pRootHandler, PATH_BUFFER & PathBuffer, TVFS_DIRECTORY_HEADER & DirHeader);
 
 //-----------------------------------------------------------------------------
 // Local variables
@@ -122,588 +125,366 @@ static DWORD GetOffsetFieldSize(ULONG dwTableSize)
     return 1;
 }
 
-static int CaptureFileHeader(PTVFS_FILE_HEADER pHeader, LPBYTE pbBuffer, DWORD cbBuffer)
+static bool PathBuffer_AddBackslash(PATH_BUFFER & PathBuffer)
 {
-    PTVFS_FILE_HEADER pSrcHeader;
+    if(PathBuffer.szPtr >= PathBuffer.szEnd)
+        return false;
 
-    // Verify data size
-    if(cbBuffer < FIELD_OFFSET(TVFS_FILE_HEADER, dwPathTableOffset))
+    *PathBuffer.szPtr++ = '\\';
+    *PathBuffer.szPtr = 0;
+    return true;
+}
+
+static bool PathBuffer_AppendNode(PATH_BUFFER & PathBuffer, TVFS_PATH_TABLE_ENTRY & PathEntry)
+{
+    // Do we have some name?
+    if(PathEntry.pbNameEnd > PathEntry.pbNamePtr)
+    {
+        size_t nLength = (PathEntry.pbNameEnd - PathEntry.pbNamePtr);
+
+        // Check whether we have enough space
+        if((PathBuffer.szPtr + nLength) > PathBuffer.szEnd)
+            return false;
+
+        // Copy the node name
+        memcpy(PathBuffer.szPtr, PathEntry.pbNamePtr, nLength);
+        PathBuffer.szPtr += nLength;
+
+        // Append backslash, if needed
+        if(PathEntry.NodeValue & TVFS_FOLDER_NODE)
+        {
+            if(PathBuffer.szPtr >= PathBuffer.szEnd)
+                return false;
+            *PathBuffer.szPtr++ = '\\';
+        }
+    }
+
+    // Always end the buffer with zero
+    PathBuffer.szPtr[0] = 0;
+    return true;
+}
+
+static int CaptureDirectoryHeader(TVFS_DIRECTORY_HEADER & DirHeader, LPBYTE pbDataPtr, LPBYTE pbDataEnd)
+{
+    // Fill the header structure with zeros
+    memset(&DirHeader, 0, sizeof(TVFS_DIRECTORY_HEADER));
+    DirHeader.pbDirectoryData = pbDataPtr;
+    DirHeader.pbDirectoryEnd = pbDataEnd;
+
+    // Capture the signature
+    pbDataPtr = CaptureInteger32(pbDataPtr, pbDataEnd, &DirHeader.Signature);
+    if(pbDataPtr == NULL || DirHeader.Signature != CASC_TVFS_ROOT_SIGNATURE)
         return ERROR_BAD_FORMAT;
-    pSrcHeader = (PTVFS_FILE_HEADER)pbBuffer;
 
-    // Verify inner header size
-    if(cbBuffer < pSrcHeader->HeaderSize)
+    // Capture the other four integers 
+    pbDataPtr = CaptureByteArray(pbDataPtr, pbDataEnd, 4, &DirHeader.FormatVersion);
+    if(pbDataPtr == NULL || DirHeader.FormatVersion != 1 || DirHeader.EKeySize != 9 || DirHeader.PatchKeySize != 9 || DirHeader.HeaderSize < 8)
         return ERROR_BAD_FORMAT;
 
-    // Copy as much as possible
-    memset(pHeader, 0, sizeof(TVFS_FILE_HEADER));
-    memcpy(pHeader, pSrcHeader, pSrcHeader->HeaderSize);
+    // Capture the rest
+    pbDataPtr = CaptureByteArray(pbDataPtr, pbDataEnd, DirHeader.HeaderSize - FIELD_OFFSET(TVFS_DIRECTORY_HEADER, Flags), (LPBYTE)(&DirHeader.Flags));
+    if(pbDataPtr == NULL)
+        return ERROR_BAD_FORMAT;
 
     // Swap the header values
-    pHeader->dwFlags = ConvertBytesToInteger_4_LE((LPBYTE)(&pHeader->dwFlags));
+    DirHeader.Flags = ConvertBytesToInteger_4_LE((LPBYTE)(&DirHeader.Flags));
 
     // Swap the offset table values
-    pHeader->dwPathTableOffset = ConvertBytesToInteger_4((LPBYTE)(&pHeader->dwPathTableOffset));
-    pHeader->dwPathTableSize   = ConvertBytesToInteger_4((LPBYTE)(&pHeader->dwPathTableSize));
-    pHeader->dwVfsTableOffset  = ConvertBytesToInteger_4((LPBYTE)(&pHeader->dwVfsTableOffset));
-    pHeader->dwVfsTableSize    = ConvertBytesToInteger_4((LPBYTE)(&pHeader->dwVfsTableSize));
-    pHeader->dwCftTableOffset  = ConvertBytesToInteger_4((LPBYTE)(&pHeader->dwCftTableOffset));
-    pHeader->dwCftTableSize    = ConvertBytesToInteger_4((LPBYTE)(&pHeader->dwCftTableSize));
-    pHeader->MaxDepth          = (USHORT)ConvertBytesToInteger_2((LPBYTE)(&pHeader->MaxDepth));
-    pHeader->dwEstTableOffset  = ConvertBytesToInteger_4((LPBYTE)(&pHeader->dwEstTableOffset));
-    pHeader->dwEstTableSize    = ConvertBytesToInteger_4((LPBYTE)(&pHeader->dwEstTableSize));
+    DirHeader.PathTableOffset = ConvertBytesToInteger_4((LPBYTE)(&DirHeader.PathTableOffset));
+    DirHeader.PathTableSize   = ConvertBytesToInteger_4((LPBYTE)(&DirHeader.PathTableSize));
+    DirHeader.VfsTableOffset  = ConvertBytesToInteger_4((LPBYTE)(&DirHeader.VfsTableOffset));
+    DirHeader.VfsTableSize    = ConvertBytesToInteger_4((LPBYTE)(&DirHeader.VfsTableSize));
+    DirHeader.CftTableOffset  = ConvertBytesToInteger_4((LPBYTE)(&DirHeader.CftTableOffset));
+    DirHeader.CftTableSize    = ConvertBytesToInteger_4((LPBYTE)(&DirHeader.CftTableSize));
+    DirHeader.MaxDepth        = (USHORT)ConvertBytesToInteger_2((LPBYTE)(&DirHeader.MaxDepth));
+    DirHeader.EstTableOffset  = ConvertBytesToInteger_4((LPBYTE)(&DirHeader.EstTableOffset));
+    DirHeader.EstTableSize    = ConvertBytesToInteger_4((LPBYTE)(&DirHeader.EstTableSize));
+
+    // Determine size of file table offsets
+    DirHeader.CftOffsSize = GetOffsetFieldSize(DirHeader.CftTableSize);
+    DirHeader.EstOffsSize = GetOffsetFieldSize(DirHeader.EstTableSize);
+
+    // Capture the path table
+//  DirHeader.pbPathFileTable = pbDirectory + DirHeader.PathTableOffset;
+//  DirHeader.pbPathTableEnd = pbDirectory + DirHeader.PathTableOffset + DirHeader.PathTableSize;
+//  if(DirHeader.pbPathTableEnd > pbDataEnd)
+//      return ERROR_BAD_FORMAT;
+
+    // Capture the VFS file table
+//  DirHeader.pbVfsFileTable = pbDirectory + DirHeader.VfsTableOffset;
+//  DirHeader.pbVfsTableEnd = pbDirectory + DirHeader.VfsTableOffset + DirHeader.VfsTableSize;
+//  if(DirHeader.pbVfsTableEnd > pbDataEnd)
+//      return ERROR_BAD_FORMAT;
+
+    // Capture the container file table
+//  DirHeader.pbCftFileTable = pbDirectory + DirHeader.CftTableOffset;
+//  DirHeader.pbCftTableEnd = pbDirectory + DirHeader.CftTableOffset + DirHeader.CftTableSize;
+//  if(DirHeader.pbCftTableEnd > pbDataEnd)
+//      return ERROR_BAD_FORMAT;
+
     return ERROR_SUCCESS;
 }
 
-static int CaptureCftSpanEntry(TRootHandler_TVFS * pRootHandler, PTVFS_SPAN_ENTRY pSpanEntry, DWORD dwCftOffset)
+static int CaptureVfsSpanEntries(TVFS_DIRECTORY_HEADER & DirHeader, PENCODED_KEY pEKey, PDWORD PtrSpanSize, DWORD dwVfsOffset)
 {
-    PTVFS_FILE_HEADER pHeader = &pRootHandler->Header;
+    LPBYTE pbVfsFileTable = DirHeader.pbDirectoryData + DirHeader.VfsTableOffset;
+    LPBYTE pbVfsFileEntry = pbVfsFileTable + dwVfsOffset;
+    LPBYTE pbVfsFileEnd = pbVfsFileTable + DirHeader.VfsTableSize;
     LPBYTE pbCftFileTable;
-    LPBYTE pbCftSpanEntry;
-    LPBYTE pbCftTableEnd;
-
-    // Get the start and end of the VFS table
-    pbCftFileTable = pRootHandler->pbRootFile + pRootHandler->Header.dwCftTableOffset;
-    pbCftTableEnd = pbCftFileTable + pRootHandler->Header.dwCftTableSize;
-
-    // Get the pointer into the VFS table
-    pbCftSpanEntry = pbCftFileTable + dwCftOffset;
-    if(!(pbCftFileTable <= pbCftSpanEntry && pbCftSpanEntry < pbCftTableEnd))
-        return ERROR_INVALID_PARAMETER;
-
-    // Capture the E-Key
-    if((pbCftSpanEntry + pHeader->EKeySize) > pbCftTableEnd)
-        return ERROR_BAD_FORMAT;
-    memcpy(pSpanEntry->EKey.Value, pbCftSpanEntry, pHeader->EKeySize);
-//  pbCftSpanEntry += pHeader->EKeySize;
-
-/*
-    // Capture the encoding size (compressed size)
-    if((pbCftSpanEntry + 4) > pbCftTableEnd)
-        return ERROR_BAD_FORMAT;
-    pSpanEntry->dwCompressedSize = ConvertBytesToInteger_4(pbCftSpanEntry);
-    pbCftSpanEntry += 4;
-
-    // Capture the offset to the E-spec table. This fiels is only there is write support is enabled
-    if(pHeader->dwFlags & TVFS_FLAG_WRITE_SUPPORT)
-    {
-        if((pbCftSpanEntry + pRootHandler->dwCftOffsSize) > pbCftTableEnd)
-            return ERROR_BAD_FORMAT;
-        pSpanEntry->dwESpecEntryOffset = ConvertBytesToInteger_4(pbCftSpanEntry);
-        pbCftSpanEntry += pRootHandler->dwCftOffsSize;
-    }
-
-    // Capture the content size (uncompressed size)
-    if((pbCftSpanEntry + 4) > pbCftTableEnd)
-        return ERROR_BAD_FORMAT;
-    pSpanEntry->dwUncompressedSize = ConvertBytesToInteger_4(pbCftSpanEntry);
-    pbCftSpanEntry += 4;
-
-    // Capture the C-Key for the file. Always there.
-    if(pHeader->dwFlags & TVFS_FLAG_INCLUDE_CKEY)
-    {
-        if((pbCftSpanEntry + 0x10) > pbCftTableEnd)
-            return ERROR_BAD_FORMAT;
-        memcpy(pSpanEntry->ContentKey, pbCftSpanEntry, 0x10);
-        pbCftSpanEntry += 0x10;
-    }
-
-    // Followed by the patch support:
-    // - (1 byte)  Number of patch records
-    // - (E bytes) The E-key of the base file. Number of bytes matches the configured size of stored E-keys.
-    // - (4 bytes) The C-size of the base file. Big endian.
-    // - The patch key. Number of bytes as specified in the header.
-    // - Size of the patch. 4 bytes, big endian.
-    // - The age of the entry (1 byte).
-*/
-
-    return ERROR_SUCCESS;
-}
-
-static int CaptureVfsSpanEntry(TRootHandler_TVFS * pRootHandler, PTVFS_SPAN_ENTRY pSpanEntry, LPBYTE pbVfsFileEntry, LPBYTE pbVfsTableEnd)
-{
+    LPBYTE pbCftFileEntry;
+    LPBYTE pbCftFileEnd;
+    LPBYTE pbTemp = NULL;
+    size_t ItemSize = sizeof(DWORD) + sizeof(DWORD) + DirHeader.CftOffsSize;
     DWORD dwCftOffset;
-
-    // Capture the file offset
-    if((pbVfsFileEntry + 4) >= pbVfsTableEnd)
-        return ERROR_BAD_FORMAT;
-    pSpanEntry->dwFileOffset = ConvertBytesToInteger_4(pbVfsFileEntry);
-    pbVfsFileEntry += 4;
-
-    // Capture the span length
-    if((pbVfsFileEntry + 4) >= pbVfsTableEnd)
-        return ERROR_BAD_FORMAT;
-    pSpanEntry->dwSpanSize = ConvertBytesToInteger_4(pbVfsFileEntry);
-    pbVfsFileEntry += 4;
-
-    // Capture the offset to the container file table
-    if((pbVfsFileEntry + pRootHandler->dwCftOffsSize) > pbVfsTableEnd)
-        return ERROR_BAD_FORMAT;
-    dwCftOffset = ConvertBytesToInteger_X(pbVfsFileEntry, pRootHandler->dwCftOffsSize);
-
-    // Capture the container file table entry
-    return CaptureCftSpanEntry(pRootHandler, pSpanEntry, dwCftOffset);
-}
-
-static int CaptureVfsSpanEntries(TRootHandler_TVFS * pRootHandler, PTVFS_FILE_ENTRY pFileEntry, DWORD dwVfsOffset)
-{
-    PTVFS_SPAN_ENTRY pSpanEntry;
-    LPBYTE pbVfsFileTable;
-    LPBYTE pbVfsSpanEntry;
-    LPBYTE pbVfsTableEnd;
     DWORD dwSpanCount;
+    DWORD dwSpanSize;
 
-    // Get the start and end of the VFS table
-    pbVfsFileTable = pRootHandler->pbRootFile + pRootHandler->Header.dwVfsTableOffset;
-    pbVfsTableEnd = pbVfsFileTable + pRootHandler->Header.dwVfsTableSize;
-
-    // Get the pointer into the VFS table
-    pbVfsSpanEntry = pbVfsFileTable + dwVfsOffset;
-    if(!(pbVfsFileTable <= pbVfsSpanEntry && pbVfsSpanEntry < pbVfsTableEnd))
+    // Get the number of span entries
+    if(!(pbVfsFileTable <= pbVfsFileEntry && pbVfsFileEntry <= pbVfsFileEnd))
         return ERROR_INVALID_PARAMETER;
+    dwSpanCount = *pbVfsFileEntry++;
 
     // 1 - 224 = valid file, 225-254 = other file, 255 = deleted file
     // We will ignore all files with unsupported span count
-    dwSpanCount = *pbVfsSpanEntry++;
     if(dwSpanCount == 0 || dwSpanCount > 224)
         return ERROR_BAD_FORMAT;
 
     // So far we've only saw entries with 1 span.
-    // Need to test files with multiple spans
+    // Need to test files with multiple spans. Ignore such files for now.
     assert(dwSpanCount == 1);
 
-    // Parse all VFS items.
-    for(DWORD i = 0; i < dwSpanCount; i++)
-    {
-        // Insert new span entry
-        pSpanEntry = (PTVFS_SPAN_ENTRY)Array_Insert(&pRootHandler->SpanList, NULL, 1);
-        if(pSpanEntry != NULL)
-        {
-            // Insert the offset of the first list in the span table
-            if(i == 0)
-            {
-                pFileEntry->dwSpanOffset = (DWORD)Array_IndexOf(&pRootHandler->SpanList, pSpanEntry);
-            }
+    // Capture the array of span items
+    if(CaptureArray_(pbVfsFileEntry, pbVfsFileEnd, &pbTemp, ItemSize, dwSpanCount) == NULL)
+        return ERROR_BAD_FORMAT;
 
-            // Capture the span entry
-            CaptureVfsSpanEntry(pRootHandler, pSpanEntry, pbVfsSpanEntry, pbVfsTableEnd);
-        }
-    }
+    //
+    // Structure of the span entry:
+    // (4bytes): Offset into the referenced file (big endian)
+    // (4bytes): Size of the span (big endian)
+    // (?bytes): Offset into Container File Table. Length depends on container file table size
+    //
 
-    // Save the span count and exit
-    pFileEntry->dwSpanCount = dwSpanCount;
+    // Get the offset to the Container File Table
+    dwCftOffset = ConvertBytesToInteger_X(pbVfsFileEntry + sizeof(DWORD) + sizeof(DWORD), DirHeader.CftOffsSize);
+    dwSpanSize = ConvertBytesToInteger_4(pbVfsFileEntry + sizeof(DWORD));
+
+    // Go to the Container File Table and fetch the EKey from there
+    pbCftFileTable = DirHeader.pbDirectoryData + DirHeader.CftTableOffset;
+    pbCftFileEntry = pbCftFileTable + dwCftOffset;
+    pbCftFileEnd = pbCftFileTable + DirHeader.CftTableSize;
+    if((pbCftFileEntry + DirHeader.EKeySize) > pbCftFileEnd)
+        return ERROR_BAD_FORMAT;
+
+    // Give the pointer to the EKey
+    memcpy(pEKey->Value, pbCftFileEntry, DirHeader.EKeySize);
+    PtrSpanSize[0] = dwSpanSize;
     return ERROR_SUCCESS;
 }
 
-static void CreateFileName(TRootHandler_TVFS * pRootHandler, PTVFS_FILE_ENTRY pFileEntry)
+static LPBYTE CapturePathEntry(TVFS_PATH_TABLE_ENTRY & PathEntry, LPBYTE pbPathTablePtr, LPBYTE pbPathTableEnd)
 {
-    PTVFS_FILE_ENTRY pParentEntry;
-    const char * szPathFragment = NULL;
-    char chBackslash = '\\';
+    size_t bHasTerminatingZero;
 
-    // Do we have parent directory?
-    if(pFileEntry->dwParentFolder != 0)
+    // We expect there to be a nonzero, and non-FF length
+    if(pbPathTablePtr[0] == 0 || pbPathTablePtr[0] == 0xFF)
+        return NULL;
+    if((pbPathTablePtr + 1 + pbPathTablePtr[0] + 1 + sizeof(DWORD)) > pbPathTableEnd)
+        return NULL;
+
+    // Fill the path entry
+    PathEntry.pbNamePtr = pbPathTablePtr + 1;
+    PathEntry.pbNameEnd = pbPathTablePtr + 1 + pbPathTablePtr[0];
+
+    // Extra '\0' characters are allowed at the end of the name
+    bHasTerminatingZero = (PathEntry.pbNameEnd[0] == 0x00) ? 1 : 0;
+        
+    // Check the proper terminator
+    if(PathEntry.pbNameEnd[bHasTerminatingZero] != 0xFF)
+        return NULL;
+
+    // Fill the node value
+    PathEntry.NodeValue = ConvertBytesToInteger_4(PathEntry.pbNameEnd + bHasTerminatingZero + 1);
+    return PathEntry.pbNameEnd + bHasTerminatingZero + 1 + sizeof(DWORD);
+}
+
+// This function verifies whether a file is actually a sub-directory.
+// If yes, it contains just another "TVFS" virtual file system, just like the ROOT file.
+static int IsSubDirectory(TRootHandler_TVFS * pRootHandler, TVFS_DIRECTORY_HEADER & DirHeader, TVFS_DIRECTORY_HEADER & SubHeader, ENCODED_KEY & EKey, DWORD dwFileSize)
+{
+    QUERY_KEY QueryKey;
+    LPBYTE pbFileData = NULL;
+    HANDLE hFile = NULL;
+    DWORD cbBytesRead = 0;
+    int nError = ERROR_BAD_FORMAT;
+
+    // Verify the file size. We can do it before opening the file, thus speeding thins up a bit
+    if(TVFS_MIN_FILE_SIZE < dwFileSize && dwFileSize < TVFS_MAX_FILE_SIZE)
     {
-        // Append the parent entry first
-        pParentEntry = (PTVFS_FILE_ENTRY)Array_ItemAt(&pRootHandler->FileTable, pFileEntry->dwParentFolder);
-        CreateFileName(pRootHandler, pParentEntry);
+        // Open the file by encoded key
+        QueryKey.pbData = EKey.Value;
+        QueryKey.cbData = DirHeader.EKeySize;
+        if(CascOpenFileByEKey((HANDLE)pRootHandler->hs, &QueryKey, dwFileSize, &hFile))
+        {
+            // Allocate space for eventual entire file.
+            pbFileData = CASC_ALLOC(BYTE, dwFileSize);
+            if(pbFileData != NULL)
+            {
+                // Read enough bytes to parse the header
+                CascReadFile(hFile, pbFileData, TVFS_MIN_FILE_SIZE, &cbBytesRead);
+                if(cbBytesRead == TVFS_MIN_FILE_SIZE)
+                {
+                    // Capture the file folder. This also serves as test
+                    nError = CaptureDirectoryHeader(SubHeader, pbFileData, pbFileData + dwFileSize);
+                    if(nError == ERROR_SUCCESS && dwFileSize > TVFS_MIN_FILE_SIZE)
+                    {
+                        // Load the rest of the file
+                        CascReadFile(hFile, pbFileData + TVFS_MIN_FILE_SIZE, dwFileSize - TVFS_MIN_FILE_SIZE, &cbBytesRead);
+                        if(cbBytesRead != (dwFileSize - TVFS_MIN_FILE_SIZE))
+                        {
+                            nError = ERROR_BAD_FORMAT;
+                        }
+                    }
+                }
 
-        // Append the backslash
-        Array_Insert(&pRootHandler->PathBuffer, &chBackslash, 1);
+                // If bad format, we need to free the data
+                if(nError != ERROR_SUCCESS)
+                {
+                    memset(&SubHeader, 0, sizeof(TVFS_DIRECTORY_HEADER));
+                    CASC_FREE(pbFileData);
+                }
+            }
+        }
+
+        // Close the file handle
+        CascCloseFile(hFile);
     }
 
-    // Append the current length
-    szPathFragment = (const char *)Array_ItemAt(&pRootHandler->NameList, pFileEntry->dwNameOffset);
-    Array_Insert(&pRootHandler->PathBuffer, szPathFragment, strlen(szPathFragment));
+    return nError;
 }
 
 static DWORD ParsePathFileTable(
     TRootHandler_TVFS * pRootHandler,
-    PARSE_FILE_CB PfnFolderCB,
-    PARSE_FILE_CB PfnFileCB,
-    LPBYTE pbPathFileTable,
+    TVFS_DIRECTORY_HEADER & DirHeader,
+    PATH_BUFFER & PathBuffer,
+    LPBYTE pbPathTablePtr,
     LPBYTE pbPathTableEnd)
 {
-    DWORD dwSaveCurrentFolder = pRootHandler->dwCurrentFolder;
-    DWORD dwSavePathFragment = pRootHandler->dwPathFragment;
-    DWORD dwNodeValue;
+    TVFS_DIRECTORY_HEADER SubHeader;
+    TVFS_PATH_TABLE_ENTRY PathEntry;
+    ENCODED_KEY EKey;
+    char * szSavePathPtr = PathBuffer.szPtr;
+    DWORD dwSpanSize = 0;
     int nError;
 
+    // Prepare the EKey structure to be filled with zeros
+    memset(&EKey, 0, sizeof(ENCODED_KEY));
+
     // Parse the file table
-    while(pbPathFileTable < pbPathTableEnd)
+    while(pbPathTablePtr < pbPathTableEnd)
     {
-        // Set the default name begin and end
-        char * szNamePtr = (char *)pbPathFileTable;
-        char * szNameEnd = (char *)pbPathFileTable;
+        //
+        // Structure of the path table entry:
+        // (1byte) File name length
+        // (?byte) File name
+        // (1byte) Name terminator (0xFF)
+        // (4byte) Node Value
+        //
 
-        // The path fragment is encoded as length+name (length = 1 byte). 0xFF means end of the list
-        if(pbPathFileTable < pbPathTableEnd && pbPathFileTable[0] != 0xFF)
+        pbPathTablePtr = CapturePathEntry(PathEntry, pbPathTablePtr, pbPathTableEnd);
+        if(pbPathTablePtr == NULL)
+            return ERROR_BAD_FORMAT;
+
+        // Append the node name to the total path. Also add backslash, if it's a folder
+        PathBuffer_AppendNode(PathBuffer, PathEntry);
+
+        // If the TVFS_FOLDER_NODE is set, then the path node is a directory,
+        // with its data immediately following the path node. Lower 31 bits of NodeValue
+        // contain the length of the directory (including the NodeValue!)
+        if(PathEntry.NodeValue & TVFS_FOLDER_NODE)
         {
-            szNamePtr = (char *)(pbPathFileTable + 1);
-            pbPathFileTable = pbPathFileTable + pbPathFileTable[0] + 1;
-            szNameEnd = (char *)(pbPathFileTable);
-        }
+            LPBYTE pbDirectoryEnd = pbPathTablePtr + (PathEntry.NodeValue & TVFS_FOLDER_SIZE_MASK) - sizeof(DWORD);
 
-        // There must be 0xFF at the end of the name. Or at the very beginning (means end of the list)
-        if(pbPathFileTable >= pbPathTableEnd || pbPathFileTable[0] != 0xFF)
-            return ERROR_FILE_CORRUPT;
-        pbPathFileTable++;
+            // Check for the minimum folder size
+            assert((PathEntry.NodeValue & TVFS_FOLDER_SIZE_MASK) >= sizeof(DWORD));
 
-        // Load the node value
-        if((pbPathFileTable + 4) > pbPathTableEnd)
-            return ERROR_FILE_CORRUPT;
-        dwNodeValue = ConvertBytesToInteger_4(pbPathFileTable);
-
-        // Is it an inner node (with sub-nodes)?
-        if(dwNodeValue & TVFS_FOLDER_NODE)
-        {
-            DWORD dwFolderDataSize = (dwNodeValue & TVFS_FOLDER_SIZE_MASK);
-
-            // Call the directory callback, if any
-            if(PfnFolderCB != NULL)
-            {
-                nError = PfnFolderCB(pRootHandler, szNamePtr, szNameEnd, dwNodeValue);
-                if(nError != ERROR_SUCCESS)
-                    return nError;
-            }
-
-            // Recursively call the 
-            nError = ParsePathFileTable(pRootHandler, PfnFolderCB, PfnFileCB, pbPathFileTable + 4, pbPathFileTable + dwFolderDataSize);
+            // Recursively call the folder parser on the same file
+            nError = ParsePathFileTable(pRootHandler, DirHeader, PathBuffer, pbPathTablePtr, pbDirectoryEnd);
             if(nError != ERROR_SUCCESS)
                 return nError;
 
-            // Restore the current folder and skip the directory
-            pRootHandler->dwCurrentFolder = dwSaveCurrentFolder;
-            pRootHandler->dwPathFragment = dwSavePathFragment;
-            pbPathFileTable += dwFolderDataSize;
+            // Skip the directory data
+            pbPathTablePtr = pbDirectoryEnd;
         }
         else
         {
-            // Do we have a file callback?
-            if(PfnFileCB != NULL)
-            {
-                nError = PfnFileCB(pRootHandler, szNamePtr, szNameEnd, dwNodeValue);
-                if(nError != ERROR_SUCCESS)
-                    return nError;
-            }
+            // Capture the VFS and Container Table Entry in order to get the file EKey
+            nError = CaptureVfsSpanEntries(DirHeader, &EKey, &dwSpanSize, PathEntry.NodeValue);
+            if(nError != ERROR_SUCCESS)
+                return nError;
 
-            // Move to the next path table entry
-            pbPathFileTable += 4;
+            // We need to check whether this is another subdirectory.
+            if(IsSubDirectory(pRootHandler, DirHeader, SubHeader, EKey, dwSpanSize) == ERROR_SUCCESS)
+            {
+                // Add one extra backslash to the node
+                PathBuffer_AddBackslash(PathBuffer);
+
+                // Insert the file to the file tree
+                FileTree_Insert(&pRootHandler->FileTree, &EKey, PathBuffer.szBegin, dwSpanSize);
+
+                ParseDirectoryData(pRootHandler, PathBuffer, SubHeader);
+                CASC_FREE(SubHeader.pbDirectoryData);
+            }
+            else
+            {
+                // Insert the file to the file tree
+                FileTree_Insert(&pRootHandler->FileTree, &EKey, PathBuffer.szBegin, dwSpanSize);
+            }
         }
+
+        // Reset the position of the path buffer
+        PathBuffer.szPtr = szSavePathPtr;
     }
 
     // Return the total number of entries
     return ERROR_SUCCESS;
 }
 
-static int ParseCB_LoadPathItem(TRootHandler_TVFS * pRootHandler, const char * szNamePtr, const char * szNameEnd, DWORD dwNodeValue)
+static int ParseDirectoryData(TRootHandler_TVFS * pRootHandler, PATH_BUFFER & PathBuffer, TVFS_DIRECTORY_HEADER & DirHeader)
 {
-    PTVFS_FILE_ENTRY pFileEntry;
-    const char * szFileName = NULL;
-    DWORD dwCurrentFolder = pRootHandler->dwCurrentFolder;
-    char chBackslash = '\\';
-    char chZeroChar = 0;
+    LPBYTE pbRootDirectory = DirHeader.pbDirectoryData + DirHeader.PathTableOffset;
+    LPBYTE pbRootDirPtr = pbRootDirectory;
+    LPBYTE pbRootDirEnd = pbRootDirPtr + DirHeader.PathTableSize;
+    DWORD dwNodeValue = 0;
 
-    // Ignore anything that has no name
-    if(szNameEnd > szNamePtr)
+    // Most usually, there is a root directory in the folder
+    if((pbRootDirPtr + 1 + sizeof(DWORD)) < pbRootDirEnd)
     {
-        // Insert new item to the linear file table
-        pFileEntry = (PTVFS_FILE_ENTRY)Array_Insert(&pRootHandler->FileTable, NULL, 1);
-        if(pFileEntry == NULL)
-            return ERROR_NOT_ENOUGH_MEMORY;
-        memset(pFileEntry, 0, sizeof(TVFS_FILE_ENTRY));
+        //
+        // The structure of the root directory
+        // -----------------------------------
+        // 1byte   0xFF
+        // 4bytes  NodeValue (BigEndian). The most significant bit is set
+        //          - Lower 31 bits contain length of the directory data, including NodeValue
+        //
 
-        // Insert the path fragment to the end od the current path
-        pRootHandler->PathBuffer.ItemCount = pRootHandler->dwPathFragment;
-        szFileName = (const char *)Array_Insert(&pRootHandler->PathBuffer, szNamePtr, (szNameEnd - szNamePtr));
-
-        // File: Insert the name to the path merger and insert the entry to the map
-        if(!(dwNodeValue & TVFS_FOLDER_NODE))
+        if(pbRootDirPtr[0] == 0xFF)
         {
-            // Terminate the name with zero and calculate hash
-            Array_Insert(&pRootHandler->PathBuffer, &chZeroChar, 1);
-            pFileEntry->FileNameHash = CalcFileNameHash(szFileName);
-        }
-        else
-        {
-            // Folder: Append '\\' after the name
-            Array_Insert(&pRootHandler->PathBuffer, &chBackslash, 1);
+            // Get the NodeValue and check its highest bit
+            if(CaptureInteger32_BE(pbRootDirPtr + 1, pbRootDirEnd, &dwNodeValue) == NULL || (dwNodeValue & TVFS_FOLDER_NODE) == 0)
+                return ERROR_BAD_FORMAT;
+            
+            // Get the range of the root directory
+            pbRootDirEnd = pbRootDirPtr + 1 + (dwNodeValue & TVFS_FOLDER_SIZE_MASK);
+            pbRootDirPtr = pbRootDirPtr + 1 + sizeof(DWORD);
 
-            // Update the parent folder index
-            pRootHandler->dwCurrentFolder = (DWORD)Array_IndexOf(&pRootHandler->FileTable, pFileEntry);
-        }
-
-        // Set the parent folder
-        pFileEntry->dwParentFolder = dwCurrentFolder;
-
-        // Insert the plain name to the name list and remember the name offset
-        szFileName = (const char *)Array_Insert(&pRootHandler->NameList, szNamePtr, (szNameEnd - szNamePtr));
-        Array_Insert(&pRootHandler->NameList, &chZeroChar, 1);
-        pFileEntry->dwNameOffset = (DWORD)Array_IndexOf(&pRootHandler->NameList, szFileName);
-
-        // TODO: If this item is a file, we need to get the list of spans
-        if(!(dwNodeValue & TVFS_FOLDER_NODE))
-        {
-            // If this fails, don't stop the loading process, but ignore this entry
-            CaptureVfsSpanEntries(pRootHandler, pFileEntry, dwNodeValue);
-        }
-    }
-    return ERROR_SUCCESS;
-}
-
-static int CapturePathTables(TRootHandler_TVFS * pRootHandler, LPBYTE pbRootFile, LPBYTE pbRootEnd)
-{
-    PTVFS_FILE_HEADER pHeader = &pRootHandler->Header;    
-    PTVFS_FILE_ENTRY pEntry;
-    LPBYTE pbPathFileTable;
-    LPBYTE pbPathTableEnd;
-    LPBYTE pbVfsFileTable;
-    LPBYTE pbVfsTableEnd;
-    LPBYTE pbCftFileTable;
-    LPBYTE pbCftTableEnd;
-    char OneByteZero = 0;
-    int nError;
-
-    // Capture the path table
-    pbPathFileTable = pbRootFile + pHeader->dwPathTableOffset;
-    pbPathTableEnd = pbPathFileTable + pHeader->dwPathTableSize;
-    if(pbPathTableEnd > pbRootEnd)
-        return ERROR_BAD_FORMAT;
-
-    // Capture the VFS file table
-    pbVfsFileTable = pbRootFile + pHeader->dwVfsTableOffset;
-    pbVfsTableEnd = pbVfsFileTable + pHeader->dwVfsTableSize;
-    if(pbVfsTableEnd > pbRootEnd)
-        return ERROR_BAD_FORMAT;
-
-    // Capture the container file table
-    pbCftFileTable = pbRootFile + pHeader->dwCftTableOffset;
-    pbCftTableEnd = pbCftFileTable + pHeader->dwCftTableSize;
-    if(pbCftTableEnd > pbRootEnd)
-        return ERROR_BAD_FORMAT;
-
-    // Allocate global buffer for file names
-    nError = Array_Create(&pRootHandler->NameList, char, 0x01000000);
-    if(nError != ERROR_SUCCESS)
-        return nError;
-
-    // Allocate buffer for creating VFS entry
-    nError = Array_Create(&pRootHandler->SpanList, TVFS_SPAN_ENTRY, 0x10000);
-    if(nError != ERROR_SUCCESS)
-        return nError;
-
-    // Allocate the global linear file table
-    nError = Array_Create(&pRootHandler->FileTable, TVFS_FILE_ENTRY, 0x100);
-    if(nError != ERROR_SUCCESS)
-        return nError;
-
-    // Allocate buffer for merging file name
-    nError = Array_Create(&pRootHandler->PathBuffer, char, 0x10000);
-    if(nError != ERROR_SUCCESS)
-        return nError;
-
-    // Insert dummy item at the begin of the file list
-    Array_Insert(&pRootHandler->NameList, &OneByteZero, 1);
-    pEntry = (PTVFS_FILE_ENTRY)Array_Insert(&pRootHandler->FileTable, NULL, 1);
-    if(pEntry != NULL)
-        memset(pEntry, 0, sizeof(TVFS_FILE_ENTRY));
-
-    // Prepare the pointer to VFS file table for parsing
-    pRootHandler->pbRootFile = pbRootFile;
-    pRootHandler->pbRootFileEnd = pbRootEnd;
-    nError = ParsePathFileTable(pRootHandler, ParseCB_LoadPathItem, ParseCB_LoadPathItem, pbPathFileTable, pbPathTableEnd);
-
-    // Clear variables
-    pRootHandler->pbRootFile = NULL;
-    pRootHandler->pbRootFileEnd = NULL;
-    pRootHandler->dwPathFragment = 0;
-    return nError;
-}
-
-static int RebuildFileMap(TRootHandler_TVFS * pRootHandler)
-{
-    PTVFS_FILE_ENTRY pFileEntry;
-    PCASC_MAP pRootMap = pRootHandler->pRootMap;
-    size_t dwTotalFileCount;
-    int nError = ERROR_SUCCESS;
-
-    // Free the existing file map
-    if(pRootMap != NULL)
-        Map_Free(pRootMap);
-    pRootMap = NULL;
-
-    // Retrieve the number of files in the map
-    dwTotalFileCount = pRootHandler->FileTable.ItemCount;
-    if(dwTotalFileCount != NULL)
-    {
-        // Create map of FileName -> TVFS_FILE_ENTRY
-        pRootMap = Map_Create(dwTotalFileCount + CASC_EXTRA_FILES, sizeof(ULONGLONG), FIELD_OFFSET(TVFS_FILE_ENTRY, FileNameHash));
-        if(pRootMap != NULL)
-        {
-            // Parse the entire file table and put items to the map
-            for(DWORD i = 0; i < dwTotalFileCount; i++)
-            {
-                pFileEntry = (PTVFS_FILE_ENTRY)Array_ItemAt(&pRootHandler->FileTable, i);
-                if(pFileEntry != NULL && pFileEntry->FileNameHash != 0 && pFileEntry->dwSpanCount != 0)
-                {
-                    Map_InsertObject(pRootMap, pFileEntry, &pFileEntry->FileNameHash);
-                }
-            }
-        }
-        else
-        {
-            nError = ERROR_NOT_ENOUGH_MEMORY;
+            // Check the directory
+            if(pbRootDirEnd > (pbRootDirectory + DirHeader.PathTableSize))
+                return ERROR_BAD_FORMAT;
         }
     }
 
-    // Store the new map in the root handler
-    pRootHandler->pRootMap = pRootMap;
-    return nError;
-}
-
-//-----------------------------------------------------------------------------
-// Implementation of TVFS root file
-
-static int TVFS_Insert(TRootHandler_TVFS * pRootHandler, const char * szFileName, LPBYTE pbEKey)
-{
-    PTVFS_FILE_ENTRY pFileEntry;
-    PTVFS_SPAN_ENTRY pSpanEntry;
-    const char * szPlainName;
-    char * ItemArray = pRootHandler->FileTable.ItemArray;
-    size_t nLength;
-
-    // Insert the entry to the file table
-    pFileEntry = (PTVFS_FILE_ENTRY)Array_Insert(&pRootHandler->FileTable, NULL, 1);
-    if(pFileEntry != NULL)
-    {
-        // Reset the entry
-        memset(pFileEntry, 0, sizeof(TVFS_FILE_ENTRY));
-
-        // Set the file name hash
-        pFileEntry->FileNameHash = CalcFileNameHash(szFileName);
-
-        // Insert the name to the name list
-        nLength = strlen(szFileName);
-        szPlainName = (const char *)Array_Insert(&pRootHandler->NameList, szFileName, nLength+1);
-        if(szPlainName != NULL)
-            pFileEntry->dwNameOffset = (DWORD)Array_IndexOf(&pRootHandler->NameList, szPlainName);
-
-        // Insert the file span
-        pSpanEntry = (PTVFS_SPAN_ENTRY)Array_Insert(&pRootHandler->SpanList, NULL, 1);
-        if(pSpanEntry != NULL)
-        {
-            // Set the EKey of the span entry
-            memcpy(pSpanEntry->EKey.Value, pbEKey, MD5_HASH_SIZE);
-
-            // Set the span offset and count
-            pFileEntry->dwSpanOffset = (DWORD)Array_IndexOf(&pRootHandler->SpanList, pSpanEntry);
-            pFileEntry->dwSpanCount = 1;
-
-            // Insert the item to the map
-            Map_InsertObject(pRootHandler->pRootMap, pFileEntry, &pFileEntry->FileNameHash);
-        }
-
-        // Do we need to rebuild the complete map?
-        if(pRootHandler->FileTable.ItemArray != ItemArray)
-            RebuildFileMap(pRootHandler);
-        return ERROR_SUCCESS;
-    }
-
-    return ERROR_NOT_ENOUGH_MEMORY;
-}
-
-static LPBYTE TVFS_Search(TRootHandler_TVFS * pRootHandler, TCascSearch * pSearch)
-{
-    PTVFS_FILE_ENTRY pFileEntry;
-    PTVFS_SPAN_ENTRY pSpanEntry;
-    size_t nToCopy;
-
-    // Keep searching until there is something
-    while(pSearch->IndexLevel1 < pRootHandler->FileTable.ItemCount)
-    {
-        // Retrieve the file entry
-        pFileEntry = (PTVFS_FILE_ENTRY)Array_ItemAt(&pRootHandler->FileTable, pSearch->IndexLevel1);
-        if(pFileEntry == NULL)
-            return NULL;
-
-        // Move to the next one
-        pSearch->IndexLevel1++;
-
-        // Ignore empty entries
-        if(pFileEntry->dwSpanCount != 0)
-        {
-            // Create the full path name
-            pRootHandler->PathBuffer.ItemCount = 0;
-            CreateFileName(pRootHandler, pFileEntry);
-
-            // Copy the name to the search array
-            nToCopy = min(MAX_PATH, pRootHandler->PathBuffer.ItemCount);
-            strncpy(pSearch->szFileName, pRootHandler->PathBuffer.ItemArray, nToCopy);
-            pSearch->szFileName[nToCopy] = 0;
-
-            // Retrieve the first span entry
-            pSpanEntry = (PTVFS_SPAN_ENTRY)Array_ItemAt(&pRootHandler->SpanList, pFileEntry->dwSpanOffset);
-            if(pSpanEntry != NULL)
-            {
-                // Return the EKey key
-                return pSpanEntry->EKey.Value;
-            }
-        }
-    }
-
-    return NULL;
-}
-
-static void TVFS_EndSearch(TRootHandler_TVFS * /* pRootHandler */, TCascSearch * /* pSearch */)
-{
-    // Do nothing here
-}
-
-static LPBYTE TVFS_GetKey(TRootHandler_TVFS * pRootHandler, const char * szFileName)
-{
-    PTVFS_FILE_ENTRY pFileEntry;
-    PTVFS_SPAN_ENTRY pSpanEntry;
-    ULONGLONG FileNameHash = CalcFileNameHash(szFileName);
-
-    // Find the file in the name table
-    pFileEntry = (PTVFS_FILE_ENTRY)Map_FindObject(pRootHandler->pRootMap, &FileNameHash, NULL);
-    if(pFileEntry != NULL)
-    {
-        // Retrieve the span entry
-        pSpanEntry = (PTVFS_SPAN_ENTRY)Array_ItemAt(&pRootHandler->SpanList, pFileEntry->dwSpanOffset);
-        if(pSpanEntry != NULL)
-        {
-            // Give the CKey/EKey
-            return pSpanEntry->EKey.Value;            
-        }
-    }
-
-    // File not there, sorry
-    return NULL;
-}
-
-static DWORD TVFS_GetFileId(TRootHandler_TVFS * /* pRootHandler */, const char * /* szFileName */)
-{
-    // Not implemented for TVFS
-    return 0;
-}
-
-static void TVFS_Close(TRootHandler_TVFS * pRootHandler)
-{
-    if(pRootHandler != NULL)
-    {
-        // Free the file map
-        Map_Free(pRootHandler->pRootMap);
-
-        // Free the array of the file entries and file names
-        Array_Free(&pRootHandler->PathBuffer);
-        Array_Free(&pRootHandler->FileTable);
-        Array_Free(&pRootHandler->NameList);
-        Array_Free(&pRootHandler->SpanList);
-
-        // Free the root file itself
-        CASC_FREE(pRootHandler);
-    }
+    // Now go parse the path file table
+    return ParsePathFileTable(pRootHandler, DirHeader, PathBuffer, pbRootDirPtr, pbRootDirEnd);
 }
 
 //-----------------------------------------------------------------------------
@@ -712,40 +493,41 @@ static void TVFS_Close(TRootHandler_TVFS * pRootHandler)
 int RootHandler_CreateTVFS(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile)
 {
     TRootHandler_TVFS * pRootHandler;
-    LPBYTE pbRootEnd = pbRootFile + cbRootFile;
+    TVFS_DIRECTORY_HEADER RootHeader;
+    PATH_BUFFER PathBuffer;
+    char szPathBuffer[MAX_PATH];
     int nError;
 
-    // Allocate the root handler object
-    hs->pRootHandler = pRootHandler = CASC_ALLOC(TRootHandler_TVFS, 1);
-    if(pRootHandler == NULL)
-        return ERROR_NOT_ENOUGH_MEMORY;
+    // Capture the entire root directory
+    nError = CaptureDirectoryHeader(RootHeader, pbRootFile, pbRootFile + cbRootFile);
+    if(nError == ERROR_SUCCESS)
+    {
+        // Allocate the root handler object
+        hs->pRootHandler = pRootHandler = CASC_ALLOC(TRootHandler_TVFS, 1);
+        if(pRootHandler == NULL)
+            return ERROR_NOT_ENOUGH_MEMORY;
 
-    // Fill-in the handler functions
-    memset(pRootHandler, 0, sizeof(TRootHandler_TVFS));
-    pRootHandler->Insert      = (ROOT_INSERT)TVFS_Insert;
-    pRootHandler->Search      = (ROOT_SEARCH)TVFS_Search;
-    pRootHandler->EndSearch   = (ROOT_ENDSEARCH)TVFS_EndSearch;
-    pRootHandler->GetKey      = (ROOT_GETKEY)TVFS_GetKey;
-    pRootHandler->Close       = (ROOT_CLOSE)TVFS_Close;
-    pRootHandler->GetFileId   = (ROOT_GETFILEID)TVFS_GetFileId;
+        // Fill-in the handler functions
+        InitRootHandler_FileTree(pRootHandler, sizeof(TRootHandler_TVFS));
 
-    // We have file names. We return EKeys, not CKeys
-    pRootHandler->dwRootFlags |= (ROOT_FLAG_HAS_NAMES | ROOT_FLAG_USES_EKEY | ROOT_FLAG_DONT_SEARCH_CKEY);
+        // Allocate the generic file tree
+        nError = FileTree_Create(&pRootHandler->FileTree, FTREE_FLAG_USE_FILE_SIZE);
+        if(nError == ERROR_SUCCESS)
+        {
+            // We have file names. We return EKeys, not CKeys
+            pRootHandler->dwRootFlags |= (ROOT_FLAG_HAS_NAMES | ROOT_FLAG_USES_EKEY | ROOT_FLAG_DONT_SEARCH_CKEY);
+            pRootHandler->hs = hs;
 
-    // Check and capture the TVFS header
-    nError = CaptureFileHeader(&pRootHandler->Header, pbRootFile, cbRootFile);
-    if(nError != ERROR_SUCCESS)
-        return nError;
+            // Initialize the path buffer
+            memset(szPathBuffer, 0, sizeof(szPathBuffer));
+            PathBuffer.szBegin =
+            PathBuffer.szPtr = szPathBuffer;
+            PathBuffer.szEnd = szPathBuffer + MAX_PATH;
 
-    // Set size of "container file table offset".
-    pRootHandler->dwCftOffsSize = GetOffsetFieldSize(pRootHandler->Header.dwCftTableSize);
-    pRootHandler->dwEstOffsSize = GetOffsetFieldSize(pRootHandler->Header.dwEstTableSize);
+            // Parse the entire directory data
+            nError = ParseDirectoryData(pRootHandler, PathBuffer, RootHeader);
+        }
+    }
 
-    // Load the path table into the root handler
-    nError = CapturePathTables(pRootHandler, pbRootFile, pbRootEnd);
-    if(nError != ERROR_SUCCESS)
-        return nError;
-
-    // Build the file map of FileName -> TVFS_FILE_ENTRY
-    return RebuildFileMap(pRootHandler);
+    return nError;
 }

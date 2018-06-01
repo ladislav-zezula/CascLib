@@ -59,7 +59,7 @@ static int FileTreeHandler_Insert(
 {
     void * pItem;
 
-    pItem = FileTree_Insert(&pRootHandler->FileTree, (PCONTENT_KEY)pbCKey, szFileName, CASC_INVALID_ID);
+    pItem = FileTree_Insert(&pRootHandler->FileTree, (PCONTENT_KEY)pbCKey, szFileName);
     return (pItem != NULL) ? ERROR_SUCCESS : ERROR_CAN_NOT_COMPLETE;
 }
 
@@ -80,7 +80,10 @@ static LPBYTE FileTreeHandler_Search(TRootHandler_Text * pRootHandler, TCascSear
         {
             // Check the wildcard
             if (CheckWildCard(pSearch->szFileName, pSearch->szMask))
+            {
+                FileTree_GetFileSize(&pRootHandler->FileTree, pFileNode, &pSearch->dwFileSize);
                 return pFileNode->CKey.Value;
+            }
         }
     }
 
@@ -93,12 +96,17 @@ static void FileTreeHandler_EndSearch(TRootHandler_Text * /* pRootHandler */, TC
     // Do nothing
 }
 
-static LPBYTE FileTreeHandler_GetKey(TRootHandler_Text * pRootHandler, const char * szFileName)
+static LPBYTE FileTreeHandler_GetKey(TRootHandler_Text * pRootHandler, const char * szFileName, PDWORD PtrFileSize)
 {
     PCASC_FILE_NODE pFileNode;
 
     pFileNode = (PCASC_FILE_NODE)FileTree_Find(&pRootHandler->FileTree, szFileName);
-    return (pFileNode != NULL) ? pFileNode->CKey.Value : NULL;
+    if(pFileNode == NULL)
+        return NULL;
+
+    // Give the information
+    FileTree_GetFileSize(&pRootHandler->FileTree, pFileNode, PtrFileSize);
+    return pFileNode->CKey.Value;
 }
 
 static DWORD FileTreeHandler_GetFileId(TRootHandler_Text * /* pRootHandler */, const char * /* szFileName */)
@@ -134,7 +142,7 @@ static void TestFileMap(LPBYTE pbRootFile, DWORD cbRootFile)
     pvListFile = ListFile_FromBuffer(pbRootFile, cbRootFile);
     if(pvListFile != NULL)
     {
-        if(FileTree_Create(&FileTree, sizeof(CASC_FILE_NODE)) == ERROR_SUCCESS)
+        if(FileTree_Create(&FileTree) == ERROR_SUCCESS)
         {
             fp = fopen("E:\\root_dump1.txt", "wt");
             if(fp != NULL)

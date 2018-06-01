@@ -3103,7 +3103,7 @@ static DWORD MndxHandler_GetFileId(TRootHandler_MNDX * /* pRootHandler */, const
   return 0;
 }
 
-static LPBYTE MndxHandler_GetKey(TRootHandler_MNDX * pRootHandler, const char * szFileName)
+static LPBYTE MndxHandler_GetKey(TRootHandler_MNDX * pRootHandler, const char * szFileName, PDWORD /* PtrFileSize */)
 {
     PCASC_ROOT_ENTRY_MNDX pRootEntry = NULL;
     PCASC_MNDX_PACKAGE pPackage;

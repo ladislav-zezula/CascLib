@@ -48,7 +48,8 @@ typedef void (*ROOT_ENDSEARCH)(
 
 typedef LPBYTE (*ROOT_GETKEY)(
     struct TRootHandler * pRootHandler,             // Pointer to an initialized root handler
-    const char * szFileName                         // Pointer to the name of a file
+    const char * szFileName,                        // Pointer to the name of a file
+    PDWORD PtrFileSize                              // The root handler may maintain file size
     );
 
 typedef void (*ROOT_DUMP)(
@@ -88,7 +89,7 @@ struct TRootHandler
 int    RootHandler_Insert(TRootHandler * pRootHandler, const char * szFileName, LPBYTE pbQueryKey);
 LPBYTE RootHandler_Search(TRootHandler * pRootHandler, struct _TCascSearch * pSearch);
 void   RootHandler_EndSearch(TRootHandler * pRootHandler, struct _TCascSearch * pSearch);
-LPBYTE RootHandler_GetKey(TRootHandler * pRootHandler, const char * szFileName);
+LPBYTE RootHandler_GetKey(TRootHandler * pRootHandler, const char * szFileName, PDWORD PtrFileSize);
 void   RootHandler_Dump(struct _TCascStorage * hs, LPBYTE pbRootHandler, DWORD cbRootHandler, const TCHAR * szNameFormat, const TCHAR * szListFile, int nDumpLevel);
 void   RootHandler_Close(TRootHandler * pRootHandler);
 DWORD  RootHandler_GetFileId(TRootHandler * pRootHandler, const char * szFileName);

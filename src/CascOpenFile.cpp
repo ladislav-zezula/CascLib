@@ -32,10 +32,10 @@ PCASC_EKEY_ENTRY FindEKeyEntry(TCascStorage * hs, PQUERY_KEY pEKey)
     return (PCASC_EKEY_ENTRY)Map_FindObject(hs->pEKeyEntryMap, pEKey->pbData, NULL);
 }
 
-static TCascFile * CreateFileHandle(TCascStorage * hs, PCASC_EKEY_ENTRY pEKeyEntry)
+static TCascFile * CreateFileHandle(TCascStorage * hs, PCASC_EKEY_ENTRY pEKeyEntry, DWORD dwContentSize)
 {
+    ULONGLONG ArchiveAndOffset = ConvertBytesToInteger_5(pEKeyEntry->ArchiveAndOffset);
     ULONGLONG FileOffsMask = ((ULONGLONG)1 << hs->IndexFile[0].FileOffsetBits) - 1;
-    ULONGLONG FileOffset = ConvertBytesToInteger_5(pEKeyEntry->FileOffsetBE);
     TCascFile * hf;
 
     // Allocate the CASC file structure
@@ -44,18 +44,16 @@ static TCascFile * CreateFileHandle(TCascStorage * hs, PCASC_EKEY_ENTRY pEKeyEnt
     {
         // Initialize the structure
         memset(hf, 0, sizeof(TCascFile));
-        hf->ArchiveIndex = (DWORD)(FileOffset >> hs->IndexFile[0].FileOffsetBits);
-        hf->HeaderOffset = (DWORD)(FileOffset & FileOffsMask);
+        hf->ArchiveIndex = (DWORD)(ArchiveAndOffset >> hs->IndexFile[0].FileOffsetBits);
+        hf->ArchiveOffset = (DWORD)(ArchiveAndOffset & FileOffsMask);
         hf->szClassName = "TCascFile";
 
         // Copy the file size. Note that for all files except ENCODING,
         // this is the compressed file size
-        hf->CompressedSize = ConvertBytesToInteger_4_LE(pEKeyEntry->FileSizeLE);
+        hf->EncodedSize = ConvertBytesToInteger_4_LE(pEKeyEntry->EncodedSize);
 
-        // For now, we set the file size to be equal to compressed size
-        // This is used when loading the ENCODING file, which does not
-        // have entry in the encoding table
-        hf->FileSize = hf->CompressedSize;
+        // Set the content size to INVALID_SIZE
+        hf->ContentSize = dwContentSize;
 
         // Increment the number of references to the archive
         hs->dwRefCount++;
@@ -65,42 +63,41 @@ static TCascFile * CreateFileHandle(TCascStorage * hs, PCASC_EKEY_ENTRY pEKeyEnt
     return hf;
 }
 
-static bool OpenFileByEKey(TCascStorage * hs, PQUERY_KEY pEKey, DWORD dwFlags, TCascFile ** ppCascFile)
+static bool OpenFileByEKey(TCascStorage * hs, PQUERY_KEY pEKey, DWORD dwContentSize, TCascFile ** PtrCascFile)
 {
     PCASC_EKEY_ENTRY pEKeyEntry;
-    int nError = ERROR_SUCCESS;
-
-    CASCLIB_UNUSED(dwFlags);
+    TCascFile * hf = NULL;
 
     // Find the EKey entry in the array of encoded keys
     pEKeyEntry = FindEKeyEntry(hs, pEKey);
     if(pEKeyEntry == NULL)
-        nError = ERROR_FILE_NOT_FOUND;
+    {
+        SetLastError(ERROR_FILE_NOT_FOUND);
+        return false;
+    }
 
     // Create the file handle structure
-    if(nError == ERROR_SUCCESS)
+    hf = CreateFileHandle(hs, pEKeyEntry, dwContentSize);
+    if(hf == NULL)
     {
-        ppCascFile[0] = CreateFileHandle(hs, pEKeyEntry);
-        if(ppCascFile[0] == NULL)
-            nError = ERROR_FILE_NOT_FOUND;
+        SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+        return false;
     }
 
 #ifdef CASCLIB_TEST
-    if(nError == ERROR_SUCCESS && ppCascFile[0] != NULL)
-    {
-        ppCascFile[0]->FileSize_IdxEntry = ConvertBytesToInteger_4_LE(pEKeyEntry->FileSizeLE);
-    }
+    hf->FileSize_EEntry = ConvertBytesToInteger_4_LE(pEKeyEntry->EncodedSize);
 #endif
 
-    if(nError != ERROR_SUCCESS)
-        SetLastError(nError);
-    return (nError == ERROR_SUCCESS);
+    // Give the results
+    PtrCascFile[0] = hf;
+    return true;
 }
 
-static bool OpenFileByCKey(TCascStorage * hs, PQUERY_KEY pCKey, DWORD dwFlags, TCascFile ** ppCascFile)
+static bool OpenFileByCKey(TCascStorage * hs, PQUERY_KEY pCKey, TCascFile ** PtrCascFile)
 {
     PCASC_CKEY_ENTRY pCKeyEntry;
     QUERY_KEY EKey;
+    DWORD dwContentSize;
 
     // Find the encoding entry
     pCKeyEntry = FindCKeyEntry(hs, pCKey, NULL);
@@ -110,34 +107,21 @@ static bool OpenFileByCKey(TCascStorage * hs, PQUERY_KEY pCKey, DWORD dwFlags, T
         return false;
     }
 
+    // Get the content size, unless specified by the caller
+    dwContentSize = ConvertBytesToInteger_4(pCKeyEntry->ContentSize);
+
     // Prepare the file index and open the file by index
     // Note: We don't know what to do if there is more than just one EKey
     // We always take the first file present. Is that correct?
     EKey.pbData = GET_EKEY(pCKeyEntry);
     EKey.cbData = MD5_HASH_SIZE;
-    if(OpenFileByEKey(hs, &EKey, dwFlags, ppCascFile))
-    {
-        // Check if the file handle was created
-        if(ppCascFile[0] != NULL)
-        {
-            // Fill-in the file size. For all files except ENCODING,
-            // this overrides the value stored in the index entry.
-            ppCascFile[0]->FileSize = ConvertBytesToInteger_4(pCKeyEntry->FileSizeBE);
-
-#ifdef CASCLIB_TEST
-            ppCascFile[0]->FileSize_EncEntry = ConvertBytesToInteger_4(pCKeyEntry->FileSizeBE);
-#endif
-            return true;
-        }
-    }
-
-    return false;
+    return OpenFileByEKey(hs, &EKey, dwContentSize, PtrCascFile);
 }
 
 //-----------------------------------------------------------------------------
 // Public functions
 
-bool WINAPI CascOpenFileByEKey(HANDLE hStorage, PQUERY_KEY pEKey, DWORD dwFlags, HANDLE * phFile)
+bool WINAPI CascOpenFileByEKey(HANDLE hStorage, PQUERY_KEY pEKey, DWORD dwContentSize, HANDLE * phFile)
 {
     TCascStorage * hs;
 
@@ -150,6 +134,7 @@ bool WINAPI CascOpenFileByEKey(HANDLE hStorage, PQUERY_KEY pEKey, DWORD dwFlags,
     }
 
     // Validate the other parameters
+    // Note that the 
     if(pEKey == NULL || pEKey->pbData == NULL || pEKey->cbData == 0 || phFile == NULL)
     {
         SetLastError(ERROR_INVALID_PARAMETER);
@@ -157,10 +142,10 @@ bool WINAPI CascOpenFileByEKey(HANDLE hStorage, PQUERY_KEY pEKey, DWORD dwFlags,
     }
 
     // Use the internal function to open the file
-    return OpenFileByEKey(hs, pEKey, dwFlags, (TCascFile **)phFile);
+    return OpenFileByEKey(hs, pEKey, dwContentSize, (TCascFile **)phFile);
 }
 
-bool WINAPI CascOpenFileByCKey(HANDLE hStorage, PQUERY_KEY pCKey, DWORD dwFlags, HANDLE * phFile)
+bool WINAPI CascOpenFileByCKey(HANDLE hStorage, PQUERY_KEY pCKey, DWORD /* dwUnused */, HANDLE * phFile)
 {
     TCascStorage * hs;
 
@@ -180,7 +165,7 @@ bool WINAPI CascOpenFileByCKey(HANDLE hStorage, PQUERY_KEY pCKey, DWORD dwFlags,
     }
 
     // Use the internal function fo open the file
-    return OpenFileByCKey(hs, pCKey, dwFlags, (TCascFile **)phFile);
+    return OpenFileByCKey(hs, pCKey, (TCascFile **)phFile);
 }
 
 bool WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocale, DWORD dwFlags, HANDLE * phFile)
@@ -189,6 +174,7 @@ bool WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocal
     QUERY_KEY QueryKey;
     LPBYTE pbQueryKey = NULL;
     BYTE KeyBuffer[MD5_HASH_SIZE];
+    DWORD dwContentSize = CASC_INVALID_SIZE;
     DWORD dwOpenMode = 0;
     bool bOpenResult = false;
     int nError = ERROR_SUCCESS;
@@ -216,7 +202,7 @@ bool WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocal
         case CASC_OPEN_BY_NAME:
             
             // Retrieve the file CKey/EKey
-            pbQueryKey = RootHandler_GetKey(hs->pRootHandler, szFileName);
+            pbQueryKey = RootHandler_GetKey(hs->pRootHandler, szFileName, &dwContentSize);
             if(pbQueryKey == NULL)
             {
                 nError = ERROR_FILE_NOT_FOUND;
@@ -269,11 +255,11 @@ bool WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocal
         switch(dwOpenMode)
         {
             case CASC_OPEN_BY_CKEY:
-                bOpenResult = OpenFileByCKey(hs, &QueryKey, dwFlags, (TCascFile **)phFile);
+                bOpenResult = OpenFileByCKey(hs, &QueryKey, (TCascFile **)phFile);
                 break;
 
             case CASC_OPEN_BY_EKEY:
-                bOpenResult = OpenFileByEKey(hs, &QueryKey, dwFlags, (TCascFile **)phFile);
+                bOpenResult = OpenFileByEKey(hs, &QueryKey, dwContentSize, (TCascFile **)phFile);
                 break;
 
             default:

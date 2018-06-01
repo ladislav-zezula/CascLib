@@ -13,97 +13,84 @@
 #include "CascCommon.h"
 
 //-----------------------------------------------------------------------------
-// Conversion of big-endian to integer
+// Local defines
 
-// Read the 16-bit big-endian offset into ULONGLONG
-DWORD ConvertBytesToInteger_2(LPBYTE ValueAsBytes)
-{
-    USHORT Value = 0;
-
-    Value = (Value << 0x08) | ValueAsBytes[0];
-    Value = (Value << 0x08) | ValueAsBytes[1];
-
-    return Value;
-}
-
-// Read the 24-bit big-endian offset into ULONGLONG
-DWORD ConvertBytesToInteger_3(LPBYTE ValueAsBytes)
-{
-    DWORD Value = 0;
-
-    Value = (Value << 0x08) | ValueAsBytes[0];
-    Value = (Value << 0x08) | ValueAsBytes[1];
-    Value = (Value << 0x08) | ValueAsBytes[2];
-
-    return Value;
-}
-
-// Read the 32-bit big-endian offset into ULONGLONG
-DWORD ConvertBytesToInteger_4(LPBYTE ValueAsBytes)
-{
-    DWORD Value = 0;
-
-    Value = (Value << 0x08) | ValueAsBytes[0];
-    Value = (Value << 0x08) | ValueAsBytes[1];
-    Value = (Value << 0x08) | ValueAsBytes[2];
-    Value = (Value << 0x08) | ValueAsBytes[3];
-
-    return Value;
-}
-
-// Converts the variable-size big-endian into integer
-DWORD ConvertBytesToInteger_X(LPBYTE ValueAsBytes, DWORD dwByteSize)
-{
-    DWORD Value = 0;
-
-    if(dwByteSize > 0)
-        Value = (Value << 0x08) | ValueAsBytes[0];
-    if(dwByteSize > 1)
-        Value = (Value << 0x08) | ValueAsBytes[1];
-    if(dwByteSize > 2)
-        Value = (Value << 0x08) | ValueAsBytes[2];
-    if(dwByteSize > 3)
-        Value = (Value << 0x08) | ValueAsBytes[3];
-
-    return Value;
-}
-
-DWORD ConvertBytesToInteger_4_LE(LPBYTE ValueAsBytes)
-{
-    DWORD Value = 0;
-
-    Value = (Value << 0x08) | ValueAsBytes[3];
-    Value = (Value << 0x08) | ValueAsBytes[2];
-    Value = (Value << 0x08) | ValueAsBytes[1];
-    Value = (Value << 0x08) | ValueAsBytes[0];
-
-    return Value;
-}
-
-// Read the 40-bit big-endian offset into ULONGLONG
-ULONGLONG ConvertBytesToInteger_5(LPBYTE ValueAsBytes)
-{
-    ULONGLONG Value = 0;
-
-    Value = (Value << 0x08) | ValueAsBytes[0];
-    Value = (Value << 0x08) | ValueAsBytes[1];
-    Value = (Value << 0x08) | ValueAsBytes[2];
-    Value = (Value << 0x08) | ValueAsBytes[3];
-    Value = (Value << 0x08) | ValueAsBytes[4];
-
-    return Value;
-}
-
-void ConvertIntegerToBytes_4(DWORD Value, LPBYTE ValueAsBytes)
-{
-    ValueAsBytes[0] = (Value >> 0x18) & 0xFF;
-    ValueAsBytes[1] = (Value >> 0x10) & 0xFF;
-    ValueAsBytes[2] = (Value >> 0x08) & 0xFF;
-    ValueAsBytes[3] = (Value >> 0x00) & 0xFF;
-}
+typedef bool (WINAPI * OPEN_FILE)(HANDLE hStorage, PQUERY_KEY pCKey, DWORD dwFlags, HANDLE * phFile);
 
 //-----------------------------------------------------------------------------
-// Common fre routine of a CASC blob
+// Functions
+
+LPBYTE LoadInternalFileToMemory(TCascStorage * hs, LPBYTE pbQueryKey, DWORD dwOpenFlags, DWORD * pcbFileData)
+{
+    QUERY_KEY QueryKey;
+    OPEN_FILE OpenFile;
+    LPBYTE pbFileData = NULL;
+    HANDLE hFile = NULL;
+    DWORD cbFileData = 0;
+    DWORD dwBytesRead = 0;
+    int nError = ERROR_SUCCESS;
+
+    // Prepare the query key
+    QueryKey.pbData = pbQueryKey;
+    QueryKey.cbData = MD5_HASH_SIZE;
+
+    // Open the internal file
+    OpenFile = (dwOpenFlags == CASC_OPEN_BY_CKEY) ? CascOpenFileByCKey : CascOpenFileByEKey;
+    if(OpenFile((HANDLE)hs, &QueryKey, CASC_INVALID_SIZE, &hFile))
+    {
+        // Retrieve the size of the ENCODING file
+        cbFileData = CascGetFileSize(hFile, NULL);
+        if(cbFileData != 0)
+        {
+            // Allocate space for the ENCODING file
+            pbFileData = CASC_ALLOC(BYTE, cbFileData);
+            if(pbFileData != NULL)
+            {
+                // Read the entire file to memory
+                CascReadFile(hFile, pbFileData, cbFileData, &dwBytesRead);
+                if(dwBytesRead != cbFileData)
+                {
+                    nError = ERROR_FILE_CORRUPT;
+                }
+            }
+            else
+            {
+                nError = ERROR_NOT_ENOUGH_MEMORY;
+            }
+        }
+        else
+        {
+            nError = ERROR_BAD_FORMAT;
+        }
+
+        // Close the file
+        CascCloseFile(hFile);
+    }
+    else
+    {
+        nError = GetLastError();
+    }
+
+    // Handle errors
+    if(nError != ERROR_SUCCESS)
+    {
+        // Free the file data
+        if(pbFileData != NULL)
+            CASC_FREE(pbFileData);
+        pbFileData = NULL;
+
+        // Set the last error
+        SetLastError(nError);
+    }
+    else
+    {
+        // Give the loaded file length
+        if(pcbFileData != NULL)
+            *pcbFileData = cbFileData;
+    }
+
+    return pbFileData;
+}
 
 void FreeCascBlob(PQUERY_KEY pBlob)
 {
