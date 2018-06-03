@@ -79,6 +79,27 @@ typedef enum _CBLD_TYPE
     CascBuildDb,                                    // .build.db (older storages)
 } CBLD_TYPE, *PCBLD_TYPE;
 
+// Content file entry
+typedef struct _CASC_CKEY_ENTRY
+{
+    USHORT EKeyCount;                               // Number of EKeys
+    BYTE ContentSize[4];                            // Content file size (big endian)
+    BYTE CKey[CASC_CKEY_SIZE];                      // Content key. This is MD5 of the file content
+
+    // Followed by the EKey (KeyCount = number of EKeys)
+
+} CASC_CKEY_ENTRY, *PCASC_CKEY_ENTRY;
+
+// A version of CKey entry with just one EKey
+typedef struct _CASC_CKEY_ENTRY1
+{
+    USHORT KeyCount;                                // Number of EKeys
+    BYTE ContentSize[4];                            // Content file size (big endian)
+    BYTE CKey[CASC_CKEY_SIZE];                      // Content key. This is MD5 of the file content
+    BYTE EKey[CASC_CKEY_SIZE];                      // Encoded key. This is (trimmed) MD5 hash of the file header, containing MD5 hashes of all the logical blocks of the file
+
+} CASC_CKEY_ENTRY1, *PCASC_CKEY_ENTRY1;
+
 // Encoded file entry
 typedef struct _CASC_EKEY_ENTRY
 {
@@ -87,6 +108,7 @@ typedef struct _CASC_EKEY_ENTRY
     BYTE EncodedSize[4];                            // Encoded size (little endian). This is the size of encoded header, all file frame headers and all file frames
 } CASC_EKEY_ENTRY, *PCASC_EKEY_ENTRY;
 
+// Structure describing the index file
 typedef struct _CASC_INDEX_FILE
 {
     TCHAR * szFileName;                             // Name of the index file
@@ -100,7 +122,7 @@ typedef struct _CASC_INDEX_FILE
     bool   FreeEKeyEntries;                         // If true, then we need to free the EKey map
     ULONGLONG MaxFileSize;
 
-    PCASC_EKEY_ENTRY pEKeyEntries;                  // Sorted array of EKey entries
+    PCASC_EKEY_ENTRY pEKeyEntries;                  // Sorted array of EKey entries (into pbFileData)
     DWORD nEKeyEntries;                             // Number of EKey entries
 
 } CASC_INDEX_FILE, *PCASC_INDEX_FILE;
@@ -127,16 +149,6 @@ typedef struct _CASC_ENCODING_HEADER
     DWORD  ESpecBlockSize;                          // Size of the ESpec string block, in bytes
 } CASC_ENCODING_HEADER, *PCASC_ENCODING_HEADER;
 
-typedef struct _CASC_CKEY_ENTRY
-{
-    USHORT EKeyCount;                               // Number of EKeys
-    BYTE ContentSize[4];                            // Content file size (big endian)
-    BYTE CKey[CASC_CKEY_SIZE];                      // Content key. This is MD5 of the file content
-
-    // Followed by the EKey (KeyCount = number of EKeys)
-
-} CASC_CKEY_ENTRY, *PCASC_CKEY_ENTRY;
-
 #define GET_EKEY(pCKeyEntry)      (pCKeyEntry->CKey + CASC_CKEY_SIZE)
 #define FAKE_ENCODING_ENTRY_SIZE  (sizeof(CASC_CKEY_ENTRY) + MD5_HASH_SIZE)
 
@@ -160,8 +172,8 @@ typedef struct _TCascStorage
 
     CBLD_TYPE BuildFileType;                        // Type of the build file
 
-    QUERY_KEY CdnConfigKey;                         // Currently selected CDN config file. Points to "confi\g\%02X\%02X\%s
-    QUERY_KEY CdnBuildKey;                          // Currently selected CDN build file. Points to "confi\g\%02X\%02X\%s
+    QUERY_KEY CdnConfigKey;                         // Currently selected CDN config file. Points to "config\%02X\%02X\%s
+    QUERY_KEY CdnBuildKey;                          // Currently selected CDN build file. Points to "config\%02X\%02X\%s
 
     QUERY_KEY ArchiveGroup;                         // Key array of the "archive-group"
     QUERY_KEY ArchivesKey;                          // Key array of the "archives"
@@ -169,12 +181,11 @@ typedef struct _TCascStorage
     QUERY_KEY PatchArchivesGroup;                   // Key array of the "patch-archive-group"
     QUERY_KEY BuildFiles;                           // List of supported build files.
 
-    QUERY_KEY RootFile;                             // CKey of the ROOT file
-    QUERY_KEY PatchFile;                            // CKey of the PATCH file
-    QUERY_KEY DownloadFile;                         // CKey+EKey of the DOWNLOAD file
-    QUERY_KEY InstallFile;                          // CKey+EKey of the INSTALL file
-    QUERY_KEY EncodingFile;                         // CKey+EKey key of the ENCODING file
-    QUERY_SIZE EncodingSize;                        // CSize+ESize of the ENCODING file
+    CASC_CKEY_ENTRY1 EncodingFile;                  // Information about ENCODING file
+    CASC_CKEY_ENTRY1 RootFile;                      // Information about ROOT file
+    CASC_CKEY_ENTRY1 InstallFile;                   // Information about INSTALL file
+    CASC_CKEY_ENTRY1 DownloadFile;                  // Information about DOWNLOAD file
+    CASC_CKEY_ENTRY1 PatchFile;                     // Information about PATCH file
 
     TFileStream * DataFiles[CASC_MAX_DATA_FILES];   // Array of open data files
 
@@ -183,7 +194,6 @@ typedef struct _TCascStorage
 
     PCASC_MAP  pCKeyEntryMap;                       // Map of CKey -> CASC_CKEY_ENTRY
     QUERY_KEY  EncodingData;                        // Content of the ENCODING file. Keep this in for encoding table.
-    CASC_ARRAY ExtraCKeys;                          // Extra CKey entries
 
     TRootHandler * pRootHandler;                    // Common handler for various ROOT file formats
     CASC_ARRAY VfsRootList;                         // List of VFS root files. Used on TVFS root keys

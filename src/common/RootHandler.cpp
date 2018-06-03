@@ -15,17 +15,18 @@
 //-----------------------------------------------------------------------------
 // Common support
 
-int RootHandler_Insert(TRootHandler * pRootHandler, const char * szFileName, LPBYTE pbQueryKey)
+int RootHandler_Insert(TRootHandler * pRootHandler, const char * szFileName, PCASC_CKEY_ENTRY1 pCKeyEntry)
 {
     // Check if we have everything needed
     if(pRootHandler == NULL || pRootHandler->Insert == NULL)
         return ERROR_NOT_SUPPORTED;
 
     // The pbQueryKey parameter must be valid
-    assert(pbQueryKey != NULL);
+    assert(pCKeyEntry != NULL);
+    assert(IsValidMD5(pCKeyEntry->CKey));
 
     // Ask the root folder to insert the key
-    return pRootHandler->Insert(pRootHandler, szFileName, pbQueryKey);
+    return pRootHandler->Insert(pRootHandler, szFileName, pCKeyEntry);
 }
 
 LPBYTE RootHandler_Search(TRootHandler * pRootHandler, struct _TCascSearch * pSearch)

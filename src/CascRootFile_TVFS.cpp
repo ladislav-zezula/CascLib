@@ -440,11 +440,12 @@ static DWORD ParsePathFileTable(
             if(IsVfsSubDirectory(pRootHandler, DirHeader, SubHeader, EKey, dwSpanSize) == ERROR_SUCCESS)
             {
 #ifdef _DEBUG
-                if((PathBuffer.szPtr - PathBuffer.szBegin) > 4 && !strcmp(PathBuffer.szPtr - 4, ".w3m"))
-                {
-                    *PathBuffer.szPtr++ = ':';
-                    *PathBuffer.szPtr = 0;
-                }
+                // Todo: Support for mount points when I see some
+//              if((PathBuffer.szPtr - PathBuffer.szBegin) > 4 && !strcmp(PathBuffer.szPtr - 4, ".w3m"))
+//              {
+//                  *PathBuffer.szPtr++ = ':';
+//                  *PathBuffer.szPtr = 0;
+//              }
 #endif
                 // Add one extra backslash to the node
                 PathBuffer_AddBackslash(PathBuffer);

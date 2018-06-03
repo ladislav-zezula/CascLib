@@ -55,11 +55,15 @@ static bool IsRootFile_Starcraft1(void * pTextFile)
 static int FileTreeHandler_Insert(
     TRootHandler_Text * pRootHandler,
     const char * szFileName,
-    LPBYTE pbCKey)
+    PCASC_CKEY_ENTRY1 pCKeyEntry)
 {
+    PCONTENT_KEY pCKey;
+    DWORD FileSize = ConvertBytesToInteger_4(pCKeyEntry->ContentSize);
     void * pItem;
 
-    pItem = FileTree_Insert(&pRootHandler->FileTree, (PCONTENT_KEY)pbCKey, szFileName);
+    // We can support both mappings (FileName->CKey or FileName->CKey)
+    pCKey = (PCONTENT_KEY)((pRootHandler->dwRootFlags & ROOT_FLAG_USES_EKEY) ? pCKeyEntry->EKey : pCKeyEntry->CKey);
+    pItem = FileTree_Insert(&pRootHandler->FileTree, pCKey, szFileName, FileSize);
     return (pItem != NULL) ? ERROR_SUCCESS : ERROR_CAN_NOT_COMPLETE;
 }
 

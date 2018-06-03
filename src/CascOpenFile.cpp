@@ -32,21 +32,6 @@ PCASC_EKEY_ENTRY FindEKeyEntry(TCascStorage * hs, PQUERY_KEY pEKey)
     return (PCASC_EKEY_ENTRY)Map_FindObject(hs->pEKeyEntryMap, pEKey->pbData, NULL);
 }
 
-static DWORD GetFileContentSize(TCascStorage * hs, PQUERY_KEY pCKey, PQUERY_KEY pEKey, DWORD dwContentSize)
-{
-    // Check CKey of the ENCODING file. The size of ENCODING file
-    // is often wrong in CKeyEntry (WoW builds 18125 - 23420)
-    if(hs->EncodingFile.cbData >= MD5_HASH_SIZE && pCKey != NULL && !memcmp(hs->EncodingFile.pbData, pCKey->pbData, pCKey->cbData))
-        return hs->EncodingSize.ContentSize;
-
-    // Check EKey of the ENCODING file
-    if(hs->EncodingFile.cbData > MD5_HASH_SIZE && pEKey != NULL && !memcmp(hs->EncodingFile.pbData + MD5_HASH_SIZE, pEKey->pbData, pEKey->cbData))
-        return hs->EncodingSize.ContentSize;
-
-    // Return whatever was entered from the called
-    return dwContentSize;
-}
-
 static TCascFile * CreateFileHandle(TCascStorage * hs, PQUERY_KEY pCKey, PQUERY_KEY pEKey, PCASC_EKEY_ENTRY pEKeyEntry, DWORD dwContentSize)
 {
     ULONGLONG ArchiveAndOffset = ConvertBytesToInteger_5(pEKeyEntry->ArchiveAndOffset);
@@ -84,7 +69,7 @@ static TCascFile * CreateFileHandle(TCascStorage * hs, PQUERY_KEY pCKey, PQUERY_
         }
 
         // Set the content size
-        hf->ContentSize = GetFileContentSize(hs, pCKey, pEKey, dwContentSize);
+        hf->ContentSize = dwContentSize;
 
         // Increment the number of references to the archive
         hs->dwRefCount++;

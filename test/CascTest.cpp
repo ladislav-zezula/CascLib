@@ -212,10 +212,6 @@ static int ExtractFile(
 
         // Retrieve the content key (aka MD5 of the file content)
         bWeHaveContentKey = CascGetFileInfo(hFile, CascFileContentKey, &CKey, sizeof(CONTENT_KEY), NULL);
-        if(bWeHaveContentKey == false)
-        {
-            LogHelper.PrintMessage("Warning: %s: No content key", szShortName);
-        }
 
         // Initialize the MD5 hashing
         md5_init(&md5_state);
@@ -315,8 +311,9 @@ static int TestOpenStorage_OpenFile(const char * szStorage, const char * szFileN
             dwOpenFlags |= CASC_OPEN_BY_CKEY;
 
         // Extract the entire file
-        nError = ExtractFile(LogHelper, hStorage, szFileName, dwOpenFlags, 0, 0, 1);
+        ExtractFile(LogHelper, hStorage, szFileName, dwOpenFlags, 0, 0, 1);
 
+        // Close the storage
         CascCloseStorage(hStorage);
         LogHelper.PrintMessage("Work complete.");
     }
@@ -542,10 +539,13 @@ int main(int argc, char * argv[])
     _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif  // defined(_MSC_VER) && defined(_DEBUG)
 
-    // Single test
-//  TestOpenStorage_OpenFile("2018 - New CASC/00001", "ENCODING");
-    TestOpenStorage_EnumFiles("2018 - New CASC/00001", szListFile);
-//  TestOpenStorage_ExtractFiles(MAKE_PATH("2014 - Heroes of the Storm/39445"), NULL);
+    //
+    // Single tests
+    //
+
+    TestOpenStorage_OpenFile("2016 - WoW/18125", "ENCODING");
+//  TestOpenStorage_EnumFiles("2018 - New CASC/00001", szListFile);
+//  TestOpenStorage_ExtractFiles("2014 - Heroes of the Storm/39445"), NULL);
 
     //
     // Tests for OpenStorage + ExtractFile
@@ -562,7 +562,7 @@ int main(int argc, char * argv[])
     //
     // Tests for OpenStorage + EnumAllFiles + ExtractAllFiles
     //
-/*
+
     for(size_t i = 0; StorageInfo[i].szPath != NULL; i++)
     {
         // Attempt to open the storage and extract single file
@@ -570,7 +570,6 @@ int main(int argc, char * argv[])
         if(nError != ERROR_SUCCESS)
             break;
     }
-*/
 
 #ifdef _MSC_VER                                                          
     _CrtDumpMemoryLeaks();

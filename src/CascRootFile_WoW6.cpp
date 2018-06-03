@@ -351,7 +351,7 @@ static int RebuildFileMaps(TRootHandler_WoW6 * pRootHandler)
 static int WowHandler_Insert(
     TRootHandler_WoW6 * pRootHandler,
     const char * szFileName,
-    LPBYTE pbCKey)
+    PCASC_CKEY_ENTRY1 pCKeyEntry)
 {
     PWOW_FILE_ENTRY pFileEntry;
     char * SaveItemArray = pRootHandler->FileTable.ItemArray;
@@ -370,7 +370,7 @@ static int WowHandler_Insert(
             FileDataId = pFileEntry[-1].FileDataId;
 
         // Fill-in the new entry
-        pFileEntry->CKey         = *(PCONTENT_KEY)pbCKey;
+        memcpy(pFileEntry->CKey.Value, pCKeyEntry->CKey, CASC_CKEY_SIZE);
         pFileEntry->FileNameHash = CalcFileNameHash(szFileName);
         pFileEntry->FileDataId   = FileDataId + 1;
         pFileEntry->Locales      = CASC_LOCALE_ALL;

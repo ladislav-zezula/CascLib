@@ -51,16 +51,6 @@ typedef struct _FILE_PAGE_HEADER
 
 } FILE_PAGE_HEADER, *PFILE_PAGE_HEADER;
 
-// A version of CKey entry with just one EKey. Used for getting maximum number of entries in the ENCODING file
-typedef struct _FILE_CKEY_ENTRY_1EKEY
-{
-    USHORT KeyCount;                                // Number of EKeys
-    BYTE FileSizeBE[4];                             // Compressed file size (header area + frame headers + compressed frames), in bytes
-    BYTE CKey[CASC_CKEY_SIZE];                      // File content key. This is MD5 of the uncompressed file data
-    BYTE EKey[CASC_CKEY_SIZE];                      // File encoded key. This is (trimmed) MD5 hash of the file header, containing MD5 hashes of all the logical blocks of the file
-
-} FILE_CKEY_ENTRY_1EKEY, *PFILE_CKEY_ENTRY_1EKEY;
-
 // The EKey entry from the ".idx" files (1st block)
 typedef struct _FILE_EKEY_ENTRY_V2
 {
@@ -140,13 +130,13 @@ static const TCHAR * szIndexFormat_V2 = _T("%02x%08x.idx");
 
 //-----------------------------------------------------------------------------
 // Local functions
-
+/*
 static void InitQuerySize(QUERY_SIZE & QuerySize)
 {
     QuerySize.ContentSize = CASC_INVALID_SIZE;
     QuerySize.EncodedSize = CASC_INVALID_SIZE;
 }
-
+*/
 TCascStorage * IsValidStorageHandle(HANDLE hStorage)
 {
     TCascStorage * hs = (TCascStorage *)hStorage;
@@ -257,72 +247,35 @@ static bool CutLastPathPart(TCHAR * szWorkPath)
     return false;
 }
 
-static int InsertNamedFile(
+static int InsertNamedInternalFile(
     TCascStorage * hs,
     const char * szFileName,
-    PQUERY_KEY pQueryKey)
+    CASC_CKEY_ENTRY1 & CKeyEntry)
 {
-    PCASC_CKEY_ENTRY pCKeyEntry = NULL;
     PCASC_EKEY_ENTRY pEKeyEntry;
     QUERY_KEY EKey;
-    LPBYTE pbQueryKey = pQueryKey->pbData;
 
     // Check if we really have the key
-    if(pQueryKey->pbData == NULL || pQueryKey->cbData == 0)
+    if(!IsValidMD5(CKeyEntry.CKey))
         return ERROR_FILE_NOT_FOUND;
 
-    // ENCODING file: The CKey will not be in the map. Every other file should be there
-    pCKeyEntry = (PCASC_CKEY_ENTRY)Map_FindObject(hs->pCKeyEntryMap, pQueryKey->pbData, NULL);
-    if(pCKeyEntry != NULL)
+    // If we don't have an EKey, we need to query it from the EKey table
+    if(!IsValidMD5(CKeyEntry.EKey))
     {
-        // Is it an extra file already?
-        if(Array_CheckMember(&hs->ExtraCKeys, pCKeyEntry))
-        {
-            return ERROR_SUCCESS;
-        }
-
         // Find the EKey entry. If failed, we cannot name the file
-        EKey.pbData = GET_EKEY(pCKeyEntry);
-        EKey.cbData = MD5_HASH_SIZE;
-        pEKeyEntry = FindEKeyEntry(hs, &EKey);
-        if(pEKeyEntry == NULL)
-            return ERROR_FILE_NOT_FOUND;
-    }
-    else
-    {
-        // We need to create a fake entry. For that, we also need that the EKey entry is valid
-        if(pQueryKey->cbData == CASC_CKEY_SIZE)
-            return ERROR_CAN_NOT_COMPLETE;
-
-        // Find the key in the index table. That way, we verify that the file really exists
-        EKey.pbData = pQueryKey->pbData + CASC_CKEY_SIZE;
+        EKey.pbData = CKeyEntry.EKey;
         EKey.cbData = MD5_HASH_SIZE;
         pEKeyEntry = FindEKeyEntry(hs, &EKey);
         if(pEKeyEntry == NULL)
             return ERROR_FILE_NOT_FOUND;
 
-        // Create a fake entry in the extra CKey map
-        pCKeyEntry = (PCASC_CKEY_ENTRY)Array_Insert(&hs->ExtraCKeys, NULL, 1);
-        if(pCKeyEntry == NULL)
-            return ERROR_NOT_ENOUGH_MEMORY;
-
-        // Fill the CKey entry
-        pCKeyEntry->EKeyCount = 1;
-        pCKeyEntry->ContentSize[0] = pEKeyEntry->EncodedSize[3];
-        pCKeyEntry->ContentSize[1] = pEKeyEntry->EncodedSize[2];
-        pCKeyEntry->ContentSize[2] = pEKeyEntry->EncodedSize[1];
-        pCKeyEntry->ContentSize[3] = pEKeyEntry->EncodedSize[0];
-        memcpy(pCKeyEntry->CKey, pQueryKey->pbData, CASC_CKEY_SIZE);
-        memcpy(GET_EKEY(pCKeyEntry), pQueryKey->pbData + CASC_CKEY_SIZE, CASC_CKEY_SIZE);
-
-        // Insert the entry to the map of CKeys
-        Map_InsertObject(hs->pCKeyEntryMap, pCKeyEntry, pCKeyEntry->CKey);
+        // Copy the EKEY to the CKEY_ENTRY
+        memset(CKeyEntry.EKey, 0, MD5_HASH_SIZE);
+        memcpy(CKeyEntry.EKey, pEKeyEntry->EKey, CASC_EKEY_SIZE);
     }
 
-    // Now we need to insert the entry to the root handler in order
-    // to be able to translate file name to CKey/EKey
-    pbQueryKey = (hs->pRootHandler->dwRootFlags & ROOT_FLAG_USES_EKEY) ? pEKeyEntry->EKey : pCKeyEntry->CKey;
-    return RootHandler_Insert(hs->pRootHandler, szFileName, pbQueryKey);
+    // Now call the root handler to insert the CKey entry
+    return RootHandler_Insert(hs->pRootHandler, szFileName, &CKeyEntry);
 }
 
 static int InitializeCascDirectories(TCascStorage * hs, const TCHAR * szDataPath)
@@ -676,7 +629,7 @@ static int LoadIndexFile(PCASC_INDEX_FILE pIndexFile, DWORD KeyIndex)
     return ERROR_SUCCESS;
 }
 
-static int CreateArrayOfIndexEntries(TCascStorage * hs)
+static int CreateMapOfEKeyEntries(TCascStorage * hs)
 {
     PCASC_MAP pMap;
     DWORD TotalCount = 0;
@@ -720,7 +673,7 @@ static int CreateArrayOfIndexEntries(TCascStorage * hs)
     return nError;
 }
 
-static int CreateMapOfCKeys(TCascStorage * hs, CASC_ENCODING_HEADER & EnHeader, PFILE_PAGE_HEADER pPageHeader)
+static int CreateMapOfCKeyEntries(TCascStorage * hs, CASC_ENCODING_HEADER & EnHeader, PFILE_PAGE_HEADER pPageHeader)
 {
     PCASC_CKEY_ENTRY pCKeyEntry;
     DWORD dwMaxEntries;
@@ -732,15 +685,15 @@ static int CreateMapOfCKeys(TCascStorage * hs, CASC_ENCODING_HEADER & EnHeader, 
 
     // Calculate the largest eventual number of CKey entries
     // Also include space for eventual extra entries for well-known CASC files
-    dwMaxEntries = (EnHeader.CKeyPageSize / sizeof(FILE_CKEY_ENTRY_1EKEY)) * EnHeader.CKeyPageCount;
+    dwMaxEntries = (EnHeader.CKeyPageSize / sizeof(CASC_CKEY_ENTRY1)) * EnHeader.CKeyPageCount;
 
     // Create the map of the CKey entries
-    hs->pCKeyEntryMap = Map_Create(dwMaxEntries + CASC_EXTRA_FILES, CASC_CKEY_SIZE, FIELD_OFFSET(CASC_CKEY_ENTRY, CKey));
+    hs->pCKeyEntryMap = Map_Create(dwMaxEntries + 1, CASC_CKEY_SIZE, FIELD_OFFSET(CASC_CKEY_ENTRY, CKey));
     if(hs->pCKeyEntryMap != NULL)
     {
         LPBYTE pbPageEntry = (LPBYTE)(pPageHeader + EnHeader.CKeyPageCount);
 
-        // Parse all segments
+        // Parse all CKey pages
         for(DWORD i = 0; i < EnHeader.CKeyPageCount; i++)
         {
             LPBYTE pbCKeyEntry = pbPageEntry;
@@ -764,6 +717,10 @@ static int CreateMapOfCKeys(TCascStorage * hs, CASC_ENCODING_HEADER & EnHeader, 
             // Move to the next segment
             pbPageEntry += EnHeader.CKeyPageSize;
         }
+
+        // Insert extra entry for ENCODING file. We need to do that artificially,
+        // because CKey of ENCODING file is not in ENCODING itself :-)
+        Map_InsertObject(hs->pCKeyEntryMap, &hs->EncodingFile, hs->EncodingFile.CKey);
     }
     else
         nError = ERROR_NOT_ENOUGH_MEMORY;
@@ -778,7 +735,7 @@ static int LoadIndexFiles(TCascStorage * hs)
     int nError;
     int i;
 
-    // Scan all index files
+    // Scan all index files and load contained EKEY entries
     memset(IndexArray, 0, sizeof(IndexArray));
     memset(OldIndexArray, 0, sizeof(OldIndexArray));
     nError = ScanIndexDirectory(hs->szIndexPath, IndexDirectory_OnFileFound, IndexArray, OldIndexArray, hs);
@@ -797,10 +754,10 @@ static int LoadIndexFiles(TCascStorage * hs)
         }
     }
 
-    // Now we need to build the map of the index entries
+    // Now we need to build the map of the EKey entries (EKey -> CASC_EKEY_ENTRY)
     if(nError == ERROR_SUCCESS)
     {
-        nError = CreateArrayOfIndexEntries(hs);
+        nError = CreateMapOfEKeyEntries(hs);
     }
 
     return nError;
@@ -832,11 +789,11 @@ static int CaptureEncodingHeader(PCASC_ENCODING_HEADER pEncodingHeader, void * p
 static int LoadEncodingFile(TCascStorage * hs)
 {
     LPBYTE pbEncodingFile;
-    DWORD cbEncodingFile = hs->EncodingSize.ContentSize;
+    DWORD cbEncodingFile = ConvertBytesToInteger_4(hs->EncodingFile.ContentSize);
     int nError = ERROR_SUCCESS;
 
     // Load the entire encoding file to memory
-    pbEncodingFile = LoadInternalFileToMemory(hs, hs->EncodingFile.pbData + CASC_CKEY_SIZE, CASC_OPEN_BY_EKEY, &cbEncodingFile);
+    pbEncodingFile = LoadInternalFileToMemory(hs, hs->EncodingFile.EKey, CASC_OPEN_BY_EKEY, &cbEncodingFile);
     if(pbEncodingFile == NULL)
         nError = GetLastError();
 
@@ -893,7 +850,7 @@ static int LoadEncodingFile(TCascStorage * hs)
             // Note that the array of CKeys is already sorted - no need to sort it
             if(nError == ERROR_SUCCESS)
             {
-                nError = CreateMapOfCKeys(hs, EnHeader, pPageHeader);
+                nError = CreateMapOfCKeyEntries(hs, EnHeader, pPageHeader);
             }
         }
     }
@@ -918,7 +875,7 @@ static int LoadRootFile(TCascStorage * hs, DWORD dwLocaleMask)
         dwLocaleMask = hs->dwDefaultLocale;
 
     // Load the entire ROOT file to memory
-    pbRootFile = LoadInternalFileToMemory(hs, hs->RootFile.pbData, CASC_OPEN_BY_CKEY, &cbRootFile);
+    pbRootFile = LoadInternalFileToMemory(hs, hs->RootFile.CKey, CASC_OPEN_BY_CKEY, &cbRootFile);
     if(pbRootFile == NULL)
         nError = GetLastError();
 
@@ -963,11 +920,11 @@ static int LoadRootFile(TCascStorage * hs, DWORD dwLocaleMask)
     // Insert entries for files with well-known names, mainly from the BUILD file
     if(nError == ERROR_SUCCESS)
     {
-        InsertNamedFile(hs, "ENCODING", &hs->EncodingFile);
-        InsertNamedFile(hs, "ROOT", &hs->RootFile);
-        InsertNamedFile(hs, "DOWNLOAD", &hs->DownloadFile);
-        InsertNamedFile(hs, "INSTALL", &hs->InstallFile);
-        InsertNamedFile(hs, "PATCH", &hs->PatchFile);
+        InsertNamedInternalFile(hs, "ENCODING", hs->EncodingFile);
+        InsertNamedInternalFile(hs, "ROOT", hs->RootFile);
+        InsertNamedInternalFile(hs, "INSTALL", hs->InstallFile);
+        InsertNamedInternalFile(hs, "DOWNLOAD", hs->DownloadFile);
+        InsertNamedInternalFile(hs, "PATCH", hs->PatchFile);
     }
 
     // Free the root file
@@ -987,7 +944,6 @@ static TCascStorage * FreeCascStorage(TCascStorage * hs)
         hs->pRootHandler = NULL;
 
         // Free the extra encoding entries
-        Array_Free(&hs->ExtraCKeys);
         Array_Free(&hs->VfsRootList);
 
         // Free the pointers to file entries
@@ -1042,12 +998,6 @@ static TCascStorage * FreeCascStorage(TCascStorage * hs)
         FreeCascBlob(&hs->PatchArchivesGroup);
         FreeCascBlob(&hs->BuildFiles);
 
-        FreeCascBlob(&hs->RootFile);
-        FreeCascBlob(&hs->PatchFile);
-        FreeCascBlob(&hs->DownloadFile);
-        FreeCascBlob(&hs->InstallFile);
-        FreeCascBlob(&hs->EncodingFile);
-
         // Free the storage structure
         hs->szClassName = NULL;
         CASC_FREE(hs);
@@ -1078,18 +1028,7 @@ bool WINAPI CascOpenStorage(const TCHAR * szDataPath, DWORD dwLocaleMask, HANDLE
         hs->dwHeaderDelta = CASC_INVALID_POS;
         hs->dwDefaultLocale = CASC_LOCALE_ENUS | CASC_LOCALE_ENGB;
         hs->dwRefCount = 1;
-        
-        // Initialize the sizes
-        InitQuerySize(hs->EncodingSize);
-        
         nError = InitializeCascDirectories(hs, szDataPath);
-    }
-
-    // Initialize the dynamic array for extra files
-    // Reserve space for 0x20 encoding entries
-    if(nError == ERROR_SUCCESS)
-    {
-        nError = Array_Create(&hs->ExtraCKeys, FILE_CKEY_ENTRY_1EKEY, CASC_EXTRA_FILES);
     }
 
     // Now we need to load the root file so we know the config files

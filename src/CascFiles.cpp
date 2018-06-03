@@ -464,6 +464,51 @@ static int LoadQueryKey(TCascStorage * /* hs */, const char * szDataBegin, const
     return LoadMultipleHashes((PQUERY_KEY)pvParam, szDataBegin, szDataEnd);
 }
 
+static int LoadCkeyEkey(TCascStorage * /* hs */, const char * szDataPtr, const char * szDataEnd, void * pvParam)
+{
+    PCASC_CKEY_ENTRY1 pCKeyEntry = (PCASC_CKEY_ENTRY1)pvParam;
+    size_t HashCount = 0;
+
+    // Get the number of hashes. It is expected to be 1 or 2
+    if(CaptureHashCount(szDataPtr, szDataEnd, &HashCount) == NULL)
+        return ERROR_BAD_FORMAT;
+    if(HashCount != 1 && HashCount != 2)
+        return ERROR_BAD_FORMAT;
+
+    // Load the CKey. This should alway be there
+    szDataPtr = CaptureSingleHash(szDataPtr, szDataEnd, pCKeyEntry->CKey, MD5_HASH_SIZE);
+    if(szDataPtr == NULL)
+        return ERROR_BAD_FORMAT;
+
+    // Load the EKey, if any
+    if(HashCount == 2)
+    {
+        szDataPtr = CaptureSingleHash(szDataPtr, szDataEnd, pCKeyEntry->EKey, MD5_HASH_SIZE);
+        if(szDataPtr == NULL)
+            return ERROR_BAD_FORMAT;
+    }
+
+    return ERROR_SUCCESS;
+}
+
+static int LoadCkeyEkeySize(TCascStorage * /* hs */, const char * szDataPtr, const char * szDataEnd, void * pvParam)
+{
+    PCASC_CKEY_ENTRY1 pCKeyEntry = (PCASC_CKEY_ENTRY1)pvParam;
+    DWORD ContentSize = 0;
+
+    // Load the content size. The encoded size is ignored for now
+    szDataPtr = CaptureDecimalInteger(szDataPtr, szDataEnd, &ContentSize);
+    if(szDataPtr == NULL)
+        return ERROR_BAD_FORMAT;
+
+    // Convert the content size into the big-endian
+    pCKeyEntry->ContentSize[0] = ((ContentSize >> 0x18) & 0xFF);
+    pCKeyEntry->ContentSize[1] = ((ContentSize >> 0x10) & 0xFF);
+    pCKeyEntry->ContentSize[2] = ((ContentSize >> 0x08) & 0xFF);
+    pCKeyEntry->ContentSize[3] = ((ContentSize >> 0x00) & 0xFF);
+    return ERROR_SUCCESS;
+}
+
 static int LoadVfsRootEntry(TCascStorage * /* hs */, const char * szDataPtr, const char * szDataEnd, void * pvParam)
 {
     QUERY_KEY_PAIR KeyPair;
@@ -495,22 +540,6 @@ static int LoadVfsRootEntry(TCascStorage * /* hs */, const char * szDataPtr, con
 
     // Insert single structure to the list
     return (Array_Insert(pArray, &KeyPair, 1) != NULL) ? ERROR_SUCCESS : ERROR_NOT_ENOUGH_MEMORY;
-}
-
-static int LoadQuerySize(TCascStorage * /* hs */, const char * szDataPtr, const char * szDataEnd, void * pvParam)
-{
-    PQUERY_SIZE pQuerySize = (PQUERY_SIZE)pvParam;
-
-    // Load the content size
-    szDataPtr = CaptureDecimalInteger(szDataPtr, szDataEnd, &pQuerySize->ContentSize);
-    if(szDataPtr == NULL)
-        return ERROR_BAD_FORMAT;
-
-    szDataPtr = CaptureDecimalInteger(szDataPtr, szDataEnd, &pQuerySize->EncodedSize);
-    if(szDataPtr == NULL)
-        return ERROR_BAD_FORMAT;
-
-    return ERROR_SUCCESS;
 }
 
 static int LoadBuildProduct(TCascStorage * hs, const char * szDataBegin, const char * szDataEnd, void * /* pvParam */)
@@ -818,12 +847,15 @@ static int LoadCdnBuildFile(TCascStorage * hs, void * pvListFile)
     const char * szLineEnd = NULL;
     int nError = ERROR_SUCCESS;
 
-    for(;;)
-    {
-        // Get the next line
-        if(!ListFile_GetNextLine(pvListFile, &szLineBegin, &szLineEnd))
-            break;
+    // Initialize the size of the ENCODING file
+    hs->EncodingFile.ContentSize[0] = 0xFF;
+    hs->EncodingFile.ContentSize[1] = 0xFF;
+    hs->EncodingFile.ContentSize[2] = 0xFF;
+    hs->EncodingFile.ContentSize[3] = 0xFF;
 
+    // Parse all variables
+    while(ListFile_GetNextLine(pvListFile, &szLineBegin, &szLineEnd) != 0)
+    {
         // Product name and build name
         if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "build-product", LoadBuildProduct, NULL))
             continue;
@@ -831,31 +863,31 @@ static int LoadCdnBuildFile(TCascStorage * hs, void * pvListFile)
             continue;
 
         // Content key of the ROOT file. Look this up in ENCODING to get the encoded key
-        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "root", LoadQueryKey, &hs->RootFile))
+        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "root", LoadCkeyEkey, &hs->RootFile))
             continue;
 
         // Content key [+ encoded key] of the INSTALL file
         // If CKey is absent, you need to query the ENCODING file for it
-        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "install", LoadQueryKey, &hs->InstallFile))
+        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "install", LoadCkeyEkey, &hs->InstallFile))
             continue;
 
         // Content key [+ encoded key] of the DOWNLOAD file
         // If CKey is absent, you need to query the ENCODING file for it
-        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "download", LoadQueryKey, &hs->DownloadFile))
+        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "download", LoadCkeyEkey, &hs->DownloadFile))
             continue;
 
         // Content key + encoded key of the ENCODING file. Contains CKey+EKey
         // If either none or 1 is found, the game (at least Wow) switches to plain-data(?). Seen in build 20173 
-        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "encoding", LoadQueryKey, &hs->EncodingFile))
+        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "encoding", LoadCkeyEkey, &hs->EncodingFile))
             continue;
 
         // Content and encoded size of the ENCODING file. This helps us to determine size
         // of the ENCODING file better, as the size in the EKEY entries is almost always wrong on WoW storages
-        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "encoding-size", LoadQuerySize, &hs->EncodingSize))
+        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "encoding-size", LoadCkeyEkeySize, &hs->EncodingFile))
             continue;
 
         // PATCH file
-        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "patch", LoadQueryKey, &hs->PatchFile))
+        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "patch", LoadCkeyEkey, &hs->PatchFile))
             continue;
 
         // Load the CKey+EKey of a VFS root file. This file is a TVFS folder
@@ -864,8 +896,8 @@ static int LoadCdnBuildFile(TCascStorage * hs, void * pvListFile)
             continue;
     }
 
-    // Check the encoding file data
-    if(hs->EncodingFile.pbData == NULL || hs->EncodingFile.cbData != MD5_HASH_SIZE * 2)
+    // Both CKey and EKey of ENCODING file is required
+    if(!IsValidMD5(hs->EncodingFile.CKey) || !IsValidMD5(hs->EncodingFile.EKey))
         return ERROR_BAD_FORMAT;
     return nError;
 }

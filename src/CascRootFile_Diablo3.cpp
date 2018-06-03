@@ -760,18 +760,18 @@ static int CreateMapOfRealNames(TRootHandler_Diablo3 * pRootHandler, const char 
         pPackageMap = Map_Create(NumberOfNames, KEY_LENGTH_STRING, 0);
         if(pPackageMap != NULL)
         {
-            char * szFileName = (char *)pbPackagesDat;
+            const char * szPackageName = (const char *)pbPackagesDat;
 
             // Go as long as there is something
             for(DWORD i = 0; i < NumberOfNames; i++)
             {
                 // Get the file extension
-                if((LPBYTE)szFileName >= pbPackagesEnd)
+                if((LPBYTE)szPackageName >= pbPackagesEnd)
                     break;
 
                 // Insert the file name to the map. The file extension is not included
-                Map_InsertString(pPackageMap, szFileName, true);
-                szFileName = szFileName + strlen(szFileName) + 1;
+                Map_InsertString(pPackageMap, szPackageName, true);
+                szPackageName = szPackageName + strlen(szPackageName) + 1;
             }
 
             // Store the map and the file data to the ROOT handler

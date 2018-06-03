@@ -221,12 +221,12 @@ void CascDumpStorage(HANDLE hStorage, const char * szDumpFile)
         fprintf(fp, "BuildFile: %ls\n", hs->szBuildFile);
         fprintf(fp, "CDN Config Key: %s\n", StringFromBinary(hs->CdnConfigKey.pbData, hs->CdnConfigKey.cbData, szStringBuff));
         fprintf(fp, "CDN Build Key:  %s\n", StringFromBinary(hs->CdnBuildKey.pbData, hs->CdnBuildKey.cbData, szStringBuff));
-//      fprintf(fp, "Archives Key:   %s\n", StringFromBinary(hs->ArchivesKey.pbData, hs->ArchivesKey.cbData, szStringBuff));
-        fprintf(fp, "ROOT file:      %s\n", StringFromBinary(hs->RootFile.pbData, hs->RootFile.cbData, szStringBuff));
-        fprintf(fp, "PATCH file:     %s\n", StringFromBinary(hs->PatchFile.pbData, hs->PatchFile.cbData, szStringBuff));
-        fprintf(fp, "ENCODING file:  %s\n", StringFromBinary(hs->EncodingFile.pbData+MD5_HASH_SIZE, MD5_HASH_SIZE, szStringBuff));
-        fprintf(fp, "DOWNLOAD file:  %s\n", StringFromBinary(hs->DownloadFile.pbData, hs->DownloadFile.cbData, szStringBuff));
-        fprintf(fp, "INSTALL file:   %s\n\n", StringFromBinary(hs->InstallFile.pbData, hs->InstallFile.cbData, szStringBuff));
+        fprintf(fp, "Archives Key:   %s\n", StringFromBinary(hs->ArchivesKey.pbData, hs->ArchivesKey.cbData, szStringBuff));
+        fprintf(fp, "ROOT file:      %s\n", StringFromBinary(hs->RootFile.CKey, CASC_CKEY_SIZE, szStringBuff));
+        fprintf(fp, "PATCH file:     %s\n", StringFromBinary(hs->PatchFile.CKey, CASC_CKEY_SIZE, szStringBuff));
+        fprintf(fp, "ENCODING file:  %s\n", StringFromBinary(hs->EncodingFile.CKey, MD5_HASH_SIZE, szStringBuff));
+        fprintf(fp, "DOWNLOAD file:  %s\n", StringFromBinary(hs->DownloadFile.CKey, MD5_HASH_SIZE, szStringBuff));
+        fprintf(fp, "INSTALL file:   %s\n\n", StringFromBinary(hs->InstallFile.CKey, MD5_HASH_SIZE, szStringBuff));
 
         // Dump the complete ENCODING file
         DumpEncodingFile(hs, fp);
