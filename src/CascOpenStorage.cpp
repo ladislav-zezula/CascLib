@@ -141,24 +141,10 @@ static const TCHAR * szIndexFormat_V2 = _T("%02x%08x.idx");
 //-----------------------------------------------------------------------------
 // Local functions
 
-inline void CopyFileKey(LPBYTE Trg, LPBYTE Src)
+static void InitQuerySize(QUERY_SIZE & QuerySize)
 {
-    Trg[0x00] = Src[0x00];
-    Trg[0x01] = Src[0x01];
-    Trg[0x02] = Src[0x02];
-    Trg[0x03] = Src[0x03];
-    Trg[0x04] = Src[0x04];
-    Trg[0x05] = Src[0x05];
-    Trg[0x06] = Src[0x06];
-    Trg[0x07] = Src[0x07];
-    Trg[0x08] = Src[0x08];
-    Trg[0x09] = Src[0x09];
-    Trg[0x0A] = Src[0x0A];
-    Trg[0x0B] = Src[0x0B];
-    Trg[0x0C] = Src[0x0C];
-    Trg[0x0D] = Src[0x0D];
-    Trg[0x0E] = Src[0x0E];
-    Trg[0x0F] = Src[0x0F];
+    QuerySize.ContentSize = CASC_INVALID_SIZE;
+    QuerySize.EncodedSize = CASC_INVALID_SIZE;
 }
 
 TCascStorage * IsValidStorageHandle(HANDLE hStorage)
@@ -271,7 +257,7 @@ static bool CutLastPathPart(TCHAR * szWorkPath)
     return false;
 }
 
-static int InsertExtraFile(
+static int InsertNamedFile(
     TCascStorage * hs,
     const char * szFileName,
     PQUERY_KEY pQueryKey)
@@ -846,7 +832,7 @@ static int CaptureEncodingHeader(PCASC_ENCODING_HEADER pEncodingHeader, void * p
 static int LoadEncodingFile(TCascStorage * hs)
 {
     LPBYTE pbEncodingFile;
-    DWORD cbEncodingFile = 0;
+    DWORD cbEncodingFile = hs->EncodingSize.ContentSize;
     int nError = ERROR_SUCCESS;
 
     // Load the entire encoding file to memory
@@ -974,14 +960,14 @@ static int LoadRootFile(TCascStorage * hs, DWORD dwLocaleMask)
         }
     }
 
-    // Insert entry for the
+    // Insert entries for files with well-known names, mainly from the BUILD file
     if(nError == ERROR_SUCCESS)
     {
-        InsertExtraFile(hs, "ENCODING", &hs->EncodingFile);
-        InsertExtraFile(hs, "ROOT", &hs->RootFile);
-        InsertExtraFile(hs, "DOWNLOAD", &hs->DownloadFile);
-        InsertExtraFile(hs, "INSTALL", &hs->InstallFile);
-        InsertExtraFile(hs, "PATCH", &hs->PatchFile);
+        InsertNamedFile(hs, "ENCODING", &hs->EncodingFile);
+        InsertNamedFile(hs, "ROOT", &hs->RootFile);
+        InsertNamedFile(hs, "DOWNLOAD", &hs->DownloadFile);
+        InsertNamedFile(hs, "INSTALL", &hs->InstallFile);
+        InsertNamedFile(hs, "PATCH", &hs->PatchFile);
     }
 
     // Free the root file
@@ -1002,6 +988,7 @@ static TCascStorage * FreeCascStorage(TCascStorage * hs)
 
         // Free the extra encoding entries
         Array_Free(&hs->ExtraCKeys);
+        Array_Free(&hs->VfsRootList);
 
         // Free the pointers to file entries
         if(hs->pCKeyEntryMap != NULL)
@@ -1091,6 +1078,10 @@ bool WINAPI CascOpenStorage(const TCHAR * szDataPath, DWORD dwLocaleMask, HANDLE
         hs->dwHeaderDelta = CASC_INVALID_POS;
         hs->dwDefaultLocale = CASC_LOCALE_ENUS | CASC_LOCALE_ENGB;
         hs->dwRefCount = 1;
+        
+        // Initialize the sizes
+        InitQuerySize(hs->EncodingSize);
+        
         nError = InitializeCascDirectories(hs, szDataPath);
     }
 

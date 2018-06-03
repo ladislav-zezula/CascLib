@@ -19,6 +19,8 @@
 typedef int (*PARSEINFOFILE)(TCascStorage * hs, void * pvListFile);
 typedef int (*PARSE_VARIABLE)(TCascStorage * hs, const char * szDataBegin, const char * szDataEnd, void * pvParam);
 
+#define MAX_VAR_NAME 80
+
 //-----------------------------------------------------------------------------
 // Local structures
 
@@ -66,14 +68,117 @@ static const TGameIdString GameIds[] =
 //-----------------------------------------------------------------------------
 // Local functions
 
+static bool inline IsWhiteSpace(const char * szVarValue)
+{
+    return (0 <= szVarValue[0] && szVarValue[0] <= 0x20);
+}
+
 static bool inline IsValueSeparator(const char * szVarValue)
 {
-    return ((0 <= szVarValue[0] && szVarValue[0] <= 0x20) || (szVarValue[0] == '|'));
+    return (IsWhiteSpace(szVarValue) || (szVarValue[0] == '|'));
 }
 
 static bool IsCharDigit(BYTE OneByte)
 {
     return ('0' <= OneByte && OneByte <= '9');
+}
+
+static const char * CaptureDecimalInteger(const char * szDataPtr, const char * szDataEnd, PDWORD PtrValue)
+{
+    DWORD TotalValue = 0;
+    DWORD AddValue = 0;
+
+    // Skip all spaces
+    while (szDataPtr < szDataEnd && szDataPtr[0] == ' ')
+        szDataPtr++;
+
+    // Load the number
+    while (szDataPtr < szDataEnd && szDataPtr[0] != ' ')
+    {
+        // Must only contain decimal digits ('0' - '9')
+        if (!IsCharDigit(szDataPtr[0]))
+            return NULL;
+
+        // Get the next value and verify overflow
+        AddValue = szDataPtr[0] - '0';
+        if ((TotalValue + AddValue) < TotalValue)
+            return NULL;
+
+        TotalValue = (TotalValue * 10) + AddValue;
+        szDataPtr++;
+    }
+
+    // Give the result
+    PtrValue[0] = TotalValue;
+    return szDataPtr;
+}
+
+static const char * CaptureSingleString(const char * szDataPtr, const char * szDataEnd, char * szBuffer, size_t ccBuffer)
+{
+    char * szBufferEnd = szBuffer + ccBuffer - 1;
+
+    // Skip all whitespaces
+    while (szDataPtr < szDataEnd && IsWhiteSpace(szDataPtr))
+        szDataPtr++;
+
+    // Copy the string
+    while (szDataPtr < szDataEnd && szBuffer < szBufferEnd && !IsWhiteSpace(szDataPtr) && szDataPtr[0] != '=')
+        *szBuffer++ = *szDataPtr++;
+
+    szBuffer[0] = 0;
+    return szDataPtr;
+}
+
+static const char * CaptureSingleHash(const char * szDataPtr, const char * szDataEnd, LPBYTE HashValue, size_t HashLength)
+{
+    const char * szHashString;
+    size_t HashStringLength = HashLength * 2;
+
+    // Skip all whitespaces
+    while (szDataPtr < szDataEnd && IsWhiteSpace(szDataPtr))
+        szDataPtr++;
+    szHashString = szDataPtr;
+
+    // Count all hash characters
+    for (size_t i = 0; i < HashStringLength; i++)
+    {
+        if (szDataPtr >= szDataEnd || isxdigit(szDataPtr[0]) == 0)
+            return NULL;
+        szDataPtr++;
+    }
+
+    // There must be a separator or end-of-string
+    if (szDataPtr > szDataEnd || IsWhiteSpace(szDataPtr) == false)
+        return NULL;
+
+    // Give the values
+    ConvertStringToBinary(szHashString, HashStringLength, HashValue);
+    return szDataPtr;
+}
+
+static const char * CaptureHashCount(const char * szDataPtr, const char * szDataEnd, size_t * PtrHashCount)
+{
+    BYTE HashValue[MD5_HASH_SIZE];
+    size_t HashCount = 0;
+
+    // Capculate the hash count
+    while (szDataPtr < szDataEnd)
+    {
+        // Check one hash
+        szDataPtr = CaptureSingleHash(szDataPtr, szDataEnd, HashValue, MD5_HASH_SIZE);
+        if (szDataPtr == NULL)
+            return NULL;
+
+        // Skip all whitespaces
+        while (szDataPtr < szDataEnd && IsWhiteSpace(szDataPtr))
+            szDataPtr++;
+
+        HashCount++;
+    }
+
+    // Give results
+    PtrHashCount[0] = HashCount;
+    return szDataPtr;
 }
 
 static DWORD GetLocaleMask(const char * szTag)
@@ -216,48 +321,32 @@ TCHAR * AppendBlobText(TCHAR * szBuffer, LPBYTE pbData, DWORD cbData, TCHAR chSe
 
 static bool CheckConfigFileVariable(
     TCascStorage * hs,                  // Pointer to storage structure
-    const char * szLineBegin,           // Pointer to the begin of the line
+    const char * szLinePtr,             // Pointer to the begin of the line
     const char * szLineEnd,             // Pointer to the end of the line
     const char * szVarName,             // Pointer to the variable to check
     PARSE_VARIABLE PfnParseProc,        // Pointer to the parsing function
     void * pvParseParam)                // Pointer to the parameter passed to parsing function
 {
-    size_t nLineLength = (size_t)(szLineEnd - szLineBegin);
-    size_t nNameLength = strlen(szVarName);
+    char szVariableName[MAX_VAR_NAME];
 
-    // Is the line longer than the variable name?
-    if(nLineLength > nNameLength)
-    {
-        // Verify the variable name
-        if(!_strnicmp(szLineBegin, szVarName, nNameLength) && IsValueSeparator(szLineBegin + nNameLength))
-        {
-            // Skip the variable name
-            szLineBegin += nNameLength;
+    // Capture the variable from the line
+    szLinePtr = CaptureSingleString(szLinePtr, szLineEnd, szVariableName, sizeof(szVariableName));
+    if (szLinePtr == NULL)
+        return false;
 
-            // Skip the separator(s)
-            while(szLineBegin < szLineEnd && IsValueSeparator(szLineBegin))
-                szLineBegin++;
+    // Verify whether this is the variable
+    if (!CheckWildCard(szVariableName, szVarName))
+        return false;
 
-            // Check if there is "="
-            if(szLineBegin < szLineEnd && szLineBegin[0] == '=')
-            {
-                // Skip the "="
-                szLineBegin++;
+    // Skip the spaces and '='
+    while (szLinePtr < szLineEnd && (IsWhiteSpace(szLinePtr) || szLinePtr[0] == '='))
+        szLinePtr++;
 
-                // Skip the separator(s)
-                while(szLineBegin < szLineEnd && IsValueSeparator(szLineBegin))
-                    szLineBegin++;
+    // Call the parsing function only if there is some data
+    if (szLinePtr >= szLineEnd)
+        return false;
 
-                // Call the parsing function only if there is some data
-                if(szLineBegin < szLineEnd)
-                {
-                    return (PfnParseProc(hs, szLineBegin, szLineEnd, pvParseParam) == ERROR_SUCCESS);
-                }
-            }
-        }
-    }
-
-    return false;
+    return (PfnParseProc(hs, szLinePtr, szLineEnd, pvParseParam) == ERROR_SUCCESS);
 }
 
 static int LoadInfoVariable(PQUERY_KEY pVarBlob, const char * szLineBegin, const char * szLineEnd, bool bHexaValue)
@@ -316,99 +405,53 @@ static void AppendConfigFilePath(TCHAR * szFileName, PQUERY_KEY pFileKey)
     szFileName = AppendBlobText(szFileName, pFileKey->pbData, pFileKey->cbData, _T('/'));
 }
 
-static size_t GetBlobCount(const char * szLineBegin, const char * szLineEnd)
-{
-    size_t nBlobCount = 0;
-
-    // Until we find an end of the line
-    while(szLineBegin < szLineEnd)
-    {
-        // Check whether there is a proper blob
-        if((szLineBegin + MD5_STRING_SIZE) <= szLineEnd)
-        {
-            // Verify all characters of the hash
-            for(size_t i = 0; i < MD5_STRING_SIZE; i++)
-            {
-                if(IsValueSeparator(szLineBegin + i))
-                    break;
-            }
-
-            // Increment the number of blobs
-            nBlobCount++;
-
-            // Skip the blob
-            szLineBegin += MD5_STRING_SIZE;
-
-            // Skip all eventual spaces
-            while(szLineBegin < szLineEnd && IsValueSeparator(szLineBegin))
-                szLineBegin++;
-        }
-    }
-
-    return nBlobCount;
-}
-
-static int LoadBlobArray(
+static int LoadHashArray(
     PQUERY_KEY pBlob,
-    const char * szLineBegin,
+    const char * szLinePtr,
     const char * szLineEnd,
-    size_t nBlobCount)
+    size_t HashCount)
 {
     LPBYTE pbBuffer = pBlob->pbData;
     int nError = ERROR_SUCCESS;
 
     // Sanity check
     assert(pBlob->pbData != NULL);
-    assert(pBlob->cbData != 0);
+    assert(pBlob->cbData == HashCount * MD5_HASH_SIZE);
 
-    // Until we find an end of the line
-    while(szLineBegin < szLineEnd && nBlobCount > 0)
+    for (size_t i = 0; i < HashCount; i++)
     {
-        // Check whether there is a proper blob
-        if((szLineBegin + MD5_STRING_SIZE) <= szLineEnd)
-        {
-            // Perform the conversion of the blob to the binary array
-            nError = ConvertStringToBinary(szLineBegin, MD5_STRING_SIZE, pbBuffer);
-            if(nError != ERROR_SUCCESS)
-                return nError;
+        // Capture the hash value
+        szLinePtr = CaptureSingleHash(szLinePtr, szLineEnd, pbBuffer, MD5_HASH_SIZE);
+        if (szLinePtr == NULL)
+            return ERROR_BAD_FORMAT;
 
-            // Skip the blob
-            szLineBegin += MD5_STRING_SIZE;
-
-            // Skip all eventual spaces
-            while(szLineBegin < szLineEnd && IsValueSeparator(szLineBegin))
-                szLineBegin++;
-        }
-
-        // Move pointers
+        // Move buffer
         pbBuffer += MD5_HASH_SIZE;
-        nBlobCount--;
     }
 
     return nError;
 }
 
-static int LoadMultipleBlobs(PQUERY_KEY pBlob, const char * szLineBegin, const char * szLineEnd)
+static int LoadMultipleHashes(PQUERY_KEY pBlob, const char * szLineBegin, const char * szLineEnd)
 {
-    size_t nBlobCount = GetBlobCount(szLineBegin, szLineEnd);
-    size_t nLength = (szLineEnd - szLineBegin);
+    size_t HashCount = 0;
     int nError = ERROR_SUCCESS;
 
-    // Do nothing if there is no data
-    if(nLength && nBlobCount)
-    {
-        // We expect each blob to have length of the content key and one space between
-        if(nLength > (nBlobCount * MD5_STRING_SIZE) + ((nBlobCount - 1) * sizeof(char)))
-            return ERROR_INVALID_PARAMETER;
+    // Retrieve the hash count
+    if (CaptureHashCount(szLineBegin, szLineEnd, &HashCount) == NULL)
+        return ERROR_BAD_FORMAT;
 
+    // Do nothing if there is no data
+    if(HashCount != 0)
+    {
         // Allocate the blob buffer
-        pBlob->pbData = CASC_ALLOC(BYTE, nBlobCount * MD5_HASH_SIZE);
+        pBlob->pbData = CASC_ALLOC(BYTE, HashCount * MD5_HASH_SIZE);
         if(pBlob->pbData == NULL)
             return ERROR_NOT_ENOUGH_MEMORY;
 
         // Set the buffer size and load the blob array
-        pBlob->cbData = (DWORD)(nBlobCount * MD5_HASH_SIZE);
-        nError = LoadBlobArray(pBlob, szLineBegin, szLineEnd, nBlobCount);
+        pBlob->cbData = (DWORD)(HashCount * MD5_HASH_SIZE);
+        nError = LoadHashArray(pBlob, szLineBegin, szLineEnd, HashCount);
     }
 
     return nError;
@@ -418,7 +461,56 @@ static int LoadMultipleBlobs(PQUERY_KEY pBlob, const char * szLineBegin, const c
 // A QueryKey is an array of "ContentKey EncodedKey1 ... EncodedKeyN"
 static int LoadQueryKey(TCascStorage * /* hs */, const char * szDataBegin, const char * szDataEnd, void * pvParam)
 {
-    return LoadMultipleBlobs((PQUERY_KEY)pvParam, szDataBegin, szDataEnd);
+    return LoadMultipleHashes((PQUERY_KEY)pvParam, szDataBegin, szDataEnd);
+}
+
+static int LoadVfsRootEntry(TCascStorage * /* hs */, const char * szDataPtr, const char * szDataEnd, void * pvParam)
+{
+    QUERY_KEY_PAIR KeyPair;
+    PCASC_ARRAY pArray = (PCASC_ARRAY)pvParam;
+    size_t HashCount = 0;
+    int nError;
+
+    // Check for the hash array. We expect exactly 2 hashes there (CKey and EKey)
+    if (CaptureHashCount(szDataPtr, szDataEnd, &HashCount) == NULL || HashCount != 2)
+        return ERROR_BAD_FORMAT;
+
+    // Get the CKey value
+    szDataPtr = CaptureSingleHash(szDataPtr, szDataEnd, KeyPair.CKey.Value, MD5_HASH_SIZE);
+    if (szDataPtr == NULL)
+        return ERROR_BAD_FORMAT;
+
+    // Get the single hash
+    szDataPtr = CaptureSingleHash(szDataPtr, szDataEnd, KeyPair.EKey.Value, MD5_HASH_SIZE);
+    if (szDataPtr == NULL)
+        return ERROR_BAD_FORMAT;
+
+    // If this is the first time we are loading an entry, allocate the array
+    if (pArray->ItemArray == NULL)
+    {
+        nError = Array_Create(pArray, QUERY_KEY_PAIR, 0x10);
+        if (nError != ERROR_SUCCESS)
+            return nError;
+    }
+
+    // Insert single structure to the list
+    return (Array_Insert(pArray, &KeyPair, 1) != NULL) ? ERROR_SUCCESS : ERROR_NOT_ENOUGH_MEMORY;
+}
+
+static int LoadQuerySize(TCascStorage * /* hs */, const char * szDataPtr, const char * szDataEnd, void * pvParam)
+{
+    PQUERY_SIZE pQuerySize = (PQUERY_SIZE)pvParam;
+
+    // Load the content size
+    szDataPtr = CaptureDecimalInteger(szDataPtr, szDataEnd, &pQuerySize->ContentSize);
+    if(szDataPtr == NULL)
+        return ERROR_BAD_FORMAT;
+
+    szDataPtr = CaptureDecimalInteger(szDataPtr, szDataEnd, &pQuerySize->EncodedSize);
+    if(szDataPtr == NULL)
+        return ERROR_BAD_FORMAT;
+
+    return ERROR_SUCCESS;
 }
 
 static int LoadBuildProduct(TCascStorage * hs, const char * szDataBegin, const char * szDataEnd, void * /* pvParam */)
@@ -757,10 +849,18 @@ static int LoadCdnBuildFile(TCascStorage * hs, void * pvListFile)
         if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "encoding", LoadQueryKey, &hs->EncodingFile))
             continue;
 
-        // TODO: Maybe load the size of the ENCODING file from "encoding-size" ?
+        // Content and encoded size of the ENCODING file. This helps us to determine size
+        // of the ENCODING file better, as the size in the EKEY entries is almost always wrong on WoW storages
+        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "encoding-size", LoadQuerySize, &hs->EncodingSize))
+            continue;
 
         // PATCH file
         if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "patch", LoadQueryKey, &hs->PatchFile))
+            continue;
+
+        // Load the CKey+EKey of a VFS root file. This file is a TVFS folder
+        // and will be parsed by the handler of the TVFS root
+        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "vfs-*", LoadVfsRootEntry, &hs->VfsRootList))
             continue;
     }
 

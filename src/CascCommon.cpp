@@ -23,24 +23,38 @@ typedef bool (WINAPI * OPEN_FILE)(HANDLE hStorage, PQUERY_KEY pCKey, DWORD dwFla
 LPBYTE LoadInternalFileToMemory(TCascStorage * hs, LPBYTE pbQueryKey, DWORD dwOpenFlags, DWORD * pcbFileData)
 {
     QUERY_KEY QueryKey;
-    OPEN_FILE OpenFile;
     LPBYTE pbFileData = NULL;
     HANDLE hFile = NULL;
-    DWORD cbFileData = 0;
+    DWORD cbFileData = pcbFileData[0];
     DWORD dwBytesRead = 0;
+    bool bOpenResult = false;
     int nError = ERROR_SUCCESS;
 
     // Prepare the query key
     QueryKey.pbData = pbQueryKey;
     QueryKey.cbData = MD5_HASH_SIZE;
 
-    // Open the internal file
-    OpenFile = (dwOpenFlags == CASC_OPEN_BY_CKEY) ? CascOpenFileByCKey : CascOpenFileByEKey;
-    if(OpenFile((HANDLE)hs, &QueryKey, CASC_INVALID_SIZE, &hFile))
+    // Open the file
+    if(dwOpenFlags == CASC_OPEN_BY_CKEY)
+        bOpenResult = CascOpenFileByCKey((HANDLE)hs, &QueryKey, &hFile);
+    else
+        bOpenResult = CascOpenFileByEKey((HANDLE)hs, NULL, &QueryKey, CASC_INVALID_SIZE, &hFile);
+
+    // Load the internal file
+    if(bOpenResult)
     {
+        // Retrieve the size of the file. Note that the caller might specify
+        // the real size of the file, in case the file size is not retrievable
+        // or if the size is wrong. Example: ENCODING file has size specified in BUILD
+        if(pcbFileData[0] == 0 || pcbFileData[0] == CASC_INVALID_SIZE)
+        {
+            cbFileData = CascGetFileSize(hFile, NULL);
+            if(cbFileData == 0 || cbFileData == CASC_INVALID_SIZE)
+                nError = ERROR_FILE_CORRUPT;
+        }
+
         // Retrieve the size of the ENCODING file
-        cbFileData = CascGetFileSize(hFile, NULL);
-        if(cbFileData != 0)
+        if(nError == ERROR_SUCCESS)
         {
             // Allocate space for the ENCODING file
             pbFileData = CASC_ALLOC(BYTE, cbFileData);
@@ -57,10 +71,6 @@ LPBYTE LoadInternalFileToMemory(TCascStorage * hs, LPBYTE pbQueryKey, DWORD dwOp
             {
                 nError = ERROR_NOT_ENOUGH_MEMORY;
             }
-        }
-        else
-        {
-            nError = ERROR_BAD_FORMAT;
         }
 
         // Close the file

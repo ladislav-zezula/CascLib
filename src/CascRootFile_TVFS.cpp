@@ -63,7 +63,7 @@ typedef struct _TVFS_DIRECTORY_HEADER
 //  LPBYTE pbCftTableEnd;
 
 } TVFS_DIRECTORY_HEADER, *PTVFS_DIRECTORY_HEADER;
-
+/*
 // Minimum size of a valid path table entry. 1 byte + 1-byte name + 1 byte + DWORD
 #define TVFS_HEADER_LENGTH FIELD_OFFSET(TVFS_DIRECTORY_HEADER, CftOffsSize)
 
@@ -81,7 +81,7 @@ typedef struct _TVFS_DIRECTORY_HEADER
 
 // Maximum estimated file table. Empirically set to 8 MB, increase if needed.
 #define TVFS_MAX_FILE_SIZE 0x00800000
-
+*/
 // In-memory layout of the path table entry
 typedef struct _TVFS_PATH_TABLE_ENTRY
 {
@@ -309,56 +309,60 @@ static LPBYTE CapturePathEntry(TVFS_PATH_TABLE_ENTRY & PathEntry, LPBYTE pbPathT
     return pbPathTablePtr + 1 + sizeof(DWORD);
 }
 
+static bool IsVfsFileEKey(TRootHandler_TVFS * pRootHandler, ENCODED_KEY & EKey, size_t EKeyLength)
+{
+    PQUERY_KEY_PAIR pKeyPair;
+    TCascStorage * hs = pRootHandler->hs;
+    size_t ItemCount = 0;
+
+    // Are there some VFS items?
+    if (hs->VfsRootList.ItemArray && hs->VfsRootList.ItemCount)
+        ItemCount = hs->VfsRootList.ItemCount;
+
+    // Search the array
+    for (size_t i = 0; i < ItemCount; i++)
+    {
+        pKeyPair = (PQUERY_KEY_PAIR)Array_ItemAt(&hs->VfsRootList, i);
+        if (pKeyPair != NULL)
+        {
+            if (!memcmp(pKeyPair->EKey.Value, EKey.Value, EKeyLength))
+                return true;
+        }
+    }
+
+    // Not found in the VFS list
+    return false;
+}
+
 // This function verifies whether a file is actually a sub-directory.
 // If yes, it contains just another "TVFS" virtual file system, just like the ROOT file.
-static int IsSubDirectory(TRootHandler_TVFS * pRootHandler, TVFS_DIRECTORY_HEADER & DirHeader, TVFS_DIRECTORY_HEADER & SubHeader, ENCODED_KEY & EKey, DWORD dwFileSize)
+static int IsVfsSubDirectory(
+    TRootHandler_TVFS * pRootHandler,
+    TVFS_DIRECTORY_HEADER & DirHeader,
+    TVFS_DIRECTORY_HEADER & SubHeader,
+    ENCODED_KEY & EKey,
+    DWORD dwFileSize)
 {
-    QUERY_KEY QueryKey;
-    LPBYTE pbFileData = NULL;
-    HANDLE hFile = NULL;
-    DWORD cbBytesRead = 0;
+    LPBYTE pbVfsData = NULL;
+    DWORD cbVfsData = dwFileSize;
     int nError = ERROR_BAD_FORMAT;
 
-    // Verify the file size. We can do it before opening the file, thus speeding thins up a bit
-    if(TVFS_MIN_FILE_SIZE < dwFileSize && dwFileSize < TVFS_MAX_FILE_SIZE)
+    // Verify whether the EKey is in the list of VFS root files
+    if(IsVfsFileEKey(pRootHandler, EKey, DirHeader.EKeySize))
     {
-        // Open the file by encoded key
-        QueryKey.pbData = EKey.Value;
-        QueryKey.cbData = DirHeader.EKeySize;
-        if(CascOpenFileByEKey((HANDLE)pRootHandler->hs, &QueryKey, dwFileSize, &hFile))
+        // Load the entire file into memory
+        pbVfsData = LoadInternalFileToMemory(pRootHandler->hs, EKey.Value, CASC_OPEN_BY_EKEY, &cbVfsData);
+        if (pbVfsData && cbVfsData)
         {
-            // Allocate space for eventual entire file.
-            pbFileData = CASC_ALLOC(BYTE, dwFileSize);
-            if(pbFileData != NULL)
-            {
-                // Read enough bytes to parse the header
-                CascReadFile(hFile, pbFileData, TVFS_MIN_FILE_SIZE, &cbBytesRead);
-                if(cbBytesRead == TVFS_MIN_FILE_SIZE)
-                {
-                    // Capture the file folder. This also serves as test
-                    nError = CaptureDirectoryHeader(SubHeader, pbFileData, pbFileData + dwFileSize);
-                    if(nError == ERROR_SUCCESS && dwFileSize > TVFS_MIN_FILE_SIZE)
-                    {
-                        // Load the rest of the file
-                        CascReadFile(hFile, pbFileData + TVFS_MIN_FILE_SIZE, dwFileSize - TVFS_MIN_FILE_SIZE, &cbBytesRead);
-                        if(cbBytesRead != (dwFileSize - TVFS_MIN_FILE_SIZE))
-                        {
-                            nError = ERROR_BAD_FORMAT;
-                        }
-                    }
-                }
+            // Capture the file folder. This also serves as test
+            nError = CaptureDirectoryHeader(SubHeader, pbVfsData, pbVfsData + cbVfsData);
+            if (nError == ERROR_SUCCESS)
+                return nError;
 
-                // If bad format, we need to free the data
-                if(nError != ERROR_SUCCESS)
-                {
-                    memset(&SubHeader, 0, sizeof(TVFS_DIRECTORY_HEADER));
-                    CASC_FREE(pbFileData);
-                }
-            }
+            // Clear the captured header
+            memset(&SubHeader, 0, sizeof(TVFS_DIRECTORY_HEADER));
+            CASC_FREE(pbVfsData);
         }
-
-        // Close the file handle
-        CascCloseFile(hFile);
     }
 
     return nError;
@@ -432,9 +436,16 @@ static DWORD ParsePathFileTable(
             if(nError != ERROR_SUCCESS)
                 return nError;
 
-            // We need to check whether this is another subdirectory.
-            if(IsSubDirectory(pRootHandler, DirHeader, SubHeader, EKey, dwSpanSize) == ERROR_SUCCESS)
+            // We need to check whether this is another TVFS directory file
+            if(IsVfsSubDirectory(pRootHandler, DirHeader, SubHeader, EKey, dwSpanSize) == ERROR_SUCCESS)
             {
+#ifdef _DEBUG
+                if((PathBuffer.szPtr - PathBuffer.szBegin) > 4 && !strcmp(PathBuffer.szPtr - 4, ".w3m"))
+                {
+                    *PathBuffer.szPtr++ = ':';
+                    *PathBuffer.szPtr = 0;
+                }
+#endif
                 // Add one extra backslash to the node
                 PathBuffer_AddBackslash(PathBuffer);
 

@@ -378,8 +378,104 @@ static int ProcessFileFrame(
     return nError;
 }
 
+/*
+static void BruteForceHash(TFileStream * pStream, ULONGLONG DataFileOffset, DWORD EncodedSize, LPBYTE FrameHash)
+{
+    hash_state md5_state2;
+    hash_state md5_state;
+    BYTE block_md5[MD5_HASH_SIZE];
+    BYTE OneByte[1];
+    DWORD dwLength = 0;
+
+    md5_init(&md5_state);
+
+    while(FileStream_Read(pStream, &DataFileOffset, OneByte, 1))
+    {
+        // Process the hash
+        md5_process(&md5_state, OneByte, 1);
+        
+        // Match?
+        md5_state2 = md5_state;
+        md5_done(&md5_state2, block_md5);
+        if(!memcmp(block_md5, FrameHash, MD5_HASH_SIZE))
+            break;
+        dwLength++;
+    }
+}
+*/
 //-----------------------------------------------------------------------------
 // Public functions
+
+bool WINAPI CascGetFileInfo(HANDLE hFile, CASC_FILE_INFO_CLASS InfoClass, void * pvOutFileInfo, size_t cbOutFileInfo, size_t * pcbLengthNeeded)
+{
+    TCascFile * hf;
+    void * pvFileInfo = NULL;
+    size_t cbFileInfo = 0;
+
+    // Validate the file handle
+    if((hf = IsValidFileHandle(hFile)) == NULL)
+    {
+        SetLastError(ERROR_INVALID_HANDLE);
+        return false;
+    }
+
+    // Differentiate between info classes
+    switch(InfoClass)
+    {
+        case CascFileContentKey:
+
+            // Do we have content key at all?
+            if(!IsValidMD5(hf->CKey.Value))
+            {
+                SetLastError(ERROR_NOT_SUPPORTED);
+                return false;
+            }
+
+            // Give the content key
+            pvFileInfo = hf->CKey.Value;
+            cbFileInfo = CASC_CKEY_SIZE;
+            break;
+
+        case CascFileEncodedKey:
+
+            // Do we have content key at all?
+            if(!IsValidMD5(hf->EKey.Value))
+            {
+                SetLastError(ERROR_NOT_SUPPORTED);
+                return false;
+            }
+
+            // Give the content key
+            pvFileInfo = hf->EKey.Value;
+            cbFileInfo = CASC_CKEY_SIZE;
+            break;
+
+        default:
+            SetLastError(ERROR_INVALID_PARAMETER);
+            return false;
+    }
+
+    // Sanity check
+    assert(pvFileInfo != NULL);
+    assert(cbFileInfo != 0);
+
+    // Always give the length needed
+    if(pcbLengthNeeded != NULL)
+    {
+        pcbLengthNeeded[0] = cbFileInfo;
+    }
+
+    // Do we have enough space?
+    if(cbFileInfo > cbOutFileInfo)
+    {
+        SetLastError(ERROR_INSUFFICIENT_BUFFER);
+        return false;
+    }
+
+    // Give the information
+    memcpy(pvOutFileInfo, pvFileInfo, cbFileInfo);
+    return true;
+}
 
 //
 // THE FILE SIZE PROBLEM
@@ -638,6 +734,8 @@ bool WINAPI CascReadFile(HANDLE hFile, void * pvBuffer, DWORD dwBytesToRead, PDW
                 }
                 else
                 {
+                    // Try to find the data which have the given hash
+//                  BruteForceHash(hf->pStream, DataFileOffset, pFrame->EncodedSize, pFrame->FrameHash);
                     nError = ERROR_FILE_CORRUPT;
                 }
 

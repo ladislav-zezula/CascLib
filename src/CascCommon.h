@@ -114,6 +114,7 @@ typedef struct _CASC_FILE_FRAME
     DWORD ContentSize;                              // Content size of the frame
 } CASC_FILE_FRAME, *PCASC_FILE_FRAME;
 
+// Converted header of the ENCODING file
 typedef struct _CASC_ENCODING_HEADER
 {
     USHORT Version;                                 // Expected to be 1 by CascLib
@@ -129,7 +130,7 @@ typedef struct _CASC_ENCODING_HEADER
 typedef struct _CASC_CKEY_ENTRY
 {
     USHORT EKeyCount;                               // Number of EKeys
-    BYTE ContentSize[4];                            // Content file size.
+    BYTE ContentSize[4];                            // Content file size (big endian)
     BYTE CKey[CASC_CKEY_SIZE];                      // Content key. This is MD5 of the file content
 
     // Followed by the EKey (KeyCount = number of EKeys)
@@ -173,6 +174,7 @@ typedef struct _TCascStorage
     QUERY_KEY DownloadFile;                         // CKey+EKey of the DOWNLOAD file
     QUERY_KEY InstallFile;                          // CKey+EKey of the INSTALL file
     QUERY_KEY EncodingFile;                         // CKey+EKey key of the ENCODING file
+    QUERY_SIZE EncodingSize;                        // CSize+ESize of the ENCODING file
 
     TFileStream * DataFiles[CASC_MAX_DATA_FILES];   // Array of open data files
 
@@ -184,6 +186,7 @@ typedef struct _TCascStorage
     CASC_ARRAY ExtraCKeys;                          // Extra CKey entries
 
     TRootHandler * pRootHandler;                    // Common handler for various ROOT file formats
+    CASC_ARRAY VfsRootList;                         // List of VFS root files. Used on TVFS root keys
 
 } TCascStorage;
 

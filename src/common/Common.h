@@ -24,7 +24,7 @@
 //-----------------------------------------------------------------------------
 // Common structures
 
-// Structure for both static content key (CKey) and encoded key (EKey)
+// Structure for static content key (CKey) and encoded key (EKey)
 // The CKey is a MD5 hash of the file data.
 // The EKey is (shortened) MD5 hash of the file header, which contains MD5 hashes of all the logical blocks of the file.
 typedef struct _CONTENT_KEY
@@ -32,6 +32,13 @@ typedef struct _CONTENT_KEY
     BYTE Value[MD5_HASH_SIZE];                      // MD5 of the file
 
 } CONTENT_KEY, *PCONTENT_KEY, ENCODED_KEY, *PENCODED_KEY;
+
+// Structure for key pair of CKey+EKey
+typedef struct _QUERY_KEY_PAIR
+{
+    CONTENT_KEY CKey;
+    ENCODED_KEY EKey;
+} QUERY_KEY_PAIR, *PQUERY_KEY_PAIR;
 
 // Helper structure for merging file paths
 typedef struct _PATH_BUFFER

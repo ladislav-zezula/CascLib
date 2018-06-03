@@ -160,12 +160,26 @@ typedef enum _CASC_STORAGE_INFO_CLASS
 
 } CASC_STORAGE_INFO_CLASS, *PCASC_STORAGE_INFO_CLASS;
 
+typedef enum _CASC_FILE_INFO_CLASS
+{
+    CascFileContentKey,
+    CascFileEncodedKey,
+    CascFileInfoClassMax
+} CASC_FILE_INFO_CLASS, *PCASC_FILE_INFO_CLASS;
 
+// Query key for a file. Contains CKey [+EKey]
 typedef struct _QUERY_KEY
 {
     LPBYTE pbData;
     DWORD cbData;
 } QUERY_KEY, *PQUERY_KEY;
+
+// Query size for a file. Contains CSize + ESize
+typedef struct _QUERY_SIZE
+{
+    DWORD ContentSize;
+    DWORD EncodedSize;
+} QUERY_SIZE, *PQUERY_SIZE;
 
 // Structure for SFileFindFirstFile and SFileFindNextFile
 typedef struct _CASC_FIND_DATA
@@ -214,9 +228,10 @@ bool  WINAPI CascOpenStorage(const TCHAR * szDataPath, DWORD dwLocaleMask, HANDL
 bool  WINAPI CascGetStorageInfo(HANDLE hStorage, CASC_STORAGE_INFO_CLASS InfoClass, void * pvStorageInfo, size_t cbStorageInfo, size_t * pcbLengthNeeded);
 bool  WINAPI CascCloseStorage(HANDLE hStorage);
 
-bool  WINAPI CascOpenFileByEKey(HANDLE hStorage, PQUERY_KEY pEKey, DWORD dwEncodedSize, HANDLE * phFile);
-bool  WINAPI CascOpenFileByCKey(HANDLE hStorage, PQUERY_KEY pCKey, DWORD dwUnused, HANDLE * phFile);
+bool  WINAPI CascOpenFileByEKey(HANDLE hStorage, PQUERY_KEY pCKey, PQUERY_KEY pEKey, DWORD dwEncodedSize, HANDLE * phFile);
+bool  WINAPI CascOpenFileByCKey(HANDLE hStorage, PQUERY_KEY pCKey, HANDLE * phFile);
 bool  WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocale, DWORD dwFlags, HANDLE * phFile);
+bool  WINAPI CascGetFileInfo(HANDLE hFile, CASC_FILE_INFO_CLASS InfoClass, void * pvFileInfo, size_t cbFileInfo, size_t * pcbLengthNeeded);
 DWORD WINAPI CascGetFileSize(HANDLE hFile, PDWORD pdwFileSizeHigh);
 DWORD WINAPI CascGetFileId(HANDLE hStorage, const char * szFileName);
 DWORD WINAPI CascSetFilePointer(HANDLE hFile, LONG lFilePos, LONG * plFilePosHigh, DWORD dwMoveMethod);

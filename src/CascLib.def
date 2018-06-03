@@ -17,6 +17,7 @@ EXPORTS
     CascOpenFileByCKey
     CascOpenFileByEncodingKey = CascOpenFileByCKey
     CascOpenFile
+    CascGetFileInfo
     CascGetFileSize
     CascSetFilePointer
     CascReadFile

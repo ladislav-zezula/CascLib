@@ -32,7 +32,22 @@ PCASC_EKEY_ENTRY FindEKeyEntry(TCascStorage * hs, PQUERY_KEY pEKey)
     return (PCASC_EKEY_ENTRY)Map_FindObject(hs->pEKeyEntryMap, pEKey->pbData, NULL);
 }
 
-static TCascFile * CreateFileHandle(TCascStorage * hs, PCASC_EKEY_ENTRY pEKeyEntry, DWORD dwContentSize)
+static DWORD GetFileContentSize(TCascStorage * hs, PQUERY_KEY pCKey, PQUERY_KEY pEKey, DWORD dwContentSize)
+{
+    // Check CKey of the ENCODING file. The size of ENCODING file
+    // is often wrong in CKeyEntry (WoW builds 18125 - 23420)
+    if(hs->EncodingFile.cbData >= MD5_HASH_SIZE && pCKey != NULL && !memcmp(hs->EncodingFile.pbData, pCKey->pbData, pCKey->cbData))
+        return hs->EncodingSize.ContentSize;
+
+    // Check EKey of the ENCODING file
+    if(hs->EncodingFile.cbData > MD5_HASH_SIZE && pEKey != NULL && !memcmp(hs->EncodingFile.pbData + MD5_HASH_SIZE, pEKey->pbData, pEKey->cbData))
+        return hs->EncodingSize.ContentSize;
+
+    // Return whatever was entered from the called
+    return dwContentSize;
+}
+
+static TCascFile * CreateFileHandle(TCascStorage * hs, PQUERY_KEY pCKey, PQUERY_KEY pEKey, PCASC_EKEY_ENTRY pEKeyEntry, DWORD dwContentSize)
 {
     ULONGLONG ArchiveAndOffset = ConvertBytesToInteger_5(pEKeyEntry->ArchiveAndOffset);
     ULONGLONG FileOffsMask = ((ULONGLONG)1 << hs->IndexFile[0].FileOffsetBits) - 1;
@@ -48,12 +63,28 @@ static TCascFile * CreateFileHandle(TCascStorage * hs, PCASC_EKEY_ENTRY pEKeyEnt
         hf->ArchiveOffset = (DWORD)(ArchiveAndOffset & FileOffsMask);
         hf->szClassName = "TCascFile";
 
-        // Copy the file size. Note that for all files except ENCODING,
-        // this is the compressed file size
-        hf->EncodedSize = ConvertBytesToInteger_4_LE(pEKeyEntry->EncodedSize);
+        // Supply the content key, if available
+        if(pCKey != NULL)
+        {
+            assert(pCKey->pbData != NULL && pCKey->cbData == MD5_HASH_SIZE);
+            memcpy(hf->CKey.Value, pCKey->pbData, pCKey->cbData);
+        }
 
-        // Set the content size to INVALID_SIZE
-        hf->ContentSize = dwContentSize;
+        // Supply the encoded key, if available
+        if(pEKey != NULL)
+        {
+            assert(pEKey->pbData != NULL && CASC_EKEY_SIZE <= pEKey->cbData && pEKey->cbData <= MD5_HASH_SIZE);
+            memcpy(hf->EKey.Value, pEKey->pbData, pEKey->cbData);
+        }
+
+        // Copy the encoded file size
+        if(pEKeyEntry != NULL)
+        {
+            hf->EncodedSize = ConvertBytesToInteger_4_LE(pEKeyEntry->EncodedSize);
+        }
+
+        // Set the content size
+        hf->ContentSize = GetFileContentSize(hs, pCKey, pEKey, dwContentSize);
 
         // Increment the number of references to the archive
         hs->dwRefCount++;
@@ -63,7 +94,7 @@ static TCascFile * CreateFileHandle(TCascStorage * hs, PCASC_EKEY_ENTRY pEKeyEnt
     return hf;
 }
 
-static bool OpenFileByEKey(TCascStorage * hs, PQUERY_KEY pEKey, DWORD dwContentSize, TCascFile ** PtrCascFile)
+static bool OpenFileByEKey(TCascStorage * hs, PQUERY_KEY pCKey, PQUERY_KEY pEKey, DWORD dwContentSize, TCascFile ** PtrCascFile)
 {
     PCASC_EKEY_ENTRY pEKeyEntry;
     TCascFile * hf = NULL;
@@ -77,7 +108,7 @@ static bool OpenFileByEKey(TCascStorage * hs, PQUERY_KEY pEKey, DWORD dwContentS
     }
 
     // Create the file handle structure
-    hf = CreateFileHandle(hs, pEKeyEntry, dwContentSize);
+    hf = CreateFileHandle(hs, pCKey, pEKey, pEKeyEntry, dwContentSize);
     if(hf == NULL)
     {
         SetLastError(ERROR_NOT_ENOUGH_MEMORY);
@@ -107,7 +138,7 @@ static bool OpenFileByCKey(TCascStorage * hs, PQUERY_KEY pCKey, TCascFile ** Ptr
         return false;
     }
 
-    // Get the content size, unless specified by the caller
+    // Retrieve the content size from the CKey entry
     dwContentSize = ConvertBytesToInteger_4(pCKeyEntry->ContentSize);
 
     // Prepare the file index and open the file by index
@@ -115,13 +146,13 @@ static bool OpenFileByCKey(TCascStorage * hs, PQUERY_KEY pCKey, TCascFile ** Ptr
     // We always take the first file present. Is that correct?
     EKey.pbData = GET_EKEY(pCKeyEntry);
     EKey.cbData = MD5_HASH_SIZE;
-    return OpenFileByEKey(hs, &EKey, dwContentSize, PtrCascFile);
+    return OpenFileByEKey(hs, pCKey, &EKey, dwContentSize, PtrCascFile);
 }
 
 //-----------------------------------------------------------------------------
 // Public functions
 
-bool WINAPI CascOpenFileByEKey(HANDLE hStorage, PQUERY_KEY pEKey, DWORD dwContentSize, HANDLE * phFile)
+bool WINAPI CascOpenFileByEKey(HANDLE hStorage, PQUERY_KEY pCKey, PQUERY_KEY pEKey, DWORD dwContentSize, HANDLE * phFile)
 {
     TCascStorage * hs;
 
@@ -142,10 +173,10 @@ bool WINAPI CascOpenFileByEKey(HANDLE hStorage, PQUERY_KEY pEKey, DWORD dwConten
     }
 
     // Use the internal function to open the file
-    return OpenFileByEKey(hs, pEKey, dwContentSize, (TCascFile **)phFile);
+    return OpenFileByEKey(hs, pCKey, pEKey, dwContentSize, (TCascFile **)phFile);
 }
 
-bool WINAPI CascOpenFileByCKey(HANDLE hStorage, PQUERY_KEY pCKey, DWORD /* dwUnused */, HANDLE * phFile)
+bool WINAPI CascOpenFileByCKey(HANDLE hStorage, PQUERY_KEY pCKey, HANDLE * phFile)
 {
     TCascStorage * hs;
 
@@ -259,7 +290,7 @@ bool WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocal
                 break;
 
             case CASC_OPEN_BY_EKEY:
-                bOpenResult = OpenFileByEKey(hs, &QueryKey, dwContentSize, (TCascFile **)phFile);
+                bOpenResult = OpenFileByEKey(hs, NULL, &QueryKey, dwContentSize, (TCascFile **)phFile);
                 break;
 
             default:

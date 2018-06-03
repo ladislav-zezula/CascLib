@@ -72,26 +72,31 @@ class TLogHelper
 //-----------------------------------------------------------------------------
 // Constructor and destructor
 
-TLogHelper::TLogHelper(const char * szNewTestTitle, const char * szNewSubTitle)
+TLogHelper::TLogHelper(const char * szNewTestTitle, const char * /* szNewSubTitle */)
 {
     UserString = "";
     UserCount = 1;
     UserTotal = 1;
 
     // Fill the test line structure
-    szMainTitle = szNewTestTitle;
-    szSubTitle = szNewSubTitle;
+    szMainTitle = NULL; // szNewTestTitle;
+    szSubTitle = NULL;  // szNewSubTitle;
     nTextLength = 0;
     bMessagePrinted = false;
     bDontPrintResult = false;
 
     // Print the initial information
-    if(szMainTitle != NULL)
+    if(szNewTestTitle != NULL)
     {
-        if(szSubTitle != NULL)
-            printf("Running %s (%s) ...", szMainTitle, szSubTitle);
-        else
-            printf("Running %s ...", szMainTitle);
+        char szTitle[81];
+        size_t nLength;
+
+        nLength = sprintf(szTitle, "-- \"%s\" --", szNewTestTitle);
+        while(nLength < 80)
+            szTitle[nLength++] = '-';
+        szTitle[nLength++] = 0;
+
+        printf("%s\n", szTitle);
     }
 }
 
@@ -120,6 +125,8 @@ TLogHelper::~TLogHelper()
             printf("\r");
         }
     }
+
+    printf("\n");
 }
 
 //-----------------------------------------------------------------------------
