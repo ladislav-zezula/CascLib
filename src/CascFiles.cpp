@@ -17,7 +17,7 @@
 // Local functions
 
 typedef int (*PARSEINFOFILE)(TCascStorage * hs, void * pvListFile);
-typedef int (*PARSE_VARIABLE)(TCascStorage * hs, const char * szDataBegin, const char * szDataEnd, void * pvParam);
+typedef int (*PARSE_VARIABLE)(TCascStorage * hs, const char * szVariableName, const char * szDataBegin, const char * szDataEnd, void * pvParam);
 
 #define MAX_VAR_NAME 80
 
@@ -346,7 +346,7 @@ static bool CheckConfigFileVariable(
     if (szLinePtr >= szLineEnd)
         return false;
 
-    return (PfnParseProc(hs, szLinePtr, szLineEnd, pvParseParam) == ERROR_SUCCESS);
+    return (PfnParseProc(hs, szVariableName, szLinePtr, szLineEnd, pvParseParam) == ERROR_SUCCESS);
 }
 
 static int LoadInfoVariable(PQUERY_KEY pVarBlob, const char * szLineBegin, const char * szLineEnd, bool bHexaValue)
@@ -459,14 +459,14 @@ static int LoadMultipleHashes(PQUERY_KEY pBlob, const char * szLineBegin, const 
 
 // Loads a query key from the text form
 // A QueryKey is an array of "ContentKey EncodedKey1 ... EncodedKeyN"
-static int LoadQueryKey(TCascStorage * /* hs */, const char * szDataBegin, const char * szDataEnd, void * pvParam)
+static int LoadQueryKey(TCascStorage * /* hs */, const char * /* szVariableName */, const char * szDataBegin, const char * szDataEnd, void * pvParam)
 {
     return LoadMultipleHashes((PQUERY_KEY)pvParam, szDataBegin, szDataEnd);
 }
 
-static int LoadCkeyEkey(TCascStorage * /* hs */, const char * szDataPtr, const char * szDataEnd, void * pvParam)
+static int LoadCkeyEkey(TCascStorage * /* hs */, const char * /* szVariableName */, const char * szDataPtr, const char * szDataEnd, void * pvParam)
 {
-    PCASC_CKEY_ENTRY1 pCKeyEntry = (PCASC_CKEY_ENTRY1)pvParam;
+    PCASC_CKEY_ENTRY pCKeyEntry = (PCASC_CKEY_ENTRY)pvParam;
     size_t HashCount = 0;
 
     // Get the number of hashes. It is expected to be 1 or 2
@@ -480,20 +480,23 @@ static int LoadCkeyEkey(TCascStorage * /* hs */, const char * szDataPtr, const c
     if(szDataPtr == NULL)
         return ERROR_BAD_FORMAT;
 
-    // Load the EKey, if any
+    // Is there an optional EKey?
     if(HashCount == 2)
     {
+        // Load the EKey into the structure
         szDataPtr = CaptureSingleHash(szDataPtr, szDataEnd, pCKeyEntry->EKey, MD5_HASH_SIZE);
         if(szDataPtr == NULL)
             return ERROR_BAD_FORMAT;
     }
 
+    // Fill the number of EKeys
+    pCKeyEntry->EKeyCount = (USHORT)(HashCount - 1);
     return ERROR_SUCCESS;
 }
 
-static int LoadCkeyEkeySize(TCascStorage * /* hs */, const char * szDataPtr, const char * szDataEnd, void * pvParam)
+static int LoadCkeyEkeySize(TCascStorage * /* hs */, const char * /* szVariableName */, const char * szDataPtr, const char * szDataEnd, void * pvParam)
 {
-    PCASC_CKEY_ENTRY1 pCKeyEntry = (PCASC_CKEY_ENTRY1)pvParam;
+    PCASC_CKEY_ENTRY pCKeyEntry = (PCASC_CKEY_ENTRY)pvParam;
     DWORD ContentSize = 0;
 
     // Load the content size. The encoded size is ignored for now
@@ -502,19 +505,20 @@ static int LoadCkeyEkeySize(TCascStorage * /* hs */, const char * szDataPtr, con
         return ERROR_BAD_FORMAT;
 
     // Convert the content size into the big-endian
-    pCKeyEntry->ContentSize[0] = ((ContentSize >> 0x18) & 0xFF);
-    pCKeyEntry->ContentSize[1] = ((ContentSize >> 0x10) & 0xFF);
-    pCKeyEntry->ContentSize[2] = ((ContentSize >> 0x08) & 0xFF);
-    pCKeyEntry->ContentSize[3] = ((ContentSize >> 0x00) & 0xFF);
+    ConvertIntegerToBytes_4(ContentSize, pCKeyEntry->ContentSize);
     return ERROR_SUCCESS;
 }
 
-static int LoadVfsRootEntry(TCascStorage * /* hs */, const char * szDataPtr, const char * szDataEnd, void * pvParam)
+static int LoadVfsRootEntry(TCascStorage * /* hs */, const char * szVariableName, const char * szDataPtr, const char * szDataEnd, void * pvParam)
 {
     QUERY_KEY_PAIR KeyPair;
     PCASC_ARRAY pArray = (PCASC_ARRAY)pvParam;
     size_t HashCount = 0;
     int nError;
+
+    // Exclude "vfs-root", "vfs-root-size", "vfs-#-size"
+    if(!strncmp(szVariableName, "vfs-root", 8) || strstr(szVariableName, "-size") != NULL)
+        return ERROR_SUCCESS;
 
     // Check for the hash array. We expect exactly 2 hashes there (CKey and EKey)
     if (CaptureHashCount(szDataPtr, szDataEnd, &HashCount) == NULL || HashCount != 2)
@@ -542,7 +546,7 @@ static int LoadVfsRootEntry(TCascStorage * /* hs */, const char * szDataPtr, con
     return (Array_Insert(pArray, &KeyPair, 1) != NULL) ? ERROR_SUCCESS : ERROR_NOT_ENOUGH_MEMORY;
 }
 
-static int LoadBuildProduct(TCascStorage * hs, const char * szDataBegin, const char * szDataEnd, void * /* pvParam */)
+static int LoadBuildProduct(TCascStorage * hs, const char * /* szVariableName */, const char * szDataBegin, const char * szDataEnd, void * /* pvParam */)
 {
     // Go through all games that we support
     for(size_t i = 0; GameIds[i].szGameInfo != NULL; i++)
@@ -568,7 +572,7 @@ static int LoadBuildProduct(TCascStorage * hs, const char * szDataBegin, const c
 // "WOW-18125patch6.0.1"
 // "30013_Win32_2_2_0_Ptr_ptr"
 // "prometheus-0_8_0_0-24919"
-static int LoadBuildName(TCascStorage * hs, const char * szDataBegin, const char * szDataEnd, void * /* pvParam */)
+static int LoadBuildName(TCascStorage * hs, const char * /* szVariableName */, const char * szDataBegin, const char * szDataEnd, void * /* pvParam */)
 {
     DWORD dwBuildNumber = 1;
 
@@ -848,10 +852,7 @@ static int LoadCdnBuildFile(TCascStorage * hs, void * pvListFile)
     int nError = ERROR_SUCCESS;
 
     // Initialize the size of the ENCODING file
-    hs->EncodingFile.ContentSize[0] = 0xFF;
-    hs->EncodingFile.ContentSize[1] = 0xFF;
-    hs->EncodingFile.ContentSize[2] = 0xFF;
-    hs->EncodingFile.ContentSize[3] = 0xFF;
+    ConvertIntegerToBytes_4(CASC_INVALID_SIZE, hs->EncodingFile.ContentSize);
 
     // Parse all variables
     while(ListFile_GetNextLine(pvListFile, &szLineBegin, &szLineEnd) != 0)

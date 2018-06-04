@@ -15,7 +15,7 @@
 //-----------------------------------------------------------------------------
 // Common support
 
-int RootHandler_Insert(TRootHandler * pRootHandler, const char * szFileName, PCASC_CKEY_ENTRY1 pCKeyEntry)
+int RootHandler_Insert(TRootHandler * pRootHandler, const char * szFileName, PCASC_CKEY_ENTRY pCKeyEntry)
 {
     // Check if we have everything needed
     if(pRootHandler == NULL || pRootHandler->Insert == NULL)
@@ -23,7 +23,7 @@ int RootHandler_Insert(TRootHandler * pRootHandler, const char * szFileName, PCA
 
     // The pbQueryKey parameter must be valid
     assert(pCKeyEntry != NULL);
-    assert(IsValidMD5(pCKeyEntry->CKey));
+    assert(pCKeyEntry->EKeyCount >= 1);
 
     // Ask the root folder to insert the key
     return pRootHandler->Insert(pRootHandler, szFileName, pCKeyEntry);

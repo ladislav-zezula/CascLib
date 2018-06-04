@@ -250,7 +250,7 @@ static bool CutLastPathPart(TCHAR * szWorkPath)
 static int InsertNamedInternalFile(
     TCascStorage * hs,
     const char * szFileName,
-    CASC_CKEY_ENTRY1 & CKeyEntry)
+    CASC_CKEY_ENTRY & CKeyEntry)
 {
     PCASC_EKEY_ENTRY pEKeyEntry;
     QUERY_KEY EKey;
@@ -260,7 +260,7 @@ static int InsertNamedInternalFile(
         return ERROR_FILE_NOT_FOUND;
 
     // If we don't have an EKey, we need to query it from the EKey table
-    if(!IsValidMD5(CKeyEntry.EKey))
+    if(CKeyEntry.EKeyCount == 0)
     {
         // Find the EKey entry. If failed, we cannot name the file
         EKey.pbData = CKeyEntry.EKey;
@@ -272,6 +272,7 @@ static int InsertNamedInternalFile(
         // Copy the EKEY to the CKEY_ENTRY
         memset(CKeyEntry.EKey, 0, MD5_HASH_SIZE);
         memcpy(CKeyEntry.EKey, pEKeyEntry->EKey, CASC_EKEY_SIZE);
+        CKeyEntry.EKeyCount = 1;
     }
 
     // Now call the root handler to insert the CKey entry
@@ -685,7 +686,7 @@ static int CreateMapOfCKeyEntries(TCascStorage * hs, CASC_ENCODING_HEADER & EnHe
 
     // Calculate the largest eventual number of CKey entries
     // Also include space for eventual extra entries for well-known CASC files
-    dwMaxEntries = (EnHeader.CKeyPageSize / sizeof(CASC_CKEY_ENTRY1)) * EnHeader.CKeyPageCount;
+    dwMaxEntries = (EnHeader.CKeyPageSize / sizeof(CASC_CKEY_ENTRY)) * EnHeader.CKeyPageCount;
 
     // Create the map of the CKey entries
     hs->pCKeyEntryMap = Map_Create(dwMaxEntries + 1, CASC_CKEY_SIZE, FIELD_OFFSET(CASC_CKEY_ENTRY, CKey));
@@ -711,7 +712,7 @@ static int CreateMapOfCKeyEntries(TCascStorage * hs, CASC_ENCODING_HEADER & EnHe
                 Map_InsertObject(hs->pCKeyEntryMap, pCKeyEntry, pCKeyEntry->CKey);
 
                 // Move to the next encoding entry
-                pbCKeyEntry += sizeof(CASC_CKEY_ENTRY) + (pCKeyEntry->EKeyCount * EnHeader.EKeyLength);
+                pbCKeyEntry += sizeof(CASC_CKEY_ENTRY) + (pCKeyEntry->EKeyCount - 1) * EnHeader.EKeyLength;
             }
 
             // Move to the next segment
@@ -803,9 +804,12 @@ static int LoadEncodingFile(TCascStorage * hs)
     {
         CASC_ENCODING_HEADER EnHeader;
 
-        // Store the encoding file data to the CASC storage
+        // Store the ENCODING file data to the CASC storage
         hs->EncodingData.pbData = pbEncodingFile;
         hs->EncodingData.cbData = cbEncodingFile;
+
+        // Store the ENCODING file size to the fake CKey entry
+        ConvertIntegerToBytes_4(cbEncodingFile, hs->EncodingFile.ContentSize);
 
         // Capture the header of the ENCODING file
         nError = CaptureEncodingHeader(&EnHeader, pbEncodingFile, cbEncodingFile);
@@ -862,7 +866,7 @@ static int LoadRootFile(TCascStorage * hs, DWORD dwLocaleMask)
 {
     PDWORD FileSignature;
     LPBYTE pbRootFile = NULL;
-    DWORD cbRootFile = 0;
+    DWORD cbRootFile = CASC_INVALID_SIZE;
     int nError = ERROR_SUCCESS;
 
     // Sanity checks
@@ -1163,7 +1167,7 @@ static void DumpCKeyEntry(PCASC_CKEY_ENTRY pCKeyEntry, FILE * fp)
 
     // Print the CKey and number of EKeys
     fprintf(fp, "%s (e-keys: %02u): ", StringFromBinary(pCKeyEntry->CKey, MD5_HASH_SIZE, szStringBuff), pCKeyEntry->EKeyCount);
-    pbEKey = GET_EKEY(pCKeyEntry);
+    pbEKey = pCKeyEntry->EKey;
 
     // Print the EKeys
     for(USHORT i = 0; i < pCKeyEntry->EKeyCount; i++, pbEKey += MD5_HASH_SIZE)

@@ -33,7 +33,7 @@
 typedef int (*ROOT_INSERT)(
     struct TRootHandler * pRootHandler,             // Pointer to an initialized root handler
     const char * szFileName,                        // Pointer to the file name
-    struct _CASC_CKEY_ENTRY1 * pCKeyEntry           // Pointer to the CASC_CKEY_ENTRY1 for the file
+    struct _CASC_CKEY_ENTRY * pCKeyEntry            // Pointer to the CASC_CKEY_ENTRY1 for the file
     );
 
 typedef LPBYTE (*ROOT_SEARCH)(
@@ -86,7 +86,7 @@ struct TRootHandler
 //-----------------------------------------------------------------------------
 // Public functions
 
-int    RootHandler_Insert(TRootHandler * pRootHandler, const char * szFileName, struct _CASC_CKEY_ENTRY1 * pCKeyEntry);
+int    RootHandler_Insert(TRootHandler * pRootHandler, const char * szFileName, struct _CASC_CKEY_ENTRY * pCKeyEntry);
 LPBYTE RootHandler_Search(TRootHandler * pRootHandler, struct _TCascSearch * pSearch);
 void   RootHandler_EndSearch(TRootHandler * pRootHandler, struct _TCascSearch * pSearch);
 LPBYTE RootHandler_GetKey(TRootHandler * pRootHandler, const char * szFileName, PDWORD PtrFileSize);

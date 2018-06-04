@@ -79,28 +79,17 @@ typedef enum _CBLD_TYPE
     CascBuildDb,                                    // .build.db (older storages)
 } CBLD_TYPE, *PCBLD_TYPE;
 
-// Content file entry
+// CKey file entry
 typedef struct _CASC_CKEY_ENTRY
 {
     USHORT EKeyCount;                               // Number of EKeys
     BYTE ContentSize[4];                            // Content file size (big endian)
     BYTE CKey[CASC_CKEY_SIZE];                      // Content key. This is MD5 of the file content
-
-    // Followed by the EKey (KeyCount = number of EKeys)
+    BYTE EKey[CASC_CKEY_SIZE];                      // Encoded key. This is (trimmed) MD5 hash of the file header, containing MD5 hashes of all the logical blocks of the file
 
 } CASC_CKEY_ENTRY, *PCASC_CKEY_ENTRY;
 
-// A version of CKey entry with just one EKey
-typedef struct _CASC_CKEY_ENTRY1
-{
-    USHORT KeyCount;                                // Number of EKeys
-    BYTE ContentSize[4];                            // Content file size (big endian)
-    BYTE CKey[CASC_CKEY_SIZE];                      // Content key. This is MD5 of the file content
-    BYTE EKey[CASC_CKEY_SIZE];                      // Encoded key. This is (trimmed) MD5 hash of the file header, containing MD5 hashes of all the logical blocks of the file
-
-} CASC_CKEY_ENTRY1, *PCASC_CKEY_ENTRY1;
-
-// Encoded file entry
+// EKey file entry
 typedef struct _CASC_EKEY_ENTRY
 {
     BYTE EKey[CASC_EKEY_SIZE];                      // The first 9 bytes of the encoded key. The encoded key is MD5 hash of the file header, which contains MD5 hashes of all the logical blocks of the file
@@ -127,15 +116,6 @@ typedef struct _CASC_INDEX_FILE
 
 } CASC_INDEX_FILE, *PCASC_INDEX_FILE;
 
-typedef struct _CASC_FILE_FRAME
-{
-    BYTE  FrameHash[MD5_HASH_SIZE];                 // MD5 hash of the file frame
-    DWORD DataFileOffset;                           // Offset in the data file (data.###)
-    DWORD FileOffset;                               // File offset of this frame
-    DWORD EncodedSize;                              // Encoded size of the frame
-    DWORD ContentSize;                              // Content size of the frame
-} CASC_FILE_FRAME, *PCASC_FILE_FRAME;
-
 // Converted header of the ENCODING file
 typedef struct _CASC_ENCODING_HEADER
 {
@@ -149,8 +129,15 @@ typedef struct _CASC_ENCODING_HEADER
     DWORD  ESpecBlockSize;                          // Size of the ESpec string block, in bytes
 } CASC_ENCODING_HEADER, *PCASC_ENCODING_HEADER;
 
-#define GET_EKEY(pCKeyEntry)      (pCKeyEntry->CKey + CASC_CKEY_SIZE)
-#define FAKE_ENCODING_ENTRY_SIZE  (sizeof(CASC_CKEY_ENTRY) + MD5_HASH_SIZE)
+typedef struct _CASC_FILE_FRAME
+{
+    BYTE  FrameHash[MD5_HASH_SIZE];                 // MD5 hash of the file frame
+    DWORD DataFileOffset;                           // Offset in the data file (data.###)
+    DWORD FileOffset;                               // File offset of this frame
+    DWORD EncodedSize;                              // Encoded size of the frame
+    DWORD ContentSize;                              // Content size of the frame
+    DWORD IsFrameLoaded:1;                          // If TRUE, then the frame is loaded to file cache
+} CASC_FILE_FRAME, *PCASC_FILE_FRAME;
 
 //-----------------------------------------------------------------------------
 // Structures for CASC storage and CASC file
@@ -181,11 +168,11 @@ typedef struct _TCascStorage
     QUERY_KEY PatchArchivesGroup;                   // Key array of the "patch-archive-group"
     QUERY_KEY BuildFiles;                           // List of supported build files.
 
-    CASC_CKEY_ENTRY1 EncodingFile;                  // Information about ENCODING file
-    CASC_CKEY_ENTRY1 RootFile;                      // Information about ROOT file
-    CASC_CKEY_ENTRY1 InstallFile;                   // Information about INSTALL file
-    CASC_CKEY_ENTRY1 DownloadFile;                  // Information about DOWNLOAD file
-    CASC_CKEY_ENTRY1 PatchFile;                     // Information about PATCH file
+    CASC_CKEY_ENTRY EncodingFile;                   // Information about ENCODING file
+    CASC_CKEY_ENTRY RootFile;                       // Information about ROOT file
+    CASC_CKEY_ENTRY InstallFile;                    // Information about INSTALL file
+    CASC_CKEY_ENTRY DownloadFile;                   // Information about DOWNLOAD file
+    CASC_CKEY_ENTRY PatchFile;                      // Information about PATCH file
 
     TFileStream * DataFiles[CASC_MAX_DATA_FILES];   // Array of open data files
 
@@ -218,16 +205,6 @@ typedef struct _TCascFile
 
     LPBYTE pbFileCache;                             // Pointer to file cache
     DWORD cbFileCache;                              // Size of the file cache
-    DWORD CacheStart;                               // Starting offset in the cache
-    DWORD CacheEnd;                                 // Ending offset in the cache
-
-#ifdef CASCLIB_TEST                                 // 
-    DWORD FileSize_RootEntry;                       // File size, from the root entry
-    DWORD FileSize_CEntry;                          // File size, from the CONTENT entry
-    DWORD FileSize_EEntry;                          // File size, from the ENCODED entry
-    DWORD FileSize_HdrArea;                         // File size, as stated in the file header area
-    DWORD FileSize_FrameSum;                        // File size as sum of frame sizes
-#endif
 
 } TCascFile;
 
@@ -249,7 +226,7 @@ typedef struct _TCascSearch
     size_t IndexLevel2;                             // Root-specific search context
     DWORD dwState;                                  // Pointer to the search state (0 = listfile, 1 = nameless, 2 = done)
 
-    BYTE BitArray[1];                               // Bit array of CKeys. Set for each entry that has already been reported
+    DWORD BitArray[1];                              // Bit array of EKeys. Set for each entry that has already been reported
 
 } TCascSearch;
 
@@ -298,8 +275,8 @@ int CSV_GetNameAndCKey(const char * szLinePtr, const char * szLineEnd, int nFile
 TCascStorage * IsValidStorageHandle(HANDLE hStorage);
 TCascFile * IsValidFileHandle(HANDLE hFile);
 
-PCASC_CKEY_ENTRY FindCKeyEntry(TCascStorage * hs, PQUERY_KEY pCKey, PDWORD PtrIndex);
-PCASC_EKEY_ENTRY FindEKeyEntry(TCascStorage * hs, PQUERY_KEY pEKey);
+PCASC_CKEY_ENTRY FindCKeyEntry(TCascStorage * hs, PQUERY_KEY pCKey, PDWORD PtrIndex = NULL);
+PCASC_EKEY_ENTRY FindEKeyEntry(TCascStorage * hs, PQUERY_KEY pEKey, PDWORD PtrIndex = NULL);
 
 int CascDecompress(LPBYTE pvOutBuffer, PDWORD pcbOutBuffer, LPBYTE pvInBuffer, DWORD cbInBuffer);
 int CascDecrypt   (LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBYTE pbInBuffer, DWORD cbInBuffer, DWORD dwFrameIndex);

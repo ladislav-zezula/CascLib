@@ -38,7 +38,7 @@ LPBYTE LoadInternalFileToMemory(TCascStorage * hs, LPBYTE pbQueryKey, DWORD dwOp
     if(dwOpenFlags == CASC_OPEN_BY_CKEY)
         bOpenResult = CascOpenFileByCKey((HANDLE)hs, &QueryKey, &hFile);
     else
-        bOpenResult = CascOpenFileByEKey((HANDLE)hs, NULL, &QueryKey, CASC_INVALID_SIZE, &hFile);
+        bOpenResult = CascOpenFileByEKey((HANDLE)hs, NULL, &QueryKey, cbFileData, &hFile);
 
     // Load the internal file
     if(bOpenResult)
@@ -46,7 +46,7 @@ LPBYTE LoadInternalFileToMemory(TCascStorage * hs, LPBYTE pbQueryKey, DWORD dwOp
         // Retrieve the size of the file. Note that the caller might specify
         // the real size of the file, in case the file size is not retrievable
         // or if the size is wrong. Example: ENCODING file has size specified in BUILD
-        if(pcbFileData[0] == 0 || pcbFileData[0] == CASC_INVALID_SIZE)
+        if(cbFileData == 0 || cbFileData == CASC_INVALID_SIZE)
         {
             cbFileData = CascGetFileSize(hFile, NULL);
             if(cbFileData == 0 || cbFileData == CASC_INVALID_SIZE)

@@ -27,9 +27,9 @@ PCASC_CKEY_ENTRY FindCKeyEntry(TCascStorage * hs, PQUERY_KEY pCKey, PDWORD PtrIn
     return (PCASC_CKEY_ENTRY)Map_FindObject(hs->pCKeyEntryMap, pCKey->pbData, PtrIndex);
 }
 
-PCASC_EKEY_ENTRY FindEKeyEntry(TCascStorage * hs, PQUERY_KEY pEKey)
+PCASC_EKEY_ENTRY FindEKeyEntry(TCascStorage * hs, PQUERY_KEY pEKey, PDWORD PtrIndex)
 {
-    return (PCASC_EKEY_ENTRY)Map_FindObject(hs->pEKeyEntryMap, pEKey->pbData, NULL);
+    return (PCASC_EKEY_ENTRY)Map_FindObject(hs->pEKeyEntryMap, pEKey->pbData, PtrIndex);
 }
 
 static TCascFile * CreateFileHandle(TCascStorage * hs, PQUERY_KEY pCKey, PQUERY_KEY pEKey, PCASC_EKEY_ENTRY pEKeyEntry, DWORD dwContentSize)
@@ -100,10 +100,6 @@ static bool OpenFileByEKey(TCascStorage * hs, PQUERY_KEY pCKey, PQUERY_KEY pEKey
         return false;
     }
 
-#ifdef CASCLIB_TEST
-    hf->FileSize_EEntry = ConvertBytesToInteger_4_LE(pEKeyEntry->EncodedSize);
-#endif
-
     // Give the results
     PtrCascFile[0] = hf;
     return true;
@@ -129,7 +125,7 @@ static bool OpenFileByCKey(TCascStorage * hs, PQUERY_KEY pCKey, TCascFile ** Ptr
     // Prepare the file index and open the file by index
     // Note: We don't know what to do if there is more than just one EKey
     // We always take the first file present. Is that correct?
-    EKey.pbData = GET_EKEY(pCKeyEntry);
+    EKey.pbData = pCKeyEntry->EKey;
     EKey.cbData = MD5_HASH_SIZE;
     return OpenFileByEKey(hs, pCKey, &EKey, dwContentSize, PtrCascFile);
 }

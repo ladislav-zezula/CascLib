@@ -3038,7 +3038,7 @@ static LPBYTE FillFindData(TRootHandler_MNDX * pRootHandler, TCascSearch * pSear
     return pRootEntry->CKey;
 }
 
-static int MndxHandler_Insert(TRootHandler_MNDX *, const char *, PCASC_CKEY_ENTRY1)
+static int MndxHandler_Insert(TRootHandler_MNDX *, const char *, PCASC_CKEY_ENTRY)
 {
     return ERROR_NOT_SUPPORTED;
 }

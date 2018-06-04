@@ -151,7 +151,11 @@ extern "C" {
 
 typedef enum _CASC_STORAGE_INFO_CLASS
 {
+    // Return the total number of unique files in the storage. Note that files
+    // can exist under different names, so the total number of files in the archive
+    // can be higher than the value returned by this info class
     CascStorageFileCount,
+
     CascStorageFeatures,
     CascStorageGameInfo,
     CascStorageGameBuild,

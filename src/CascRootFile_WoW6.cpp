@@ -351,7 +351,7 @@ static int RebuildFileMaps(TRootHandler_WoW6 * pRootHandler)
 static int WowHandler_Insert(
     TRootHandler_WoW6 * pRootHandler,
     const char * szFileName,
-    PCASC_CKEY_ENTRY1 pCKeyEntry)
+    PCASC_CKEY_ENTRY pCKeyEntry)
 {
     PWOW_FILE_ENTRY pFileEntry;
     char * SaveItemArray = pRootHandler->FileTable.ItemArray;
@@ -480,7 +480,7 @@ static void WowHandler_Close(TRootHandler_WoW6 * pRootHandler)
 }
 
 #ifdef _DEBUG
-static void TRootHandlerWoW6_Dump(
+static void WowHandler_Dump(
     TCascStorage * hs,
     TDumpContext * dc,                                      // Pointer to an opened file
     LPBYTE pbRootFile,
@@ -571,7 +571,7 @@ int RootHandler_CreateWoW6(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFil
         pRootHandler->GetFileId   = (ROOT_GETFILEID)WowHandler_GetFileId;
 
 #ifdef _DEBUG
-        pRootHandler->Dump = TRootHandlerWoW6_Dump;    // Support for ROOT file dump
+        pRootHandler->Dump = WowHandler_Dump;    // Support for ROOT file dump
 #endif  // _DEBUG
 
         // Count the files that are going to be loaded

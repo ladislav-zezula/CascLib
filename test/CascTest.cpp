@@ -181,6 +181,7 @@ static int ExtractFile(
     hash_state md5_state;
     CONTENT_KEY CKey;
     HANDLE hFile = NULL;
+    FILE * fp = NULL;
     BYTE md5_digest[MD5_HASH_SIZE];
     BYTE Buffer[0x1000];
     char szShortName[SHORT_NAME_SIZE];
@@ -216,13 +217,16 @@ static int ExtractFile(
         // Initialize the MD5 hashing
         md5_init(&md5_state);
 
+        // Test: Open a local file
+//      fp = fopen("e:\\Multimedia\\MPQs\\Work\\Character\\BloodElf\\Female\\BloodElfFemale-TEST.M2", "wb");
+
         // Load the entire file, piece-by-piece, and calculate MD5
         while(dwBytesRead != 0)
         {
             // Load the chunk of memory
             if(!CascReadFile(hFile, Buffer, sizeof(Buffer), &dwBytesRead))
             {
-                // Do not report some errors; For example, when the file is encrypted,
+                // Do not report some errors; for example, when the file is encrypted,
                 // we can't do much about it
                 switch(nError = GetLastError())
                 {
@@ -238,11 +242,20 @@ static int ExtractFile(
                 break;
             }
 
+            // Write the data to a local file
+            if(fp != NULL)
+                fwrite(Buffer, 1, dwBytesRead, fp);
+
             // Hash the file data
             if(bWeHaveContentKey)
                 md5_process(&md5_state, (unsigned char *)Buffer, dwBytesRead);
             dwTotalRead += dwBytesRead;
         }
+
+        // Close the local file
+        if(fp != NULL)
+            fclose(fp);
+        fp = NULL;
 
         // Check whether the total size matches
         if(nError == ERROR_SUCCESS && dwTotalRead != dwFileSize)
@@ -271,21 +284,6 @@ static int ExtractFile(
         assert(GetLastError() != ERROR_SUCCESS);
         nError = GetLastError();
     }
-
-    // Log the file sizes
-#ifdef CASCLIB_TEST_FILE_SIZES
-//  if(nError == ERROR_SUCCESS)
-//  {
-//      TCascFile * hf = IsValidFileHandle(hFile);
-//
-//      fprintf(fp, "%8u %8u %8u %8u %8u %s\n", hf->FileSize_RootEntry,
-//                                              hf->FileSize_CEntry,
-//                                              hf->FileSize_EEntry,
-//                                              hf->FileSize_HdrArea,
-//                                              hf->FileSize_FrameSum,
-//                                              szFileName);
-//  }
-#endif
 
     return nError;
 }
@@ -334,10 +332,9 @@ static int TestOpenStorage_EnumFiles(const char * szStorage, const TCHAR * szLis
     HANDLE hStorage;
     HANDLE hFind;
     TCHAR szFullPath[MAX_PATH];
-    DWORD dwTotalFiles = 0;
-    DWORD dwFoundFiles = 0;
-    DWORD dwCircleCount = 0;
-    DWORD dwTickCount = 0;
+    DWORD dwTotalFileCount = 0;
+    DWORD dwFileCount = 0;
+    char szShortName[SHORT_NAME_SIZE];
     bool bFileFound = true;
     int nError = ERROR_SUCCESS;
 
@@ -350,29 +347,28 @@ static int TestOpenStorage_EnumFiles(const char * szStorage, const TCHAR * szLis
 //      CascDumpStorage(hStorage, "E:\\storage-dump.txt");
 
         // Retrieve the total number of files
-        CascGetStorageInfo(hStorage, CascStorageFileCount, &dwTotalFiles, sizeof(dwTotalFiles), NULL);
+        CascGetStorageInfo(hStorage, CascStorageFileCount, &dwTotalFileCount, sizeof(dwTotalFileCount), NULL);
 
         // Start finding
         LogHelper.PrintProgress("Searching storage ...");
         hFind = CascFindFirstFile(hStorage, "*", &cf, szListFile);
         if(hFind != NULL)
         {
-            dwTickCount = GET_TICK_COUNT();
             while(bFileFound)
             {
-                // Extract the file
-                if((dwFoundFiles % 400) == 0)
+                // Show the file name to the user
+                MakeShortName(cf.szFileName, szShortName, sizeof(szShortName));
+
+                // Show progress
+                if((dwFileCount % 5) == 0)
                 {
-                    LogHelper.PrintProgress("Enumerating files: %c", szCircleChar[dwCircleCount % 4]);
-                    dwCircleCount++;
+                    LogHelper.PrintProgress("Enumerating (%u of %u) %s ...", dwFileCount, dwTotalFileCount, szShortName);
                 }
 
                 // Find the next file in CASC
-                dwFoundFiles++;
                 bFileFound = CascFindNextFile(hFind, &cf);
+                dwFileCount++;
             }
-
-            dwTickCount = GET_TICK_COUNT() - dwTickCount;
 
             // Close the search handle
             CascFindClose(hFind);
@@ -419,7 +415,7 @@ static int TestOpenStorage_ExtractFiles(const char * szStorage, const TCHAR * sz
         // Search the storage
         LogHelper.PrintProgress("Searching storage ...");
         hFind = CascFindFirstFile(hStorage, "*", &cf, szListFile);
-        if(hFind != INVALID_HANDLE_VALUE)
+        if(hFind != NULL)
         {
             // Search the storage
             while(bFileFound)
@@ -492,7 +488,7 @@ static STORAGE_INFO StorageInfo[] =
     {"2014 - Heroes of the Storm/31726", "mods\\heroes.stormmod\\base.stormassets\\Assets\\modeltextures.db"},
     {"2014 - Heroes of the Storm/39445/HeroesData", "versions.osxarchive\\Versions\\Base39153\\Heroes.app\\Contents\\_CodeSignature\\CodeResources"},
     {"2014 - Heroes of the Storm/50286/HeroesData", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
-*/
+
     {"2015 - Diablo III/30013", "ENCODING"},
 
     {"2015 - Overwatch/24919/casc/data", "ROOT"},
@@ -510,9 +506,8 @@ static STORAGE_INFO StorageInfo[] =
     {"2016 - WoW/19678-after-patch", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"2016 - WoW/21742", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"2016 - WoW/22267", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"2016 - WoW/19678-after-patch", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"2016 - WoW/23420", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-
+*/
     {"2017 - Starcraft1/2457", "music\\radiofreezerg.ogg"},
     {"2017 - Starcraft1/4037", "music\\radiofreezerg.ogg"},
 
@@ -541,10 +536,10 @@ int main(int argc, char * argv[])
 
     //
     // Single tests
-    //
+    //                                   
 
-    TestOpenStorage_OpenFile("2016 - WoW/18125", "ENCODING");
-//  TestOpenStorage_EnumFiles("2018 - New CASC/00001", szListFile);
+//  TestOpenStorage_OpenFile("2017 - Starcraft1/2457", "locales\\itIT\\Assets\\SD\\campaign\\Starcraft\\SWAR\\staredit\\scenario.chk");
+//  TestOpenStorage_EnumFiles("2016 - Starcraft II/45364", szListFile);
 //  TestOpenStorage_ExtractFiles("2014 - Heroes of the Storm/39445"), NULL);
 
     //
