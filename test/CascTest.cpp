@@ -535,6 +535,10 @@ int main(int argc, char * argv[])
     // Single tests
     //                                   
 
+    printf("This is the first line\r");
+    printf("This is the second line");
+    printf("This is the third line");
+    
     TestOpenStorage_OpenFile("2018 - New CASC/00001", "DOWNLOAD");
 //  TestOpenStorage_EnumFiles("2016 - Starcraft II/45364", szListFile);
 //  TestOpenStorage_ExtractFiles("2014 - Heroes of the Storm/39445"), NULL);
