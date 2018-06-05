@@ -335,14 +335,14 @@ TCHAR * CombinePath(const TCHAR * szDirectory, const TCHAR * szSubDir)
     if(szSubDir != NULL)
     {
         // Cut all leading backslashes
-        while(szSubDir[0] == _T(PATH_SEPARATOR))
+        while(szSubDir[0] == _T(PATH_SEP_CHAR))
             szSubDir++;
 
         // Get the length of the subdir
         nLength2 = _tcslen(szSubDir);
 
         // Cut all ending backslashes
-        while(nLength2 > 0 && szSubDir[nLength2 - 1] == _T(PATH_SEPARATOR))
+        while(nLength2 > 0 && szSubDir[nLength2 - 1] == _T(PATH_SEP_CHAR))
             nLength2--;
     }
 
@@ -362,7 +362,7 @@ TCHAR * CombinePath(const TCHAR * szDirectory, const TCHAR * szSubDir)
         {
             // Append backslash to the previous one
             if(szPathPtr > szFullPath)
-                *szPathPtr++ = _T(PATH_SEPARATOR);
+                *szPathPtr++ = _T(PATH_SEP_CHAR);
 
             // Copy the string
             memcpy(szPathPtr, szSubDir, (nLength2 * sizeof(TCHAR)));

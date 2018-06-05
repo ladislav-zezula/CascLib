@@ -538,7 +538,7 @@ int main(int argc, char * argv[])
     // Single tests
     //                                   
 
-//  TestOpenStorage_OpenFile("2017 - Starcraft1/2457", "locales\\itIT\\Assets\\SD\\campaign\\Starcraft\\SWAR\\staredit\\scenario.chk");
+    TestOpenStorage_OpenFile("2018 - New CASC/00001", "DOWNLOAD");
 //  TestOpenStorage_EnumFiles("2016 - Starcraft II/45364", szListFile);
 //  TestOpenStorage_ExtractFiles("2014 - Heroes of the Storm/39445"), NULL);
 

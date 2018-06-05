@@ -115,7 +115,7 @@ static int ParseDirectoryData(TRootHandler_TVFS * pRootHandler, PATH_BUFFER & Pa
 // - If the container file table is larger than 0xffff bytes, it's 3 bytes
 // - If the container file table is larger than 0xff bytes, it's 2 bytes
 // - If the container file table is smaller than 0xff bytes, it's 1 byte
-static DWORD GetOffsetFieldSize(ULONG dwTableSize)
+static DWORD GetOffsetFieldSize(DWORD dwTableSize)
 {
     if(dwTableSize > 0xffffff)
         return 4;

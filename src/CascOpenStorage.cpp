@@ -252,31 +252,29 @@ static int InsertNamedInternalFile(
     const char * szFileName,
     CASC_CKEY_ENTRY & CKeyEntry)
 {
-    PCASC_EKEY_ENTRY pEKeyEntry;
-    QUERY_KEY EKey;
+    PCASC_CKEY_ENTRY pCKeyEntry;
+    QUERY_KEY CKey;
 
-    // Check if we really have the key
-    if(!IsValidMD5(CKeyEntry.CKey))
-        return ERROR_FILE_NOT_FOUND;
-
-    // If we don't have an EKey, we need to query it from the EKey table
-    if(CKeyEntry.EKeyCount == 0)
+    // Find the existing CKey entry in the CKey map. Should succeed for all files, except ENCODING
+    CKey.pbData = CKeyEntry.CKey;
+    CKey.cbData = CASC_CKEY_SIZE;
+    pCKeyEntry = FindCKeyEntry(hs, &CKey);
+    if(pCKeyEntry == NULL)
     {
-        // Find the EKey entry. If failed, we cannot name the file
-        EKey.pbData = CKeyEntry.EKey;
-        EKey.cbData = MD5_HASH_SIZE;
-        pEKeyEntry = FindEKeyEntry(hs, &EKey);
-        if(pEKeyEntry == NULL)
+        // Check the input structure for valid CKey and EKey count
+        if(!IsValidMD5(CKeyEntry.CKey))
             return ERROR_FILE_NOT_FOUND;
-
-        // Copy the EKEY to the CKEY_ENTRY
-        memset(CKeyEntry.EKey, 0, MD5_HASH_SIZE);
-        memcpy(CKeyEntry.EKey, pEKeyEntry->EKey, CASC_EKEY_SIZE);
-        CKeyEntry.EKeyCount = 1;
+        if(CKeyEntry.EKeyCount == 0)
+            return ERROR_CAN_NOT_COMPLETE;
+        pCKeyEntry = &CKeyEntry;
     }
 
+    // The content size and EKey should be known
+    assert(ConvertBytesToInteger_4(pCKeyEntry->ContentSize) != CASC_INVALID_SIZE);
+    assert(pCKeyEntry->EKeyCount != 0);
+
     // Now call the root handler to insert the CKey entry
-    return RootHandler_Insert(hs->pRootHandler, szFileName, &CKeyEntry);
+    return RootHandler_Insert(hs->pRootHandler, szFileName, pCKeyEntry);
 }
 
 static int InitializeCascDirectories(TCascStorage * hs, const TCHAR * szDataPath)

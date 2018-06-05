@@ -52,7 +52,8 @@
     #define PLATFORM_32BIT
   #endif
 
-  #define PATH_SEPARATOR     '\\'
+  #define PATH_SEP_CHAR             '\\'
+  #define PATH_SEP_STRING           "\\"
   #define CREATE_DIRECTORY(name)    CreateDirectory(name, NULL);
 
   #define PLATFORM_WINDOWS
@@ -90,7 +91,8 @@
     #define PLATFORM_LITTLE_ENDIAN
   #endif
 
-  #define PATH_SEPARATOR     '/'
+  #define PATH_SEP_CHAR             '/'
+  #define PATH_SEP_STRING           "/"
   #define CREATE_DIRECTORY(name)    mkdir(name, 0755)
 
   #define PLATFORM_MAC
@@ -103,7 +105,6 @@
 // Assumption: we are not on Windows nor Macintosh, so this must be linux *grin*
 
 #if !defined(PLATFORM_DEFINED)
-
   #include <sys/types.h>
   #include <sys/stat.h>
   #include <sys/mman.h>
@@ -120,7 +121,8 @@
   #include <assert.h>
   #include <errno.h>
 
-  #define PATH_SEPARATOR     '/'
+  #define PATH_SEP_CHAR             '/'
+  #define PATH_SEP_STRING           "/"
   #define CREATE_DIRECTORY(name)    mkdir(name, 0755)
 
   #define PLATFORM_LITTLE_ENDIAN

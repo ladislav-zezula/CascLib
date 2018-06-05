@@ -25,12 +25,9 @@ static void FileTree_SetNodeSize(PCASC_FILE_TREE pFileTree, PCASC_FILE_NODE pFil
     // Do we use file size at all?
     if(pFileTree->FileSizeOffset)
     {
-        if(FileSize != CASC_INVALID_SIZE)
-        {
-            PDWORD PtrFileSize = (PDWORD)((LPBYTE)pFileNode + pFileTree->FileSizeOffset);
+        PDWORD PtrFileSize = (PDWORD)((LPBYTE)pFileNode + pFileTree->FileSizeOffset);
 
-            PtrFileSize[0] = FileSize;
-        }
+        PtrFileSize[0] = FileSize;
     }
 }
 
@@ -39,12 +36,9 @@ static void FileTree_SetDataId(PCASC_FILE_TREE pFileTree, PCASC_FILE_NODE pFileN
     // Do we use file size at all?
     if(pFileTree->DataIdOffset)
     {
-        if(DataId != CASC_INVALID_ID)
-        {
-            PDWORD PtrDataId = (PDWORD)((LPBYTE)pFileNode + pFileTree->DataIdOffset);
+        PDWORD PtrDataId = (PDWORD)((LPBYTE)pFileNode + pFileTree->DataIdOffset);
 
-            PtrDataId[0] = DataId;
-        }
+        PtrDataId[0] = DataId;
     }
 }
 
@@ -307,6 +301,7 @@ void * FileTree_Insert(PCASC_FILE_TREE pFileTree, PCONTENT_KEY pCKey, const char
         pFileNode = FileTree_GetOrInsert(pFileTree, szNormPath, i, szNodeBegin, szFullPath + i, pCKey, Parent, FileSize, DataId);
     }
 
+    // Return the file node
     return pFileNode;
 }
 

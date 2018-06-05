@@ -780,7 +780,7 @@ bool WINAPI CascReadFile(HANDLE hFile, void * pvBuffer, DWORD dwBytesToRead, PDW
             LPBYTE pbEncodedFrame;
 
             // Is the frame already loaded?
-            if(pFrame->IsFrameLoaded == FALSE)
+            if(!pFrame->IsFrameLoaded)
             {
                 // Allocate space for the encoded frame
                 pbEncodedFrame = CASC_ALLOC(BYTE, pFrame->EncodedSize);
@@ -805,7 +805,7 @@ bool WINAPI CascReadFile(HANDLE hFile, void * pvBuffer, DWORD dwBytesToRead, PDW
                     break;
 
                 // Move the frame pointer
-                pFrame->IsFrameLoaded = TRUE;
+                pFrame->IsFrameLoaded = 1;
                 CASC_FREE(pbEncodedFrame);
             }
         }

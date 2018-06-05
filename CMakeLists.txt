@@ -51,7 +51,7 @@ set(TOMCRYPT_FILES
     src/libtomcrypt/src/misc/crypt_libc.c
 )
 
-set(ZLIB_BZIP2_FILES
+set(ZLIB_FILES
     src/zlib/adler32.c
     src/zlib/crc32.c
     src/zlib/inffast.c
@@ -73,7 +73,7 @@ if(WIN32)
     else()
         message(STATUS "Using mingw")
     endif()
-    set(SRC_ADDITIONAL_FILES ${ZLIB_BZIP2_FILES} ${TOMCRYPT_FILES})
+    set(SRC_ADDITIONAL_FILES ${ZLIB_FILES} ${TOMCRYPT_FILES})
     set(LINK_LIBS wininet)
 endif()
 
@@ -87,10 +87,10 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL Linux)
     message(STATUS "Using Linux port")
     option(WITH_LIBTOMCRYPT "Use system LibTomCrypt library" OFF)
     if(WITH_LIBTOMCRYPT)
-        set(LINK_LIBS z bz2 tomcrypt)
+        set(LINK_LIBS tomcrypt)
     else()
-        set(LINK_LIBS z bz2)
-        set(SRC_ADDITIONAL_FILES ${TOMCRYPT_FILES})
+        set(LINK_LIBS)
+        set(SRC_ADDITIONAL_FILES ${ZLIB_FILES} ${TOMCRYPT_FILES})
     endif()
 endif()
 

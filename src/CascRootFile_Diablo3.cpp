@@ -750,11 +750,11 @@ static int CreateMapOfRealNames(TRootHandler_Diablo3 * pRootHandler, const char 
 */
         // Get the header. There is just Signature + NumberOfNames
         if((pbPackagesDat = CaptureInteger32(pbPackagesDat, pbPackagesEnd, &Signature)) == NULL)
-            return NULL;
+            return ERROR_BAD_FORMAT;
         if((pbPackagesDat = CaptureInteger32(pbPackagesDat, pbPackagesEnd, &NumberOfNames)) == NULL)
-            return NULL;
+            return ERROR_BAD_FORMAT;
         if(Signature != DIABLO3_PACKAGES_SIGNATURE || NumberOfNames == 0)
-            return NULL;
+            return ERROR_BAD_FORMAT;
 
         // Create the map for fast search of the file name
         pPackageMap = Map_Create(NumberOfNames, KEY_LENGTH_STRING, 0);
@@ -814,8 +814,8 @@ static void FreeLoadingStuff(TRootHandler_Diablo3 * pRootHandler)
         CASC_FREE(pRootHandler->pbPackagesDat);
     pRootHandler->pbPackagesDat = NULL;
 
-    // Finally, rewrite all with zeros
-    memset(pRootHandler->RootFolders, 0, sizeof(TRootHandler_Diablo3) - FIELD_OFFSET(TRootHandler_Diablo3, RootFolders));
+    // Set the referenced storage handle to NULL
+    pRootHandler->hs = NULL;
 }
 
 

@@ -46,8 +46,9 @@ static const TBuildFileInfo BuildTypes[] =
 
 static const TCHAR * DataDirs[] =
 {
+    _T("data"),                                     // TACT casc (for Linux systems)
     _T("SC2Data"),                                  // Starcraft II (Legacy of the Void) build 38749
-    _T("Data\\Casc"),                               // Overwatch
+    _T("data") _T(PATH_SEP_STRING) _T("casc"),      // Overwatch
     _T("Data"),                                     // World of Warcraft, Diablo
     _T("HeroesData"),                               // Heroes of the Storm
     _T("BNTData"),                                  // Heroes of the Storm, until build 30414
@@ -851,7 +852,7 @@ static int LoadCdnBuildFile(TCascStorage * hs, void * pvListFile)
     const char * szLineEnd = NULL;
     int nError = ERROR_SUCCESS;
 
-    // Initialize the size of the ENCODING file
+    // Initialize the size of the internal files
     ConvertIntegerToBytes_4(CASC_INVALID_SIZE, hs->EncodingFile.ContentSize);
 
     // Parse all variables
