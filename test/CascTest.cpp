@@ -36,17 +36,14 @@
 
 #ifdef PLATFORM_WINDOWS
 #define CASC_PATH_ROOT "\\Multimedia\\MPQs"
-#define CASC_PATH_SEPR '\\'
 #endif
 
 #ifdef PLATFORM_LINUX
 #define CASC_PATH_ROOT "/home/ladik/MPQs"
-#define CASC_PATH_SEPR '/'
 #endif
 
 #ifdef PLATFORM_MAC
 #define CASC_PATH_ROOT "/Users/sam/StormLib/test"
-#define CASC_PATH_SEPR '/'
 #endif
 
 #define MAKE_PATH(subdir)  (_T(CASC_PATH_ROOT) _T(CASC_PATH_SEPR) _T(subdir))
@@ -129,7 +126,7 @@ static TCHAR * MakeFullPath(const char * szStorage, TCHAR * szBuffer, size_t ccB
 
     // Append the separator
     if(szBuffer < szBufferEnd)
-        *szBuffer++ = CASC_PATH_SEPR;
+        *szBuffer++ = PATH_SEP_CHAR;
 
     // Append the rest
     while(szBuffer < szBufferEnd && szStorage[0] != 0)
