@@ -487,10 +487,10 @@ static STORAGE_INFO StorageInfo[] =
     {"2014 - Heroes of the Storm/50286/HeroesData", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
 
     {"2015 - Diablo III/30013", "ENCODING"},
-
-    {"2015 - Overwatch/24919/casc/data", "ROOT"},
-    {"2015 - Overwatch/47161", "TactManifest\\Win_SPWin_RCN_LesMX_EExt.apm"},
-
+*/
+    {"2015 - Overwatch/24919/data/casc/data", "ROOT"},
+//  {"2015 - Overwatch/47161", "TactManifest\\Win_SPWin_RCN_LesMX_EExt.apm"},
+/*
     {"2016 - Starcraft II/45364/\\/\\/\\", "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
 
     {"2016 - WoW/18125", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
@@ -504,13 +504,13 @@ static STORAGE_INFO StorageInfo[] =
     {"2016 - WoW/21742", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"2016 - WoW/22267", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"2016 - WoW/23420", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-*/
+
     {"2017 - Starcraft1/2457", "music\\radiofreezerg.ogg"},
     {"2017 - Starcraft1/4037", "music\\radiofreezerg.ogg"},
 
     {"2018 - New CASC/00001", "ROOT"},
     {"2018 - New CASC/00002", "ENCODING"},
-
+*/
     {NULL}
 };
 
@@ -535,11 +535,7 @@ int main(int argc, char * argv[])
     // Single tests
     //                                   
 
-    printf("This is the first line\r");
-    printf("This is the second line");
-    printf("This is the third line");
-    
-    TestOpenStorage_OpenFile("2018 - New CASC/00001", "DOWNLOAD");
+    TestOpenStorage_OpenFile("2015 - Overwatch/24919", "ENCODING");
 //  TestOpenStorage_EnumFiles("2016 - Starcraft II/45364", szListFile);
 //  TestOpenStorage_ExtractFiles("2014 - Heroes of the Storm/39445"), NULL);
 

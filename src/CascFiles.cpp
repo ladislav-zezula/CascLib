@@ -46,10 +46,10 @@ static const TBuildFileInfo BuildTypes[] =
 
 static const TCHAR * DataDirs[] =
 {
-    _T("data"),                                     // TACT casc (for Linux systems)
-    _T("SC2Data"),                                  // Starcraft II (Legacy of the Void) build 38749
     _T("data") _T(PATH_SEP_STRING) _T("casc"),      // Overwatch
+    _T("data"),                                     // TACT casc (for Linux systems)
     _T("Data"),                                     // World of Warcraft, Diablo
+    _T("SC2Data"),                                  // Starcraft II (Legacy of the Void) build 38749
     _T("HeroesData"),                               // Heroes of the Storm
     _T("BNTData"),                                  // Heroes of the Storm, until build 30414
     NULL,
@@ -57,9 +57,9 @@ static const TCHAR * DataDirs[] =
 
 static const TGameIdString GameIds[] =
 {
-    {"Hero",       0x04, CASC_GAME_HOTS},           // Alpha build of Heroes of the Storm
-    {"WoW",        0x03, CASC_GAME_WOW6},           // Alpha build of World of Warcraft - Warlords of Draenor
-    {"Diablo3",    0x07, CASC_GAME_DIABLO3},        // Diablo III BETA 2.2.0
+    {"Hero",       0x04, CASC_GAME_HOTS},           // Heroes of the Storm
+    {"WoW",        0x03, CASC_GAME_WOW6},           // World of Warcraft since Warlords of Draenor
+    {"Diablo3",    0x07, CASC_GAME_DIABLO3},        // Diablo III since BETA 2.2.0
     {"Prometheus", 0x0A, CASC_GAME_OVERWATCH},      // Overwatch BETA since build 24919
     {"SC2",        0x03, CASC_GAME_STARCRAFT2},     // Starcraft II - Legacy of the Void
     {"Starcraft1", 0x0A, CASC_GAME_STARCRAFT1},     // Starcraft 1 (remake)
