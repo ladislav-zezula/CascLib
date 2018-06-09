@@ -72,8 +72,8 @@ extern "C" {
 //-----------------------------------------------------------------------------
 // Defines
 
-#define CASCLIB_VERSION                 0x010A  // Current version of CascLib (1.10)
-#define CASCLIB_VERSION_STRING          "1.10"  // String version of CascLib version
+#define CASCLIB_VERSION                 0x010B  // Current version of CascLib (1.11)
+#define CASCLIB_VERSION_STRING          "1.11"  // String version of CascLib version
 
 // Values for CascOpenStorage
 #define CASC_STOR_XXXXX             0x00000001  // Not used

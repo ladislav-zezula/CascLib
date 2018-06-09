@@ -328,6 +328,7 @@ static int TestOpenStorage_EnumFiles(const char * szStorage, const TCHAR * szLis
     TLogHelper LogHelper(szStorage);
     HANDLE hStorage;
     HANDLE hFind;
+    FILE * fp;
     TCHAR szFullPath[MAX_PATH];
     DWORD dwTotalFileCount = 0;
     DWORD dwFileCount = 0;
@@ -340,6 +341,8 @@ static int TestOpenStorage_EnumFiles(const char * szStorage, const TCHAR * szLis
     LogHelper.PrintProgress("Opening storage ...");
     if(CascOpenStorage(szFullPath, 0, &hStorage))
     {
+//      fp = fopen("E:\\110-storage-dump.txt", "wt");
+
         // Dump the storage
 //      CascDumpStorage(hStorage, "E:\\storage-dump.txt");
 
@@ -356,6 +359,9 @@ static int TestOpenStorage_EnumFiles(const char * szStorage, const TCHAR * szLis
                 // Show the file name to the user
                 MakeShortName(cf.szFileName, szShortName, sizeof(szShortName));
 
+                if(fp != NULL)
+                    fprintf(fp, "%s\n", cf.szFileName);
+
                 // Show progress
                 if((dwFileCount % 5) == 0)
                 {
@@ -370,6 +376,9 @@ static int TestOpenStorage_EnumFiles(const char * szStorage, const TCHAR * szLis
             // Close the search handle
             CascFindClose(hFind);
         }
+
+        if(fp != NULL)
+            fclose(fp);
 
         CascCloseStorage(hStorage);
         LogHelper.PrintMessage("Work complete.");
@@ -477,7 +486,7 @@ static int TestOpenStorage_GetFileDataId(const TCHAR * szStorage, const char * s
 
 static STORAGE_INFO StorageInfo[] = 
 {
-/*
+
     {"2014 - Heroes of the Storm/29049", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_autoai1.dds"},
     {"2014 - Heroes of the Storm/30027", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_claim1.dds"},
     {"2014 - Heroes of the Storm\\30414\\HeroesData\\config\\09\\32", "mods\\heromods\\murky.stormmod\\base.stormdata\\gamedata\\buttondata.xml"},
@@ -487,10 +496,10 @@ static STORAGE_INFO StorageInfo[] =
     {"2014 - Heroes of the Storm/50286/HeroesData", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
 
     {"2015 - Diablo III/30013", "ENCODING"},
-*/
+
     {"2015 - Overwatch/24919/data/casc/data", "ROOT"},
-//  {"2015 - Overwatch/47161", "TactManifest\\Win_SPWin_RCN_LesMX_EExt.apm"},
-/*
+    {"2015 - Overwatch/47161", "TactManifest\\Win_SPWin_RCN_LesMX_EExt.apm"},
+
     {"2016 - Starcraft II/45364/\\/\\/\\", "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
 
     {"2016 - WoW/18125", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
@@ -510,7 +519,7 @@ static STORAGE_INFO StorageInfo[] =
 
     {"2018 - New CASC/00001", "ROOT"},
     {"2018 - New CASC/00002", "ENCODING"},
-*/
+
     {NULL}
 };
 
@@ -535,14 +544,14 @@ int main(int argc, char * argv[])
     // Single tests
     //                                   
 
-    TestOpenStorage_OpenFile("2015 - Overwatch/24919", "ENCODING");
-//  TestOpenStorage_EnumFiles("2016 - Starcraft II/45364", szListFile);
+//  TestOpenStorage_OpenFile("2015 - Overwatch/24919", "ENCODING");
+    TestOpenStorage_EnumFiles("2016 - WoW/23420", NULL);
 //  TestOpenStorage_ExtractFiles("2014 - Heroes of the Storm/39445"), NULL);
 
     //
     // Tests for OpenStorage + ExtractFile
     //
-/*
+
     for(size_t i = 0; StorageInfo[i].szPath != NULL; i++)
     {
         // Attempt to open the storage and extract single file
@@ -550,7 +559,7 @@ int main(int argc, char * argv[])
         if(nError != ERROR_SUCCESS)
             break;
     }
-*/
+
     //
     // Tests for OpenStorage + EnumAllFiles + ExtractAllFiles
     //

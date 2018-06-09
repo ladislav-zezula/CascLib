@@ -102,7 +102,7 @@ static TCascSearch * AllocateSearchHandle(TCascStorage * hs, const TCHAR * szLis
 static bool FileFoundBefore(TCascSearch * pSearch, DWORD EKeyIndex)
 {
     DWORD IntIndex = (DWORD)(EKeyIndex / 0x20);
-    DWORD BitMask = 1 << (EKeyIndex & 0x1E);
+    DWORD BitMask = 1 << (EKeyIndex & 0x1F);
 
     // If the bit in the map is set, it means that the file was found before
     if(pSearch->BitArray[IntIndex] & BitMask)
@@ -205,6 +205,9 @@ static bool DoStorageSearch_CKey(TCascSearch * pSearch, PCASC_FIND_DATA pFindDat
         pCKeyEntry = (PCASC_CKEY_ENTRY)hs->pCKeyEntryMap->HashTable[pSearch->IndexLevel1];
         if(pCKeyEntry != NULL)
         {
+//          if(pCKeyEntry->CKey[0] == 0x2a && pCKeyEntry->CKey[1] == 0xb4 && pCKeyEntry->CKey[2] == 0x4F)
+//              __debugbreak();
+
             EKey.pbData = pCKeyEntry->EKey;
             EKey.cbData = MD5_HASH_SIZE;
             pEKeyEntry = FindEKeyEntry(pSearch->hs, &EKey, &EKeyIndex);

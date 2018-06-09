@@ -716,7 +716,20 @@ static int CreateMapOfCKeyEntries(TCascStorage * hs, CASC_ENCODING_HEADER & EnHe
             // Move to the next segment
             pbPageEntry += EnHeader.CKeyPageSize;
         }
-
+/*
+        FILE * fp = fopen("E:\\110-ckey-map.txt", "wt");
+        for(size_t i = 0; i < hs->pCKeyEntryMap->TableSize; i++)
+        {
+            pCKeyEntry = (PCASC_CKEY_ENTRY)(hs->pCKeyEntryMap->HashTable[i]);
+            if(pCKeyEntry != NULL)
+            {
+                char szCKey[0x40];
+                StringFromBinary(pCKeyEntry->CKey, MD5_HASH_SIZE, szCKey);
+                fprintf(fp, "%s\n", szCKey);
+            }
+        }
+        fclose(fp);
+*/
         // Insert extra entry for ENCODING file. We need to do that artificially,
         // because CKey of ENCODING file is not in ENCODING itself :-)
         Map_InsertObject(hs->pCKeyEntryMap, &hs->EncodingFile, hs->EncodingFile.CKey);

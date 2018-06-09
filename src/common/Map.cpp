@@ -92,6 +92,7 @@ PCASC_MAP Map_Create(size_t MaxItems, size_t KeyLength, size_t KeyOffset)
 
     // Calculate the size of the table
     TableSize = (MaxItems * 3 / 2) | 0x01;
+    KeyLength = CASCLIB_MIN(KeyLength, 8);
 
     // Allocate new map for the objects
     cbToAllocate = sizeof(CASC_MAP) + (TableSize * sizeof(void *));
