@@ -409,8 +409,8 @@ int TLogHelper::GetConsoleWidth()
 #else
 
     // On non-Windows platforms, we assume that width of the console line
-    // is 80 characters
-    return 120;
+    // is 100 characters
+    return 100;
 
 #endif
 }

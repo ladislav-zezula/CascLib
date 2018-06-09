@@ -513,8 +513,13 @@ static STORAGE_INFO StorageInfo[] =
     {"2016 - WoW/21742", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"2016 - WoW/22267", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"2016 - WoW/23420", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+<<<<<<< HEAD
 
     {"2017 - Starcraft1/2457", "music\\radiofreezerg.ogg"},
+=======
+*/
+//  {"2017 - Starcraft1/2457", "music\\radiofreezerg.ogg"},
+>>>>>>> de9f6df4ca662abd2cae51bb1f0347ae743b16ed
     {"2017 - Starcraft1/4037", "music\\radiofreezerg.ogg"},
 
     {"2018 - New CASC/00001", "ROOT"},
@@ -544,8 +549,13 @@ int main(int argc, char * argv[])
     // Single tests
     //                                   
 
+<<<<<<< HEAD
 //  TestOpenStorage_OpenFile("2015 - Overwatch/24919", "ENCODING");
     TestOpenStorage_EnumFiles("2016 - WoW/23420", NULL);
+=======
+    TestOpenStorage_OpenFile("2018 - New CASC/00001", "DOWNLOAD");
+//  TestOpenStorage_EnumFiles("2016 - Starcraft II/45364", szListFile);
+>>>>>>> de9f6df4ca662abd2cae51bb1f0347ae743b16ed
 //  TestOpenStorage_ExtractFiles("2014 - Heroes of the Storm/39445"), NULL);
 
     //
