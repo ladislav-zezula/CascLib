@@ -219,10 +219,24 @@ static bool BaseFile_Read(
 #endif
 
     // Increment the current file position by number of bytes read
-    // If the number of bytes read doesn't match to required amount, return false
     pStream->Base.File.FilePos = ByteOffset + dwBytesRead;
-    if(dwBytesRead != dwBytesToRead)
-        SetLastError(ERROR_HANDLE_EOF);
+
+    // If the number of bytes read doesn't match to required amount, return false
+    // However, Blizzard's CASC handlers read encoded data so that if less than expected
+    // was read, then they fill the rest with zeros
+    if(dwBytesRead < dwBytesToRead)
+    {
+        if(pStream->dwFlags & STREAM_FLAG_FILL_MISSING)
+        {
+            memset((LPBYTE)pvBuffer + dwBytesRead, 0, (dwBytesToRead - dwBytesRead));
+            dwBytesRead = dwBytesToRead;
+        }
+        else
+        {
+            SetLastError(ERROR_HANDLE_EOF);
+        }
+    }
+        
     return (dwBytesRead == dwBytesToRead);
 }
 

@@ -507,7 +507,7 @@ static STORAGE_INFO StorageInfo[] =
     {"2016 - WoW/18865", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"2016 - WoW/18888", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"2016 - WoW/19116", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"2016 - WoW/19342-root-file-cut", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/19342", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"2016 - WoW/19342-with-patch", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"2016 - WoW/19678-after-patch", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"2016 - WoW/21742", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
@@ -544,9 +544,9 @@ int main(int argc, char * argv[])
     // Single tests
     //                                   
 
-//  TestOpenStorage_OpenFile("2015 - Overwatch/24919", "ENCODING");
-    TestOpenStorage_EnumFiles("2016 - WoW/23420", NULL);
-//  TestOpenStorage_ExtractFiles("2014 - Heroes of the Storm/39445"), NULL);
+//  TestOpenStorage_OpenFile("2016 - WoW/19342", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3");
+//  TestOpenStorage_EnumFiles("2016 - WoW/23420", NULL);
+    TestOpenStorage_ExtractFiles("2016 - WoW/19342", NULL);
 
     //
     // Tests for OpenStorage + ExtractFile

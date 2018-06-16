@@ -625,7 +625,7 @@ static int LoadIndexFile(PCASC_INDEX_FILE pIndexFile, DWORD KeyIndex)
     else
         nError = GetLastError();
 
-    return ERROR_SUCCESS;
+    return nError;
 }
 
 static int CreateMapOfEKeyEntries(TCascStorage * hs)
@@ -1183,7 +1183,7 @@ static void DumpCKeyEntry(PCASC_CKEY_ENTRY pCKeyEntry, FILE * fp)
     // Print the EKeys
     for(USHORT i = 0; i < pCKeyEntry->EKeyCount; i++, pbEKey += MD5_HASH_SIZE)
         fprintf(fp, "%s ", StringFromBinary(pbEKey, MD5_HASH_SIZE, szStringBuff));
-    fprintf(fp, "\n", StringFromBinary(pbEKey, MD5_HASH_SIZE, szStringBuff));
+    fprintf(fp, "\n");
 }
 
 static void DumpEKeyEntry(FILE * fp, LPBYTE pbEKey, DWORD cbEKey, LPBYTE FileOffsetBE, DWORD FileSize)

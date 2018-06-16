@@ -299,14 +299,14 @@ static TCHAR * CheckForIndexDirectory(TCascStorage * hs, const TCHAR * szSubDir)
     return NULL;
 }
 
-TCHAR * AppendBlobText(TCHAR * szBuffer, LPBYTE pbData, DWORD cbData, TCHAR chSeparator)
+TCHAR * AppendBlobText(TCHAR * szBuffer, LPBYTE pbData, size_t cbData, TCHAR chSeparator)
 {
     // Put the separator, if any
     if(chSeparator != 0)
         *szBuffer++ = chSeparator;
 
     // Copy the blob data as text
-    for(DWORD i = 0; i < cbData; i++)
+    for(size_t i = 0; i < cbData; i++)
     {
         *szBuffer++ = IntToHexChar[pbData[0] >> 0x04];
         *szBuffer++ = IntToHexChar[pbData[0] & 0x0F];

@@ -28,6 +28,7 @@
 #define STREAM_FLAG_READ_ONLY       0x00000100  // Stream is read only
 #define STREAM_FLAG_WRITE_SHARE     0x00000200  // Allow write sharing when open for write
 #define STREAM_FLAG_USE_BITMAP      0x00000400  // If the file has a file bitmap, load it and use it
+#define STREAM_FLAG_FILL_MISSING    0x00000800  // If less than expected was read from the file, fill the missing part with zeros
 #define STREAM_OPTIONS_MASK         0x0000FF00  // Mask for stream options
 
 #define STREAM_PROVIDERS_MASK       0x000000FF  // Mask to get stream providers

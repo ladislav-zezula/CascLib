@@ -1,4 +1,4 @@
-/*****************************************************************************/
+/****************************************************************************/
 /* CascOpenFile.cpp                       Copyright (c) Ladislav Zezula 2014 */
 /*---------------------------------------------------------------------------*/
 /* System-dependent directory functions for CascLib                          */
@@ -61,8 +61,9 @@ static int EnsureDataStreamIsOpen(TCascFile * hf)
         // Open the data file
         if(szDataFile != NULL)
         {
-            // Open the stream
-            pStream = FileStream_OpenFile(szDataFile, STREAM_FLAG_READ_ONLY | STREAM_PROVIDER_FLAT | BASE_PROVIDER_FILE);
+            // Open the stream. Make sure that the encoded handlers will fill eventual
+            // missing data with zeros. Observed in Overwatch build 24919
+            pStream = FileStream_OpenFile(szDataFile, STREAM_FLAG_READ_ONLY | STREAM_PROVIDER_FLAT | STREAM_FLAG_FILL_MISSING | BASE_PROVIDER_FILE);
             hs->DataFiles[hf->ArchiveIndex] = pStream;
             CASC_FREE(szDataFile);
         }
@@ -219,6 +220,8 @@ static int LoadEncodedHeaderAndFileFrames(TCascFile * hf)
 
         // Save the number of file frames
         hf->FrameCount = ConvertBytesToInteger_3(BlteHeader.FrameCount);
+        if (((hf->FrameCount * sizeof(BLTE_FRAME)) + 0x0C) != HeaderSize)
+            return ERROR_BAD_FORMAT;
 
         // Allocate space for the file frames
         hf->pFrames = CASC_ALLOC(CASC_FILE_FRAME, hf->FrameCount);
@@ -359,43 +362,17 @@ static int AllocateFileCache(TCascFile * hf, PCASC_FILE_FRAME pEndFrame)
 static int LoadEncodedFrame(TFileStream * pStream, PCASC_FILE_FRAME pFrame, LPBYTE pbEncodedFrame)
 {
     ULONGLONG FileOffset = pFrame->DataFileOffset;
-    ULONGLONG StreamSize = 0;
-    DWORD dwFrameSize;
     int nError = ERROR_SUCCESS;
 
     // Load the encoded frame to memory
-    if(!FileStream_Read(pStream, &FileOffset, pbEncodedFrame, pFrame->EncodedSize))
-    {
-        // Remember the last error
-        nError = GetLastError();
-
-        // Note: The raw file data size could be less than expected
-        // Happened in WoW build 19342 with the ROOT file. MD5 in the frame header
-        // is zeroed, which means it should not be checked
-        // Frame File: data.029
-        // Frame Offs: 0x013ED9F0 size 0x01325B32
-        // Frame End:  0x02713522
-        // File Size:  0x027134FC
-        if(nError == ERROR_HANDLE_EOF && !IsValidMD5(pFrame->FrameHash))
-        {
-            // Get the size of the remaining file
-            FileStream_GetSize(pStream, &StreamSize);
-            dwFrameSize = (DWORD)(StreamSize - FileOffset);
-
-            // If the frame offset is before EOF and frame end is beyond EOF, correct it
-            if(FileOffset < StreamSize && dwFrameSize < pFrame->EncodedSize)
-            {
-                memset(pbEncodedFrame + dwFrameSize, 0, (pFrame->EncodedSize - dwFrameSize));
-                nError = ERROR_SUCCESS;
-            }
-        }
-    }
-
-    // If we succeeded reading the frame, we need to verify the encoded data
-    if(nError == ERROR_SUCCESS)
+    if(FileStream_Read(pStream, &FileOffset, pbEncodedFrame, pFrame->EncodedSize))
     {
         if(!VerifyDataBlockHash(pbEncodedFrame, pFrame->EncodedSize, pFrame->FrameHash))
             nError = ERROR_FILE_CORRUPT;
+    }
+    else
+    {
+        nError = GetLastError();
     }
 
     return nError;
