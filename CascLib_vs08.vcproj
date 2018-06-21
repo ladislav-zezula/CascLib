@@ -1051,6 +1051,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\src\CascMndx.h"
+				>
+			</File>
+			<File
 				RelativePath=".\src\CascPort.h"
 				>
 			</File>
@@ -2053,7 +2057,7 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath=".\src\CascRootFile_MNDX.cpp"
+				RelativePath=".\src\CascRootFile_Mndx.cpp"
 				>
 				<FileConfiguration
 					Name="DebugAD|Win32"
@@ -2147,7 +2151,7 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath=".\src\CascRootFile_OW.cpp"
+				RelativePath=".\src\CascRootFile_Mndx_x86.asm"
 				>
 			</File>
 			<File
@@ -2256,23 +2260,6 @@
 				Name="common"
 				>
 				<File
-					RelativePath=".\src\common\Array.cpp"
-					>
-					<FileConfiguration
-						Name="DebugAD|Win32"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							UsePrecompiledHeader="0"
-							PrecompiledHeaderThrough="CascCommon.h"
-						/>
-					</FileConfiguration>
-				</File>
-				<File
-					RelativePath=".\src\common\Array.h"
-					>
-				</File>
-				<File
 					RelativePath=".\src\common\Common.cpp"
 					>
 					<FileConfiguration
@@ -2321,6 +2308,23 @@
 				</File>
 				<File
 					RelativePath=".\src\common\DumpContext.h"
+					>
+				</File>
+				<File
+					RelativePath=".\src\common\Array.cpp"
+					>
+					<FileConfiguration
+						Name="DebugAD|Win32"
+						>
+						<Tool
+							Name="VCCLCompilerTool"
+							UsePrecompiledHeader="0"
+							PrecompiledHeaderThrough="CascCommon.h"
+						/>
+					</FileConfiguration>
+				</File>
+				<File
+					RelativePath=".\src\common\Array.h"
 					>
 				</File>
 				<File

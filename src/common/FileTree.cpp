@@ -17,115 +17,142 @@
 
 #define START_ITEM_COUNT    0x1000
 
-inline DWORD GET_NODE_INT32(void * node, size_t offset)
-{
-    PDWORD PtrValue = (PDWORD)((LPBYTE)node + offset);
-    
-    return PtrValue[0];
-}
+//-----------------------------------------------------------------------------
+// Local functions
 
-inline void SET_NODE_INT32(void * node, size_t offset, DWORD value)
+static void FileTree_SetNodeSize(PCASC_FILE_TREE pFileTree, PCASC_FILE_NODE pFileNode, DWORD FileSize)
 {
-    PDWORD PtrValue = (PDWORD)((LPBYTE)node + offset);
-    
-    PtrValue[0] = value;
-}
-
-static bool IsFileDataIdName(const char * szFileName, DWORD & DataId)
-{
-    BYTE BinaryValue[4];
-
-    // File name must begin with "File", case insensitive
-    if(AsciiToUpperTable_BkSlash[szFileName[0]] == 'F' &&
-       AsciiToUpperTable_BkSlash[szFileName[1]] == 'I' &&
-       AsciiToUpperTable_BkSlash[szFileName[2]] == 'L' &&
-       AsciiToUpperTable_BkSlash[szFileName[3]] == 'E')
+    // Do we use file size at all?
+    if(pFileTree->FileSizeOffset)
     {
-        // Then, 8 hexadecimal digits must follow
-        if(ConvertStringToBinary(szFileName + 4, 8, BinaryValue) == ERROR_SUCCESS)
+        PDWORD PtrFileSize = (PDWORD)((LPBYTE)pFileNode + pFileTree->FileSizeOffset);
+
+        PtrFileSize[0] = FileSize;
+    }
+}
+
+static void FileTree_SetDataId(PCASC_FILE_TREE pFileTree, PCASC_FILE_NODE pFileNode, DWORD DataId)
+{
+    // Do we use file size at all?
+    if(pFileTree->DataIdOffset)
+    {
+        PDWORD PtrDataId = (PDWORD)((LPBYTE)pFileNode + pFileTree->DataIdOffset);
+
+        PtrDataId[0] = DataId;
+    }
+}
+
+static bool RebuildTreeMaps(PCASC_FILE_TREE pFileTree)
+{
+    PCASC_FILE_NODE pFileNode;
+    size_t nMaxItems = pFileTree->FileTable.ItemCountMax;
+    DWORD DataId = 0;
+
+    // Free the map of FullName -> CASC_FILE_NODE
+    if(pFileTree->pNameMap != NULL)
+        Map_Free(pFileTree->pNameMap);
+    pFileTree->pNameMap = NULL;
+
+    // Free the map of DataId -> CASC_FILE_NODE
+    if(pFileTree->pIdMap != NULL)
+        Map_Free(pFileTree->pIdMap);
+    pFileTree->pIdMap = NULL;
+
+    // Create the name map
+    pFileTree->pNameMap = Map_Create(nMaxItems, sizeof(ULONGLONG), FIELD_OFFSET(CASC_FILE_NODE, NameHash));
+    if(pFileTree->pNameMap == NULL)
+        return false;
+
+    // Create the DataId map
+    if(pFileTree->DataIdOffset != 0)
+    {
+        pFileTree->pIdMap = Map_Create(nMaxItems, sizeof(DWORD), pFileTree->DataIdOffset);
+        if(pFileTree->pIdMap == NULL)
+            return false;
+    }
+
+    // Parse all items and insert them to the map
+    for(size_t i = 0; i < pFileTree->FileTable.ItemCount; i++)
+    {
+        pFileNode = (PCASC_FILE_NODE)Array_ItemAt(&pFileTree->FileTable, i);
+        if(pFileNode != NULL)
         {
-            // Must be followed by an extension or end-of-string
-            if(szFileName[0x0C] == 0 || szFileName[0x0C] == '.')
-            {
-                DataId = ConvertBytesToInteger_4(BinaryValue);
-                return (DataId != CASC_INVALID_ID);
-            }
+            if(pFileTree->pNameMap != NULL && pFileNode->NameHash != 0)
+                Map_InsertObject(pFileTree->pNameMap, pFileNode, &pFileNode->NameHash);
+
+            if(pFileTree->pIdMap != NULL && FileTree_GetDataId(pFileTree, pFileNode, &DataId))
+                Map_InsertObject(pFileTree->pIdMap, pFileNode, &DataId);
         }
     }
 
-    return false;
+    return true;
 }
 
-//-----------------------------------------------------------------------------
-// Protected functions
-
-PCASC_FILE_NODE CASC_FILE_TREE::GetOrInsert(
-    ULONGLONG FileNameHash,
+static PCASC_FILE_NODE FileTree_GetOrInsert(
+    PCASC_FILE_TREE pFileTree,
+    const char * szNormPath,
+    size_t nLength,
     const char * szNodeBegin,
     const char * szNodeEnd,
     PCONTENT_KEY pCKey,
     DWORD Parent,
+    DWORD FileSize,
     DWORD DataId)
 {
     PCASC_FILE_NODE pFileNode;
-    char * szInsertedName = NULL;
+    ULONGLONG FileNameHash = CalcNormNameHash(szNormPath, nLength);
+    char * szInsertedName;
     void * SaveItemArray;
-    DWORD NameIndex = 0;
 
     // Check if the path fragment is already in the file table
-    pFileNode = (PCASC_FILE_NODE)Map_FindObject(pNameMap, &FileNameHash);
+    pFileNode = (PCASC_FILE_NODE)Map_FindObject(pFileTree->pNameMap, &FileNameHash);
 
     // If the node is not there yet, we need to insert it
     if(pFileNode == NULL)
     {
-        // If we have name for the node, we need to insert it to the name array
-        if(szNodeBegin && szNodeEnd)
+        // Insert the name fragment to the name table
+        szInsertedName = (char *)Array_Insert(&pFileTree->NameTable, szNodeBegin, (szNodeEnd - szNodeBegin));
+        if(szInsertedName != NULL)
         {
-            // Insert the name fragment to the name table
-            szInsertedName = (char *)Array_Insert(&NameTable, szNodeBegin, (szNodeEnd - szNodeBegin));
-            if(szInsertedName == NULL)
-                return NULL;
+            // We need to save the array pointers. If it changes, we must rebuild both maps
+            SaveItemArray = pFileTree->FileTable.ItemArray;
 
-            // Get the name offset
-            NameIndex = (DWORD)Array_IndexOf(&NameTable, szInsertedName);
-        }
-
-        // We need to save the array pointers. If it changes, we must rebuild both maps
-        SaveItemArray = FileTable.ItemArray;
-
-        // Create a brand new node
-        pFileNode = (PCASC_FILE_NODE)Array_Insert(&FileTable, NULL, 1);
-        if(pFileNode != NULL)
-        {
-            // Setup the node
-            memset(pFileNode, 0, FileTable.ItemSize);
-            pFileNode->NameHash = FileNameHash;
-            pFileNode->NameIndex = NameIndex;
-            pFileNode->NameLength = (USHORT)(szNodeEnd - szNodeBegin);
-            pFileNode->Parent = Parent;
-
-            // Supply the CKey/EKey
-            if(pCKey != NULL)
-                pFileNode->CKey = *pCKey;
-
-            // Supply the DataId
-            if(DataIdOffset != 0)
-                SET_NODE_INT32(pFileNode, DataIdOffset, DataId);
-
-            // Did the array pointer change? If yes, then all items in the map are invalid now
-            if(FileTable.ItemArray == SaveItemArray)
+            // Create a brand new node
+            pFileNode = (PCASC_FILE_NODE)Array_Insert(&pFileTree->FileTable, NULL, 1);
+            if(pFileNode != NULL)
             {
-                if(pNameMap != NULL)
-                    Map_InsertObject(pNameMap, pFileNode, &pFileNode->NameHash);
-                if(pIdMap != NULL && DataId != CASC_INVALID_ID)
-                    Map_InsertObject(pIdMap, pFileNode, &DataId);
-            }
-            else
-            {
-                if(!RebuildTreeMaps())
+                // Setup the node
+                memset(pFileNode, 0, pFileTree->FileTable.ItemSize);
+                pFileNode->NameHash = FileNameHash;
+                pFileNode->NameIndex = (DWORD)Array_IndexOf(&pFileTree->NameTable, szInsertedName);
+                pFileNode->NameLength = (USHORT)(szNodeEnd - szNodeBegin);
+                pFileNode->Parent = Parent;
+
+                // Supply the CKey/EKey
+                if(pCKey != NULL)
+                    pFileNode->CKey = *pCKey;
+
+                // Save the file size
+                FileTree_SetNodeSize(pFileTree, pFileNode, FileSize);
+
+                // Supply the Data ID
+                FileTree_SetDataId(pFileTree, pFileNode, DataId);
+
+                // Did the array pointer change? If yes, then all items in the map are invalid now
+                if(pFileTree->FileTable.ItemArray == SaveItemArray)
                 {
-                    pFileNode = NULL;
-                    assert(false);
+                    if(pFileTree->pNameMap != NULL)
+                        Map_InsertObject(pFileTree->pNameMap, pFileNode, &pFileNode->NameHash);
+                    if(pFileTree->pIdMap != NULL && DataId != CASC_INVALID_ID)
+                        Map_InsertObject(pFileTree->pIdMap, pFileNode, &DataId);
+                }
+                else
+                {
+                    if(!RebuildTreeMaps(pFileTree))
+                    {
+                        pFileNode = NULL;
+                        assert(false);
+                    }
                 }
             }
         }
@@ -139,19 +166,7 @@ PCASC_FILE_NODE CASC_FILE_TREE::GetOrInsert(
     return pFileNode;
 }
 
-PCASC_FILE_NODE CASC_FILE_TREE::GetOrInsert(
-    const char * szNormPath,
-    size_t nLength,
-    const char * szNodeBegin,
-    const char * szNodeEnd,
-    PCONTENT_KEY pCKey,
-    DWORD Parent,
-    DWORD DataId)
-{
-    return GetOrInsert(CalcNormNameHash(szNormPath, nLength), szNodeBegin, szNodeEnd, pCKey, Parent, DataId);
-}
-
-size_t CASC_FILE_TREE::MakePath(PCASC_FILE_NODE pFileNode, char * szBuffer, size_t cchBuffer)
+static size_t FileTree_MakePath(PCASC_FILE_TREE pFileTree, PCASC_FILE_NODE pFileNode, char * szBuffer, size_t cchBuffer)
 {
     PCASC_FILE_NODE pParentNode;
     const char * szNamePtr;
@@ -161,16 +176,16 @@ size_t CASC_FILE_TREE::MakePath(PCASC_FILE_NODE pFileNode, char * szBuffer, size
     if(pFileNode->Parent != CASC_INVALID_INDEX)
     {
         // Copy all parents
-        pParentNode = (PCASC_FILE_NODE)Array_ItemAt(&FileTable, pFileNode->Parent);
+        pParentNode = (PCASC_FILE_NODE)Array_ItemAt(&pFileTree->FileTable, pFileNode->Parent);
         if(pParentNode != NULL)
         {
             // Query the parent and move the buffer
-            nLength = MakePath(pParentNode, szBuffer, cchBuffer);
+            nLength = FileTree_MakePath(pFileTree, pParentNode, szBuffer, cchBuffer);
             szBuffer = szBuffer + nLength;
         }
 
         // Retrieve the node name
-        szNamePtr = (const char *)Array_ItemAt(&NameTable, pFileNode->NameIndex);
+        szNamePtr = (const char *)Array_ItemAt(&pFileTree->NameTable, pFileNode->NameIndex);
 
         // Check whether we have enough space
         if((szBuffer + pFileNode->NameLength) < szBufferEnd)
@@ -191,150 +206,62 @@ size_t CASC_FILE_TREE::MakePath(PCASC_FILE_NODE pFileNode, char * szBuffer, size
     return nLength;
 }
 
-void CASC_FILE_TREE::SetExtras(PCASC_FILE_NODE pFileNode, DWORD FileSize, DWORD LocaleId)
-{
-    // Set the file size, if supported
-    if(FileSizeOffset != 0)
-    {
-        SET_NODE_INT32(pFileNode, FileSizeOffset, FileSize);
-    }
-
-    // Set the locale ID, if supported
-    if(LocaleIdOffset != 0)
-    {
-        SET_NODE_INT32(pFileNode, LocaleIdOffset, LocaleId);
-    }
-}
-
-bool CASC_FILE_TREE::RebuildTreeMaps()
-{
-    PCASC_FILE_NODE pFileNode;
-    size_t nMaxItems = FileTable.ItemCountMax;
-    DWORD DataId = 0;
-
-    // Free the map of FullName -> CASC_FILE_NODE
-    if(pNameMap != NULL)
-        Map_Free(pNameMap);
-    pNameMap = NULL;
-
-    // Free the map of DataId -> CASC_FILE_NODE
-    if(pIdMap != NULL)
-        Map_Free(pIdMap);
-    pIdMap = NULL;
-
-    // Create the name map
-    pNameMap = Map_Create(nMaxItems, sizeof(ULONGLONG), FIELD_OFFSET(CASC_FILE_NODE, NameHash));
-    if(pNameMap == NULL)
-        return false;
-
-    // Create the DataId map
-    if(DataIdOffset != 0)
-    {
-        pIdMap = Map_Create(nMaxItems, sizeof(DWORD), DataIdOffset);
-        if(pIdMap == NULL)
-            return false;
-    }
-
-    // Parse all items and insert them to the map
-    for(size_t i = 0; i < FileTable.ItemCount; i++)
-    {
-        pFileNode = (PCASC_FILE_NODE)Array_ItemAt(&FileTable, i);
-        if(pFileNode != NULL)
-        {
-            // Insert the file by name
-            if(pNameMap != NULL && pFileNode->NameHash != 0)
-                Map_InsertObject(pNameMap, pFileNode, &pFileNode->NameHash);
-
-            // Insert the file by data ID, if supported
-            if(DataIdOffset != 0)
-            {
-                GetExtras(pFileNode, &DataId, NULL, NULL);
-                if(pIdMap != NULL && DataId != CASC_INVALID_ID)
-                {
-                    Map_InsertObject(pIdMap, pFileNode, &DataId);
-                }
-            }
-        }
-    }
-
-    return true;
-}
-
 //-----------------------------------------------------------------------------
 // Public functions
 
-int CASC_FILE_TREE::Create(DWORD Flags)
+int FileTree_Create(PCASC_FILE_TREE pFileTree, DWORD Flags)
 {
     PCASC_FILE_NODE pRootNode;
     size_t FileNodeSize = sizeof(CASC_FILE_NODE);
     int nError;
 
     // Initialize the file tree
-    memset(this, 0, sizeof(CASC_FILE_TREE));
-
-    // Shall we use the data ID in the tree node?
-    if(Flags & FTREE_FLAG_USE_DATA_ID)
-    {
-        DataIdOffset = FileNodeSize;
-        FileNodeSize += sizeof(DWORD);
-    }
+    memset(pFileTree, 0, sizeof(CASC_FILE_TREE));
 
     // Shall we use the file size in the tree node?
     if(Flags & FTREE_FLAG_USE_FILE_SIZE)
     {
-        FileSizeOffset = FileNodeSize;
+        pFileTree->FileSizeOffset = FileNodeSize;
         FileNodeSize += sizeof(DWORD);
     }
 
-    // Shall we use the locale ID in the tree node?
-    if(Flags & FTREE_FLAG_USE_LOCALE)
+    // Shall we use the data ID in the tree node?
+    if(Flags & FTREE_FLAG_USE_DATA_ID)
     {
-        LocaleIdOffset = FileNodeSize;
+        pFileTree->DataIdOffset = FileNodeSize;
+        pFileTree->NextDataId = 1;
         FileNodeSize += sizeof(DWORD);
     }
 
     // Initialize the dynamic array
-    nError = Array_Create_(&FileTable, FileNodeSize, START_ITEM_COUNT);
+    nError = Array_Create_(&pFileTree->FileTable, FileNodeSize, START_ITEM_COUNT);
     if(nError == ERROR_SUCCESS)
     {
         // Create the dynamic array that will hold the node names
-        nError = Array_Create(&NameTable, char, START_ITEM_COUNT);
+        nError = Array_Create(&pFileTree->NameTable, char, START_ITEM_COUNT);
         if(nError == ERROR_SUCCESS)
         {
             // Insert the first "root" node, without name
-            pRootNode = (PCASC_FILE_NODE)Array_Insert(&FileTable, NULL, 1);
+            pRootNode = (PCASC_FILE_NODE)Array_Insert(&pFileTree->FileTable, NULL, 1);
             if(pRootNode != NULL)
             {
                 // Initialize the node
-                memset(pRootNode, 0, FileTable.ItemSize);
+                memset(pRootNode, 0, pFileTree->FileTable.ItemSize);
                 pRootNode->Parent = CASC_INVALID_INDEX;
                 pRootNode->NameIndex = CASC_INVALID_INDEX;
                 pRootNode->Flags = CFN_FLAG_FOLDER;
+
             }
         }
     }
 
     // Create both maps
-    if(!RebuildTreeMaps())
+    if(!RebuildTreeMaps(pFileTree))
         nError = ERROR_NOT_ENOUGH_MEMORY;
     return nError;
 }
 
-void CASC_FILE_TREE::Free()
-{
-    // Free both maps
-    Map_Free(pNameMap);
-    Map_Free(pIdMap);
-    
-    // Free both arrays
-    Array_Free(&FileTable);
-    Array_Free(&NameTable);
-
-    // Zero the object
-    memset(this, 0, sizeof(CASC_FILE_TREE));
-}
-
-PCASC_FILE_NODE CASC_FILE_TREE::Insert(PCONTENT_KEY pCKey, const char * szFullPath, DWORD DataId, DWORD FileSize, DWORD LocaleId)
+void * FileTree_Insert(PCASC_FILE_TREE pFileTree, PCONTENT_KEY pCKey, const char * szFullPath, DWORD FileSize, DWORD DataId)
 {
     PCASC_FILE_NODE pFileNode = NULL;
     const char * szNodeBegin = szFullPath;
@@ -350,7 +277,7 @@ PCASC_FILE_NODE CASC_FILE_TREE::Insert(PCONTENT_KEY pCKey, const char * szFullPa
         // Is there a path separator?
         if(chOneChar == '\\' || chOneChar == '/')
         {
-            pFileNode = GetOrInsert(szNormPath, i, szNodeBegin, szFullPath + i, NULL, Parent, CASC_INVALID_ID);
+            pFileNode = FileTree_GetOrInsert(pFileTree, szNormPath, i, szNodeBegin, szFullPath + i, NULL, Parent, FileSize, CASC_INVALID_ID);
             if(pFileNode == NULL)
                 return NULL;
 
@@ -358,7 +285,7 @@ PCASC_FILE_NODE CASC_FILE_TREE::Insert(PCONTENT_KEY pCKey, const char * szFullPa
             pFileNode->Flags |= CFN_FLAG_FOLDER;
 
             // Get the new parent item
-            Parent = (DWORD)Array_IndexOf(&FileTable, pFileNode);
+            Parent = (DWORD)Array_IndexOf(&pFileTree->FileTable, pFileNode);
 
             // Also reset the begin of the node
             szNodeBegin = szFullPath + i + 1;
@@ -371,36 +298,23 @@ PCASC_FILE_NODE CASC_FILE_TREE::Insert(PCONTENT_KEY pCKey, const char * szFullPa
     // If there is anything left, we insert it as file name
     if((szFullPath + i) > szNodeBegin)
     {
-        pFileNode = GetOrInsert(szNormPath, i, szNodeBegin, szFullPath + i, pCKey, Parent, DataId);
-        if(pFileNode != NULL)
-        {
-            SetExtras(pFileNode, FileSize, LocaleId);
-        }
+        pFileNode = FileTree_GetOrInsert(pFileTree, szNormPath, i, szNodeBegin, szFullPath + i, pCKey, Parent, FileSize, DataId);
     }
 
     // Return the file node
     return pFileNode;
 }
 
-PCASC_FILE_NODE CASC_FILE_TREE::Insert(PCONTENT_KEY pCKey, ULONGLONG NameHash, DWORD DataId, DWORD FileSize, DWORD LocaleId)
+void * FileTree_ItemAt(PCASC_FILE_TREE pFileTree, size_t nItemIndex)
 {
-    PCASC_FILE_NODE pFileNode;
-    
-    pFileNode = GetOrInsert(NameHash, NULL, NULL, pCKey, 0, DataId);
-    if(pFileNode != NULL)
-    {
-        SetExtras(pFileNode, FileSize, LocaleId);
-    }
+    void * pFileNode = NULL;
 
+    if(pFileTree != NULL)
+        pFileNode = Array_ItemAt(&pFileTree->FileTable, nItemIndex);;
     return pFileNode;
 }
 
-PCASC_FILE_NODE CASC_FILE_TREE::ItemAt(size_t nItemIndex)
-{
-    return (PCASC_FILE_NODE)Array_ItemAt(&FileTable, nItemIndex);;
-}
-
-PCASC_FILE_NODE CASC_FILE_TREE::PathAt(char * szBuffer, size_t cchBuffer, size_t nItemIndex)
+void * FileTree_PathAt(PCASC_FILE_TREE pFileTree, char * szBuffer, size_t cchBuffer, size_t nItemIndex)
 {
     PCASC_FILE_NODE pFileNode = NULL;
     size_t nLength;
@@ -409,93 +323,77 @@ PCASC_FILE_NODE CASC_FILE_TREE::PathAt(char * szBuffer, size_t cchBuffer, size_t
     szBuffer[0] = 0;
 
     // Query the item
-    pFileNode = (PCASC_FILE_NODE)Array_ItemAt(&FileTable, nItemIndex);
+    pFileNode = (PCASC_FILE_NODE)Array_ItemAt(&pFileTree->FileTable, nItemIndex);
     if(pFileNode != NULL && pFileNode->NameLength != 0)
     {
         // Construct the full path
-        nLength = MakePath(pFileNode, szBuffer, cchBuffer);
+        nLength = FileTree_MakePath(pFileTree, pFileNode, szBuffer, cchBuffer);
         szBuffer[nLength] = 0;
     }
     
     return pFileNode;
 }
 
-PCASC_FILE_NODE CASC_FILE_TREE::Find(const char * szFullPath, PDWORD PtrFileSize)
+void * FileTree_Find(PCASC_FILE_TREE pFileTree, const char * szFullPath)
 {
-    PCASC_FILE_NODE pFileNode;
     ULONGLONG FileNameHash = CalcFileNameHash(szFullPath);
-    DWORD DataId = CASC_INVALID_ID;
 
     // Lookup the path in the name map
-    pFileNode = (PCASC_FILE_NODE)Map_FindObject(pNameMap, &FileNameHash);
-    if(pFileNode == NULL && DataIdOffset != 0 && IsFileDataIdName(szFullPath, DataId))
-    {
-        pFileNode = (PCASC_FILE_NODE)Map_FindObject(pIdMap, &DataId);
-    }
-
-    // Did we find anything?
-    if(pFileNode != NULL && FileSizeOffset != 0)
-    {
-        GetExtras(pFileNode, NULL, PtrFileSize, NULL);
-    }
-
-    return pFileNode;
-}
-/*
-PCASC_FILE_NODE CASC_FILE_TREE::Find(DWORD DataId, PDWORD PtrFileSize)
-{
-    PCASC_FILE_NODE pFileNode = NULL;
-
-    // Lookup the path in the name map
-    pFileNode = (PCASC_FILE_NODE)Map_FindObject(pIdMap, &DataId);
-    if(pFileNode != NULL)
-    {
-        GetExtras(pFileNode, NULL, PtrFileSize, NULL);
-    }
-
-    return pFileNode;
-}
-*/
-size_t CASC_FILE_TREE::GetCount()
-{
-    return FileTable.ItemCount;
+    return Map_FindObject(pFileTree->pNameMap, &FileNameHash);
 }
 
-size_t CASC_FILE_TREE::IndexOf(PCASC_FILE_NODE pFileNode)
+size_t FileTree_GetCount(PCASC_FILE_TREE pFileTree)
 {
-    return Array_IndexOf(&FileTable, pFileNode);
+    size_t Count = 0;
+
+    if(pFileTree != NULL)
+        Count = pFileTree->FileTable.ItemCount;
+    return Count;
 }
 
-void CASC_FILE_TREE::GetExtras(PCASC_FILE_NODE pFileNode, PDWORD PtrDataId, PDWORD PtrFileSize, PDWORD PtrLocaleId)
+size_t FileTree_IndexOf(PCASC_FILE_TREE pFileTree, const void * TreeNode)
 {
-    DWORD FileSize = CASC_INVALID_SIZE;
-    DWORD LocaleId = CASC_INVALID_ID;
-    DWORD DataId = CASC_INVALID_ID;
+    assert(pFileTree != NULL);
+    return Array_IndexOf(&pFileTree->FileTable, TreeNode);
+}
 
-    // Retrieve the data ID, if supported
-    if(PtrDataId != NULL)
-    {
-        if(DataIdOffset != 0)
-            DataId = GET_NODE_INT32(pFileNode, DataIdOffset);
-        if(DataId != CASC_INVALID_ID)
-            PtrDataId[0] = DataId;
-    }
+bool FileTree_GetFileSize(PCASC_FILE_TREE pFileTree, PCASC_FILE_NODE pFileNode, PDWORD PtrFileSize)
+{
+    PDWORD FieldPointer;
 
-    // Retrieve the file size, if supported
-    if(PtrFileSize != NULL)
-    {
-        if(FileSizeOffset != 0)
-            FileSize = GET_NODE_INT32(pFileNode, FileSizeOffset);
-        if(FileSize != CASC_INVALID_SIZE)
-            PtrFileSize[0] = FileSize;
-    }
+    if(pFileTree->FileSizeOffset == 0)
+        return false;
 
-    // Retrieve the locale ID, if supported
-    if(PtrLocaleId != NULL)
+    FieldPointer = (PDWORD)((LPBYTE)pFileNode + pFileTree->FileSizeOffset);
+    PtrFileSize[0] = FieldPointer[0];
+    return true;
+}
+
+bool FileTree_GetDataId(PCASC_FILE_TREE pFileTree, PCASC_FILE_NODE pFileNode, PDWORD PtrDataId)
+{
+    PDWORD FieldPointer;
+
+    if(pFileTree->DataIdOffset == 0)
+        return false;
+
+    FieldPointer = (PDWORD)((LPBYTE)pFileNode + pFileTree->DataIdOffset);
+    PtrDataId[0] = FieldPointer[0];
+    return true;
+}
+
+void FileTree_Free(PCASC_FILE_TREE pFileTree)
+{
+    if(pFileTree != NULL)
     {
-        if(LocaleIdOffset != 0)
-            LocaleId = GET_NODE_INT32(pFileNode, LocaleIdOffset);
-        if(LocaleId != CASC_INVALID_ID)
-            PtrLocaleId[0] = LocaleId;
+        // Free both maps
+        Map_Free(pFileTree->pNameMap);
+        Map_Free(pFileTree->pIdMap);
+        
+        // Free both arrays
+        Array_Free(&pFileTree->FileTable);
+        Array_Free(&pFileTree->NameTable);
+
+        // Zero the object
+        memset(pFileTree, 0, sizeof(CASC_FILE_TREE));
     }
 }

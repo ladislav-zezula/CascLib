@@ -214,7 +214,7 @@ bool WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocal
         case CASC_OPEN_BY_NAME:
             
             // Retrieve the file CKey/EKey
-            pbQueryKey = hs->pRootHandler->GetKey(szFileName, &dwContentSize);
+            pbQueryKey = RootHandler_GetKey(hs->pRootHandler, szFileName, &dwContentSize);
             if(pbQueryKey == NULL)
             {
                 nError = ERROR_FILE_NOT_FOUND;
@@ -222,7 +222,7 @@ bool WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocal
             }
 
             // Set the proper open mode
-            dwOpenMode = (hs->pRootHandler->GetFlags() & ROOT_FLAG_USES_EKEY) ? CASC_OPEN_BY_EKEY : CASC_OPEN_BY_CKEY;
+            dwOpenMode = (hs->pRootHandler->dwRootFlags & ROOT_FLAG_USES_EKEY) ? CASC_OPEN_BY_EKEY : CASC_OPEN_BY_CKEY;
             break;
 
         case CASC_OPEN_BY_CKEY:
@@ -312,7 +312,7 @@ DWORD WINAPI CascGetFileId(HANDLE hStorage, const char * szFileName)
         return false;
     }
 
-    return hs->pRootHandler->GetFileId(szFileName);
+    return RootHandler_GetFileId(hs->pRootHandler, szFileName);
 }
 
 bool WINAPI CascCloseFile(HANDLE hFile)

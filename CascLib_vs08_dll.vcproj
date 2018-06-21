@@ -373,11 +373,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\src\CascRootFile_MNDX.cpp"
+				RelativePath=".\src\CascRootFile_Mndx.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\src\CascRootFile_OW.cpp"
+				RelativePath=".\src\CascRootFile_Mndx_x86.asm"
 				>
 			</File>
 			<File
@@ -400,14 +400,6 @@
 				Name="common"
 				>
 				<File
-					RelativePath=".\src\common\Array.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\src\common\Array.h"
-					>
-				</File>
-				<File
 					RelativePath=".\src\common\Common.cpp"
 					>
 				</File>
@@ -429,6 +421,14 @@
 				</File>
 				<File
 					RelativePath=".\src\common\DumpContext.h"
+					>
+				</File>
+				<File
+					RelativePath=".\src\common\Array.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\src\common\Array.h"
 					>
 				</File>
 				<File
@@ -554,6 +554,10 @@
 			</File>
 			<File
 				RelativePath=".\src\CascLib.h"
+				>
+			</File>
+			<File
+				RelativePath=".\src\CascMndx.h"
 				>
 			</File>
 			<File

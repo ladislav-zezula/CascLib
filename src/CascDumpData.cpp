@@ -11,6 +11,7 @@
 #define __CASCLIB_SELF__
 #include "CascLib.h"
 #include "CascCommon.h"
+#include "CascMndx.h"
 
 #ifdef _DEBUG       // The entire feature is only valid for debug purposes
 
@@ -22,19 +23,6 @@ void DumpEKeyEntries(TCascStorage * hs, FILE * fp);
 
 //-----------------------------------------------------------------------------
 // Local functions
-
-static char * StringFromLPTSTR(const TCHAR * szString, char * szBuffer, size_t cchBuffer)
-{
-    char * szSaveBuffer = szBuffer;
-    char * szBufferEnd = szBuffer + cchBuffer - 1;
-
-    while (szBuffer < szBufferEnd && szString[0] != 0)
-        *szBuffer++ = (char)*szString++;
-    szBuffer[0] = 0;
-
-    return szSaveBuffer;
-}
-
 /*
 void CascDumpSparseArray(const char * szFileName, void * pvSparseArray)
 {
@@ -77,8 +65,8 @@ void CascDumpNameFragTable(const char * szFileName, void * pMarFile)
     fp = fopen(szFileName, "wt");
     if(fp != NULL)
     {
-        PNAME_FRAG pNameTable = pDB->NameFragTable.ItemArray;
-        const char * szNames = pDB->IndexStruct_174.ItemArray;
+        PNAME_FRAG pNameTable = pDB->NameFragTable.NameFragArray;
+        const char * szNames = pDB->IndexStruct_174.NameFragments.CharArray;
         const char * szLastEntry;
         char szMatchType[0x100];
 
@@ -174,6 +162,7 @@ static void CloseDumpFile(const char * szDumpFile, FILE * fp)
         fclose(fp);
 }
 
+
 //-----------------------------------------------------------------------------
 // Public functions
 
@@ -212,7 +201,7 @@ void CascDumpStorage(HANDLE hStorage, const char * szDumpFile)
 {
     TCascStorage * hs;
     FILE * fp = stdout;
-    char szStringBuff[0x800];
+    char szStringBuff[0x80];
 
     // Verify the storage handle
     hs = IsValidStorageHandle(hStorage);
@@ -225,11 +214,11 @@ void CascDumpStorage(HANDLE hStorage, const char * szDumpFile)
     {
         // Dump the basic storage info
         fprintf(fp, "=== Basic Storage Info ======================================================\n");
-        fprintf(fp, "RootPath:  %s\n", StringFromLPTSTR(hs->szRootPath, szStringBuff, sizeof(szStringBuff)));
-        fprintf(fp, "DataPath:  %s\n", StringFromLPTSTR(hs->szDataPath, szStringBuff, sizeof(szStringBuff)));
-        fprintf(fp, "IndexPath: %s\n", StringFromLPTSTR(hs->szIndexPath, szStringBuff, sizeof(szStringBuff)));
-        fprintf(fp, "UrlPath:   %s\n", StringFromLPTSTR(hs->szUrlPath, szStringBuff, sizeof(szStringBuff)));
-        fprintf(fp, "BuildFile: %s\n", StringFromLPTSTR(hs->szBuildFile, szStringBuff, sizeof(szStringBuff)));
+        fprintf(fp, "RootPath:  %ls\n", hs->szRootPath);
+        fprintf(fp, "DataPath:  %ls\n", hs->szDataPath);
+        fprintf(fp, "IndexPath: %ls\n", hs->szIndexPath);
+        fprintf(fp, "UrlPath:   %ls\n", hs->szUrlPath);
+        fprintf(fp, "BuildFile: %ls\n", hs->szBuildFile);
         fprintf(fp, "CDN Config Key: %s\n", StringFromBinary(hs->CdnConfigKey.pbData, hs->CdnConfigKey.cbData, szStringBuff));
         fprintf(fp, "CDN Build Key:  %s\n", StringFromBinary(hs->CdnBuildKey.pbData, hs->CdnBuildKey.cbData, szStringBuff));
         fprintf(fp, "Archives Key:   %s\n", StringFromBinary(hs->ArchivesKey.pbData, hs->ArchivesKey.cbData, szStringBuff));

@@ -566,6 +566,34 @@ char * StringFromMD5(LPBYTE md5, char * szBuffer)
 //-----------------------------------------------------------------------------
 // File name utilities
 
+const wchar_t * GetPlainFileName(const wchar_t * szFileName)
+{
+    const wchar_t * szPlainName = szFileName;
+
+    while(*szFileName != 0)
+    {
+        if(*szFileName == '\\' || *szFileName == '/')
+            szPlainName = szFileName + 1;
+        szFileName++;
+    }
+
+    return szPlainName;
+}
+
+const char * GetPlainFileName(const char * szFileName)
+{
+    const char * szPlainName = szFileName;
+
+    while(*szFileName != 0)
+    {
+        if(*szFileName == '\\' || *szFileName == '/')
+            szPlainName = szFileName + 1;
+        szFileName++;
+    }
+
+    return szPlainName;
+}
+
 bool CheckWildCard(const char * szString, const char * szWildCard)
 {
     const char * szWildCardPtr;

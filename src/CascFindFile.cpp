@@ -30,8 +30,8 @@ static void FreeSearchHandle(TCascSearch * pSearch)
     // Close (dereference) the archive handle
     if(pSearch->hs != NULL)
     {
-        // Give root handler chance to free its search stuff
-        pSearch->hs->pRootHandler->EndSearch(pSearch);
+        // Give root handler chance to free their stuff
+        RootHandler_EndSearch(pSearch->hs->pRootHandler, pSearch);
 
         // Dereference the storage handle
         CascCloseStorage((HANDLE)pSearch->hs);
@@ -133,13 +133,13 @@ static bool DoStorageSearch_RootFile(TCascSearch * pSearch, PCASC_FIND_DATA pFin
         pSearch->dwLocaleFlags = 0;
         pSearch->dwFileDataId = CASC_INVALID_ID;
 
-        // Attempt to find (the next) file from the root handler
-        pbQueryKey = hs->pRootHandler->Search(pSearch);
+        // Attempt to find (the next) file from the root entry
+        pbQueryKey = RootHandler_Search(hs->pRootHandler, pSearch);
         if(pbQueryKey == NULL)
             return false;
 
         // Did the root handler give us a CKey?
-        if(!(hs->pRootHandler->GetFlags() & ROOT_FLAG_USES_EKEY))
+        if(!(hs->pRootHandler->dwRootFlags & ROOT_FLAG_USES_EKEY))
         {
             // Verify whether the CKey exists in the encoding table
             CKey.pbData = pbQueryKey;
@@ -262,7 +262,7 @@ static bool DoStorageSearch(TCascSearch * pSearch, PCASC_FIND_DATA pFindData)
         pSearch->dwState++;
 
         // If the root handler doesn't want to search by CKey, skip the next phase
-        if(pSearch->hs->pRootHandler->GetFlags() & ROOT_FLAG_DONT_SEARCH_CKEY)
+        if(pSearch->hs->pRootHandler->dwRootFlags & ROOT_FLAG_DONT_SEARCH_CKEY)
             pSearch->dwState++;
     }
 

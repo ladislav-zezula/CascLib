@@ -61,7 +61,7 @@
     <ClCompile Include="src\CascRootFile_Diablo3.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\CascRootFile_MNDX.cpp">
+    <ClCompile Include="src\CascRootFile_Mndx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\CascRootFile_WoW6.cpp">
@@ -142,9 +142,6 @@
     <ClCompile Include="src\CascRootFile_TVFS.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\CascRootFile_OW.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\common\Common.h">
@@ -175,6 +172,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\CascLib.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\CascMndx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\CascPort.h">

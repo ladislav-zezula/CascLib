@@ -22,73 +22,76 @@
 #define ROOT_FLAG_USES_EKEY             0x00000002  // ROOT_SEARCH and ROOT_GETKEY returns EKey instead of CKey
 #define ROOT_FLAG_DONT_SEARCH_CKEY      0x00000004  // Disable searching the files by CKey
 
+
 #define DUMP_LEVEL_ROOT_FILE                     1  // Dump root file
 #define DUMP_LEVEL_ENCODING_FILE                 2  // Dump root file + encoding file
 #define DUMP_LEVEL_INDEX_ENTRIES                 3  // Dump root file + encoding file + index entries
 
 //-----------------------------------------------------------------------------
-// Class for generic root handler
+// Root file function prototypes
+
+typedef int (*ROOT_INSERT)(
+    struct TRootHandler * pRootHandler,             // Pointer to an initialized root handler
+    const char * szFileName,                        // Pointer to the file name
+    struct _CASC_CKEY_ENTRY * pCKeyEntry            // Pointer to the CASC_CKEY_ENTRY1 for the file
+    );
+
+typedef LPBYTE (*ROOT_SEARCH)(
+    struct TRootHandler * pRootHandler,             // Pointer to an initialized root handler
+    struct _TCascSearch * pSearch                   // Pointer to the initialized search structure
+    );
+
+typedef void (*ROOT_ENDSEARCH)(
+    struct TRootHandler * pRootHandler,             // Pointer to an initialized root handler
+    struct _TCascSearch * pSearch                   // Pointer to the initialized search structure
+    );
+
+typedef LPBYTE (*ROOT_GETKEY)(
+    struct TRootHandler * pRootHandler,             // Pointer to an initialized root handler
+    const char * szFileName,                        // Pointer to the name of a file
+    PDWORD PtrFileSize                              // The root handler may maintain file size
+    );
+
+typedef void (*ROOT_DUMP)(
+    struct _TCascStorage * hs,                      // Pointer to the open storage
+    TDumpContext * dc,                              // Opened dump context
+    LPBYTE pbRootHandler,                           // Pointer to the loaded ROOT file
+    DWORD cbRootHandler,                            // Length of the loaded ROOT file
+    const TCHAR * szListFile,
+    int nDumpLevel
+    );
+
+typedef void (*ROOT_CLOSE)(
+    struct TRootHandler * pRootHandler              // Pointer to an initialized root handler
+    );
+
+typedef DWORD(*ROOT_GETFILEID)(
+struct TRootHandler * pRootHandler,             // Pointer to an initialized root handler
+  const char * szFileName                         // Pointer to the name of a file
+  );
 
 struct TRootHandler
 {
-    public:
-
-    TRootHandler();
-    virtual ~TRootHandler();
-
-    // Inserts new file name to the root handler
-    virtual int Insert(
-        const char * szFileName,                    // Pointer to the file name
-        struct _CASC_CKEY_ENTRY * pCKeyEntry        // Pointer to the CASC_CKEY_ENTRY for the file
-        );
-
-    // Performs find-next-file operation. Only returns known names
-    virtual LPBYTE Search(
-        struct _TCascSearch * pSearch               // Pointer to the initialized search structure
-        );
-
-    // Cleanup handler. Called when the search is complete.
-    virtual void EndSearch(
-        struct _TCascSearch * pSearch               // Pointer to the initialized search structure
-        );
-
-    // Retrieves CKey/EKey for a given file name.
-    virtual LPBYTE GetKey(
-        const char * szFileName,                    // Pointer to the name of a file
-        PDWORD PtrFileSize                          // The root handler may maintain file size
-        );
-
-    // Returns FileDataId for a given name. Only if the FileDataId is supported.
-    virtual DWORD GetFileId(
-        const char * szFileName                     // Pointer to the name of a file
-        );
-
-    DWORD GetFlags()
-    {
-        return dwRootFlags;
-    }
-
-    protected:
+    ROOT_INSERT    Insert;                          // Inserts an existing file name
+    ROOT_SEARCH    Search;                          // Performs the root file search
+    ROOT_ENDSEARCH EndSearch;                       // Performs cleanup after searching
+    ROOT_GETKEY    GetKey;                          // Retrieves CKey/EKey for a file by name
+    ROOT_DUMP      Dump;
+    ROOT_CLOSE     Close;                           // Closing the root file
+    ROOT_GETFILEID GetFileId;                       // Returns File Id for a given Filename
 
     DWORD dwRootFlags;                              // Root flags - see the ROOT_FLAG_XXX
 };
 
 //-----------------------------------------------------------------------------
-// Class for root handler that has basic mapping of FileName -> CASC_FILE_NODE
+// Public functions
 
-struct TFileTreeRoot : public TRootHandler
-{
-    TFileTreeRoot(DWORD FileTreeFlags);
-    virtual ~TFileTreeRoot();
-
-    int    Insert(const char * szFileName, struct _CASC_CKEY_ENTRY * pCKeyEntry);
-    LPBYTE Search(struct _TCascSearch * pSearch);
-    LPBYTE GetKey(const char * szFileName, PDWORD PtrFileSize);
-    DWORD  GetFileId(const char * szFileName);
-
-    protected:
-
-    CASC_FILE_TREE FileTree;
-};
+int    RootHandler_Insert(TRootHandler * pRootHandler, const char * szFileName, struct _CASC_CKEY_ENTRY * pCKeyEntry);
+LPBYTE RootHandler_Search(TRootHandler * pRootHandler, struct _TCascSearch * pSearch);
+void   RootHandler_EndSearch(TRootHandler * pRootHandler, struct _TCascSearch * pSearch);
+LPBYTE RootHandler_GetKey(TRootHandler * pRootHandler, const char * szFileName, PDWORD PtrFileSize);
+void   RootHandler_Dump(struct _TCascStorage * hs, LPBYTE pbRootHandler, DWORD cbRootHandler, const TCHAR * szNameFormat, const TCHAR * szListFile, int nDumpLevel);
+void   RootHandler_Close(TRootHandler * pRootHandler);
+DWORD  RootHandler_GetFileId(TRootHandler * pRootHandler, const char * szFileName);
 
 #endif  // __ROOT_HANDLER_H__

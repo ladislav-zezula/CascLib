@@ -144,7 +144,7 @@ extern "C" {
 #define CASC_INVALID_ID             0xFFFFFFFF
 
 // Flags for CascGetStorageInfo
-#define CASC_FEATURE_HAS_NAMES      0x00000001  // The storage contains file names
+#define CASC_FEATURE_LISTFILE       0x00000001  // The storage supports listfile
 
 //-----------------------------------------------------------------------------
 // Structures
@@ -175,7 +175,7 @@ typedef enum _CASC_FILE_INFO_CLASS
 typedef struct _QUERY_KEY
 {
     LPBYTE pbData;
-    size_t cbData;
+    DWORD cbData;
 } QUERY_KEY, *PQUERY_KEY;
 
 // Query size for a file. Contains CSize + ESize

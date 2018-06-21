@@ -274,7 +274,7 @@ static int InsertNamedInternalFile(
     assert(pCKeyEntry->EKeyCount != 0);
 
     // Now call the root handler to insert the CKey entry
-    return hs->pRootHandler->Insert(szFileName, pCKeyEntry);
+    return RootHandler_Insert(hs->pRootHandler, szFileName, pCKeyEntry);
 }
 
 static int InitializeCascDirectories(TCascStorage * hs, const TCHAR * szDataPath)
@@ -625,7 +625,7 @@ static int LoadIndexFile(PCASC_INDEX_FILE pIndexFile, DWORD KeyIndex)
     else
         nError = GetLastError();
 
-    return nError;
+    return ERROR_SUCCESS;
 }
 
 static int CreateMapOfEKeyEntries(TCascStorage * hs)
@@ -955,7 +955,7 @@ static TCascStorage * FreeCascStorage(TCascStorage * hs)
     {
         // Free the root handler
         if(hs->pRootHandler != NULL)
-            delete hs->pRootHandler;
+            RootHandler_Close(hs->pRootHandler);
         hs->pRootHandler = NULL;
 
         // Free the extra encoding entries
@@ -1107,7 +1107,7 @@ bool WINAPI CascGetStorageInfo(
             break;
 
         case CascStorageFeatures:
-            dwInfoValue |= (hs->pRootHandler->GetFlags() & ROOT_FLAG_HAS_NAMES) ? CASC_FEATURE_HAS_NAMES : 0;
+            dwInfoValue |= (hs->pRootHandler->dwRootFlags & ROOT_FLAG_HAS_NAMES) ? CASC_FEATURE_LISTFILE : 0;
             break;
 
         case CascStorageGameInfo:
@@ -1183,7 +1183,7 @@ static void DumpCKeyEntry(PCASC_CKEY_ENTRY pCKeyEntry, FILE * fp)
     // Print the EKeys
     for(USHORT i = 0; i < pCKeyEntry->EKeyCount; i++, pbEKey += MD5_HASH_SIZE)
         fprintf(fp, "%s ", StringFromBinary(pbEKey, MD5_HASH_SIZE, szStringBuff));
-    fprintf(fp, "\n");
+    fprintf(fp, "\n", StringFromBinary(pbEKey, MD5_HASH_SIZE, szStringBuff));
 }
 
 static void DumpEKeyEntry(FILE * fp, LPBYTE pbEKey, DWORD cbEKey, LPBYTE FileOffsetBE, DWORD FileSize)
@@ -1262,7 +1262,7 @@ static void DumpCKeyEntries(FILE * fp, CASC_ENCODING_HEADER & EnHeader, LPBYTE p
             DumpCKeyEntry(pCKeyEntry, fp);
 
             // Move to the next encoding entry
-            pbCKeyEntry += sizeof(CASC_CKEY_ENTRY) + ((pCKeyEntry->EKeyCount - 1) * EnHeader.CKeyLength);
+            pbCKeyEntry += sizeof(CASC_CKEY_ENTRY) + (pCKeyEntry->EKeyCount * EnHeader.CKeyLength);
         }
 
         // Move to the next segment

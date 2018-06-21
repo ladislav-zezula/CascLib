@@ -15,6 +15,13 @@
 //-----------------------------------------------------------------------------
 // Local functions
 
+// Returns the extension, right after "."
+static const char * String_GetExtension(const char * szString)
+{
+    const char * szExtension = strrchr(szString, '.');
+    return (szExtension != NULL) ? szExtension + 1 : NULL;
+}
+
 static DWORD CalcHashIndex_Key(PCASC_MAP pMap, void * pvKey)
 {
     LPBYTE pbKey = (LPBYTE)pvKey;
@@ -209,7 +216,7 @@ bool Map_InsertString(PCASC_MAP pMap, const char * szString, bool bCutExtension)
 
         // Retrieve the length of the string without extension
         if(bCutExtension)
-            szStringEnd = GetFileExtension(szString);
+            szStringEnd = String_GetExtension(szString);
         if(szStringEnd == NULL)
             szStringEnd = szString + strlen(szString);
 

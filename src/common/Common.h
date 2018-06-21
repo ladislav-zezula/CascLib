@@ -108,45 +108,9 @@ char * StringFromMD5(LPBYTE md5, char * szBuffer);
 //-----------------------------------------------------------------------------
 // File name utilities
 
-// Retrieves the pointer to plain name
-template <typename XCHAR>
-const XCHAR * GetPlainFileName(const XCHAR * szFileName)
-{
-    const XCHAR * szPlainName = szFileName;
-
-    while(*szFileName != 0)
-    {
-        if(*szFileName == '\\' || *szFileName == '/')
-            szPlainName = szFileName + 1;
-        szFileName++;
-    }
-
-    return szPlainName;
-}
-
-// Retrieves the pointer to file extension
-template <typename XCHAR>
-const XCHAR * GetFileExtension(const XCHAR * szFileName)
-{
-    const XCHAR * szExtension = NULL;
-
-    // We need to start searching from the plain name
-    // Avoid: C:\$RECYCLE.BIN\File.ext
-    szFileName = GetPlainFileName(szFileName);
-    
-    // Find the last dot in the plain file name
-    while(szFileName[0] != 0)
-    {
-        if(szFileName[0] == '.')
-            szExtension = szFileName;
-        szFileName++;
-    }
-
-    // If not found, return the end of the file name
-    return (XCHAR *)((szExtension != NULL) ? szExtension : szFileName);
-}
-
 bool CheckWildCard(const char * szString, const char * szWildCard);
+const wchar_t * GetPlainFileName(const wchar_t * szFileName);
+const char * GetPlainFileName(const char * szFileName);
 
 //-----------------------------------------------------------------------------
 // Hashing functions
