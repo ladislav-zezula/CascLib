@@ -4,7 +4,6 @@ project(CascLib)
 set(HEADER_FILES
     src/CascCommon.h
     src/CascLib.h
-    src/CascMndx.h
     src/CascPort.h
     src/common/Common.h
     src/common/Array.h
@@ -36,9 +35,10 @@ set(SRC_FILES
     src/CascOpenStorage.cpp
     src/CascReadFile.cpp
     src/CascRootFile_Diablo3.cpp
-    src/CascRootFile_Mndx.cpp
+    src/CascRootFile_MNDX.cpp
     src/CascRootFile_Text.cpp
     src/CascRootFile_TVFS.cpp
+    src/CascRootFile_OW.cpp
     src/CascRootFile_WoW6.cpp
 )
 

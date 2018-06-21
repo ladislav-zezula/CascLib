@@ -1,4 +1,4 @@
-/*****************************************************************************/
+/****************************************************************************/
 /* CascOpenFile.cpp                       Copyright (c) Ladislav Zezula 2014 */
 /*---------------------------------------------------------------------------*/
 /* System-dependent directory functions for CascLib                          */
@@ -61,8 +61,9 @@ static int EnsureDataStreamIsOpen(TCascFile * hf)
         // Open the data file
         if(szDataFile != NULL)
         {
-            // Open the stream
-            pStream = FileStream_OpenFile(szDataFile, STREAM_FLAG_READ_ONLY | STREAM_PROVIDER_FLAT | BASE_PROVIDER_FILE);
+            // Open the stream. Make sure that the encoded handlers will fill eventual
+            // missing data with zeros. Observed in Overwatch build 24919
+            pStream = FileStream_OpenFile(szDataFile, STREAM_FLAG_READ_ONLY | STREAM_PROVIDER_FLAT | STREAM_FLAG_FILL_MISSING | BASE_PROVIDER_FILE);
             hs->DataFiles[hf->ArchiveIndex] = pStream;
             CASC_FREE(szDataFile);
         }
@@ -219,6 +220,8 @@ static int LoadEncodedHeaderAndFileFrames(TCascFile * hf)
 
         // Save the number of file frames
         hf->FrameCount = ConvertBytesToInteger_3(BlteHeader.FrameCount);
+        if (((hf->FrameCount * sizeof(BLTE_FRAME)) + 0x0C) != HeaderSize)
+            return ERROR_BAD_FORMAT;
 
         // Allocate space for the file frames
         hf->pFrames = CASC_ALLOC(CASC_FILE_FRAME, hf->FrameCount);
@@ -359,43 +362,17 @@ static int AllocateFileCache(TCascFile * hf, PCASC_FILE_FRAME pEndFrame)
 static int LoadEncodedFrame(TFileStream * pStream, PCASC_FILE_FRAME pFrame, LPBYTE pbEncodedFrame)
 {
     ULONGLONG FileOffset = pFrame->DataFileOffset;
-    ULONGLONG StreamSize = 0;
-    DWORD dwFrameSize;
     int nError = ERROR_SUCCESS;
 
     // Load the encoded frame to memory
-    if(!FileStream_Read(pStream, &FileOffset, pbEncodedFrame, pFrame->EncodedSize))
-    {
-        // Remember the last error
-        nError = GetLastError();
-
-        // Note: The raw file data size could be less than expected
-        // Happened in WoW build 19342 with the ROOT file. MD5 in the frame header
-        // is zeroed, which means it should not be checked
-        // Frame File: data.029
-        // Frame Offs: 0x013ED9F0 size 0x01325B32
-        // Frame End:  0x02713522
-        // File Size:  0x027134FC
-        if(nError == ERROR_HANDLE_EOF && !IsValidMD5(pFrame->FrameHash))
-        {
-            // Get the size of the remaining file
-            FileStream_GetSize(pStream, &StreamSize);
-            dwFrameSize = (DWORD)(StreamSize - FileOffset);
-
-            // If the frame offset is before EOF and frame end is beyond EOF, correct it
-            if(FileOffset < StreamSize && dwFrameSize < pFrame->EncodedSize)
-            {
-                memset(pbEncodedFrame + dwFrameSize, 0, (pFrame->EncodedSize - dwFrameSize));
-                nError = ERROR_SUCCESS;
-            }
-        }
-    }
-
-    // If we succeeded reading the frame, we need to verify the encoded data
-    if(nError == ERROR_SUCCESS)
+    if(FileStream_Read(pStream, &FileOffset, pbEncodedFrame, pFrame->EncodedSize))
     {
         if(!VerifyDataBlockHash(pbEncodedFrame, pFrame->EncodedSize, pFrame->FrameHash))
             nError = ERROR_FILE_CORRUPT;
+    }
+    else
+    {
+        nError = GetLastError();
     }
 
     return nError;
@@ -829,179 +806,3 @@ bool WINAPI CascReadFile(HANDLE hFile, void * pvBuffer, DWORD dwBytesToRead, PDW
         return false;
     }
 }
-
-/*
-bool WINAPI CascReadFile(HANDLE hFile, void * pvBuffer, DWORD dwBytesToRead, PDWORD pdwBytesRead)
-{
-    PCASC_FILE_FRAME pFrame = NULL;
-    ULONGLONG DataFileOffset;
-    ULONGLONG StreamSize;
-    TCascFile * hf;
-    LPBYTE pbBuffer = (LPBYTE)pvBuffer;
-    DWORD dwStartPointer = 0;
-    DWORD dwFilePointer = 0;
-    DWORD dwEndPointer = 0;
-    DWORD dwFrameSize;
-    bool bReadResult;
-    int nError = ERROR_SUCCESS;
-
-    // The buffer must be valid
-    if(pvBuffer == NULL)
-    {
-        SetLastError(ERROR_INVALID_PARAMETER);
-        return false;
-    }
-
-    // Validate the file handle
-    if((hf = IsValidFileHandle(hFile)) == NULL)
-    {
-        SetLastError(ERROR_INVALID_HANDLE);
-        return false;
-    }
-
-    // If the file frames are not loaded yet, do it now
-    if(nError == ERROR_SUCCESS)
-    {
-        nError = EnsureFileFramesLoaded(hf);
-    }
-
-    // If the file position is at or beyond end of file, do nothing
-    if(nError == ERROR_SUCCESS && hf->FilePointer >= hf->ContentSize)
-    {
-        *pdwBytesRead = 0;
-        return true;
-    }
-
-    // Find the file frame where to read from
-    if(nError == ERROR_SUCCESS)
-    {
-        // Get the frame
-        pFrame = FindFileFrame(hf, hf->FilePointer);
-        if(pFrame == NULL || pFrame->EncodedSize < 1)
-            nError = ERROR_FILE_CORRUPT;
-    }
-
-    // Perform the read
-    if(nError == ERROR_SUCCESS)
-    {
-        // If not enough bytes in the file remaining, cut them
-        dwStartPointer = dwFilePointer = hf->FilePointer;
-        dwEndPointer = dwStartPointer + dwBytesToRead;
-        if(dwEndPointer > hf->ContentSize)
-            dwEndPointer = hf->ContentSize;
-
-        // Perform block read from each file frame
-        while(dwFilePointer < dwEndPointer)
-        {
-            LPBYTE pbFrameData = NULL;
-            DWORD dwFrameStart = pFrame->FileOffset;
-            DWORD dwFrameEnd = pFrame->FileOffset + pFrame->ContentSize;
-
-            // Shall we populate the cache with a new data?
-            if(dwFrameStart != hf->CacheStart || hf->CacheEnd != dwFrameEnd)
-            {
-                // Shall we reallocate the cache buffer?
-                if(pFrame->ContentSize > hf->cbFileCache)
-                {
-                    // Free the current file cache
-                    if(hf->pbFileCache != NULL)
-                        CASC_FREE(hf->pbFileCache);
-                    hf->cbFileCache = 0;
-                    
-                    // Allocate a new file cache
-                    hf->pbFileCache = CASC_ALLOC(BYTE, pFrame->ContentSize);
-                    if(hf->pbFileCache == NULL)
-                    {
-                        nError = ERROR_NOT_ENOUGH_MEMORY;
-                        break;
-                    }
-
-                    // Set the file cache length
-                    hf->cbFileCache = pFrame->ContentSize;
-                }
-
-                // We also need to allocate buffer for the raw data
-                pbFrameData = CASC_ALLOC(BYTE, pFrame->EncodedSize);
-                if(pbFrameData == NULL)
-                {
-                    nError = ERROR_NOT_ENOUGH_MEMORY;
-                    break;
-                }
-
-                // Load the raw file data to memory
-                DataFileOffset = pFrame->DataFileOffset;
-                bReadResult = FileStream_Read(hf->pStream, &DataFileOffset, pbFrameData, pFrame->EncodedSize);
-
-                // Note: The raw file data size could be less than expected
-                // Happened in WoW build 19342 with the ROOT file. MD5 in the frame header
-                // is zeroed, which means it should not be checked
-                // Frame File: data.029
-                // Frame Offs: 0x013ED9F0 size 0x01325B32
-                // Frame End:  0x02713522
-                // File Size:  0x027134FC
-                if(bReadResult == false && GetLastError() == ERROR_HANDLE_EOF && !IsValidMD5(pFrame->FrameHash))
-                {
-                    // Get the size of the remaining file
-                    FileStream_GetSize(hf->pStream, &StreamSize);
-                    dwFrameSize = (DWORD)(StreamSize - DataFileOffset);
-
-                    // If the frame offset is before EOF and frame end is beyond EOF, correct it
-                    if(DataFileOffset < StreamSize && dwFrameSize < pFrame->EncodedSize)
-                    {
-                        memset(pbFrameData + dwFrameSize, 0, (pFrame->EncodedSize - dwFrameSize));
-                        bReadResult = true;
-                    }
-                }
-
-                // If the read result failed, we cannot finish reading it
-                if(bReadResult && VerifyDataBlockHash(pbFrameData, pFrame->EncodedSize, pFrame->FrameHash))
-                {
-                    // Convert the source frame to the file cache
-                    nError = ProcessFileFrame(hf->pbFileCache,
-                                              pFrame->ContentSize,
-                                              pbFrameData,
-                                              pFrame->EncodedSize,
-                                      (DWORD)(pFrame - hf->pFrames));
-                    if(nError == ERROR_SUCCESS)
-                    {
-                        // Set the start and end of the cache
-                        hf->CacheStart = dwFrameStart;
-                        hf->CacheEnd = dwFrameEnd;
-                    }
-                }
-                else
-                {
-                    // Try to find the data which have the given hash
-//                  BruteForceHash(hf->pStream, DataFileOffset, pFrame->EncodedSize, pFrame->FrameHash);
-                    nError = ERROR_FILE_CORRUPT;
-                }
-
-                // Free the raw frame data
-                CASC_FREE(pbFrameData);
-            }
-
-            // Copy the decompressed data
-            if(dwFrameEnd > dwEndPointer)
-                dwFrameEnd = dwEndPointer;
-            memcpy(pbBuffer, hf->pbFileCache + (dwFilePointer - dwFrameStart), (dwFrameEnd - dwFilePointer));
-            pbBuffer += (dwFrameEnd - dwFilePointer);
-
-            // Move pointers
-            dwFilePointer = dwFrameEnd;
-            pFrame++;
-        }
-    }
-
-    // Update the file position
-    if(nError == ERROR_SUCCESS)
-    {
-        if(pdwBytesRead != NULL)
-            *pdwBytesRead = (dwFilePointer - dwStartPointer);
-        hf->FilePointer = dwFilePointer;
-    }
-
-    if(nError != ERROR_SUCCESS)
-        SetLastError(nError);
-    return (nError == ERROR_SUCCESS);
-}
-*/

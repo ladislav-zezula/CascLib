@@ -41,9 +41,6 @@
     <ClInclude Include="src\CascLib.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\CascMndx.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\CascPort.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -69,6 +66,9 @@
       <Filter>Source Files\common</Filter>
     </ClInclude>
     <ClInclude Include="src\common\DynamicArray.h">
+      <Filter>Source Files\common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\common\FileTree.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
   </ItemGroup>
@@ -100,7 +100,7 @@
     <ClCompile Include="src\CascRootFile_Diablo3.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\CascRootFile_Mndx.cpp">
+    <ClCompile Include="src\CascRootFile_MNDX.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\CascRootFile_WoW6.cpp">
@@ -169,22 +169,20 @@
     <ClCompile Include="src\CascDecrypt.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\CascRootFile_Ovr.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\CascRootFile_Text.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\CascRootFile_TVFS.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\common\DynamicArray.cpp">
+    <ClCompile Include="src\common\Array.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="src\CascRootFile_Mndx_x86.asm">
+    <ClCompile Include="src\common\FileTree.cpp">
+      <Filter>Source Files\common</Filter>
+    </ClCompile>
+    <ClCompile Include="src\CascRootFile_OW.cpp">
       <Filter>Source Files</Filter>
-    </None>
+    </ClCompile>
   </ItemGroup>
 </Project>
