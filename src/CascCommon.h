@@ -216,9 +216,9 @@ typedef struct _TCascSearch
     void * pCache;                                  // Listfile cache
     char * szMask;                                  // Search mask
     char szFileName[MAX_PATH];                      // Buffer for the file name
+    DWORD dwFileDataId;                             // For File Data ID
     DWORD dwFileSize;                               // For file size
     DWORD dwLocaleFlags;                            // For locale flags
-    DWORD dwFileDataId;                             // For File Data ID
 
     // Provider-specific data
     void * pRootContext;                            // Root-specific search context

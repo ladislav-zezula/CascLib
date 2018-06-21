@@ -294,7 +294,8 @@
     <ClCompile Include="src\CascOpenStorage.cpp" />
     <ClCompile Include="src\CascReadFile.cpp" />
     <ClCompile Include="src\CascRootFile_Diablo3.cpp" />
-    <ClCompile Include="src\CascRootFile_Mndx.cpp" />
+    <ClCompile Include="src\CascRootFile_MNDX.cpp" />
+    <ClCompile Include="src\CascRootFile_OW.cpp" />
     <ClCompile Include="src\CascRootFile_Text.cpp" />
     <ClCompile Include="src\CascRootFile_TVFS.cpp" />
     <ClCompile Include="src\CascRootFile_WoW6.cpp" />
@@ -359,7 +360,6 @@
   <ItemGroup>
     <ClInclude Include="src\CascCommon.h" />
     <ClInclude Include="src\CascLib.h" />
-    <ClInclude Include="src\CascMndx.h" />
     <ClInclude Include="src\CascPort.h" />
     <ClInclude Include="src\common\Common.h" />
     <ClInclude Include="src\common\Directory.h" />

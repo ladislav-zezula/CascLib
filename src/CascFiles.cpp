@@ -14,7 +14,7 @@
 #include "CascCommon.h"
 
 //-----------------------------------------------------------------------------
-// Local functions
+// Local defines
 
 typedef int (*PARSEINFOFILE)(TCascStorage * hs, void * pvListFile);
 typedef int (*PARSE_VARIABLE)(TCascStorage * hs, const char * szVariableName, const char * szDataBegin, const char * szDataEnd, void * pvParam);
@@ -35,6 +35,12 @@ struct TGameIdString
     const char * szGameInfo;
     size_t cchGameInfo;
     DWORD dwGameInfo;
+};
+
+struct TGameLocaleString
+{
+    const char * szLocale;
+    DWORD dwLocale;
 };
 
 static const TBuildFileInfo BuildTypes[] =
@@ -64,6 +70,26 @@ static const TGameIdString GameIds[] =
     {"SC2",        0x03, CASC_GAME_STARCRAFT2},     // Starcraft II - Legacy of the Void
     {"Starcraft1", 0x0A, CASC_GAME_STARCRAFT1},     // Starcraft 1 (remake)
     {NULL, 0, 0},
+};
+
+static const TGameLocaleString LocaleStrings[] = 
+{
+    {"enUS", CASC_LOCALE_ENUS},
+    {"koKR", CASC_LOCALE_KOKR},
+    {"frFR", CASC_LOCALE_FRFR},
+    {"deDE", CASC_LOCALE_DEDE},
+    {"zhCN", CASC_LOCALE_ZHCN},
+    {"esES", CASC_LOCALE_ESES},
+    {"zhTW", CASC_LOCALE_ZHTW},
+    {"enGB", CASC_LOCALE_ENGB},
+    {"enCN", CASC_LOCALE_ENCN},
+    {"enTW", CASC_LOCALE_ENTW},
+    {"esMX", CASC_LOCALE_ESMX},
+    {"ruRU", CASC_LOCALE_RURU},
+    {"ptBR", CASC_LOCALE_PTBR},
+    {"itIT", CASC_LOCALE_ITIT},
+    {"ptPT", CASC_LOCALE_PTPT},
+    {NULL, 0}
 };
 
 //-----------------------------------------------------------------------------
@@ -184,50 +210,13 @@ static const char * CaptureHashCount(const char * szDataPtr, const char * szData
 
 static DWORD GetLocaleMask(const char * szTag)
 {
-    if(!strcmp(szTag, "enUS"))
-        return CASC_LOCALE_ENUS;
-
-    if(!strcmp(szTag, "koKR"))
-        return CASC_LOCALE_KOKR;
-
-    if(!strcmp(szTag, "frFR"))
-        return CASC_LOCALE_FRFR;
-
-    if(!strcmp(szTag, "deDE"))
-        return CASC_LOCALE_DEDE;
-
-    if(!strcmp(szTag, "zhCN"))
-        return CASC_LOCALE_ZHCN;
-
-    if(!strcmp(szTag, "esES"))
-        return CASC_LOCALE_ESES;
-
-    if(!strcmp(szTag, "zhTW"))
-        return CASC_LOCALE_ZHTW;
-
-    if(!strcmp(szTag, "enGB"))
-        return CASC_LOCALE_ENGB;
-
-    if(!strcmp(szTag, "enCN"))
-        return CASC_LOCALE_ENCN;
-
-    if(!strcmp(szTag, "enTW"))
-        return CASC_LOCALE_ENTW;
-
-    if(!strcmp(szTag, "esMX"))
-        return CASC_LOCALE_ESMX;
-
-    if(!strcmp(szTag, "ruRU"))
-        return CASC_LOCALE_RURU;
-
-    if(!strcmp(szTag, "ptBR"))
-        return CASC_LOCALE_PTBR;
-
-    if(!strcmp(szTag, "itIT"))
-        return CASC_LOCALE_ITIT;
-
-    if(!strcmp(szTag, "ptPT"))
-        return CASC_LOCALE_PTPT;
+    for(size_t i = 0; LocaleStrings[i].szLocale != NULL; i++)
+    {
+        if(!strncmp(LocaleStrings[i].szLocale, szTag, 4))
+        {
+            return LocaleStrings[i].dwLocale;
+        }
+    }
 
     return 0;
 }
@@ -299,14 +288,14 @@ static TCHAR * CheckForIndexDirectory(TCascStorage * hs, const TCHAR * szSubDir)
     return NULL;
 }
 
-TCHAR * AppendBlobText(TCHAR * szBuffer, LPBYTE pbData, DWORD cbData, TCHAR chSeparator)
+TCHAR * AppendBlobText(TCHAR * szBuffer, LPBYTE pbData, size_t cbData, TCHAR chSeparator)
 {
     // Put the separator, if any
     if(chSeparator != 0)
         *szBuffer++ = chSeparator;
 
     // Copy the blob data as text
-    for(DWORD i = 0; i < cbData; i++)
+    for(size_t i = 0; i < cbData; i++)
     {
         *szBuffer++ = IntToHexChar[pbData[0] >> 0x04];
         *szBuffer++ = IntToHexChar[pbData[0] & 0x0F];
@@ -601,27 +590,21 @@ static int GetDefaultLocaleMask(TCascStorage * hs, PQUERY_KEY pTagsString)
 {
     char * szTagEnd = (char *)pTagsString->pbData + pTagsString->cbData;
     char * szTagPtr = (char *)pTagsString->pbData;
-    char * szNext;
     DWORD dwLocaleMask = 0;
 
     while(szTagPtr < szTagEnd)
     {
-        // Get the next part
-        szNext = strchr(szTagPtr, ' ');
-        if(szNext != NULL)
-            *szNext++ = 0;
-
-        // Check whether the current tag is a language identifier
-        dwLocaleMask = dwLocaleMask | GetLocaleMask(szTagPtr);
-
-        // Get the next part
-        if(szNext == NULL)
-            break;
-
-        // Skip spaces
-        while(szNext < szTagEnd && szNext[0] == ' ')
-            szNext++;
-        szTagPtr = szNext;
+        // Could this be a locale string?
+        if((szTagPtr + 4) <= szTagEnd && (szTagPtr[4] == ',' ||  szTagPtr[4] == ' '))
+        {
+            // Check whether the current tag is a language identifier
+            dwLocaleMask = dwLocaleMask | GetLocaleMask(szTagPtr);
+            szTagPtr += 4;
+        }
+        else
+        {
+            szTagPtr++;
+        }
     }
 
     hs->dwDefaultLocale = dwLocaleMask;
@@ -757,6 +740,7 @@ static int ParseFile_BuildInfo(TCascStorage * hs, void * pvListFile)
 
 static int ParseFile_BuildDb(TCascStorage * hs, void * pvListFile)
 {
+    QUERY_KEY TagString = {NULL, 0};
     const char * szLinePtr;
     const char * szLineEnd;
     char szOneLine[0x200];
@@ -785,6 +769,14 @@ static int ParseFile_BuildDb(TCascStorage * hs, void * pvListFile)
         {
             // Skip the variable
             szLinePtr = SkipInfoVariable(szLinePtr, szLineEnd);
+
+            // Load the the tags
+            nError = LoadInfoVariable(&TagString, szLinePtr, szLineEnd, false);
+            if(nError == ERROR_SUCCESS && TagString.pbData != NULL)
+            {
+                GetDefaultLocaleMask(hs, &TagString);
+                FreeCascBlob(&TagString);
+            }
 
             // Skip the Locale/OS/code variable
             szLinePtr = SkipInfoVariable(szLinePtr, szLineEnd);

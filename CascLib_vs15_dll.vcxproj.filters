@@ -27,14 +27,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include=".gitignore">
-      <Filter>Source Files</Filter>
-    </None>
-    <None Include="src\CascRootFile_Mndx_x86.asm">
-      <Filter>Source Files</Filter>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="src\CascCommon.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -65,7 +57,7 @@
     <ClCompile Include="src\CascRootFile_Diablo3.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\CascRootFile_Mndx.cpp">
+    <ClCompile Include="src\CascRootFile_MNDX.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\CascRootFile_Text.cpp">
@@ -149,6 +141,9 @@
     <ClCompile Include="src\CascRootFile_TVFS.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\CascRootFile_OW.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\common\Common.h">
@@ -179,9 +174,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\CascLib.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\CascMndx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\CascPort.h">
