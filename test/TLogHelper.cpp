@@ -245,7 +245,7 @@ class TLogHelper
     void InitHasher()
     {
         md5_init(&MD5State);
-        HasherReady = TRUE;
+        HasherReady = true;
     }
 
     void HashData(const unsigned char * data, size_t length)
@@ -265,7 +265,7 @@ class TLogHelper
 
             md5_done(&MD5State, md5_binary);
             StringFromBinary(md5_binary, MD5_HASH_SIZE, szHashString);
-            HasherReady = FALSE;
+            HasherReady = false;
         }
 
         // Return the hash as string
