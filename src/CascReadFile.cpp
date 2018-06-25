@@ -35,7 +35,7 @@ typedef struct _BLTE_FRAME
 {
     BYTE EncodedSize[4];                        // Encoded frame size (big endian)
     BYTE ContentSize[4];                        // Content frame size (big endian)
-    BYTE FrameHash[MD5_HASH_SIZE];              // Hash of the encoded frame
+    CONTENT_KEY FrameHash;                      // Hash of the encoded frame
 
 } BLTE_FRAME, *PBLTE_FRAME;
 
@@ -113,10 +113,10 @@ static int LoadFileFrames(TCascFile * hf, ULONGLONG DataFileOffset)
             for(DWORD i = 0; i < hf->FrameCount; i++, pFileFrame++)
             {
                 hf->pFrames[i].DataFileOffset = (DWORD)DataFileOffset;
-                hf->pFrames[i].FileOffset = FileOffset;
+                hf->pFrames[i].FileOffset = CASC_INVALID_POS;
                 hf->pFrames[i].EncodedSize = ConvertBytesToInteger_4(pFileFrame->EncodedSize);
                 hf->pFrames[i].ContentSize = ConvertBytesToInteger_4(pFileFrame->ContentSize);
-                memcpy(hf->pFrames[i].FrameHash, pFileFrame->FrameHash, MD5_HASH_SIZE);
+                hf->pFrames[i].FrameHash = pFileFrame->FrameHash;
 
                 DataFileOffset += hf->pFrames[i].EncodedSize;
                 ContentSize += hf->pFrames[i].ContentSize;
@@ -227,7 +227,6 @@ static int LoadEncodedHeaderAndFileFrames(TCascFile * hf)
         hf->pFrames = CASC_ALLOC(CASC_FILE_FRAME, hf->FrameCount);
         if(hf->pFrames == NULL)
             return ERROR_NOT_ENOUGH_MEMORY;
-        memset(hf->pFrames, 0, hf->FrameCount * sizeof(CASC_FILE_FRAME));
 
         // Load the frames from the file
         nError = LoadFileFrames(hf, DataFileOffset + 4);
@@ -249,11 +248,10 @@ static int LoadEncodedHeaderAndFileFrames(TCascFile * hf)
         hf->pFrames = CASC_ALLOC(CASC_FILE_FRAME, hf->FrameCount);
         if(hf->pFrames == NULL)
             return ERROR_NOT_ENOUGH_MEMORY;
-        memset(hf->pFrames, 0, hf->FrameCount * sizeof(CASC_FILE_FRAME));
 
         // Create one artificial frame
         hf->pFrames->DataFileOffset = DataFileOffset;
-        hf->pFrames->FileOffset = 0;
+        hf->pFrames->FileOffset = CASC_INVALID_POS;
         hf->pFrames->EncodedSize = EncodedSize;
         hf->pFrames->ContentSize = hf->ContentSize;
     }
@@ -292,29 +290,6 @@ static int EnsureFileFramesLoaded(TCascFile * hf)
     return ERROR_SUCCESS;
 }
 
-static PCASC_FILE_FRAME FindFileFrame(TCascFile * hf, DWORD FileOffset)
-{
-    PCASC_FILE_FRAME pFrame = hf->pFrames;
-
-    // Sanity checks
-    assert(hf->pFrames != NULL);
-    assert(hf->FrameCount != 0);
-
-    // Find the frame where to read from
-    for(DWORD i = 0; i < hf->FrameCount; i++, pFrame++)
-    {
-        // Does the read request fit into the current frame?
-        if(pFrame->FileOffset <= FileOffset && FileOffset < pFrame->FileOffset + pFrame->ContentSize)
-            return pFrame;
-    }
-
-    // Does the read request ends at the end of the last frame?
-    if(hf->FrameCount > 0 && FileOffset == hf->ContentSize)
-        return hf->pFrames + hf->FrameCount - 1;
-
-    // Not found, sorry
-    return NULL;
-}
 /*
 // Make sure we have enough file cache to keep all data from 0 to the end of the last loaded frame
 static int AllocateFileCache(TCascFile * hf, PCASC_FILE_FRAME pEndFrame)
@@ -359,7 +334,7 @@ static int AllocateFileCache(TCascFile * hf, PCASC_FILE_FRAME pEndFrame)
     return ERROR_SUCCESS;
 }
 */
-static int LoadEncodedFrame(TFileStream * pStream, PCASC_FILE_FRAME pFrame, LPBYTE pbEncodedFrame)
+static int LoadEncodedFrame(TFileStream * pStream, PCASC_FILE_FRAME pFrame, LPBYTE pbEncodedFrame, DWORD dwVerifyIntegrity)
 {
     ULONGLONG FileOffset = pFrame->DataFileOffset;
     int nError = ERROR_SUCCESS;
@@ -367,8 +342,11 @@ static int LoadEncodedFrame(TFileStream * pStream, PCASC_FILE_FRAME pFrame, LPBY
     // Load the encoded frame to memory
     if(FileStream_Read(pStream, &FileOffset, pbEncodedFrame, pFrame->EncodedSize))
     {
-        if(!VerifyDataBlockHash(pbEncodedFrame, pFrame->EncodedSize, pFrame->FrameHash))
-            nError = ERROR_FILE_CORRUPT;
+        if (dwVerifyIntegrity)
+        {
+            if (!VerifyDataBlockHash(pbEncodedFrame, pFrame->EncodedSize, pFrame->FrameHash.Value))
+                nError = ERROR_FILE_CORRUPT;
+        }
     }
     else
     {
@@ -386,6 +364,7 @@ static int ProcessFileFrame(
     DWORD dwFrameIndex)
 {
     LPBYTE pbWorkBuffer = NULL;
+    DWORD cbOutBufferExpected = 0;
     DWORD cbWorkBuffer = 0;
     DWORD dwStepCount = 0;
     bool bWorkComplete = false;
@@ -430,9 +409,13 @@ static int ProcessFileFrame(
                 
                 // If we decompressed less than expected, we simply fill the rest with zeros
                 // Example: INSTALL file from the TACT CASC storage
+                cbOutBufferExpected = cbOutBuffer;
                 nError = CascDecompress(pbOutBuffer, &cbOutBuffer, pbInBuffer + 1, cbInBuffer - 1);
-                if(nError == ERROR_SUCCESS && cbOutBuffer < cbOutBuffer)
-                    memset(pbOutBuffer + cbOutBuffer, 0, (cbOutBuffer - cbOutBuffer));
+
+                // We exactly know what the output buffer size will be.
+                // If the uncompressed data is smaller, fill the rest with zeros
+                if(cbOutBuffer < cbOutBufferExpected)
+                    memset(pbOutBuffer + cbOutBuffer, 0, (cbOutBufferExpected - cbOutBuffer));
                 bWorkComplete = true;
                 break;
 
@@ -677,8 +660,6 @@ DWORD WINAPI CascSetFilePointer(HANDLE hFile, LONG lFilePos, LONG * plFilePosHig
 
 bool WINAPI CascReadFile(HANDLE hFile, void * pvBuffer, DWORD dwBytesToRead, PDWORD pdwBytesRead)
 {
-    PCASC_FILE_FRAME pFrame1 = NULL;
-    PCASC_FILE_FRAME pFrame2 = NULL;
     TCascFile * hf;
     int nError = ERROR_SUCCESS;
 
@@ -717,15 +698,6 @@ bool WINAPI CascReadFile(HANDLE hFile, void * pvBuffer, DWORD dwBytesToRead, PDW
         {
             dwBytesToRead = hf->ContentSize - hf->FilePointer;
         }
-
-        // Find the starting and ending frame where to read from
-        pFrame1 = FindFileFrame(hf, hf->FilePointer);
-        pFrame2 = FindFileFrame(hf, hf->FilePointer + dwBytesToRead);
-        if(pFrame1 == NULL || pFrame2 == NULL)
-            nError = ERROR_FILE_CORRUPT;
-
-        // Sanity check
-        assert((hf->FilePointer + dwBytesToRead) <= (pFrame2->FileOffset + pFrame2->ContentSize));
     }
 
     // Allocate cache buffer for the entire file. This is the fastest approach
@@ -738,12 +710,9 @@ bool WINAPI CascReadFile(HANDLE hFile, void * pvBuffer, DWORD dwBytesToRead, PDW
         {
             // Allocate buffer
             hf->pbFileCache = CASC_ALLOC(BYTE, hf->ContentSize);
+            hf->cbFileCache = hf->ContentSize;
             if(hf->pbFileCache == NULL)
                 nError = ERROR_NOT_ENOUGH_MEMORY;
-
-            // Prepare buffer
-            memset(hf->pbFileCache, 0, hf->ContentSize);
-            hf->cbFileCache = hf->ContentSize;
         }
 //      nError = AllocateFileCache(hf, pFrame2);
     }
@@ -751,40 +720,55 @@ bool WINAPI CascReadFile(HANDLE hFile, void * pvBuffer, DWORD dwBytesToRead, PDW
     // Load all frames that are not loaded yet
     if(nError == ERROR_SUCCESS)
     {
-        for(PCASC_FILE_FRAME pFrame = pFrame1; pFrame <= pFrame2; pFrame++)
+        PCASC_FILE_FRAME pFrame = hf->pFrames;
+        DWORD StartFrameOffset = 0;
+        DWORD StartReadOffset = hf->FilePointer;
+        DWORD EndReadOffset = hf->FilePointer + dwBytesToRead;
+
+        for(DWORD i = 0; i < hf->FrameCount; i++, pFrame++)
         {
-            LPBYTE pbDecodedFrame = hf->pbFileCache + pFrame->FileOffset;
+            LPBYTE pbDecodedFrame = hf->pbFileCache + StartFrameOffset;
             LPBYTE pbEncodedFrame;
+            DWORD EndFrameOffset = StartFrameOffset + pFrame->ContentSize;
 
-            // Is the frame already loaded?
-            if(!pFrame->IsFrameLoaded)
+            // Does that frame belong to the range?
+            if(StartReadOffset < EndFrameOffset && EndReadOffset > StartFrameOffset)
             {
-                // Allocate space for the encoded frame
-                pbEncodedFrame = CASC_ALLOC(BYTE, pFrame->EncodedSize);
-                if(pbEncodedFrame == NULL)
+                // Is the frame already loaded?
+                if (pFrame->FileOffset == CASC_INVALID_POS)
                 {
-                    nError = ERROR_NOT_ENOUGH_MEMORY;
-                    break;
+                    // Allocate space for the encoded frame
+                    pbEncodedFrame = CASC_ALLOC(BYTE, pFrame->EncodedSize);
+                    if (pbEncodedFrame == NULL)
+                    {
+                        nError = ERROR_NOT_ENOUGH_MEMORY;
+                        break;
+                    }
+
+                    // Load the encoded frame data
+                    nError = LoadEncodedFrame(hf->pStream, pFrame, pbEncodedFrame, (hf->OpenFlags & CASC_STRICT_DATA_CHECK));
+                    if (nError != ERROR_SUCCESS)
+                        break;
+
+                    // Decode the frame
+                    nError = ProcessFileFrame(pbDecodedFrame,
+                                              pFrame->ContentSize,
+                                              pbEncodedFrame,
+                                              pFrame->EncodedSize,
+                                      (DWORD)(pFrame - hf->pFrames));
+                    if (nError != ERROR_SUCCESS)
+                        break;
+
+                    // Mark the frame as loaded
+                    pFrame->FileOffset = StartFrameOffset;
+                    CASC_FREE(pbEncodedFrame);
                 }
-
-                // Load the encoded frame data
-                nError = LoadEncodedFrame(hf->pStream, pFrame, pbEncodedFrame);
-                if(nError != ERROR_SUCCESS)
-                    break;
-
-                // Decode the frame
-                nError = ProcessFileFrame(pbDecodedFrame,
-                                          pFrame->ContentSize,
-                                          pbEncodedFrame,
-                                          pFrame->EncodedSize,
-                                  (DWORD)(pFrame - hf->pFrames));
-                if(nError != ERROR_SUCCESS)
-                    break;
-
-                // Move the frame pointer
-                pFrame->IsFrameLoaded = 1;
-                CASC_FREE(pbEncodedFrame);
             }
+
+            // If the frame start is past the read offset, stop the loop
+            if ((StartFrameOffset + pFrame->ContentSize) >= EndReadOffset)
+                break;
+            StartFrameOffset += pFrame->ContentSize;
         }
     }
 

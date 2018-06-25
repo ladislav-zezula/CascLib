@@ -33,12 +33,13 @@ LPBYTE LoadInternalFileToMemory(TCascStorage * hs, LPBYTE pbQueryKey, DWORD dwOp
     // Prepare the query key
     QueryKey.pbData = pbQueryKey;
     QueryKey.cbData = MD5_HASH_SIZE;
+    dwOpenFlags |= CASC_STRICT_DATA_CHECK;
 
     // Open the file
-    if(dwOpenFlags == CASC_OPEN_BY_CKEY)
-        bOpenResult = CascOpenFileByCKey((HANDLE)hs, &QueryKey, &hFile);
+    if((dwOpenFlags & CASC_OPEN_TYPE_MASK) == CASC_OPEN_BY_CKEY)
+        bOpenResult = CascOpenFileByCKey((HANDLE)hs, &QueryKey, dwOpenFlags, &hFile);
     else
-        bOpenResult = CascOpenFileByEKey((HANDLE)hs, NULL, &QueryKey, cbFileData, &hFile);
+        bOpenResult = CascOpenFileByEKey((HANDLE)hs, NULL, &QueryKey, dwOpenFlags, cbFileData, &hFile);
 
     // Load the internal file
     if(bOpenResult)

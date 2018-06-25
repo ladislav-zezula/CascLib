@@ -83,6 +83,7 @@ extern "C" {
 #define CASC_OPEN_BY_CKEY           0x00000001  // The name is just the content key; skip ROOT file processing
 #define CASC_OPEN_BY_EKEY           0x00000002  // The name is just the encoded key; skip ROOT file processing
 #define CASC_OPEN_TYPE_MASK         0x0000000F  // The mask which gets open type from the dwFlags
+#define CASC_STRICT_DATA_CHECK      0x00000010  // Verify all data read from a file
 
 #define CASC_LOCALE_ALL             0xFFFFFFFF
 #define CASC_LOCALE_NONE            0x00000000
@@ -232,9 +233,9 @@ bool  WINAPI CascOpenStorage(const TCHAR * szDataPath, DWORD dwLocaleMask, HANDL
 bool  WINAPI CascGetStorageInfo(HANDLE hStorage, CASC_STORAGE_INFO_CLASS InfoClass, void * pvStorageInfo, size_t cbStorageInfo, size_t * pcbLengthNeeded);
 bool  WINAPI CascCloseStorage(HANDLE hStorage);
 
-bool  WINAPI CascOpenFileByEKey(HANDLE hStorage, PQUERY_KEY pCKey, PQUERY_KEY pEKey, DWORD dwEncodedSize, HANDLE * phFile);
-bool  WINAPI CascOpenFileByCKey(HANDLE hStorage, PQUERY_KEY pCKey, HANDLE * phFile);
-bool  WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocale, DWORD dwFlags, HANDLE * phFile);
+bool  WINAPI CascOpenFileByEKey(HANDLE hStorage, PQUERY_KEY pCKey, PQUERY_KEY pEKey, DWORD dwOpenFlags, DWORD dwEncodedSize, HANDLE * phFile);
+bool  WINAPI CascOpenFileByCKey(HANDLE hStorage, PQUERY_KEY pCKey, DWORD dwOpenFlags, HANDLE * phFile);
+bool  WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocaleFlags, DWORD dwOpenFlags, HANDLE * phFile);
 bool  WINAPI CascGetFileInfo(HANDLE hFile, CASC_FILE_INFO_CLASS InfoClass, void * pvFileInfo, size_t cbFileInfo, size_t * pcbLengthNeeded);
 DWORD WINAPI CascGetFileSize(HANDLE hFile, PDWORD pdwFileSizeHigh);
 DWORD WINAPI CascGetFileId(HANDLE hStorage, const char * szFileName);
@@ -245,10 +246,6 @@ bool  WINAPI CascCloseFile(HANDLE hFile);
 HANDLE WINAPI CascFindFirstFile(HANDLE hStorage, const char * szMask, PCASC_FIND_DATA pFindData, const TCHAR * szListFile);
 bool  WINAPI CascFindNextFile(HANDLE hFind, PCASC_FIND_DATA pFindData);
 bool  WINAPI CascFindClose(HANDLE hFind);
-
-// Backward compatibility
-#define CascOpenFileByIndexKey CascOpenFileByEKey
-#define CascOpenFileByEncodingKey CascOpenFileByCKey
 
 //-----------------------------------------------------------------------------
 // GetLastError/SetLastError support for non-Windows platform

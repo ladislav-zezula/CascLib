@@ -131,12 +131,11 @@ typedef struct _CASC_ENCODING_HEADER
 
 typedef struct _CASC_FILE_FRAME
 {
-    BYTE  FrameHash[MD5_HASH_SIZE];                 // MD5 hash of the file frame
+    CONTENT_KEY FrameHash;                          // MD5 hash of the file frame
     DWORD DataFileOffset;                           // Offset in the data file (data.###)
     DWORD FileOffset;                               // File offset of this frame
     DWORD EncodedSize;                              // Encoded size of the frame
     DWORD ContentSize;                              // Content size of the frame
-    DWORD IsFrameLoaded:1;                          // If TRUE, then the frame is loaded to file cache
 } CASC_FILE_FRAME, *PCASC_FILE_FRAME;
 
 //-----------------------------------------------------------------------------
@@ -202,6 +201,7 @@ typedef struct _TCascFile
     DWORD EncodedSize;                              // Encoded size. This is the size of encoded header, all file frame headers and all file frames
     DWORD ContentSize;                              // Content size. This is the size of the file content, aka the file size
     DWORD FrameCount;                               // Number of the file frames
+    DWORD OpenFlags;                                // Opening flags
 
     LPBYTE pbFileCache;                             // Pointer to file cache
     DWORD cbFileCache;                              // Size of the file cache

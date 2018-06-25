@@ -1772,7 +1772,6 @@ static bool PartStream_CreateMirror(TBlockStream * pStream)
     return true;
 }
 
-
 static TFileStream * PartStream_Open(const TCHAR * szFileName, DWORD dwStreamFlags)
 {
     TBlockStream * pStream;

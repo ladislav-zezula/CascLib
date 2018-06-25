@@ -81,10 +81,7 @@ static bool IsFileKey(const char * szFileName)
         return false;
 
     // Convert the BLOB to binary.
-    if(ConvertStringToBinary(szFileName, MD5_STRING_SIZE, KeyBuffer) != ERROR_SUCCESS)
-        return false;
-
-    return true;
+    return (ConvertStringToBinary(szFileName, MD5_STRING_SIZE, KeyBuffer) == ERROR_SUCCESS);
 }
 
 // Compares the expected hash with the real one. If they match, returns "match"
@@ -196,8 +193,7 @@ static int ExtractFile(
     TLogHelper & LogHelper,
     HANDLE hStorage,
     const char * szFileName,
-    DWORD dwOpenFlags,
-    DWORD dwLocaleFlags)
+    DWORD dwOpenFlags)
 {
     hash_state md5_state;
     CONTENT_KEY CKey;
@@ -210,6 +206,7 @@ static int ExtractFile(
     DWORD dwBytesRead = 1;
     DWORD dwFileSize;
     bool bWeHaveContentKey;
+    bool bHashFileContent = true;
     int nError = ERROR_SUCCESS;
 
     // Show the file name to the user
@@ -222,7 +219,8 @@ static int ExtractFile(
     }
 
     // Open the CASC file
-    if(CascOpenFile(hStorage, szFileName, dwLocaleFlags, dwOpenFlags, &hFile))
+    dwOpenFlags |= CASC_STRICT_DATA_CHECK;
+    if(CascOpenFile(hStorage, szFileName, 0, dwOpenFlags, &hFile))
     {
         // Retrieve the file size
         dwFileSize = CascGetFileSize(hFile, NULL);
@@ -232,11 +230,10 @@ static int ExtractFile(
             return GetLastError();
         }
 
-        // Retrieve the content key (aka MD5 of the file content)
+        // Initialize the per-file hashing
         bWeHaveContentKey = CascGetFileInfo(hFile, CascFileContentKey, &CKey, sizeof(CONTENT_KEY), NULL);
-
-        // Initialize the MD5 hashing
-        md5_init(&md5_state);
+        if(bHashFileContent && bWeHaveContentKey)
+            md5_init(&md5_state);
 
         // Test: Open a local file
 //      fp = fopen("e:\\Multimedia\\MPQs\\Work\\Character\\BloodElf\\Female\\BloodElfFemale-TEST.M2", "wb");
@@ -267,12 +264,14 @@ static int ExtractFile(
             if(fp != NULL)
                 fwrite(Buffer, 1, dwBytesRead, fp);
 
-            // Hash the data
-            LogHelper.HashData(Buffer, dwBytesRead);
-
-            // Hash the file data
-            if(bWeHaveContentKey)
+            // Per-file hashing
+            if(bHashFileContent && bWeHaveContentKey)
                 md5_process(&md5_state, Buffer, dwBytesRead);
+
+            // Per-storage hashing
+            if(LogHelper.HasherReady)
+                LogHelper.HashData(Buffer, dwBytesRead);
+
             dwTotalRead += dwBytesRead;
         }
 
@@ -289,7 +288,7 @@ static int ExtractFile(
         }
 
         // Check whether the MD5 matches
-        if(nError == ERROR_SUCCESS && bWeHaveContentKey)
+        if(nError == ERROR_SUCCESS && bHashFileContent && bWeHaveContentKey)
         {
             md5_done(&md5_state, md5_digest);
             if(memcmp(md5_digest, CKey.Value, MD5_HASH_SIZE))
@@ -340,11 +339,10 @@ static int TestOpenStorage_OpenFile(const char * szStorage, const char * szFileN
 //      CascGetFileId(hStorage, szFileName);
 
         // Check whether the name is the CKey
-        if(IsFileKey(szFileName))
-            dwOpenFlags |= CASC_OPEN_BY_CKEY;
+        dwOpenFlags |= IsFileKey(szFileName) ? CASC_OPEN_BY_CKEY : 0;
 
         // Extract the entire file
-        ExtractFile(LogHelper, hStorage, szFileName, dwOpenFlags, 0);
+        ExtractFile(LogHelper, hStorage, szFileName, dwOpenFlags);
 
         // Close the storage
         CascCloseStorage(hStorage);
@@ -470,7 +468,7 @@ static int TestOpenStorage_ExtractFiles(const char * szStorage, const char * szE
             while(bFileFound)
             {
                 // Extract the file
-                ExtractFile(LogHelper, hStorage, cf.szFileName, cf.dwOpenFlags, cf.dwLocaleFlags);
+                ExtractFile(LogHelper, hStorage, cf.szFileName, cf.dwOpenFlags);
 
                 // Find the next file in CASC
                 bFileFound = CascFindNextFile(hFind, &cf);
@@ -544,8 +542,10 @@ static STORAGE_INFO StorageInfo[] =
     {"2014 - Heroes of the Storm/31726", "2f4c8af4d864f6ed33f0a19a55a1ee8c", "mods\\heroes.stormmod\\base.stormassets\\Assets\\modeltextures.db"},
     {"2014 - Heroes of the Storm/39445/HeroesData", "ee5bd644554fe660a47205b3a37f4b20", "versions.osxarchive\\Versions\\Base39153\\Heroes.app\\Contents\\_CodeSignature\\CodeResources"},
     {"2014 - Heroes of the Storm/50286/HeroesData", "8ee62ff0b959992854a7faa3a4c4efc3", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
+    {"2014 - Heroes of the Storm/65943", "044646b8cd27cfe9115bd55810955d40", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
 
     {"2015 - Diablo III/30013", "609e34fc5d0eaa4fd36d6774a039e1f3", "ENCODING"},
+    {"2015 - Diablo III/50649", NULL, "ENCODING" },
 
     {"2015 - Overwatch/24919/data/casc/data", "2c3b0eae9b059e64ad605270e5f3fb42", "ROOT"},
     {"2015 - Overwatch/47161", "d12b77b585ce708f1af3b1b7776a1fb0", "TactManifest\\Win_SPWin_RCN_LesMX_EExt.apm"},
@@ -594,10 +594,10 @@ int main(int argc, char * argv[])
     // Single tests
     //                                   
 
-//  TestOpenStorage_OpenFile("2014 - Heroes of the Storm/29049", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_autoai1.dds");
+//  TestOpenStorage_OpenFile("2014 - Heroes of the Storm/29049", "fd45b0f59067a8dda512b740c782cd70");
 //  TestOpenStorage_OpenFile("z:\\47161", "ROOT");
 //  TestOpenStorage_EnumFiles("2016 - WoW/23420", NULL);
-    TestOpenStorage_ExtractFiles("2018 - New CASC/00002", NULL, szListFile);
+    TestOpenStorage_ExtractFiles("2015 - Diablo III/50649", "d12b77b585ce708f1af3b1b7776a1fb0", szListFile);
 /*
     //
     // Tests for OpenStorage + ExtractFile
@@ -614,7 +614,7 @@ int main(int argc, char * argv[])
     //
     // Tests for OpenStorage + EnumAllFiles + ExtractAllFiles
     //
-
+/*
     for(size_t i = 0; StorageInfo[i].szPath != NULL; i++)
     {
         // Attempt to open the storage and extract single file
@@ -622,7 +622,7 @@ int main(int argc, char * argv[])
         if(nError != ERROR_SUCCESS)
             break;
     }
-
+*/
 #ifdef _MSC_VER                                                          
     _CrtDumpMemoryLeaks();
 #endif  // _MSC_VER

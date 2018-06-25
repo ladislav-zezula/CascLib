@@ -2017,7 +2017,6 @@ class TFileNameDatabase
     {
         TStruct40 * pStruct40 = pStruct1C->pStruct40;
         PATH_STOP * pPathStop;
-        PATH_STOP PathStop;
         DWORD FragOffs;
         DWORD edi;
 
@@ -2532,7 +2531,7 @@ struct TRootHandler_MNDX : public TRootHandler
         if(pMndxEntries != NULL)
             CASC_FREE(pMndxEntries);
 
-        for(size_t i = 0; i < Packages.ItemCount; i++)
+        for(i = 0; i < Packages.ItemCount; i++)
         {
             pPackage = (PMNDX_PACKAGE)Array_ItemAt(&Packages, i);
             CASC_FREE(pPackage->szFileName);
