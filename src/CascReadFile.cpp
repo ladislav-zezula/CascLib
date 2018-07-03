@@ -21,13 +21,15 @@
 
 typedef struct _BLTE_ENCODED_HEADER
 {
+    // Header span. Sometimes, on old storages is not present
     ENCODED_KEY EKey;                           // Encoded key of the data beginning with "BLTE" (byte-reversed)
     DWORD EncodedSize;                          // Encoded size of the data data beginning with "BLTE" (little endian)
-    BYTE  field_14;                             // Seems to be 1 if the header span was re-downloaded and written by Agent.exe
-    BYTE  field_15;                             // Hardcoded to zero (Agent.exe 2.14.2.6244: base+0x116EF4)
-    BYTE  JenkinsHash[4];                       // Jenkins hash (hashlittle2) of the EKey + EncodedSize + field_14 + field_15 (little endian)
+    BYTE  field_14;                             // Seems to be 1 if the header span had no data
+    BYTE  field_15;                             // Hardcoded to zero (Agent.exe 2.15.0.6296: 01370000->0148E2AA)
+    BYTE  JenkinsHash[4];                       // Jenkins hash (hashlittle2) of the preceding fields (EKey + EncodedSize + field_14 + field_15) (little endian)
     BYTE  Checksum[4];                          // Checksum of the previous part. See VerifyHeaderSpan for more information.
-                                                // For old games, this may no match with the calculated values
+
+    // BLTE header. Always present.
     BYTE  Signature[4];                         // Must be "BLTE"
     BYTE  HeaderSize[4];                        // Header size in bytes (big endian)
     BYTE  MustBe0F;                             // Must be 0x0F. Optional, only if HeaderSize != 0
@@ -77,7 +79,7 @@ static int EnsureDataStreamIsOpen(TCascFile * hf)
     return (hf->pStream != NULL) ? ERROR_SUCCESS : ERROR_FILE_NOT_FOUND;
 }
 
-static DWORD GetEncodedHeaderDelta(TFileStream * pStream, DWORD HeaderOffset)
+static DWORD GetHeaderSpanSize(TFileStream * pStream, DWORD HeaderOffset)
 {
     ULONGLONG FileOffset = HeaderOffset;
     DWORD FourBytes = 0;
@@ -99,6 +101,8 @@ static unsigned int table_16C57A8[0x10] =
     0x27F64B7D, 0xC6F5C11B, 0xD5757E3A, 0x6C388745
 };
 
+// Obtained from Agent.exe v 2.15.0.6296 (d14ec9d9a1b396a42964b05f40ea55f37eae5478d550c07ebb6cb09e50968d62)
+// Note the "Checksum" value probably won't match with older game versions.
 static void VerifyHeaderSpan(PBLTE_ENCODED_HEADER pBlteHeader, ULONGLONG HeaderOffset)
 {
     DWORD dwInt32;
@@ -125,7 +129,7 @@ static void VerifyHeaderSpan(PBLTE_ENCODED_HEADER pBlteHeader, ULONGLONG HeaderO
     for (i = 0; i < FIELD_OFFSET(BLTE_ENCODED_HEADER, Checksum); i++)
         HashedHeader[i & 3] ^= pBlteHeader->EKey.Value[i];
 
-    // XOR the two values together to get the final checksum
+    // XOR the two values together to get the final checksum.
     for (j = 0; j < 4; j++, i++)
         Checksum[j] = HashedHeader[i & 3] ^ EncodedOffset[i & 3];
 //  assert(memcmp(pBlteHeader->Checksum, Checksum, sizeof(Checksum)) == 0);
@@ -293,7 +297,7 @@ static int LoadEncodedHeaderAndFileFrames(TCascFile * hf)
     pbEncodedBuffer = CASC_ALLOC(BYTE, MAX_ENCODED_HEADER);
     if (pbEncodedBuffer != NULL)
     {
-        ULONGLONG ReadOffset = hf->ArchiveOffset - hs->dwHeaderDelta;
+        ULONGLONG ReadOffset = hf->ArchiveOffset - hs->dwHeaderSpanSize;
         size_t cbTotalHeaderSize;
         size_t cbHeaderSize = 0;
 
@@ -366,10 +370,10 @@ static int EnsureFileFramesLoaded(TCascFile * hf)
         // - Heroes of the Storm (older builds)'s CASC_EKEY_ENTRY::ArchiveAndOffset point to the BLTE signature in the encoded header.
         // - Heroes of the Storm (newer builds)'s CASC_EKEY_ENTRY::ArchiveAndOffset point to the encoded file header itself.
         // Solve this once for the entire storage
-        if(hs->dwHeaderDelta == CASC_INVALID_POS)
+        if(hs->dwHeaderSpanSize == CASC_INVALID_SIZE)
         {
-            hs->dwHeaderDelta = GetEncodedHeaderDelta(hf->pStream, hf->ArchiveOffset);
-            if(hs->dwHeaderDelta == CASC_INVALID_POS)
+            hs->dwHeaderSpanSize = GetHeaderSpanSize(hf->pStream, hf->ArchiveOffset);
+            if(hs->dwHeaderSpanSize == CASC_INVALID_SIZE)
                 return ERROR_FILE_CORRUPT;
         }
 

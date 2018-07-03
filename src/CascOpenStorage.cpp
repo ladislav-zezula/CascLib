@@ -77,7 +77,7 @@ typedef struct _FILE_INDEX_HEADER_V1
     BYTE  align_3;
     DWORD field_4;
     ULONGLONG field_8;
-    ULONGLONG MaxFileSize;
+    ULONGLONG SegmentSize;                          // Size of one data segment (aka data.### file)
     BYTE  SpanSizeBytes;
     BYTE  SpanOffsBytes;
     BYTE  KeyBytes;
@@ -99,7 +99,7 @@ typedef struct _FILE_INDEX_HEADER_V2
     BYTE   SpanOffsBytes;                           // Size of field with file offset
     BYTE   KeyBytes;                                // Size of the file key (bytes)
     BYTE   FileOffsetBits;                          // Number of bits for the file offset (rest is archive index)
-    ULONGLONG MaxFileSize;                          // The maximum size of a casc archive; 0x4000000000, or 256GiB. 
+    ULONGLONG SegmentSize;                          // Size of one data segment (aka data.### file)
     BYTE   Padding[8];                              // Always here
 
 } FILE_INDEX_HEADER_V2, *PFILE_INDEX_HEADER_V2;
@@ -425,7 +425,7 @@ static int VerifyAndLoadIndexFile_V1(PCASC_INDEX_FILE pIndexFile, DWORD KeyIndex
     pIndexFile->SpanOffsBytes  = pIndexHeader->SpanOffsBytes;
     pIndexFile->KeyBytes       = pIndexHeader->KeyBytes;
     pIndexFile->FileOffsetBits = pIndexHeader->FileOffsetBits;
-    pIndexFile->MaxFileSize    = pIndexHeader->MaxFileSize;
+    pIndexFile->SegmentSize    = pIndexHeader->SegmentSize;
 
     // Get the pointer to the key entry array
     pIndexFile->nEKeyEntries = pIndexHeader->KeyCount1 + pIndexHeader->KeyCount2;
@@ -478,7 +478,7 @@ static int VerifyAndLoadIndexFile_V2(PCASC_INDEX_FILE pIndexFile, DWORD BucketIn
     pIndexFile->SpanOffsBytes  = pIndexHeader->SpanOffsBytes;
     pIndexFile->KeyBytes       = pIndexHeader->KeyBytes;
     pIndexFile->FileOffsetBits = pIndexHeader->FileOffsetBits;
-    pIndexFile->MaxFileSize    = pIndexHeader->MaxFileSize;
+    pIndexFile->SegmentSize    = pIndexHeader->SegmentSize;
     pbFilePtr += sizeof(FILE_INDEX_HEADER_V2);
 
     // Get the pointer to the first block of EKey entries
@@ -1040,7 +1040,7 @@ bool WINAPI CascOpenStorage(const TCHAR * szDataPath, DWORD dwLocaleMask, HANDLE
         // Prepare the base storage parameters
         memset(hs, 0, sizeof(TCascStorage));
         hs->szClassName = "TCascStorage";
-        hs->dwHeaderDelta = CASC_INVALID_POS;
+        hs->dwHeaderSpanSize = CASC_INVALID_SIZE;
         hs->dwDefaultLocale = CASC_LOCALE_ENUS | CASC_LOCALE_ENGB;
         hs->dwRefCount = 1;
         nError = InitializeCascDirectories(hs, szDataPath);

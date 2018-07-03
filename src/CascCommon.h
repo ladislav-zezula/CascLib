@@ -109,7 +109,7 @@ typedef struct _CASC_INDEX_FILE
     BYTE   KeyBytes;                                // Size of the file key. Expected to be 9
     BYTE   FileOffsetBits;                          // Number of bits for the file offset (rest is archive index). Usually 0x1E
     bool   FreeEKeyEntries;                         // If true, then we need to free the EKey map
-    ULONGLONG MaxFileSize;
+    ULONGLONG SegmentSize;                          // Size of one segment (aka data.### file)
 
     PCASC_EKEY_ENTRY pEKeyEntries;                  // Sorted array of EKey entries (into pbFileData)
     DWORD nEKeyEntries;                             // Number of EKey entries
@@ -153,7 +153,7 @@ typedef struct _TCascStorage
     DWORD dwRefCount;                               // Number of references
     DWORD dwGameInfo;                               // Game type
     DWORD dwBuildNumber;                            // Game build number
-    DWORD dwHeaderDelta;                            // This is number of bytes to subtract from CASC_EKEY_ENTRY::ArchiveAndOffset to get the begin of the encoded header
+    DWORD dwHeaderSpanSize;                         // Size of the header span. Usually 0x1E. Zero on older storages
     DWORD dwDefaultLocale;                          // Default locale, read from ".build.info"
 
     CBLD_TYPE BuildFileType;                        // Type of the build file

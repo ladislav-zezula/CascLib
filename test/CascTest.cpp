@@ -574,6 +574,7 @@ static STORAGE_INFO StorageInfo[] =
 
     {"2017 - Starcraft1/2457", "ee7ec3feb3636a49604d76cd1330e6cc", "music\\radiofreezerg.ogg"},
     {"2017 - Starcraft1/4037", "e3b1fbab5301fb40c603cafac3d51cf8", "music\\radiofreezerg.ogg"},
+    {"2017 - Starcraft1/4261", NULL, "music\\radiofreezerg.ogg"},
 
     {"2018 - New CASC/00001", "971803daed7ea8685a94d9c22c5cffe6", "ROOT"},
     {"2018 - New CASC/00002", "82b381a8d79907c9fd4b19e36d69078c", "ENCODING"},
@@ -605,7 +606,7 @@ int main(int argc, char * argv[])
 //  TestOpenStorage_OpenFile("2014 - Heroes of the Storm/29049", "fd45b0f59067a8dda512b740c782cd70");
 //  TestOpenStorage_OpenFile("z:\\47161", "ROOT");
 //  TestOpenStorage_EnumFiles("2016 - WoW/23420", NULL);
-    TestOpenStorage_ExtractFiles("2018 - New CASC/00002", "82b381a8d79907c9fd4b19e36d69078c", szListFile);
+    TestOpenStorage_ExtractFiles("2017 - Starcraft1/4261", NULL, szListFile);
 /*
     //
     // Tests for OpenStorage + ExtractFile
