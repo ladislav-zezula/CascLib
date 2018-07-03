@@ -207,6 +207,7 @@ static int ExtractFile(
     DWORD dwFileSize;
     bool bWeHaveContentKey;
     bool bHashFileContent = true;
+    bool bIsWatchedFile = false;
     int nError = ERROR_SUCCESS;
 
     // Show the file name to the user
@@ -217,6 +218,8 @@ static int ExtractFile(
     {
         LogHelper.PrintProgress("Extracting (%u of %u) %s ...", LogHelper.FileCount, LogHelper.TotalFiles, szShortName);
     }
+
+//  bIsWatchedFile = (_stricmp(szFileName, "fd45b0f59067a8dda512b740c782cd70") == 0);
 
     // Open the CASC file
     dwOpenFlags |= CASC_STRICT_DATA_CHECK;
@@ -241,7 +244,13 @@ static int ExtractFile(
         // Load the entire file, piece-by-piece, and calculate MD5
         while(dwBytesRead != 0)
         {
-            // Load the chunk of memory
+            // Show some extra info for watched file(s)
+            if (bIsWatchedFile)
+            {
+                LogHelper.PrintMessage("Extracting \"%s\" (%08X extracted)", szFileName, dwTotalRead);
+            }
+
+            // Load the chunk of file
             if(!CascReadFile(hFile, Buffer, sizeof(Buffer), &dwBytesRead))
             {
                 // Do not report some errors; for example, when the file is encrypted,
@@ -254,7 +263,7 @@ static int ExtractFile(
                         break;
 
                     default:
-                        LogHelper.PrintMessage("Warning: %s: Read error", szShortName);
+                        LogHelper.PrintMessage("Warning: %s: Read error (offset %08X)", szShortName, dwTotalRead);
                         break;
                 }
                 break;
@@ -487,7 +496,7 @@ static int TestOpenStorage_ExtractFiles(const char * szStorage, const char * szE
 
         // Show the summary
         LogHelper.PrintMessage("Extracted: %u of %u files (%llu bytes total)", LogHelper.FileCount, LogHelper.TotalFiles, LogHelper.TotalBytes);
-        LogHelper.PrintMessage("Data Hash: %s", szFinalHash, GetHashResult(szExpectedHash, szFinalHash));
+        LogHelper.PrintMessage("Data Hash: %s%s", szFinalHash, GetHashResult(szExpectedHash, szFinalHash));
         LogHelper.PrintMessage("TotalTime: %u second(s)", Duration);
         LogHelper.PrintMessage("Work complete.");
     }
@@ -535,7 +544,6 @@ static int TestOpenStorage_GetFileDataId(const TCHAR * szStorage, const char * s
 
 static STORAGE_INFO StorageInfo[] = 
 {
-
     {"2014 - Heroes of the Storm/29049", "460a28996bba557b05ecb3f8780dd4f8", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_autoai1.dds"},
     {"2014 - Heroes of the Storm/30027", "b9cf425da4d836b0b1fabb6702c24111", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_claim1.dds"},
     {"2014 - Heroes of the Storm\\30414\\HeroesData\\config\\09\\32", "c07afadc372bffccf70b93533b4f1845", "mods\\heromods\\murky.stormmod\\base.stormdata\\gamedata\\buttondata.xml"},
@@ -597,7 +605,7 @@ int main(int argc, char * argv[])
 //  TestOpenStorage_OpenFile("2014 - Heroes of the Storm/29049", "fd45b0f59067a8dda512b740c782cd70");
 //  TestOpenStorage_OpenFile("z:\\47161", "ROOT");
 //  TestOpenStorage_EnumFiles("2016 - WoW/23420", NULL);
-    TestOpenStorage_ExtractFiles("2015 - Diablo III/50649", "d12b77b585ce708f1af3b1b7776a1fb0", szListFile);
+    TestOpenStorage_ExtractFiles("2018 - New CASC/00002", "82b381a8d79907c9fd4b19e36d69078c", szListFile);
 /*
     //
     // Tests for OpenStorage + ExtractFile

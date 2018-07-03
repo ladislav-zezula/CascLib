@@ -70,17 +70,6 @@ typedef struct _FILE_LOCALE_BLOCK
 
 } FILE_LOCALE_BLOCK, *PFILE_LOCALE_BLOCK;
 
-// Root file entry for CASC storages (World of Warcraft 6.0+)
-// Does not match to the in-file structure of the root entry
-typedef struct _WOW_FILE_ENTRY
-{
-    CONTENT_KEY CKey;                           // File content key (MD5)
-    ULONGLONG FileNameHash;                     // Jenkins hash of the file name
-    DWORD FileDataId;                           // File Data ID
-    DWORD Locales;                              // Locale flags of the file
-
-} WOW_FILE_ENTRY, *PWOW_FILE_ENTRY;
-
 //-----------------------------------------------------------------------------
 // TRootHandler_WoW6 interface / implementation
 
@@ -297,68 +286,3 @@ int RootHandler_CreateWoW6(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFil
     hs->pRootHandler = pRootHandler;
     return nError;
 }
-
-/*
-static void WowHandler_Dump(
-    TCascStorage * hs,
-    TDumpContext * dc,                                      // Pointer to an opened file
-    LPBYTE pbRootFile,
-    DWORD cbRootFile,
-    const TCHAR * szListFile,
-    int nDumpLevel)
-{
-    PCASC_CKEY_ENTRY pCKeyEntry;
-    FILE_LOCALE_BLOCK BlockInfo;
-    PLISTFILE_MAP pListMap;
-    QUERY_KEY CKey;
-    LPBYTE pbRootEnd = pbRootFile + cbRootFile;
-    LPBYTE pbFilePointer;
-    char szOneLine[0x100];
-    DWORD i;
-
-    // Create the listfile map
-    pListMap = ListMap_Create(szListFile);
-
-    // Dump the root entries
-    for(pbFilePointer = pbRootFile; pbFilePointer <= pbRootEnd; )
-    {
-        // Validate the root block
-        pbFilePointer = CaptureLocaleBlock(&BlockInfo, pbFilePointer, pbRootEnd);
-        if(pbFilePointer == NULL)
-            break;
-
-        // Dump the locale block
-        dump_print(dc, "Flags: %08X  Locales: %08X  NumberOfFiles: %u\n"
-                       "=========================================================\n",
-                       BlockInfo.Header.Flags,
-                       BlockInfo.Header.Locales,
-                       BlockInfo.Header.NumberOfFiles);
-
-        // Dump the hashes and CKeys
-        for(i = 0; i < BlockInfo.Header.NumberOfFiles; i++)
-        {
-            // Dump the entry
-            dump_print(dc, "%08X %08X-%08X %s %s\n",
-                           (DWORD)(BlockInfo.FileDataIds[i]),
-                           (DWORD)(BlockInfo.pFileEntries[i].FileNameHash >> 0x20),
-                           (DWORD)(BlockInfo.pFileEntries[i].FileNameHash),
-                           StringFromMD5(BlockInfo.pFileEntries[i].CKey.Value, szOneLine),
-                           ListMap_FindName(pListMap, BlockInfo.pFileEntries[i].FileNameHash));
-
-            // Find the encoding entry in the encoding table
-            if(nDumpLevel >= DUMP_LEVEL_ENCODING_FILE)
-            {
-                CKey.pbData = BlockInfo.pFileEntries[i].CKey.Value;
-                CKey.cbData = MD5_HASH_SIZE;
-                pCKeyEntry = FindCKeyEntry(hs, &CKey, NULL);
-//              CascDumpCKeyEntry(hs, dc, pCKeyEntry, nDumpLevel);
-            }
-        }
-
-        // Put extra newline
-        dump_print(dc, "\n");
-    }
-
-    ListMap_Free(pListMap);
-}
-*/

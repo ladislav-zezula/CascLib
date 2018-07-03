@@ -126,7 +126,8 @@ size_t ListFile_GetNextLine(void * pvListFile, const char ** pszLineBegin, const
     while(pCache->pPos < pCache->pEnd)
     {
         // If we have found a newline, stop loading
-        if(pCache->pPos[0] == 0x0D || pCache->pPos[0] == 0x0A)
+        // Note: the 0x85 char came from Overwatch build 24919
+        if(pCache->pPos[0] == 0x0A || pCache->pPos[0] == 0x0D || pCache->pPos[0] == 0x85)
             break;
 
         // Blizzard listfiles can also contain information about patch:

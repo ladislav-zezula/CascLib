@@ -144,6 +144,14 @@ class TLogHelper
                     continue;
                 }
 
+                // 32-bit integer argument
+                if (IsFormatSpecifier(szFormat, "%08X"))
+                {
+                    szBufferPtr += sprintf(szBufferPtr, "%08X", va_arg(argList, DWORD));
+                    szFormat += 4;
+                    continue;
+                }
+
                 // Unknown format specifier
                 assert(false);
             }

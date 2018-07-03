@@ -29,7 +29,7 @@
 #include "common/FileStream.h"
 #include "common/Directory.h"
 #include "common/ListFile.h"
-#include "common/DumpContext.h"
+#include "common/Csv.h"
 #include "common/RootHandler.h"
 
 // Headers from LibTomCrypt
@@ -149,7 +149,7 @@ typedef struct _TCascStorage
     TCHAR * szDataPath;                             // This is the directory where data files are
     TCHAR * szBuildFile;                            // Build file name (.build.info or .build.db)
     TCHAR * szIndexPath;                            // This is the directory where index files are
-    TCHAR * szUrlPath;                              // URL to the Blizzard servers
+    TCHAR * szCdnList;                              // Multi-SZ list of CDN servers, including subfolders
     DWORD dwRefCount;                               // Number of references
     DWORD dwGameInfo;                               // Game type
     DWORD dwBuildNumber;                            // Game build number
@@ -165,7 +165,7 @@ typedef struct _TCascStorage
     QUERY_KEY ArchivesKey;                          // Key array of the "archives"
     QUERY_KEY PatchArchivesKey;                     // Key array of the "patch-archives"
     QUERY_KEY PatchArchivesGroup;                   // Key array of the "patch-archive-group"
-    QUERY_KEY BuildFiles;                           // List of supported build files.
+    QUERY_KEY BuildFiles;                           // List of supported build files
 
     CASC_CKEY_ENTRY EncodingFile;                   // Information about ENCODING file
     CASC_CKEY_ENTRY RootFile;                       // Information about ROOT file
@@ -243,19 +243,9 @@ typedef struct _TCascSearch
 //  - Memory freeing function doesn't have to test the pointer to NULL
 //
 
-#if defined(_MSC_VER) && defined(_DEBUG)
-
-#define CASC_REALLOC(type, ptr, count) (type *)HeapReAlloc(GetProcessHeap(), 0, ptr, ((count) * sizeof(type)))
-#define CASC_ALLOC(type, count)        (type *)HeapAlloc(GetProcessHeap(), 0, ((count) * sizeof(type)))
-#define CASC_FREE(ptr)                 HeapFree(GetProcessHeap(), 0, ptr)
-
-#else
-
 #define CASC_REALLOC(type, ptr, count) (type *)realloc(ptr, (count) * sizeof(type))
 #define CASC_ALLOC(type, count)        (type *)malloc((count) * sizeof(type))
 #define CASC_FREE(ptr)                 free(ptr)
-
-#endif
 
 //-----------------------------------------------------------------------------
 // Text file parsing (CascFiles.cpp)
@@ -265,10 +255,11 @@ void FreeCascBlob(PQUERY_KEY pQueryKey);
 
 int LoadBuildInfo(TCascStorage * hs);
 int CheckGameDirectory(TCascStorage * hs, TCHAR * szDirectory);
-
+/*
+int CSV_LineToElements(const char * szLinePtr, const char * szLineEnd, PCSV_ELEMENT pElements, size_t nMaxElements);
 int CSV_GetHeaderIndex(const char * szLinePtr, const char * szLineEnd, const char * szVariableName, int * PtrIndex);
 int CSV_GetNameAndCKey(const char * szLinePtr, const char * szLineEnd, int nFileNameIndex, int nCKeyIndex, char * szFileName, size_t nMaxChars, PCONTENT_KEY pCKey);
-
+*/
 //-----------------------------------------------------------------------------
 // Internal file functions
 

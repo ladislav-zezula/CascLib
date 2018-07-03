@@ -136,23 +136,3 @@ DWORD TFileTreeRoot::GetFileId(const char * szFileName)
         FileTree.GetExtras(pFileNode, &FileId, NULL, NULL);
     return FileId;
 }
-
-/*
-void RootHandler_Dump(TCascStorage * hs, LPBYTE pbRootHandler, DWORD cbRootHandler, const TCHAR * szNameFormat, const TCHAR * szListFile, int nDumpLevel)
-{
-    TDumpContext * dc;
-
-    // Only if the ROOT provider suports the dump option
-    if(hs->pRootHandler != NULL && hs->pRootHandler->Dump != NULL)
-    {
-        // Create the dump file
-        dc = CreateDumpContext(hs, szNameFormat);
-        if(dc != NULL)
-        {
-            // Dump the content and close the file
-            hs->pRootHandler->Dump(hs, dc, pbRootHandler, cbRootHandler, szListFile, nDumpLevel);
-            dump_close(dc);
-        }
-    }
-}
-*/

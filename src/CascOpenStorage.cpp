@@ -1000,8 +1000,8 @@ static TCascStorage * FreeCascStorage(TCascStorage * hs)
             CASC_FREE(hs->szBuildFile);
         if(hs->szIndexPath != NULL)
             CASC_FREE(hs->szIndexPath);
-        if(hs->szUrlPath != NULL)
-            CASC_FREE(hs->szUrlPath);
+        if(hs->szCdnList != NULL)
+            CASC_FREE(hs->szCdnList);
 
         // Free the blobs
         FreeCascBlob(&hs->CdnConfigKey);

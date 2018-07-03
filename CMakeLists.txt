@@ -5,8 +5,9 @@ set(HEADER_FILES
     src/CascCommon.h
     src/CascLib.h
     src/CascPort.h
-    src/common/Common.h
     src/common/Array.h
+    src/common/Common.h
+    src/common/Csv.h
     src/common/FileStream.h
     src/common/FileTree.h
     src/common/ListFile.h
@@ -18,7 +19,7 @@ set(SRC_FILES
     src/common/Common.cpp
     src/common/Array.cpp
     src/common/Directory.cpp
-    src/common/DumpContext.cpp
+    src/common/Csv.cpp
     src/common/FileStream.cpp
     src/common/FileTree.cpp
     src/common/ListFile.cpp

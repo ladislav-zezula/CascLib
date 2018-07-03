@@ -197,7 +197,7 @@
     <ClCompile Include="src\CascRootFile_WoW6.cpp" />
     <ClCompile Include="src\common\Common.cpp" />
     <ClCompile Include="src\common\Directory.cpp" />
-    <ClCompile Include="src\common\DumpContext.cpp" />
+    <ClCompile Include="src\common\Csv.cpp" />
     <ClCompile Include="src\common\Array.cpp" />
     <ClCompile Include="src\common\FileStream.cpp" />
     <ClCompile Include="src\common\FileTree.cpp" />
@@ -225,7 +225,7 @@
     <ClInclude Include="src\CascPort.h" />
     <ClInclude Include="src\common\Common.h" />
     <ClInclude Include="src\common\Directory.h" />
-    <ClInclude Include="src\common\DumpContext.h" />
+    <ClInclude Include="src\common\Csv.h" />
     <ClInclude Include="src\common\Array.h" />
     <ClInclude Include="src\common\FileStream.h" />
     <ClInclude Include="src\common\FileTree.h" />

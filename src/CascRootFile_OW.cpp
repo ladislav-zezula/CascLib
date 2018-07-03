@@ -15,6 +15,8 @@
 //-----------------------------------------------------------------------------
 // Structure definitions for CMF files
 
+#define MAX_LINE_ELEMENTS   8
+
 typedef struct _CMF_HEADER_V3
 {
     DWORD BuildVersion;
@@ -487,21 +489,20 @@ struct TRootHandler_OW : public TFileTreeRoot
         return nError;
     }
 */
-    int Load(TCascStorage * hs, void * pTextFile, int nFileNameIndex, int nCKeyIndex)
+    int Load(TCascStorage * hs, CASC_CSV & Csv, void * pvTextFile, size_t nFileNameIndex, size_t nCKeyIndex)
     {
         CONTENT_KEY CKey;
-        const char * szLineBegin;
-        const char * szLineEnd;
         char szFileName[MAX_PATH+1];
 //      size_t ApmFiles[0x80];
 //      size_t nApmFiles = 0;
 
         CASCLIB_UNUSED(hs);
 
-        while(ListFile_GetNextLine(pTextFile, &szLineBegin, &szLineEnd) != 0)
+        // Keep loading every line until there is something
+        while(Csv.LoadNextLine(pvTextFile) != 0)
         {
             // Retrieve the file name and the content key
-            if(CSV_GetNameAndCKey(szLineBegin, szLineEnd, nFileNameIndex, nCKeyIndex, szFileName, MAX_PATH, &CKey) == ERROR_SUCCESS)
+            if(Csv.GetString(szFileName, MAX_PATH, nFileNameIndex) == ERROR_SUCCESS && Csv.GetBinary(CKey.Value, MD5_HASH_SIZE, nCKeyIndex) == ERROR_SUCCESS)
             {
                 // Insert the file name and the CKey into the tree
                 FileTree.Insert(&CKey, szFileName);
@@ -556,38 +557,39 @@ struct TRootHandler_OW : public TFileTreeRoot
 int RootHandler_CreateOverwatch(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile)
 {
     TRootHandler_OW * pRootHandler = NULL;
+    CASC_CSV Csv;
     const char * szLineBegin;
     const char * szLineEnd;
-    void * pTextFile;
-    size_t nLength;
-    int nFileNameIndex = 0;
-    int nCKeyIndex = 0;
+    void * pvTextFile;
+    size_t Indices[2];
     int nError = ERROR_BAD_FORMAT;
 
-    // Verify whether the ROOT file seems line overwarch root file
-    pTextFile = ListFile_FromBuffer(pbRootFile, cbRootFile);
-    if(pTextFile != NULL)
+    pvTextFile = ListFile_FromBuffer(pbRootFile, cbRootFile);
+    if(pvTextFile != NULL)
     {
         // Get the initial line, containing variable names
-        nLength = ListFile_GetNextLine(pTextFile, &szLineBegin, &szLineEnd);
-        if(nLength != 0)
-        {        
-            // Determine the index of the "FILENAME" variable
-            nError = CSV_GetHeaderIndex(szLineBegin, szLineEnd, "FILENAME", &nFileNameIndex);
-            if(nError == ERROR_SUCCESS)
+        ListFile_GetNextLine(pvTextFile, &szLineBegin, &szLineEnd);
+        if (szLineEnd > szLineBegin)
+        {
+            // Verify whether the first line begins with a hash tag
+            if (szLineBegin < szLineEnd && szLineBegin[0] == '#')
             {
-                nError = CSV_GetHeaderIndex(szLineBegin, szLineEnd, "MD5", &nCKeyIndex);
-                if(nError == ERROR_SUCCESS)
+                // Convert to CSV header
+                if(Csv.LoadHeader(szLineBegin + 1, szLineEnd) >= 4)
                 {
-                    pRootHandler = new TRootHandler_OW();
-                    if(pRootHandler != NULL)
+                    // Retrieve the CSV indices for file name and MD5
+                    if(Csv.GetColumnIndices(Indices, "FILENAME", "MD5", NULL))
                     {
-                        // Load the root directory. If load failed, we free the object
-                        nError = pRootHandler->Load(hs, pTextFile, nFileNameIndex, nCKeyIndex);
-                        if(nError != ERROR_SUCCESS)
+                        pRootHandler = new TRootHandler_OW();
+                        if (pRootHandler != NULL)
                         {
-                            delete pRootHandler;
-                            pRootHandler = NULL;
+                            // Load the root directory. If load failed, we free the object
+                            nError = pRootHandler->Load(hs, Csv, pvTextFile, Indices[0], Indices[1]);
+                            if (nError != ERROR_SUCCESS)
+                            {
+                                delete pRootHandler;
+                                pRootHandler = NULL;
+                            }
                         }
                     }
                 }
@@ -595,7 +597,7 @@ int RootHandler_CreateOverwatch(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRo
         }
 
         // Free the listfile object
-        ListFile_Free(pTextFile);
+        ListFile_Free(pvTextFile);
     }
 
     // Assign the root directory (or NULL) and return error

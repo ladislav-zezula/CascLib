@@ -64,7 +64,9 @@ DWORD ConvertBytesToInteger_4(LPBYTE ValueAsBytes);
 DWORD ConvertBytesToInteger_X(LPBYTE ValueAsBytes, DWORD dwByteSize);
 DWORD ConvertBytesToInteger_4_LE(LPBYTE ValueAsBytes);
 ULONGLONG ConvertBytesToInteger_5(LPBYTE ValueAsBytes);
+
 void ConvertIntegerToBytes_4(DWORD Value, LPBYTE ValueAsBytes);
+void ConvertIntegerToBytes_4_LE(DWORD Value, LPBYTE ValueAsBytes);
 
 //-----------------------------------------------------------------------------
 // Linear data stream manipulation
@@ -87,10 +89,9 @@ void CopyString(char * szTarget, const wchar_t * szSource, size_t cchLength);
 char * CascNewStr(const char * szString, size_t nCharsToReserve);
 wchar_t * CascNewStr(const wchar_t * szString, size_t nCharsToReserve);
 
-TCHAR * CascNewStrFromAnsi(const char * szBegin, const char * szEnd);
-
 TCHAR * CombinePath(const TCHAR * szPath, const TCHAR * szSubDir);
 TCHAR * CombinePathAndString(const TCHAR * szPath, const char * szString, size_t nLength);
+size_t CombineUrlPath(TCHAR * szBuffer, size_t nMaxChars, const char * szHost, const char * szPath);
 
 size_t NormalizeFileName_UpperBkSlash(char * szNormName, const char * szFileName, size_t cchMaxChars);
 size_t NormalizeFileName_LowerSlash(char * szNormName, const char * szFileName, size_t cchMaxChars);

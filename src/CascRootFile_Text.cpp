@@ -22,21 +22,20 @@ struct TRootHandler_SC1 : public TFileTreeRoot
     TRootHandler_SC1() : TFileTreeRoot(0)
     {}
 
-    static bool IsRootFile(void * pTextFile)
+    static bool IsRootFile(void * pvTextFile)
     {
-        const char * szLineBegin;
-        const char * szLineEnd;
-        char szFileName[MAX_PATH];
         CONTENT_KEY CKey;
+        CASC_CSV Csv;
+        char szFileName[MAX_PATH];
         bool bResult = false;
 
         // Get the first line from the listfile
-        if(ListFile_GetNextLine(pTextFile, &szLineBegin, &szLineEnd))
+        if(Csv.LoadNextLine(pvTextFile))
         {
-            // We check the line length; if the line is too long, we ignore it
-            if((szLineEnd - szLineBegin) < (MAX_PATH + MD5_STRING_SIZE + 1))
+            // There must be 2 elements
+            if (Csv.GetColumnCount() == 2)
             {
-                if(CSV_GetNameAndCKey(szLineBegin, szLineEnd, 0, 1, szFileName, MAX_PATH, &CKey) == ERROR_SUCCESS)
+                if (Csv.GetString(szFileName, MAX_PATH, 0) == ERROR_SUCCESS && Csv.GetBinary(CKey.Value, MD5_HASH_SIZE, 1) == ERROR_SUCCESS)
                 {
                     bResult = true;
                 }
@@ -44,22 +43,21 @@ struct TRootHandler_SC1 : public TFileTreeRoot
         }
 
         // We need to reset the listfile to the begin position
-        ListFile_Reset(pTextFile);
+        ListFile_Reset(pvTextFile);
         return bResult;
     }
 
-    int Load(void * pTextFile)
+    int Load(void * pvTextFile)
     {
         CONTENT_KEY CKey;
-        const char * szLineBegin;
-        const char * szLineEnd;
+        CASC_CSV Csv;
         char szFileName[MAX_PATH];
 
         // Parse all lines
-        while(ListFile_GetNextLine(pTextFile, &szLineBegin, &szLineEnd) != 0)
+        while(Csv.LoadNextLine(pvTextFile) != 0)
         {
             // Retrieve the file name and the content key
-            if(CSV_GetNameAndCKey(szLineBegin, szLineEnd, 0, 1, szFileName, MAX_PATH, &CKey) == ERROR_SUCCESS)
+            if(Csv.GetString(szFileName, MAX_PATH, 0) == ERROR_SUCCESS && Csv.GetBinary(CKey.Value, MD5_HASH_SIZE, 1) == ERROR_SUCCESS)
             {
                 // Insert the FileName+CKey to the file tree
 //              void * pItem1 = FileTree_Insert(&pRootHandler->FileTree, &CKey, szFileName);
@@ -88,22 +86,22 @@ struct TRootHandler_SC1 : public TFileTreeRoot
 int RootHandler_CreateStarcraft1(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile)
 {
     TRootHandler_SC1 * pRootHandler = NULL;
-    void * pTextFile;
+    void * pvTextFile;
     int nError = ERROR_BAD_FORMAT;
 
     // Parse the ROOT file first in order to see whether we have the correct format
-    pTextFile = ListFile_FromBuffer(pbRootFile, cbRootFile);
-    if(pTextFile != NULL)
+    pvTextFile = ListFile_FromBuffer(pbRootFile, cbRootFile);
+    if(pvTextFile != NULL)
     {
         // Verify whether this looks like a Starcraft I root file
-        if(TRootHandler_SC1::IsRootFile(pTextFile))
+        if(TRootHandler_SC1::IsRootFile(pvTextFile))
         {
             // Allocate the root handler object
             pRootHandler = new TRootHandler_SC1();
             if(pRootHandler != NULL)
             {
                 // Load the root directory. If load failed, we free the object
-                nError = pRootHandler->Load(pTextFile);
+                nError = pRootHandler->Load(pvTextFile);
                 if(nError != ERROR_SUCCESS)
                 {
                     delete pRootHandler;
@@ -113,7 +111,7 @@ int RootHandler_CreateStarcraft1(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbR
         }
 
         // Free the listfile object
-        ListFile_Free(pTextFile);
+        ListFile_Free(pvTextFile);
     }
 
     // Assign the root directory (or NULL) and return error

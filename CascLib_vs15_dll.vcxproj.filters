@@ -75,7 +75,7 @@
     <ClCompile Include="src\common\Directory.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>
-    <ClCompile Include="src\common\DumpContext.cpp">
+    <ClCompile Include="src\common\Csv.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>
     <ClCompile Include="src\common\Array.cpp">
@@ -152,7 +152,7 @@
     <ClInclude Include="src\common\Directory.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
-    <ClInclude Include="src\common\DumpContext.h">
+    <ClInclude Include="src\common\Csv.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
     <ClInclude Include="src\common\Array.h">

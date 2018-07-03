@@ -221,57 +221,6 @@ static DWORD GetLocaleMask(const char * szTag)
     return 0;
 }
 
-static bool IsInfoVariable(const char * szLineBegin, const char * szLineEnd, const char * szVarName, const char * szVarType)
-{
-    size_t nLength;
-
-    // Check the variable name
-    nLength = strlen(szVarName);
-    if((size_t)(szLineEnd - szLineBegin) > nLength)
-    {
-        // Check the variable name
-        if(!_strnicmp(szLineBegin, szVarName, nLength))
-        {
-            // Skip variable name and the exclamation mark
-            szLineBegin += nLength;
-            if(szLineBegin < szLineEnd && szLineBegin[0] == '!')
-            {
-                // Skip the exclamation mark
-                szLineBegin++;
-
-                // Check the variable type
-                nLength = strlen(szVarType);
-                if((size_t)(szLineEnd - szLineBegin) > nLength)
-                {
-                    // Check the variable name
-                    if(!_strnicmp(szLineBegin, szVarType, nLength))
-                    {
-                        // Skip variable type and the doublecolon
-                        szLineBegin += nLength;
-                        return (szLineBegin < szLineEnd && szLineBegin[0] == ':');
-                    }
-                }
-            }
-        }
-    }
-
-    return false;
-}
-
-// Note that this must support empty variables ("||")
-static const char * SkipInfoVariable(const char * szLinePtr, const char * szLineEnd)
-{
-    // Go until we find separator
-    while(szLinePtr < szLineEnd && szLinePtr[0] != '|')
-        szLinePtr++;
-
-    // Did we find a separator?
-    if(szLinePtr < szLineEnd && szLinePtr[0] == '|')
-        szLinePtr++;
-
-    return (szLinePtr < szLineEnd) ? szLinePtr : NULL;
-}
-
 static TCHAR * CheckForIndexDirectory(TCascStorage * hs, const TCHAR * szSubDir)
 {
     TCHAR * szIndexPath;
@@ -337,41 +286,6 @@ static bool CheckConfigFileVariable(
         return false;
 
     return (PfnParseProc(hs, szVariableName, szLinePtr, szLineEnd, pvParseParam) == ERROR_SUCCESS);
-}
-
-static int LoadInfoVariable(PQUERY_KEY pVarBlob, const char * szLineBegin, const char * szLineEnd, bool bHexaValue)
-{
-    const char * szLinePtr = szLineBegin;
-
-    // Sanity checks
-    assert(pVarBlob->pbData == NULL);
-    assert(pVarBlob->cbData == 0);
-
-    // Check length of the variable
-    while(szLinePtr < szLineEnd && szLinePtr[0] != '|')
-        szLinePtr++;
-
-    // Allocate space for the blob
-    if(bHexaValue)
-    {
-        // Initialize the blob
-        pVarBlob->pbData = CASC_ALLOC(BYTE, (szLinePtr - szLineBegin) / 2);
-        pVarBlob->cbData = (DWORD)((szLinePtr - szLineBegin) / 2);
-        return ConvertStringToBinary(szLineBegin, (size_t)(szLinePtr - szLineBegin), pVarBlob->pbData);
-    }
-
-    // Initialize the blob
-    pVarBlob->pbData = CASC_ALLOC(BYTE, (szLinePtr - szLineBegin) + 1);
-    pVarBlob->cbData = (DWORD)(szLinePtr - szLineBegin);
-
-    // Check for success
-    if(pVarBlob->pbData == NULL)
-        return ERROR_NOT_ENOUGH_MEMORY;
-
-    // Copy the string
-    memcpy(pVarBlob->pbData, szLineBegin, pVarBlob->cbData);
-    pVarBlob->pbData[pVarBlob->cbData] = 0;
-    return ERROR_SUCCESS;
 }
 
 static void AppendConfigFilePath(TCHAR * szFileName, PQUERY_KEY pFileKey)
@@ -641,155 +555,163 @@ static void * FetchAndVerifyConfigFile(TCascStorage * hs, PQUERY_KEY pFileKey)
     return pvListFile;
 }
 
+static TCHAR * MakeCdnList(CASC_CSV & Csv, size_t * Indices)
+{
+    TCHAR * szCdnList = NULL;
+    TCHAR * szCdnPtr;
+    TCHAR * szCdnEnd;
+    const char * szHostPtr;
+    char szHostsList[0x100] = { 0 };
+    char szHostPath[0x80] = { 0 };
+
+    // Retrieve both strings
+    if (Csv.GetString(szHostsList, sizeof(szHostsList) - 1, Indices[0]) != ERROR_SUCCESS)
+        return NULL;
+    if (Csv.GetString(szHostPath, sizeof(szHostPath), Indices[1]) != ERROR_SUCCESS)
+        return NULL;
+    
+    // Did we retrieve something?
+    if (szHostsList[0] != 0)
+    {
+        size_t nCombinedLength;
+        size_t nHostsLength = strlen(szHostsList) + 1;
+        size_t nPathLength = strlen(szHostPath);
+        size_t cbToAllocate;
+        size_t nHostsCount = 1;
+
+        // Cut the hosts list to pieces
+        for (size_t i = 0; i < nHostsLength; i++)
+        {
+            if (szHostsList[i] == ' ')
+            {
+                szHostsList[i] = 0;
+                nHostsCount++;
+            }
+        }
+
+        // Merge the hosts list
+        cbToAllocate = nHostsLength + (nPathLength + 1) * nHostsCount + 1;
+        szCdnList = szCdnPtr = CASC_ALLOC(TCHAR, cbToAllocate);
+        szCdnEnd = szCdnList + cbToAllocate - 1;
+        if (szCdnList != NULL)
+        {
+            for (szHostPtr = szHostsList; szHostPtr[0] != 0; szHostPtr += strlen(szHostPtr) + 1)
+            {
+                nCombinedLength = CombineUrlPath(szCdnPtr, (szCdnEnd - szCdnPtr), szHostPtr, szHostPath);
+                if (nCombinedLength == 0)
+                    break;
+
+                szCdnPtr += nCombinedLength + 1;
+                szCdnPtr[0] = 0;
+            }
+        }
+    }
+
+    return szCdnList;
+}
+
 static int ParseFile_BuildInfo(TCascStorage * hs, void * pvListFile)
 {
-    QUERY_KEY Active = {NULL, 0};
-    QUERY_KEY TagString = {NULL, 0};
-    QUERY_KEY CdnHost = {NULL, 0};
-    QUERY_KEY CdnPath = {NULL, 0};
-    const char * szLineBegin1;
-    const char * szLinePtr1;
-    const char * szLineEnd1;
-    const char * szLinePtr2;
-    const char * szLineEnd2;
-    size_t nLength1;
-    size_t nLength2;
+    CASC_CSV Csv;
+    size_t Indices[4];
+    char szActive[4];
+    int nError;
 
-    // Extract the first line, cotaining the headers
-    nLength1 = ListFile_GetNextLine(pvListFile, &szLineBegin1, &szLineEnd1);
-    if(nLength1 == 0)
+    // Extract the first line, containing the headers
+    if (Csv.LoadHeader(pvListFile) == 0)
         return ERROR_BAD_FORMAT;
 
-    // Now parse the second and the next lines. We are looking for line
-    // with "Active" set to 1
-    for(;;)
+    // Retrieve the column indices
+    if (!Csv.GetColumnIndices(Indices, "Active!DEC:1", "Build Key!HEX:16", "CDN Key!HEX:16", NULL))
+        return ERROR_BAD_FORMAT;
+
+    // Find the active config
+    for (;;)
     {
-        // Read the next line and reset header line
-        nLength2 = ListFile_GetNextLine(pvListFile, &szLinePtr2, &szLineEnd2);
-        if(nLength2 == 0)
-            break;
-        szLinePtr1 = szLineBegin1;
-
-        // Parse all variables
-        while(szLinePtr1 < szLineEnd1)
-        {
-            // Check for variables we need
-            if(IsInfoVariable(szLinePtr1, szLineEnd1, "Active", "DEC"))
-                LoadInfoVariable(&Active, szLinePtr2, szLineEnd2, false);
-            else if(IsInfoVariable(szLinePtr1, szLineEnd1, "Build Key", "HEX"))
-                LoadInfoVariable(&hs->CdnBuildKey, szLinePtr2, szLineEnd2, true);
-            else if(IsInfoVariable(szLinePtr1, szLineEnd1, "CDN Key", "HEX"))
-                LoadInfoVariable(&hs->CdnConfigKey, szLinePtr2, szLineEnd2, true);
-            else if(IsInfoVariable(szLinePtr1, szLineEnd1, "CDN Hosts", "STRING"))
-                LoadInfoVariable(&CdnHost, szLinePtr2, szLineEnd2, false);
-            else if(IsInfoVariable(szLinePtr1, szLineEnd1, "CDN Path", "STRING"))
-                LoadInfoVariable(&CdnPath, szLinePtr2, szLineEnd2, false);
-            else if(IsInfoVariable(szLinePtr1, szLineEnd1, "Tags", "STRING"))
-                LoadInfoVariable(&TagString, szLinePtr2, szLineEnd2, false);
-
-            // Move both line pointers
-            szLinePtr1 = SkipInfoVariable(szLinePtr1, szLineEnd1);
-            if(szLinePtr1 == NULL)
-                break;
-
-            szLinePtr2 = SkipInfoVariable(szLinePtr2, szLineEnd2);
-            if(szLinePtr2 == NULL)
-                break;
-        }
-
-        // Stop parsing if found active config
-        if(Active.pbData != NULL && *Active.pbData == '1')
+        // Load a next line
+        if (Csv.LoadNextLine(pvListFile) == 0)
             break;
 
-        // Free the blobs
-        FreeCascBlob(&Active);
-        FreeCascBlob(&hs->CdnBuildKey);
-        FreeCascBlob(&hs->CdnConfigKey);
-        FreeCascBlob(&CdnHost);
-        FreeCascBlob(&CdnPath);
-        FreeCascBlob(&TagString);
-    }
-
-    // If we have CDN path and CDN host, then we get the URL from it
-    if(CdnHost.pbData && CdnHost.cbData && CdnPath.pbData && CdnPath.cbData)
-    {
-        // Merge the CDN host and CDN path
-        hs->szUrlPath = CASC_ALLOC(TCHAR, CdnHost.cbData + CdnPath.cbData + 1);
-        if(hs->szUrlPath != NULL)
+        // Is that build config active?
+        if (Csv.GetString(szActive, 4, Indices[0]) == ERROR_SUCCESS && !strcmp(szActive, "1"))
         {
-            CopyString(hs->szUrlPath, (char *)CdnHost.pbData, CdnHost.cbData);
-            CopyString(hs->szUrlPath + CdnHost.cbData, (char *)CdnPath.pbData, CdnPath.cbData);
+            // Retrieve the build key
+            nError = Csv.GetData(hs->CdnBuildKey, Indices[1], true);
+            if (nError != ERROR_SUCCESS)
+                return nError;
+
+            // Retrieve the config key
+            nError = Csv.GetData(hs->CdnConfigKey, Indices[2], true);
+            if (nError != ERROR_SUCCESS)
+                return nError;
+
+            // "CDN Servers"?
+            if (Csv.GetColumnIndices(Indices, "CDN Servers!STRING:0", "CDN Path!STRING:0", NULL))
+            {
+                hs->szCdnList = MakeCdnList(Csv, Indices);
+            }
+
+            // "CDN Hosts"?
+            else if (Csv.GetColumnIndices(Indices, "CDN Hosts!STRING:0", "CDN Path!STRING:0", NULL))
+            {
+                hs->szCdnList = MakeCdnList(Csv, Indices);
+            }
+
+            // If we found tags, we can extract language build from it
+            if (Csv.GetColumnIndices(Indices, "Tags!STRING:0", NULL))
+            {
+                QUERY_KEY TagString = { NULL, 0 };
+
+                if (Csv.GetData(TagString, Indices[0], false) == ERROR_SUCCESS && TagString.cbData != 0)
+                {
+                    GetDefaultLocaleMask(hs, &TagString);
+                    FreeCascBlob(&TagString);
+                }
+            }
+
+            // Build and Config keys are the ones we do really need
+            return (hs->CdnConfigKey.cbData == MD5_HASH_SIZE && hs->CdnBuildKey.cbData == MD5_HASH_SIZE) ? ERROR_SUCCESS : ERROR_BAD_FORMAT;
         }
     }
 
-    // If we found tags, we can extract language build from it
-    if(TagString.pbData != NULL)
-    {
-        GetDefaultLocaleMask(hs, &TagString);
-    }
-
-    // Free the blobs that we used
-    FreeCascBlob(&CdnHost);
-    FreeCascBlob(&CdnPath);
-    FreeCascBlob(&TagString);
-    FreeCascBlob(&Active);
-
-    // Build and Config keys are the ones we do really need
-    return (hs->CdnConfigKey.cbData == MD5_HASH_SIZE && hs->CdnBuildKey.cbData == MD5_HASH_SIZE) ? ERROR_SUCCESS : ERROR_BAD_FORMAT;
+    return ERROR_FILE_NOT_FOUND;
 }
 
 static int ParseFile_BuildDb(TCascStorage * hs, void * pvListFile)
 {
     QUERY_KEY TagString = {NULL, 0};
-    const char * szLinePtr;
-    const char * szLineEnd;
-    char szOneLine[0x200];
-    size_t nLength;
+    CASC_CSV Csv;
     int nError;
 
     // Load the single line from the text file
-    nLength = ListFile_GetNextLine(pvListFile, szOneLine, _maxchars(szOneLine));
-    if(nLength == 0)
+    if(Csv.LoadNextLine(pvListFile) == 0)
         return ERROR_BAD_FORMAT;
 
-    // Set the line range
-    szLinePtr = szOneLine;
-    szLineEnd = szOneLine + nLength;
-
     // Extract the CDN build key
-    nError = LoadInfoVariable(&hs->CdnBuildKey, szLinePtr, szLineEnd, true);
-    if(nError == ERROR_SUCCESS)
+    nError = Csv.GetData(hs->CdnBuildKey, 0, true);
+    if (nError != ERROR_SUCCESS)
+        return nError;
+
+    // Load the CDN config key
+    nError = Csv.GetData(hs->CdnConfigKey, 1, true);
+    if (nError != ERROR_SUCCESS)
+        return nError;
+
+    // Load the the tags
+    nError = Csv.GetData(TagString, 2, false);
+    if (nError == ERROR_SUCCESS && TagString.pbData != NULL)
     {
-        // Skip the variable
-        szLinePtr = SkipInfoVariable(szLinePtr, szLineEnd);
-
-        // Load the CDN config hash
-        nError = LoadInfoVariable(&hs->CdnConfigKey, szLinePtr, szLineEnd, true);
-        if(nError == ERROR_SUCCESS)
-        {
-            // Skip the variable
-            szLinePtr = SkipInfoVariable(szLinePtr, szLineEnd);
-
-            // Load the the tags
-            nError = LoadInfoVariable(&TagString, szLinePtr, szLineEnd, false);
-            if(nError == ERROR_SUCCESS && TagString.pbData != NULL)
-            {
-                GetDefaultLocaleMask(hs, &TagString);
-                FreeCascBlob(&TagString);
-            }
-
-            // Skip the Locale/OS/code variable
-            szLinePtr = SkipInfoVariable(szLinePtr, szLineEnd);
-
-            // Load the URL
-            hs->szUrlPath = CascNewStrFromAnsi(szLinePtr, szLineEnd);
-            if(hs->szUrlPath == NULL)
-                nError = ERROR_NOT_ENOUGH_MEMORY;
-        }
+        GetDefaultLocaleMask(hs, &TagString);
+        FreeCascBlob(&TagString);
     }
 
+    // Load the URL
+    hs->szCdnList = Csv.GetString(3);
+    if (hs->szCdnList == NULL)
+        return ERROR_NOT_ENOUGH_MEMORY;
+
     // Verify all variables
-    if(hs->CdnBuildKey.pbData == NULL || hs->CdnConfigKey.pbData == NULL || hs->szUrlPath == NULL)
+    if (hs->CdnBuildKey.pbData == NULL || hs->CdnConfigKey.pbData == NULL)
         nError = ERROR_BAD_FORMAT;
     return nError;
 }
@@ -1044,108 +966,4 @@ int CheckGameDirectory(TCascStorage * hs, TCHAR * szDirectory)
     }
 
     return nError;
-}
-
-//-----------------------------------------------------------------------------
-// Helpers for a CSV files that have multiple variables separated by "|".
-// All preceding whitespaces have been removed
-//
-// Example (Overwatch 24919): "#MD5|CHUNK_ID|FILENAME|INSTALLPATH"
-// Example (Overwatch 27759): "#MD5|CHUNK_ID|PRIORITY|MPRIORITY|FILENAME|INSTALLPATH"
-// Example (Overwatch 47161): "#FILEID|MD5|CHUNK_ID|PRIORITY|MPRIORITY|FILENAME|INSTALLPATH"
-
-// Parses a CSV file header line and retrieves index of a variable
-int CSV_GetHeaderIndex(const char * szLinePtr, const char * szLineEnd, const char * szVariableName, int * PtrIndex)
-{
-    size_t nLength = strlen(szVariableName);
-    int nIndex = 0;
-
-    // Skip the hashtag at the beginning
-    while((szLinePtr < szLineEnd) && (szLinePtr[0] == '#'))
-        szLinePtr++;
-
-    // Parse the line header
-    while(szLinePtr < szLineEnd)
-    {
-        // Check the variable there
-        if(!_strnicmp(szLinePtr, szVariableName, nLength))
-        {
-            // Does the length match?
-            if(szLinePtr[nLength] == '|' || szLinePtr[nLength] == '0')
-            {
-                PtrIndex[0] = nIndex;
-                return ERROR_SUCCESS;
-            }
-        }
-
-        // Get the next variable
-        szLinePtr = SkipInfoVariable(szLinePtr, szLineEnd);
-        if(szLinePtr == NULL)
-            break;
-        nIndex++;
-    }
-
-    return ERROR_BAD_FORMAT;
-}
-
-// Parses CSV line and returns a file name and CKey
-int CSV_GetNameAndCKey(const char * szLinePtr, const char * szLineEnd, int nFileNameIndex, int nCKeyIndex, char * szFileName, size_t nMaxChars, PCONTENT_KEY pCKey)
-{
-    char * szFileNameEnd = szFileName + nMaxChars - 1;
-    int nVarsRetrieved = 0;
-    int nVarIndex = 0;
-
-    // Parse the entire line. Note that the line is not zero-terminated
-    while(szLinePtr < szLineEnd && nVarsRetrieved < 2)
-    {
-        const char * szVarBegin = szLinePtr;
-        const char * szVarEnd;
-
-        // Get the variable span
-        while(szLinePtr < szLineEnd && szLinePtr[0] != '|')
-            szLinePtr++;
-        szVarEnd = szLinePtr;
-
-        // Check the variable indices
-        if(nVarIndex == nFileNameIndex)
-        {
-            // Check the length of the variable
-            if(szVarBegin >= szVarEnd)
-                return ERROR_BAD_FORMAT;
-
-            // Copy the file name
-            while(szVarBegin < szVarEnd && szFileName < szFileNameEnd)
-            {
-                if(szVarBegin[0] == 0)
-                    return ERROR_BAD_FORMAT;
-                *szFileName++ = *szVarBegin++;
-            }
-
-            // Increment the number of variables retrieved
-            szFileName[0] = 0;
-            nVarsRetrieved++;
-        }
-
-        // Check the index of the CKey
-        if(nVarIndex == nCKeyIndex)
-        {
-            // Check the length
-            if((szVarEnd - szVarBegin) != MD5_STRING_SIZE)
-                return ERROR_BAD_FORMAT;
-
-            // Convert the CKey
-            if(ConvertStringToBinary(szVarBegin, MD5_STRING_SIZE, pCKey->Value) != ERROR_SUCCESS)
-                return ERROR_BAD_FORMAT;
-
-            // Increment the number of variables retrieved
-            nVarsRetrieved++;
-        }
-
-        // Skip the separator, if any
-        if(szLinePtr < szLineEnd && szLinePtr[0] == '|')
-            szLinePtr++;
-        nVarIndex++;
-    }
-
-    return (nVarsRetrieved == 2) ? ERROR_SUCCESS : ERROR_BAD_FORMAT;
 }

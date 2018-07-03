@@ -168,6 +168,14 @@ void ConvertIntegerToBytes_4(DWORD Value, LPBYTE ValueAsBytes)
     ValueAsBytes[3] = (Value >> 0x00) & 0xFF;
 }
 
+void ConvertIntegerToBytes_4_LE(DWORD Value, LPBYTE ValueAsBytes)
+{
+    ValueAsBytes[0] = (Value >> 0x00) & 0xFF;
+    ValueAsBytes[1] = (Value >> 0x08) & 0xFF;
+    ValueAsBytes[2] = (Value >> 0x10) & 0xFF;
+    ValueAsBytes[3] = (Value >> 0x18) & 0xFF;
+}
+
 //-----------------------------------------------------------------------------
 // Linear data stream manipulation
 
@@ -297,23 +305,6 @@ wchar_t * CascNewStr(const wchar_t * szString, size_t nCharsToReserve)
     return szNewString;
 }
 
-TCHAR * CascNewStrFromAnsi(const char * szBegin, const char * szEnd)
-{
-    TCHAR * szNewString = NULL;
-
-    // Only if the entry is valid
-    if(szBegin != NULL && szEnd > szBegin)
-    {
-        // Allocate and copy the string
-        szNewString = CASC_ALLOC(TCHAR, (szEnd - szBegin + 1));
-        if(szNewString != NULL)
-            CopyString(szNewString, szBegin, (szEnd - szBegin));
-    }
-
-    // Return the string
-    return szNewString;
-}
-
 TCHAR * CombinePath(const TCHAR * szDirectory, const TCHAR * szSubDir)
 {
     TCHAR * szFullPath = NULL;
@@ -391,6 +382,37 @@ TCHAR * CombinePathAndString(const TCHAR * szPath, const char * szString, size_t
     }
 
     return szFullPath;
+}
+
+size_t CombineUrlPath(TCHAR * szBuffer, size_t nMaxChars, const char * szHost, const char * szPath)
+{
+    TCHAR * szBufferEnd = szBuffer + nMaxChars - 1;
+    TCHAR * szBufferPtr = szBuffer;
+    char chLastChar = 0;
+
+    // Copy the host, up to '?'
+    while (szBufferPtr < szBufferEnd && szHost[0] != 0 && szHost[0] != '?')
+        *szBufferPtr++ = chLastChar = *szHost++;
+
+    // Append the slash, if needed
+    if (szBufferPtr < szBufferEnd && chLastChar != '/' && szPath[0] != '/')
+        *szBufferPtr++ = '/';
+
+    // Skip the slashes
+    while (szPath[0] == '/')
+        szPath++;
+
+    // Append the subdirectory
+    while (szBufferPtr < szBufferEnd && szPath[0] != 0)
+        *szBufferPtr++ = *szPath++;
+
+    // Copy the rest of the host (the parameters beginning with '?')
+    while (szBufferPtr < szBufferEnd && szHost[0] != 0)
+        *szBufferPtr++ = *szHost++;
+
+    if (szBufferPtr < szBufferEnd)
+        szBufferPtr[0] = 0;
+    return (szBufferPtr < szBufferEnd) ? (szBufferPtr - szBuffer) : 0;
 }
 
 size_t NormalizeFileName(const unsigned char * NormTable, char * szNormName, const char * szFileName, size_t cchMaxChars)

@@ -47,7 +47,7 @@
     <ClInclude Include="src\common\Common.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
-    <ClInclude Include="src\common\DumpContext.h">
+    <ClInclude Include="src\common\Csv.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
     <ClInclude Include="src\FileStream.h">
@@ -112,7 +112,7 @@
     <ClCompile Include="src\common\Directory.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>
-    <ClCompile Include="src\common\DumpContext.cpp">
+    <ClCompile Include="src\common\Csv.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>
     <ClCompile Include="src\common\FileStream.cpp">
