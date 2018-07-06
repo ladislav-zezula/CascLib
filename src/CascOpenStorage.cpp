@@ -1372,7 +1372,7 @@ void DumpEKeyEntries(TCascStorage * hs, FILE * fp)
         {
 //          fprintf(fp, "--- Index: %03u --------------------------------------------------------------\n", file);
             for(DWORD entry = 0; entry < nEKeyEntries; entry++, pEKeyEntry++)
-                DumpEKeyEntry(fp, pEKeyEntry->EKey, CASC_EKEY_SIZE, pEKeyEntry->ArchiveAndOffset, ConvertBytesToInteger_4_LE(pEKeyEntry->EncodedSize));
+                DumpEKeyEntry(fp, pEKeyEntry->EKey, CASC_EKEY_SIZE, pEKeyEntry->StorageOffset, ConvertBytesToInteger_4_LE(pEKeyEntry->EncodedSize));
         }
     }
 

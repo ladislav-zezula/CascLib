@@ -26,14 +26,16 @@ struct TRootHandler_SC1 : public TFileTreeRoot
     {
         CONTENT_KEY CKey;
         CASC_CSV Csv;
+        size_t nColumns;
         char szFileName[MAX_PATH];
         bool bResult = false;
 
         // Get the first line from the listfile
         if(Csv.LoadNextLine(pvTextFile))
         {
-            // There must be 2 elements
-            if (Csv.GetColumnCount() == 2)
+            // There must be 2 or 3 elements
+            nColumns = Csv.GetColumnCount();
+            if (nColumns == 2 || nColumns == 3)
             {
                 if (Csv.GetString(szFileName, MAX_PATH, 0) == ERROR_SUCCESS && Csv.GetBinary(CKey.Value, MD5_HASH_SIZE, 1) == ERROR_SUCCESS)
                 {

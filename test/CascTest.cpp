@@ -579,6 +579,8 @@ static STORAGE_INFO StorageInfo[] =
     {"2018 - New CASC/00001", "971803daed7ea8685a94d9c22c5cffe6", "ROOT"},
     {"2018 - New CASC/00002", "82b381a8d79907c9fd4b19e36d69078c", "ENCODING"},
 
+    {"2018 - Warcraft III/9655", NULL, "ENCODING" },
+
     {NULL}
 };
 
@@ -606,7 +608,7 @@ int main(int argc, char * argv[])
 //  TestOpenStorage_OpenFile("2014 - Heroes of the Storm/29049", "fd45b0f59067a8dda512b740c782cd70");
 //  TestOpenStorage_OpenFile("z:\\47161", "ROOT");
 //  TestOpenStorage_EnumFiles("2016 - WoW/23420", NULL);
-    TestOpenStorage_ExtractFiles("2017 - Starcraft1/4261", NULL, szListFile);
+    TestOpenStorage_ExtractFiles("2018 - Warcraft III/9655", NULL, szListFile);
 /*
     //
     // Tests for OpenStorage + ExtractFile
@@ -623,7 +625,7 @@ int main(int argc, char * argv[])
     //
     // Tests for OpenStorage + EnumAllFiles + ExtractAllFiles
     //
-/*
+
     for(size_t i = 0; StorageInfo[i].szPath != NULL; i++)
     {
         // Attempt to open the storage and extract single file
@@ -631,7 +633,7 @@ int main(int argc, char * argv[])
         if(nError != ERROR_SUCCESS)
             break;
     }
-*/
+
 #ifdef _MSC_VER                                                          
     _CrtDumpMemoryLeaks();
 #endif  // _MSC_VER

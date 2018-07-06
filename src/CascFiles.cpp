@@ -69,6 +69,7 @@ static const TGameIdString GameIds[] =
     {"Prometheus", 0x0A, CASC_GAME_OVERWATCH},      // Overwatch BETA since build 24919
     {"SC2",        0x03, CASC_GAME_STARCRAFT2},     // Starcraft II - Legacy of the Void
     {"Starcraft1", 0x0A, CASC_GAME_STARCRAFT1},     // Starcraft 1 (remake)
+    {"War3",       0x04, CASC_GAME_WARCRAFT3},      // Warcraft III (since version 1.30, build 9655)
     {NULL, 0, 0},
 };
 

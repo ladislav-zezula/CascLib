@@ -174,7 +174,9 @@ struct TDiabloRoot : public TFileTreeRoot
 
     TDiabloRoot() : TFileTreeRoot(0)
     {
-        memset(RootFolders, 0, sizeof(TDiabloRoot) - FIELD_OFFSET(TDiabloRoot, RootFolders));
+        LPBYTE pbClearArea = (LPBYTE)RootFolders;
+        size_t cbClearArea = FIELD_OFFSET(TDiabloRoot, RootFolders);
+        memset(pbClearArea, 0, cbClearArea);
     }
 
     ~TDiabloRoot()

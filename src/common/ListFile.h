@@ -45,11 +45,4 @@ size_t ListFile_GetNext(void * pvListFile, const char * szMask, char * szBuffer,
 void ListFile_Reset(void * pvListFile);
 void ListFile_Free(void * pvListFile);
 
-//-----------------------------------------------------------------------------
-// Functions for creating a listfile map
-
-PLISTFILE_MAP ListMap_Create(const TCHAR * szListFile);
-const char * ListMap_FindName(PLISTFILE_MAP pListMap, ULONGLONG FileNameHash);
-void ListMap_Free(PLISTFILE_MAP pListMap);
-
 #endif // __LISTFILE_H__

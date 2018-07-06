@@ -182,7 +182,7 @@ size_t CASC_FILE_TREE::MakePath(PCASC_FILE_NODE pFileNode, char * szBuffer, size
             // Append backslash
             if((pFileNode->Flags & CFN_FLAG_FOLDER) && ((szBuffer + 1) < szBufferEnd))
             {
-                szBuffer[pFileNode->NameLength] = '\\';
+                szBuffer[pFileNode->NameLength] = (pFileNode->Flags & CFN_FLAG_MOUNT_POINT) ? ':' : '\\';
                 nLength++;
             }
         }
@@ -348,13 +348,16 @@ PCASC_FILE_NODE CASC_FILE_TREE::Insert(PCONTENT_KEY pCKey, const char * szFullPa
         char chOneChar = szFullPath[i];
 
         // Is there a path separator?
-        if(chOneChar == '\\' || chOneChar == '/')
+        // Note: Warcraft III paths may contain "mount points".
+        // Example: "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j"
+        if(chOneChar == '\\' || chOneChar == '/' || chOneChar == ':')
         {
             pFileNode = GetOrInsert(szNormPath, i, szNodeBegin, szFullPath + i, NULL, Parent, CASC_INVALID_ID);
             if(pFileNode == NULL)
                 return NULL;
 
             // Supply the missing values
+            pFileNode->Flags |= (chOneChar == ':') ? CFN_FLAG_MOUNT_POINT : 0;
             pFileNode->Flags |= CFN_FLAG_FOLDER;
 
             // Get the new parent item

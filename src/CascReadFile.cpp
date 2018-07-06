@@ -24,10 +24,10 @@ typedef struct _BLTE_ENCODED_HEADER
     // Header span. Sometimes, on old storages is not present
     ENCODED_KEY EKey;                           // Encoded key of the data beginning with "BLTE" (byte-reversed)
     DWORD EncodedSize;                          // Encoded size of the data data beginning with "BLTE" (little endian)
-    BYTE  field_14;                             // Seems to be 1 if the header span had no data
+    BYTE  field_14;                             // Seems to be 1 if the header span has no data
     BYTE  field_15;                             // Hardcoded to zero (Agent.exe 2.15.0.6296: 01370000->0148E2AA)
     BYTE  JenkinsHash[4];                       // Jenkins hash (hashlittle2) of the preceding fields (EKey + EncodedSize + field_14 + field_15) (little endian)
-    BYTE  Checksum[4];                          // Checksum of the previous part. See VerifyHeaderSpan for more information.
+    BYTE  Checksum[4];                          // Checksum of the previous part. See "VerifyHeaderSpan()" for more information.
 
     // BLTE header. Always present.
     BYTE  Signature[4];                         // Must be "BLTE"
@@ -105,6 +105,7 @@ static unsigned int table_16C57A8[0x10] =
 // Note the "Checksum" value probably won't match with older game versions.
 static void VerifyHeaderSpan(PBLTE_ENCODED_HEADER pBlteHeader, ULONGLONG HeaderOffset)
 {
+    LPBYTE pbBlteHeader = (LPBYTE)pBlteHeader;
     DWORD dwInt32;
     BYTE EncodedOffset[4] = { 0 };
     BYTE HashedHeader[4] = { 0 };
@@ -116,7 +117,7 @@ static void VerifyHeaderSpan(PBLTE_ENCODED_HEADER pBlteHeader, ULONGLONG HeaderO
     assert(pBlteHeader->field_15 == 0);
 
     // Calculate the Jenkins hash and write it to the header
-    dwInt32 = hashlittle(pBlteHeader, FIELD_OFFSET(BLTE_ENCODED_HEADER, JenkinsHash), 0x3D6BE971);
+    dwInt32 = hashlittle(pbBlteHeader, FIELD_OFFSET(BLTE_ENCODED_HEADER, JenkinsHash), 0x3D6BE971);
     ConvertIntegerToBytes_4_LE(dwInt32, JenkinsHash);
 //  assert(memcmp(pBlteHeader->JenkinsHash, JenkinsHash, sizeof(JenkinsHash)) == 0);
 
@@ -127,7 +128,7 @@ static void VerifyHeaderSpan(PBLTE_ENCODED_HEADER pBlteHeader, ULONGLONG HeaderO
 
     // Calculate checksum of the so-far filled structure
     for (i = 0; i < FIELD_OFFSET(BLTE_ENCODED_HEADER, Checksum); i++)
-        HashedHeader[i & 3] ^= pBlteHeader->EKey.Value[i];
+        HashedHeader[i & 3] ^= pbBlteHeader[i];
 
     // XOR the two values together to get the final checksum.
     for (j = 0; j < 4; j++, i++)
@@ -189,23 +190,23 @@ static int ParseBlteHeader(TCascFile * hf, ULONGLONG HeaderOffset, LPBYTE pbEnco
 
 static LPBYTE ReadMissingHeaderData(TCascFile * hf, ULONGLONG DataFileOffset, LPBYTE pbEncodedBuffer, size_t cbEncodedBuffer, size_t cbTotalHeaderSize)
 {
+    LPBYTE pbNewBuffer;
+
     // Reallocate the buffer
-    pbEncodedBuffer = CASC_REALLOC(BYTE, pbEncodedBuffer, cbTotalHeaderSize);
-    if (pbEncodedBuffer == NULL)
+    pbNewBuffer = CASC_REALLOC(BYTE, pbEncodedBuffer, cbTotalHeaderSize);
+    if (pbNewBuffer != NULL)
     {
-        SetLastError(ERROR_NOT_ENOUGH_MEMORY);
-        return NULL;
+        // Load the missing data
+        DataFileOffset += cbEncodedBuffer;
+        if (FileStream_Read(hf->pStream, &DataFileOffset, pbNewBuffer + cbEncodedBuffer, (DWORD)(cbTotalHeaderSize - cbEncodedBuffer)))
+        {
+            return pbNewBuffer;
+        }
     }
 
-    // Load the missing data
-    DataFileOffset += cbEncodedBuffer;
-    if (!FileStream_Read(hf->pStream, &DataFileOffset, pbEncodedBuffer + cbEncodedBuffer, (DWORD)(cbTotalHeaderSize - cbEncodedBuffer)))
-    {
-        CASC_FREE(pbEncodedBuffer);
-        pbEncodedBuffer = NULL;
-    }
-
-    return pbEncodedBuffer;
+    // If anything failed, we free the original buffer and return NULL;
+    CASC_FREE(pbEncodedBuffer);
+    return NULL;
 }
 
 static int LoadFileFrames(TCascFile * hf, ULONGLONG DataFileOffset, LPBYTE pbFramePtr, LPBYTE pbFrameEnd)

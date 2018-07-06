@@ -384,6 +384,8 @@ class TByteStream
     template <typename T>
     int GetArray(T ** Pointer, size_t ItemCount)
     {
+        int nError = ERROR_SUCCESS;
+
         // Verify parameters
         if(Pointer == NULL && ItemCount != 0)
             return ERROR_INVALID_PARAMETER;
@@ -391,12 +393,17 @@ class TByteStream
             return ERROR_NOT_ENOUGH_MEMORY;
 
         // Allocate bytes for the array
-        Pointer[0] = CASC_ALLOC(T, ItemCount);
-        if(Pointer[0] == NULL)
-            return ERROR_NOT_ENOUGH_MEMORY;
+        if (Pointer != NULL)
+        {
+            Pointer[0] = CASC_ALLOC(T, ItemCount);
+            if (Pointer[0] == NULL)
+                return ERROR_NOT_ENOUGH_MEMORY;
 
-        // Get the pointer to the array
-        return CopyBytes(Pointer[0], sizeof(T) * ItemCount);
+            // Get the pointer to the array
+            nError = CopyBytes(Pointer[0], sizeof(T) * ItemCount);
+        }
+
+        return nError;
     }
 
     LPBYTE pbByteData;
@@ -2817,27 +2824,22 @@ struct TRootHandler_MNDX : public TRootHandler
             if(ppValidEntries != NULL)
             {
                 PMNDX_ROOT_ENTRY pRootEntry = pMndxEntries;
-                DWORD ValidEntryCount = 1; // edx
                 DWORD nIndex1 = 0;
 
                 // The first entry is always valid
-                ppValidEntries[nIndex1++] = pMndxEntries;
+                ppValidEntries[nIndex1++] = pRootEntry++;
 
                 // Put the remaining entries
                 for(i = 0; i < MndxInfo.MndxEntriesTotal; i++, pRootEntry++)
                 {
-                    if(ValidEntryCount > MndxInfo.MndxEntriesValid)
+                    if (nIndex1 >= MndxInfo.MndxEntriesValid)
                         break;
-
-                    if(pRootEntry->Flags & 0x80000000)
-                    {
-                        ppValidEntries[nIndex1++] = pRootEntry + 1;
-                        ValidEntryCount++;
-                    }
+                    if (pRootEntry->Flags & 0x80000000)
+                        ppValidEntries[nIndex1++] = pRootEntry;
                 }
 
                 // Verify the final number of valid entries
-                if((ValidEntryCount - 1) != MndxInfo.MndxEntriesValid)
+                if(nIndex1 != MndxInfo.MndxEntriesValid)
                     nError = ERROR_BAD_FORMAT;
             }
             else
@@ -2907,8 +2909,10 @@ struct TRootHandler_MNDX : public TRootHandler
     void EndSearch(TCascSearch * pSearch)
     {
         if(pSearch != NULL)
+        {
             delete (TMndxFindResult *)pSearch->pRootContext;
-        pSearch->pRootContext = NULL;
+            pSearch->pRootContext = NULL;
+        }
     }
 
     LPBYTE GetKey(const char * szFileName, PDWORD /* PtrFileSize */)

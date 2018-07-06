@@ -45,7 +45,8 @@ class TLogHelper
             nLength = sprintf(szTitle, "-- \"%s\" --", szNewMainTitle);
             while(nLength < 90)
                 szTitle[nLength++] = '-';
-            szTitle[nLength++] = 0;
+            if(nLength < sizeof(szTitle))
+                szTitle[nLength++] = 0;
 
             printf("%s\n", szTitle);
         }

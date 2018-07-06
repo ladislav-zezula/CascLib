@@ -47,6 +47,7 @@
 #define CASC_GAME_OVERWATCH  0x00040000         // Overwatch since PTR 24919
 #define CASC_GAME_STARCRAFT2 0x00050000         // Starcraft II - Legacy of the Void, since build 38996
 #define CASC_GAME_STARCRAFT1 0x00060000         // Starcraft 1 (remastered)
+#define CASC_GAME_WARCRAFT3  0x00070000         // Warcraft III, since version 1.30, build 9655
 #define CASC_GAME_MASK       0xFFFF0000         // Mask for getting game ID
 
 #define CASC_INDEX_COUNT          0x10
@@ -93,7 +94,7 @@ typedef struct _CASC_CKEY_ENTRY
 typedef struct _CASC_EKEY_ENTRY
 {
     BYTE EKey[CASC_EKEY_SIZE];                      // The first 9 bytes of the encoded key. The encoded key is MD5 hash of the file header, which contains MD5 hashes of all the logical blocks of the file
-    BYTE ArchiveAndOffset[5];                       // Combined value of ArchiveIndex + EncodedHeader offset (big endian)
+    BYTE StorageOffset[5];                          // Offset of the file over the entire storage
     BYTE EncodedSize[4];                            // Encoded size (little endian). This is the size of encoded header, all file frame headers and all file frames
 } CASC_EKEY_ENTRY, *PCASC_EKEY_ENTRY;
 

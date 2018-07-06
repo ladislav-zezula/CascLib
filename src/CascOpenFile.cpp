@@ -34,7 +34,7 @@ PCASC_EKEY_ENTRY FindEKeyEntry(TCascStorage * hs, PQUERY_KEY pEKey, PDWORD PtrIn
 
 static TCascFile * CreateFileHandle(TCascStorage * hs, PQUERY_KEY pCKey, PQUERY_KEY pEKey, PCASC_EKEY_ENTRY pEKeyEntry, DWORD dwOpenFlags, DWORD dwContentSize)
 {
-    ULONGLONG ArchiveAndOffset = ConvertBytesToInteger_5(pEKeyEntry->ArchiveAndOffset);
+    ULONGLONG StorageOffset = ConvertBytesToInteger_5(pEKeyEntry->StorageOffset);
     ULONGLONG FileOffsMask = ((ULONGLONG)1 << hs->IndexFile[0].FileOffsetBits) - 1;
     TCascFile * hf;
 
@@ -44,8 +44,8 @@ static TCascFile * CreateFileHandle(TCascStorage * hs, PQUERY_KEY pCKey, PQUERY_
     {
         // Initialize the structure
         memset(hf, 0, sizeof(TCascFile));
-        hf->ArchiveIndex = (DWORD)(ArchiveAndOffset >> hs->IndexFile[0].FileOffsetBits);
-        hf->ArchiveOffset = (DWORD)(ArchiveAndOffset & FileOffsMask);
+        hf->ArchiveIndex = (DWORD)(StorageOffset >> hs->IndexFile[0].FileOffsetBits);
+        hf->ArchiveOffset = (DWORD)(StorageOffset & FileOffsMask);
         hf->szClassName = "TCascFile";
         hf->OpenFlags = dwOpenFlags;
 
