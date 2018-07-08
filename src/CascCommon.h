@@ -146,9 +146,8 @@ typedef struct _TCascStorage
 {
     const char * szClassName;                       // "TCascStorage"
     const TCHAR * szIndexFormat;                    // Format of the index file name
-    TCHAR * szRootPath;                             // This is the game directory
-    TCHAR * szDataPath;                             // This is the directory where data files are
     TCHAR * szBuildFile;                            // Build file name (.build.info or .build.db)
+    TCHAR * szDataPath;                             // This is the directory where data files are
     TCHAR * szIndexPath;                            // This is the directory where index files are
     TCHAR * szCdnList;                              // Multi-SZ list of CDN servers, including subfolders
     DWORD dwRefCount;                               // Number of references
@@ -174,6 +173,9 @@ typedef struct _TCascStorage
     CASC_CKEY_ENTRY DownloadFile;                   // Information about DOWNLOAD file
     CASC_CKEY_ENTRY PatchFile;                      // Information about PATCH file
 
+    CASC_CKEY_ENTRY VfsRoot;                        // The main VFS root file
+    CASC_ARRAY VfsRootList;                         // List of VFS root files. Used on TVFS root keys
+
     TFileStream * DataFiles[CASC_MAX_DATA_FILES];   // Array of open data files
 
     CASC_INDEX_FILE IndexFile[CASC_INDEX_COUNT];    // Array of index files
@@ -183,7 +185,6 @@ typedef struct _TCascStorage
     QUERY_KEY  EncodingData;                        // Content of the ENCODING file. Keep this in for encoding table.
 
     TRootHandler * pRootHandler;                    // Common handler for various ROOT file formats
-    CASC_ARRAY VfsRootList;                         // List of VFS root files. Used on TVFS root keys
 
 } TCascStorage;
 
@@ -249,18 +250,19 @@ typedef struct _TCascSearch
 #define CASC_FREE(ptr)                 free(ptr)
 
 //-----------------------------------------------------------------------------
-// Text file parsing (CascFiles.cpp)
+// Common functions (CascCommon.cpp)
 
 LPBYTE LoadInternalFileToMemory(TCascStorage * hs, LPBYTE pbQueryKey, DWORD dwOpenFlags, DWORD * pcbFileData);
 void FreeCascBlob(PQUERY_KEY pQueryKey);
 
-int LoadBuildInfo(TCascStorage * hs);
+//-----------------------------------------------------------------------------
+// Text file parsing (CascFiles.cpp)
+
 int CheckGameDirectory(TCascStorage * hs, TCHAR * szDirectory);
-/*
-int CSV_LineToElements(const char * szLinePtr, const char * szLineEnd, PCSV_ELEMENT pElements, size_t nMaxElements);
-int CSV_GetHeaderIndex(const char * szLinePtr, const char * szLineEnd, const char * szVariableName, int * PtrIndex);
-int CSV_GetNameAndCKey(const char * szLinePtr, const char * szLineEnd, int nFileNameIndex, int nCKeyIndex, char * szFileName, size_t nMaxChars, PCONTENT_KEY pCKey);
-*/
+int LoadBuildInfo(TCascStorage * hs);
+int LoadCdnConfigFile(TCascStorage * hs);
+int LoadCdnBuildFile(TCascStorage * hs);
+
 //-----------------------------------------------------------------------------
 // Internal file functions
 

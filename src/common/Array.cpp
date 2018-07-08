@@ -60,6 +60,11 @@ int Array_Create_(PCASC_ARRAY pArray, size_t ItemSize, size_t ItemCountMax)
     return ERROR_SUCCESS;
 }
 
+void Array_ZeroItems(PCASC_ARRAY pArray)
+{
+    memset(pArray->ItemArray, 0, pArray->ItemCountMax + pArray->ItemSize);
+}
+
 void * Array_Insert(PCASC_ARRAY pArray, const void * NewItems, size_t NewItemCount)
 {
     char * NewItemPtr;
@@ -82,6 +87,38 @@ void * Array_ItemAt(PCASC_ARRAY pArray, size_t ItemIndex)
 {
     assert(ItemIndex < pArray->ItemCount);
     return pArray->ItemArray + (ItemIndex * pArray->ItemSize);
+}
+
+// Inserts an item at a given index. If there is not enough items in the array,
+// the array will be enlarged. Should any gaps to be created, the function will zero them
+void * Array_InsertAt(PCASC_ARRAY pArray, size_t ItemIndex)
+{
+    void * NewItemPtr;
+    size_t AddedItemCount;
+
+    // Is there enough items?
+    if (ItemIndex > pArray->ItemCount)
+    {
+        // Capture the new item count
+        AddedItemCount = ItemIndex - pArray->ItemCount;
+
+        // Insert the amount of items
+        NewItemPtr = Array_Insert(pArray, NULL, AddedItemCount);
+        if (NewItemPtr == NULL)
+            return NULL;
+
+        // Zero the inserted items
+        memset(NewItemPtr, 0, pArray->ItemSize * AddedItemCount);
+    }
+
+    // Is the item already inserted?
+    if (ItemIndex == pArray->ItemCount)
+    {
+        Array_Insert(pArray, NULL, 1);
+    }
+
+    // Return the item at a given index
+    return Array_ItemAt(pArray, ItemIndex);
 }
 
 bool Array_CheckMember(PCASC_ARRAY pArray, const void * ArrayPtr)

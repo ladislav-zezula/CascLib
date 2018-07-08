@@ -544,6 +544,7 @@ static int TestOpenStorage_GetFileDataId(const TCHAR * szStorage, const char * s
 
 static STORAGE_INFO StorageInfo[] = 
 {
+/*
     {"2014 - Heroes of the Storm/29049", "460a28996bba557b05ecb3f8780dd4f8", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_autoai1.dds"},
     {"2014 - Heroes of the Storm/30027", "b9cf425da4d836b0b1fabb6702c24111", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_claim1.dds"},
     {"2014 - Heroes of the Storm\\30414\\HeroesData\\config\\09\\32", "c07afadc372bffccf70b93533b4f1845", "mods\\heromods\\murky.stormmod\\base.stormdata\\gamedata\\buttondata.xml"},
@@ -575,11 +576,11 @@ static STORAGE_INFO StorageInfo[] =
     {"2017 - Starcraft1/2457", "ee7ec3feb3636a49604d76cd1330e6cc", "music\\radiofreezerg.ogg"},
     {"2017 - Starcraft1/4037", "e3b1fbab5301fb40c603cafac3d51cf8", "music\\radiofreezerg.ogg"},
     {"2017 - Starcraft1/4261", NULL, "music\\radiofreezerg.ogg"},
-
+*/
     {"2018 - New CASC/00001", "971803daed7ea8685a94d9c22c5cffe6", "ROOT"},
     {"2018 - New CASC/00002", "82b381a8d79907c9fd4b19e36d69078c", "ENCODING"},
 
-    {"2018 - Warcraft III/9655", NULL, "ENCODING" },
+    {"2018 - Warcraft III/9655", "ee0d4eea919860b99b8b7204020a5650", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
 
     {NULL}
 };
@@ -608,7 +609,7 @@ int main(int argc, char * argv[])
 //  TestOpenStorage_OpenFile("2014 - Heroes of the Storm/29049", "fd45b0f59067a8dda512b740c782cd70");
 //  TestOpenStorage_OpenFile("z:\\47161", "ROOT");
 //  TestOpenStorage_EnumFiles("2016 - WoW/23420", NULL);
-    TestOpenStorage_ExtractFiles("2018 - Warcraft III/9655", NULL, szListFile);
+    TestOpenStorage_ExtractFiles("2018 - Warcraft III/9655", "ee0d4eea919860b99b8b7204020a5650", szListFile);
 /*
     //
     // Tests for OpenStorage + ExtractFile
@@ -625,7 +626,7 @@ int main(int argc, char * argv[])
     //
     // Tests for OpenStorage + EnumAllFiles + ExtractAllFiles
     //
-
+/*
     for(size_t i = 0; StorageInfo[i].szPath != NULL; i++)
     {
         // Attempt to open the storage and extract single file
@@ -633,7 +634,7 @@ int main(int argc, char * argv[])
         if(nError != ERROR_SUCCESS)
             break;
     }
-
+*/
 #ifdef _MSC_VER                                                          
     _CrtDumpMemoryLeaks();
 #endif  // _MSC_VER

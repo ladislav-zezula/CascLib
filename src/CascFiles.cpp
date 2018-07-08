@@ -222,22 +222,6 @@ static DWORD GetLocaleMask(const char * szTag)
     return 0;
 }
 
-static TCHAR * CheckForIndexDirectory(TCascStorage * hs, const TCHAR * szSubDir)
-{
-    TCHAR * szIndexPath;
-
-    // Combine the index path
-    szIndexPath = CombinePath(hs->szDataPath, szSubDir);
-    if(DirectoryExists(szIndexPath))
-    {
-        hs->szIndexPath = szIndexPath;
-        return hs->szIndexPath;
-    }
-
-    CASC_FREE(szIndexPath);
-    return NULL;
-}
-
 TCHAR * AppendBlobText(TCHAR * szBuffer, LPBYTE pbData, size_t cbData, TCHAR chSeparator)
 {
     // Put the separator, if any
@@ -416,39 +400,51 @@ static int LoadCkeyEkeySize(TCascStorage * /* hs */, const char * /* szVariableN
 
 static int LoadVfsRootEntry(TCascStorage * /* hs */, const char * szVariableName, const char * szDataPtr, const char * szDataEnd, void * pvParam)
 {
+    PQUERY_KEY_PAIR pKeyPair;
     QUERY_KEY_PAIR KeyPair;
     PCASC_ARRAY pArray = (PCASC_ARRAY)pvParam;
+    const char * szVarPtr = szVariableName;
+    const char * szVarEnd = szVarPtr + strlen(szVarPtr);
     size_t HashCount = 0;
-    int nError;
+    DWORD VfsRootIndex = CASC_INVALID_INDEX;
 
-    // Exclude "vfs-root", "vfs-root-size", "vfs-#-size"
-    if(!strncmp(szVariableName, "vfs-root", 8) || strstr(szVariableName, "-size") != NULL)
-        return ERROR_SUCCESS;
-
-    // Check for the hash array. We expect exactly 2 hashes there (CKey and EKey)
-    if (CaptureHashCount(szDataPtr, szDataEnd, &HashCount) == NULL || HashCount != 2)
-        return ERROR_BAD_FORMAT;
-
-    // Get the CKey value
-    szDataPtr = CaptureSingleHash(szDataPtr, szDataEnd, KeyPair.CKey.Value, MD5_HASH_SIZE);
-    if (szDataPtr == NULL)
-        return ERROR_BAD_FORMAT;
-
-    // Get the single hash
-    szDataPtr = CaptureSingleHash(szDataPtr, szDataEnd, KeyPair.EKey.Value, MD5_HASH_SIZE);
-    if (szDataPtr == NULL)
-        return ERROR_BAD_FORMAT;
-
-    // If this is the first time we are loading an entry, allocate the array
-    if (pArray->ItemArray == NULL)
+    // Skip the "vfs-" part
+    if (!strncmp(szVariableName, "vfs-", 4))
     {
-        nError = Array_Create(pArray, QUERY_KEY_PAIR, 0x10);
-        if (nError != ERROR_SUCCESS)
-            return nError;
+        // Then, there must be a decimal number
+        if ((szVarPtr = CaptureDecimalInteger(szVarPtr + 4, szVarEnd, &VfsRootIndex)) != NULL)
+        {
+            // We expect the array to be initialized
+            assert(pArray->ItemArray != NULL);
+            assert(VfsRootIndex != 0);
+
+            // Ignore the size ("vfs-*-size"). We don't need that for now.
+            if (szVarPtr[0] == 0)
+            {
+                // Check for the hash array. We expect exactly 2 hashes there (CKey and EKey)
+                if (CaptureHashCount(szDataPtr, szDataEnd, &HashCount) == NULL || HashCount != 2)
+                    return ERROR_BAD_FORMAT;
+
+                // Get the CKey value
+                szDataPtr = CaptureSingleHash(szDataPtr, szDataEnd, KeyPair.CKey.Value, MD5_HASH_SIZE);
+                if (szDataPtr == NULL)
+                    return ERROR_BAD_FORMAT;
+
+                // Get the single hash
+                szDataPtr = CaptureSingleHash(szDataPtr, szDataEnd, KeyPair.EKey.Value, MD5_HASH_SIZE);
+                if (szDataPtr == NULL)
+                    return ERROR_BAD_FORMAT;
+
+                // Make sure that the array has a minimum amount of items
+                pKeyPair = (PQUERY_KEY_PAIR)Array_InsertAt(pArray, VfsRootIndex - 1);
+                if (pKeyPair != NULL)
+                    memcpy(pKeyPair, &KeyPair, sizeof(QUERY_KEY_PAIR));
+                return (pKeyPair != NULL) ? ERROR_SUCCESS : ERROR_NOT_ENOUGH_MEMORY;
+            }
+        }
     }
 
-    // Insert single structure to the list
-    return (Array_Insert(pArray, &KeyPair, 1) != NULL) ? ERROR_SUCCESS : ERROR_NOT_ENOUGH_MEMORY;
+    return ERROR_SUCCESS;
 }
 
 static int LoadBuildProduct(TCascStorage * hs, const char * /* szVariableName */, const char * szDataBegin, const char * szDataEnd, void * /* pvParam */)
@@ -524,36 +520,6 @@ static int GetDefaultLocaleMask(TCascStorage * hs, PQUERY_KEY pTagsString)
 
     hs->dwDefaultLocale = dwLocaleMask;
     return ERROR_SUCCESS;
-}
-
-static void * FetchAndVerifyConfigFile(TCascStorage * hs, PQUERY_KEY pFileKey)
-{
-    TCHAR * szFileName;
-    void * pvListFile = NULL;
-
-    // Construct the local file name
-    szFileName = CascNewStr(hs->szDataPath, 8 + 3 + 3 + 32);
-    if(szFileName != NULL)
-    {
-        // Add the part where the config file path is
-        AppendConfigFilePath(szFileName, pFileKey);
-
-        // Load and verify the external listfile
-        pvListFile = ListFile_OpenExternal(szFileName);
-        if(pvListFile != NULL)
-        {
-            if(!ListFile_VerifyMD5(pvListFile, pFileKey->pbData))
-            {
-                ListFile_Free(pvListFile);
-                pvListFile = NULL;
-            }
-        }
-
-        // Free the file name
-        CASC_FREE(szFileName);
-    }
-
-    return pvListFile;
 }
 
 static TCHAR * MakeCdnList(CASC_CSV & Csv, size_t * Indices)
@@ -717,7 +683,7 @@ static int ParseFile_BuildDb(TCascStorage * hs, void * pvListFile)
     return nError;
 }
 
-static int LoadCdnConfigFile(TCascStorage * hs, void * pvListFile)
+static int ParseFile_CdnConfig(TCascStorage * hs, void * pvListFile)
 {
     const char * szLineBegin;
     const char * szLineEnd;
@@ -761,14 +727,19 @@ static int LoadCdnConfigFile(TCascStorage * hs, void * pvListFile)
     return nError;
 }
 
-static int LoadCdnBuildFile(TCascStorage * hs, void * pvListFile)
+static int ParseFile_CdnBuild(TCascStorage * hs, void * pvListFile)
 {
     const char * szLineBegin;
     const char * szLineEnd = NULL;
-    int nError = ERROR_SUCCESS;
+    int nError;
 
     // Initialize the size of the internal files
     ConvertIntegerToBytes_4(CASC_INVALID_SIZE, hs->EncodingFile.ContentSize);
+
+    // Initialize the empty VFS array
+    nError = Array_Create(&hs->VfsRootList, QUERY_KEY_PAIR, 0x10);
+    if (nError != ERROR_SUCCESS)
+        return nError;
 
     // Parse all variables
     while(ListFile_GetNextLine(pvListFile, &szLineBegin, &szLineEnd) != 0)
@@ -807,8 +778,15 @@ static int LoadCdnBuildFile(TCascStorage * hs, void * pvListFile)
         if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "patch", LoadCkeyEkey, &hs->PatchFile))
             continue;
 
-        // Load the CKey+EKey of a VFS root file. This file is a TVFS folder
-        // and will be parsed by the handler of the TVFS root
+        // Load the CKey+EKey of a VFS root file (the root file of the storage VFS)
+        if (CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "vfs-root", LoadCkeyEkey, &hs->VfsRoot))
+            continue;
+
+        // Load the content size of the VFS root
+        if (CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "vfs-root-size", LoadCkeyEkeySize, &hs->VfsRoot))
+            continue;
+
+        // Load a directory entry to the VFS
         if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "vfs-*", LoadVfsRootEntry, &hs->VfsRootList))
             continue;
     }
@@ -816,6 +794,47 @@ static int LoadCdnBuildFile(TCascStorage * hs, void * pvListFile)
     // Both CKey and EKey of ENCODING file is required
     if(!IsValidMD5(hs->EncodingFile.CKey) || !IsValidMD5(hs->EncodingFile.EKey))
         return ERROR_BAD_FORMAT;
+    return nError;
+}
+
+static int FetchAndLoadConfigFile(TCascStorage * hs, PQUERY_KEY pFileKey, PARSEINFOFILE PfnParseProc)
+{
+    TCHAR * szFileName;
+    void * pvListFile = NULL;
+    int nError = ERROR_CAN_NOT_COMPLETE;
+
+    // Construct the local file name
+    szFileName = CascNewStr(hs->szDataPath, 8 + 3 + 3 + 32);
+    if (szFileName != NULL)
+    {
+        // Add the part where the config file path is
+        AppendConfigFilePath(szFileName, pFileKey);
+
+        // Load and verify the external listfile
+        pvListFile = ListFile_OpenExternal(szFileName);
+        if (pvListFile != NULL)
+        {
+            if (ListFile_VerifyMD5(pvListFile, pFileKey->pbData))
+            {
+                nError = PfnParseProc(hs, pvListFile);
+            }
+            else
+            {
+                nError = ERROR_FILE_CORRUPT;
+            }
+            ListFile_Free(pvListFile);
+        }
+        else
+        {
+            nError = ERROR_FILE_NOT_FOUND;
+        }
+        CASC_FREE(szFileName);
+    }
+    else
+    {
+        nError = ERROR_NOT_ENOUGH_MEMORY;
+    }
+
     return nError;
 }
 
@@ -846,17 +865,73 @@ static int CheckDataDirectory(TCascStorage * hs, TCHAR * szDirectory)
     return nError;
 }
 
+static int LoadTextFile(TCascStorage * hs, PARSEINFOFILE PfnParseProc)
+{
+    void * pvListFile;
+    int nError = ERROR_FILE_NOT_FOUND;
+
+    // Load the text file for line-to-line parsing
+    pvListFile = ListFile_OpenExternal(hs->szBuildFile);
+    if (pvListFile != NULL)
+    {
+        // Parse the text file
+        nError = PfnParseProc(hs, pvListFile);
+        ListFile_Free(pvListFile);
+    }
+
+    return nError;
+}
 
 //-----------------------------------------------------------------------------
 // Public functions
 
+// Checks whether there is a ".build.info" or ".build.db".
+// If yes, the function sets "szDataPath" and "szIndexPath"
+// in the storage structure and returns ERROR_SUCCESS
+int CheckGameDirectory(TCascStorage * hs, TCHAR * szDirectory)
+{
+    TFileStream * pStream;
+    TCHAR * szBuildFile;
+    int nError = ERROR_FILE_NOT_FOUND;
+
+    // Try to find any of the root files used in the history
+    for (size_t i = 0; BuildTypes[i].szFileName != NULL; i++)
+    {
+        // Create the full name of the .agent.db file
+        szBuildFile = CombinePath(szDirectory, BuildTypes[i].szFileName);
+        if (szBuildFile != NULL)
+        {
+            // Attempt to open the file
+            pStream = FileStream_OpenFile(szBuildFile, STREAM_FLAG_READ_ONLY);
+            if (pStream != NULL)
+            {
+                // Free the stream
+                FileStream_Close(pStream);
+
+                // Check for the data directory
+                nError = CheckDataDirectory(hs, szDirectory);
+                if (nError == ERROR_SUCCESS)
+                {
+                    hs->szBuildFile = szBuildFile;
+                    hs->BuildFileType = BuildTypes[i].BuildFileType;
+                    return ERROR_SUCCESS;
+                }
+            }
+
+            CASC_FREE(szBuildFile);
+        }
+    }
+
+    return nError;
+}
+
 int LoadBuildInfo(TCascStorage * hs)
 {
     PARSEINFOFILE PfnParseProc = NULL;
-    void * pvListFile;
-    int nError = ERROR_SUCCESS;
+    int nError = ERROR_NOT_SUPPORTED;
 
-    switch(hs->BuildFileType)
+    // We support either ".build.info" or ".build.db"
+    switch (hs->BuildFileType)
     {
         case CascBuildInfo:
             PfnParseProc = ParseFile_BuildInfo;
@@ -871,100 +946,26 @@ int LoadBuildInfo(TCascStorage * hs)
             break;
     }
 
-    // Parse the appropriate build file
-    if(nError == ERROR_SUCCESS)
-    {
-        pvListFile = ListFile_OpenExternal(hs->szBuildFile);
-        if(pvListFile != NULL)
-        {
-            // Parse the info file
-            nError = PfnParseProc(hs, pvListFile);
-            ListFile_Free(pvListFile);
-        }
-        else
-            nError = ERROR_FILE_NOT_FOUND;
-    }
-
-    // If the .build.info OR .build.db file has been loaded,
-    // proceed with loading the CDN config file and CDN build file
-    if(nError == ERROR_SUCCESS)
-    {
-        // Load the configuration file. Note that we don't
-        // need it for anything, really, so we don't care if it fails
-        pvListFile = FetchAndVerifyConfigFile(hs, &hs->CdnConfigKey);
-        if(pvListFile != NULL)
-        {
-            nError = LoadCdnConfigFile(hs, pvListFile);
-            ListFile_Free(pvListFile);
-        }
-    }
-
-    // Load the build file
-    if(nError == ERROR_SUCCESS)
-    {
-        pvListFile = FetchAndVerifyConfigFile(hs, &hs->CdnBuildKey);
-        if(pvListFile != NULL)
-        {
-            nError = LoadCdnBuildFile(hs, pvListFile);
-            ListFile_Free(pvListFile);
-        }
-        else
-            nError = ERROR_FILE_NOT_FOUND;
-    }
-
-    // Fill the index directory
-    if(nError == ERROR_SUCCESS)
-    {
-        // First, check for more common "data" subdirectory
-        if((hs->szIndexPath = CheckForIndexDirectory(hs, _T("data"))) != NULL)
-            return ERROR_SUCCESS;
-
-        // Second, try the "darch" subdirectory (older builds of HOTS - Alpha)
-        if((hs->szIndexPath = CheckForIndexDirectory(hs, _T("darch"))) != NULL)
-            return ERROR_SUCCESS;
-
-        nError = ERROR_FILE_NOT_FOUND;
-    }
-
-    return nError;
+    return LoadTextFile(hs, PfnParseProc);
 }
 
-// Checks whether there is a ".build.info" or ".build.db".
-// If yes, the function sets "szRootPath" and "szDataPath"
-// in the storage structure and returns ERROR_SUCCESS
-int CheckGameDirectory(TCascStorage * hs, TCHAR * szDirectory)
+int LoadCdnConfigFile(TCascStorage * hs)
 {
-    TFileStream * pStream;
-    TCHAR * szBuildFile;
-    int nError = ERROR_FILE_NOT_FOUND;
+    // The CKey for the CDN config should have been loaded already
+    assert(hs->CdnConfigKey.pbData != NULL && hs->CdnConfigKey.cbData == MD5_HASH_SIZE);
 
-    // Try to find any of the root files used in the history
-    for(size_t i = 0; BuildTypes[i].szFileName != NULL; i++)
-    {
-        // Create the full name of the .agent.db file
-        szBuildFile = CombinePath(szDirectory, BuildTypes[i].szFileName);
-        if(szBuildFile != NULL)
-        {
-            // Attempt to open the file
-            pStream = FileStream_OpenFile(szBuildFile, STREAM_FLAG_READ_ONLY);
-            if(pStream != NULL)
-            {
-                // Free the stream
-                FileStream_Close(pStream);
+    // Load the CDN config file. Note that we don't
+    // need it for anything, really, so we don't care if it fails
+    FetchAndLoadConfigFile(hs, &hs->CdnConfigKey, ParseFile_CdnConfig);
+    return ERROR_SUCCESS;
+}
 
-                // Check for the data directory
-                nError = CheckDataDirectory(hs, szDirectory);
-                if(nError == ERROR_SUCCESS)
-                {
-                    hs->szBuildFile = szBuildFile;
-                    hs->BuildFileType = BuildTypes[i].BuildFileType;
-                    return ERROR_SUCCESS;
-                }
-            }
+int LoadCdnBuildFile(TCascStorage * hs)
+{
+    // The CKey for the CDN config should have been loaded already
+    assert(hs->CdnBuildKey.pbData != NULL && hs->CdnBuildKey.cbData == MD5_HASH_SIZE);
 
-            CASC_FREE(szBuildFile);
-        }
-    }
-
-    return nError;
+    // Load the CDN config file. Note that we don't
+    // need it for anything, really, so we don't care if it fails
+    return FetchAndLoadConfigFile(hs, &hs->CdnBuildKey, ParseFile_CdnBuild);
 }

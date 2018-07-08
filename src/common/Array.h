@@ -29,6 +29,7 @@ typedef struct _CASC_ARRAY
 int Array_Create_(PCASC_ARRAY pArray, size_t ItemSize, size_t ItemCountMax);
 void * Array_Insert(PCASC_ARRAY pArray, const void * NewItems, size_t NewItemCount);
 void * Array_ItemAt(PCASC_ARRAY pArray, size_t ItemIndex);
+void * Array_InsertAt(PCASC_ARRAY pArray, size_t ItemIndex);
 bool   Array_CheckMember(PCASC_ARRAY pArray, const void * ArrayPtr);
 size_t Array_IndexOf(PCASC_ARRAY pArray, const void * ArrayPtr);
 void Array_Free(PCASC_ARRAY pArray);

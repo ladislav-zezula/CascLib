@@ -277,14 +277,29 @@ static int InsertNamedInternalFile(
     return hs->pRootHandler->Insert(szFileName, pCKeyEntry);
 }
 
-static int InitializeCascDirectories(TCascStorage * hs, const TCHAR * szDataPath)
+static TCHAR * CheckForIndexDirectory(TCascStorage * hs, const TCHAR * szSubDir)
+{
+    TCHAR * szIndexPath;
+
+    // Combine the index path
+    szIndexPath = CombinePath(hs->szDataPath, szSubDir);
+    if (!DirectoryExists(szIndexPath))
+    {
+        CASC_FREE(szIndexPath);
+        szIndexPath = NULL;
+    }
+
+    return szIndexPath;
+}
+
+static int InitializeCascDirectories(TCascStorage * hs, const TCHAR * szPath)
 {
     TCHAR * szWorkPath;
     int nError = ERROR_NOT_ENOUGH_MEMORY;
 
     // Find the root directory of the storage. The root directory
-    // is the one where ".build.info" is.
-    szWorkPath = CascNewStr(szDataPath, 0);
+    // is the one with ".build.info" or ".build.db".
+    szWorkPath = CascNewStr(szPath, 0);
     if(szWorkPath != NULL)
     {
         // Get the length and go up until we find the ".build.info" or ".build.db"
@@ -308,6 +323,20 @@ static int InitializeCascDirectories(TCascStorage * hs, const TCHAR * szDataPath
 
         // Free the work path buffer
         CASC_FREE(szWorkPath);
+    }
+
+    // Find the index directory
+    if (nError == ERROR_SUCCESS)
+    {
+        // First, check for more common "data" subdirectory
+        if ((hs->szIndexPath = CheckForIndexDirectory(hs, _T("data"))) != NULL)
+            return ERROR_SUCCESS;
+
+        // Second, try the "darch" subdirectory (older builds of HOTS - Alpha)
+        if ((hs->szIndexPath = CheckForIndexDirectory(hs, _T("darch"))) != NULL)
+            return ERROR_SUCCESS;
+
+        nError = ERROR_FILE_NOT_FOUND;
     }
 
     return nError;
@@ -875,6 +904,7 @@ static int LoadEncodingFile(TCascStorage * hs)
 
 static int LoadRootFile(TCascStorage * hs, DWORD dwLocaleMask)
 {
+    PCASC_CKEY_ENTRY pCKeyEntry;
     PDWORD FileSignature;
     LPBYTE pbRootFile = NULL;
     DWORD cbRootFile = CASC_INVALID_SIZE;
@@ -889,8 +919,11 @@ static int LoadRootFile(TCascStorage * hs, DWORD dwLocaleMask)
     if(dwLocaleMask == 0)
         dwLocaleMask = hs->dwDefaultLocale;
 
+    // Prioritize the VFS root over legacy ROOT file
+    pCKeyEntry = hs->VfsRoot.EKeyCount ? &hs->VfsRoot : &hs->RootFile;
+
     // Load the entire ROOT file to memory
-    pbRootFile = LoadInternalFileToMemory(hs, hs->RootFile.CKey, CASC_OPEN_BY_CKEY, &cbRootFile);
+    pbRootFile = LoadInternalFileToMemory(hs, pCKeyEntry->CKey, CASC_OPEN_BY_CKEY, &cbRootFile);
     if(pbRootFile == NULL)
         nError = GetLastError();
 
@@ -992,8 +1025,6 @@ static TCascStorage * FreeCascStorage(TCascStorage * hs)
         }
 
         // Free the file paths
-        if(hs->szRootPath != NULL)
-            CASC_FREE(hs->szRootPath);
         if(hs->szDataPath != NULL)
             CASC_FREE(hs->szDataPath);
         if(hs->szBuildFile != NULL)
@@ -1024,7 +1055,7 @@ static TCascStorage * FreeCascStorage(TCascStorage * hs)
 //-----------------------------------------------------------------------------
 // Public functions
 
-bool WINAPI CascOpenStorage(const TCHAR * szDataPath, DWORD dwLocaleMask, HANDLE * phStorage)
+bool WINAPI CascOpenStorage(const TCHAR * szPath, DWORD dwLocaleMask, HANDLE * phStorage)
 {
     TCascStorage * hs;
     int nError = ERROR_SUCCESS;
@@ -1043,13 +1074,26 @@ bool WINAPI CascOpenStorage(const TCHAR * szDataPath, DWORD dwLocaleMask, HANDLE
         hs->dwHeaderSpanSize = CASC_INVALID_SIZE;
         hs->dwDefaultLocale = CASC_LOCALE_ENUS | CASC_LOCALE_ENGB;
         hs->dwRefCount = 1;
-        nError = InitializeCascDirectories(hs, szDataPath);
+        nError = InitializeCascDirectories(hs, szPath);
     }
 
-    // Now we need to load the root file so we know the config files
+    // Now, load the main storage file ".build.info" (or ".build.db" in old storages) 
     if(nError == ERROR_SUCCESS)
     {
         nError = LoadBuildInfo(hs);
+    }
+
+    // If the .build.info OR .build.db file has been loaded,
+    // proceed with loading the CDN config file
+    if (nError == ERROR_SUCCESS)
+    {
+        nError = LoadCdnConfigFile(hs);
+    }
+
+    // Proceed with loading the CDN build file
+    if (nError == ERROR_SUCCESS)
+    {
+        nError = LoadCdnBuildFile(hs);
     }
 
     // Load the index files
@@ -1058,13 +1102,13 @@ bool WINAPI CascOpenStorage(const TCHAR * szDataPath, DWORD dwLocaleMask, HANDLE
         nError = LoadIndexFiles(hs);
     }
 
-    // Load the index files
+    // Load the ENCODING file
     if(nError == ERROR_SUCCESS)
     {
         nError = LoadEncodingFile(hs);
     }
 
-    // Load the index files
+    // Load the build manifest ("ROOT" file)
     if(nError == ERROR_SUCCESS)
     {
         nError = LoadRootFile(hs, dwLocaleMask);

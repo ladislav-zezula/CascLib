@@ -225,7 +225,6 @@ void CascDumpStorage(HANDLE hStorage, const char * szDumpFile)
     {
         // Dump the basic storage info
         fprintf(fp, "=== Basic Storage Info ======================================================\n");
-        fprintf(fp, "RootPath:  %s\n", StringFromLPTSTR(hs->szRootPath, szStringBuff, sizeof(szStringBuff)));
         fprintf(fp, "DataPath:  %s\n", StringFromLPTSTR(hs->szDataPath, szStringBuff, sizeof(szStringBuff)));
         fprintf(fp, "IndexPath: %s\n", StringFromLPTSTR(hs->szIndexPath, szStringBuff, sizeof(szStringBuff)));
         fprintf(fp, "CDN List:  %s\n", StringFromLPTSTR(hs->szCdnList, szStringBuff, sizeof(szStringBuff)));

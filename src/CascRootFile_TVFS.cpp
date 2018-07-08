@@ -20,6 +20,10 @@
 #define TVFS_FLAG_PATCH_SUPPORT      0x0004         // Patch support. Include patch records in the content file records.
 #define TVFS_FLAG_LOWERCASE_MANIFEST 0x0008         // Lowercase manifest. All paths in the path table have been converted to ASCII lowercase (i.e. [A-Z] converted to [a-z])
 
+#define TVFS_PTE_PATH_SEPARATOR_PRE  0x0001         // There is path separator before the name
+#define TVFS_PTE_PATH_SEPARATOR_POST 0x0002         // There is path separator after the name
+#define TVFS_PTE_NODE_VALUE          0x0004         // The NodeValue in path table entry is valid
+
 #define TVFS_FOLDER_NODE            0x80000000      // Highest bit is set if a file node is a folder
 #define TVFS_FOLDER_SIZE_MASK       0x7FFFFFFF      // Mask to get length of the folder
 
@@ -89,12 +93,14 @@ typedef struct _TVFS_PATH_TABLE_ENTRY
 {
     LPBYTE pbNamePtr;                               // Pointer to the begin of the node name
     LPBYTE pbNameEnd;                               // Pointer to the end of the file name
+    DWORD NodeFlags;                                // TVFS_PTE_XXX
     DWORD NodeValue;                                // Node value
-    DWORD EndOfNode;                                // If TRUE, then this node is an end node (aka end of path fragment)
 } TVFS_PATH_TABLE_ENTRY, *PTVFS_PATH_TABLE_ENTRY;
 
 //-----------------------------------------------------------------------------
 // Handler definition for TVFS root file
+
+//static FILE * fp = NULL;
 
 // Structure for the root handler
 struct TRootHandler_TVFS : public TFileTreeRoot
@@ -104,6 +110,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
     TRootHandler_TVFS() : TFileTreeRoot(FTREE_FLAG_USE_FILE_SIZE)
     {
         dwRootFlags |= (ROOT_FLAG_HAS_NAMES | ROOT_FLAG_USES_EKEY | ROOT_FLAG_DONT_SEARCH_CKEY);
+        dwNestLevel = 0;
     }
 
     // Returns size of "container file table offset" fiels in the VFS.
@@ -122,39 +129,43 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         return 1;
     }
 
-    bool PathBuffer_AddBackslash(PATH_BUFFER & PathBuffer)
+    bool PathBuffer_AddChar(PATH_BUFFER & PathBuffer, char chOneChar)
     {
         if(PathBuffer.szPtr >= PathBuffer.szEnd)
             return false;
 
-        *PathBuffer.szPtr++ = '\\';
+        *PathBuffer.szPtr++ = chOneChar;
         *PathBuffer.szPtr = 0;
+        return true;
+    }
+
+    bool PathBuffer_AddString(PATH_BUFFER & PathBuffer, LPBYTE pbNamePtr, LPBYTE pbNameEnd)
+    {
+        size_t nLength = (pbNameEnd - pbNamePtr);
+
+        // Check whether we have enough space
+        if ((PathBuffer.szPtr + nLength) > PathBuffer.szEnd)
+            return false;
+
+        // Copy the node name
+        memcpy(PathBuffer.szPtr, pbNamePtr, nLength);
+        PathBuffer.szPtr += nLength;
         return true;
     }
 
     bool PathBuffer_AppendNode(PATH_BUFFER & PathBuffer, TVFS_PATH_TABLE_ENTRY & PathEntry)
     {
-        // Do we have some name?
-        if(PathEntry.pbNameEnd > PathEntry.pbNamePtr)
-        {
-            size_t nLength = (PathEntry.pbNameEnd - PathEntry.pbNamePtr);
+        // Append the prefix separator, if needed
+        if (PathEntry.NodeFlags & TVFS_PTE_PATH_SEPARATOR_PRE)
+            PathBuffer_AddChar(PathBuffer, '/');
 
-            // Check whether we have enough space
-            if((PathBuffer.szPtr + nLength) > PathBuffer.szEnd)
-                return false;
+        // Append the name fragment, if any
+        if (PathEntry.pbNameEnd > PathEntry.pbNamePtr)
+            PathBuffer_AddString(PathBuffer, PathEntry.pbNamePtr, PathEntry.pbNameEnd);
 
-            // Copy the node name
-            memcpy(PathBuffer.szPtr, PathEntry.pbNamePtr, nLength);
-            PathBuffer.szPtr += nLength;
-
-            // Append backslash, if needed
-            if(PathEntry.EndOfNode)
-            {
-                if(PathBuffer.szPtr >= PathBuffer.szEnd)
-                    return false;
-                *PathBuffer.szPtr++ = '\\';
-            }
-        }
+        // Append the postfix separator, if needed
+        if (PathEntry.NodeFlags & TVFS_PTE_PATH_SEPARATOR_POST)
+            PathBuffer_AddChar(PathBuffer, '/');
 
         // Always end the buffer with zero
         PathBuffer.szPtr[0] = 0;
@@ -278,30 +289,79 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         return ERROR_SUCCESS;
     }
 
+    //
+    // Structure of the path table entry:
+    // (1byte) 0x00 (optional) - means that there will be prefix path separator
+    // (1byte) File name length
+    // (?byte) File name
+    // (1byte) 0x00 (optional) - means that there will be postfix path separator
+    // (1byte) 0xFF (optional) - node value identifier
+    // (4byte)                 - node value
+    //
+    // Note: The path "data\archive\maps\file.bmp" could be cut into nodes like:
+    //                 data\0 (or data with subdirectory)
+    //                   arc
+    //                     hive\0
+    //                       maps\0 (or folder data)
+    //                         file.bmp
+    //
+
     LPBYTE CapturePathEntry(TVFS_PATH_TABLE_ENTRY & PathEntry, LPBYTE pbPathTablePtr, LPBYTE pbPathTableEnd)
     {
-        // We expect there to be a nonzero, and non-FF length
-        if(pbPathTablePtr[0] == 0 || pbPathTablePtr[0] == 0xFF)
-            return NULL;
-        if((pbPathTablePtr + 1 + pbPathTablePtr[0] + 1 + sizeof(DWORD)) > pbPathTableEnd)
-            return NULL;
+        // Reset the path entry structure
+        PathEntry.pbNamePtr = pbPathTablePtr;
+        PathEntry.pbNameEnd = pbPathTablePtr;
+        PathEntry.NodeFlags = 0;
+        PathEntry.NodeValue = 0;
 
-        // Fill the path entry
-        PathEntry.pbNamePtr = pbPathTablePtr + 1;
-        PathEntry.pbNameEnd = pbPathTablePtr + 1 + pbPathTablePtr[0];
-        pbPathTablePtr = PathEntry.pbNameEnd;
+        // Zero before the name means prefix path separator
+        if (pbPathTablePtr < pbPathTableEnd && pbPathTablePtr[0] == 0)
+        {
+            PathEntry.NodeFlags |= TVFS_PTE_PATH_SEPARATOR_PRE;
+            pbPathTablePtr++;
+        }
 
-        // The '\0' character means that this is the end of the node
-        PathEntry.EndOfNode = (pbPathTablePtr[0] == 0x00) ? 1 : 0;
-        pbPathTablePtr += PathEntry.EndOfNode;
-            
-        // Check the proper terminator
-        if(pbPathTablePtr[0] != 0xFF)
-            return NULL;
+        // Capture the length of the name fragment
+        if (pbPathTablePtr < pbPathTableEnd && pbPathTablePtr[0] != 0xFF)
+        {
+            // Capture length of the name fragment
+            size_t nLength = *pbPathTablePtr++;
 
-        // Fill the node value
-        PathEntry.NodeValue = ConvertBytesToInteger_4(pbPathTablePtr + 1);
-        return pbPathTablePtr + 1 + sizeof(DWORD);
+            if ((pbPathTablePtr + nLength) > pbPathTableEnd)
+                return NULL;
+            PathEntry.pbNamePtr = pbPathTablePtr;
+            PathEntry.pbNameEnd = pbPathTablePtr + nLength;
+            pbPathTablePtr += nLength;
+        }
+
+        // Zero after the name means postfix path separator
+        if (pbPathTablePtr < pbPathTableEnd && pbPathTablePtr[0] == 0)
+        {
+            PathEntry.NodeFlags |= TVFS_PTE_PATH_SEPARATOR_POST;
+            pbPathTablePtr++;
+        }
+
+        if (pbPathTablePtr < pbPathTableEnd)
+        {
+            // Check for node value
+            if (pbPathTablePtr[0] == 0xFF)
+            {
+                if ((pbPathTablePtr + 1 + sizeof(DWORD)) > pbPathTableEnd)
+                    return NULL;
+                PathEntry.NodeValue = ConvertBytesToInteger_4(pbPathTablePtr + 1);
+                PathEntry.NodeFlags |= TVFS_PTE_NODE_VALUE;
+                pbPathTablePtr = pbPathTablePtr + 1 + sizeof(DWORD);
+            }
+
+            // Non-0xFF after the name means path separator after
+            else
+            {
+                PathEntry.NodeFlags |= TVFS_PTE_PATH_SEPARATOR_POST;
+                assert(pbPathTablePtr[0] != 0);
+            }
+        }
+
+        return pbPathTablePtr;
     }
 
     bool IsVfsFileEKey(TCascStorage * hs, ENCODED_KEY & EKey, size_t EKeyLength)
@@ -372,22 +432,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         // Parse the file table
         while(pbPathTablePtr < pbPathTableEnd)
         {
-            //
-            // Structure of the path table entry:
-            // (1byte) File name length
-            // (?byte) File name
-            // (1byte) Zero terminator, if this is the last fragment in the node name
-            // (1byte) Name terminator (0xFF)
-            // (4byte) Node Value
-            //
-            // Note: The path "data\archive\maps\file.bmp" could be cut into nodes like:
-            //                 data\0 (or data with subdirectory)
-            //                   arc
-            //                     hive\0
-            //                       maps\0 (or folder data)
-            //                         file.bmp
-            //
-
+            // Capture the single path table entry
             pbPathTablePtr = CapturePathEntry(PathEntry, pbPathTablePtr, pbPathTableEnd);
             if(pbPathTablePtr == NULL)
                 return ERROR_BAD_FORMAT;
@@ -395,60 +440,63 @@ struct TRootHandler_TVFS : public TFileTreeRoot
             // Append the node name to the total path. Also add backslash, if it's a folder
             PathBuffer_AppendNode(PathBuffer, PathEntry);
 
-            // If the TVFS_FOLDER_NODE is set, then the path node is a directory,
-            // with its data immediately following the path node. Lower 31 bits of NodeValue
-            // contain the length of the directory (including the NodeValue!)
-            if(PathEntry.NodeValue & TVFS_FOLDER_NODE)
+            // Folder component
+            if (PathEntry.NodeFlags & TVFS_PTE_NODE_VALUE)
             {
-                LPBYTE pbDirectoryEnd = pbPathTablePtr + (PathEntry.NodeValue & TVFS_FOLDER_SIZE_MASK) - sizeof(DWORD);
-
-                // Check for the minimum folder size
-                assert((PathEntry.NodeValue & TVFS_FOLDER_SIZE_MASK) >= sizeof(DWORD));
-
-                // Recursively call the folder parser on the same file
-                nError = ParsePathFileTable(hs, DirHeader, PathBuffer, pbPathTablePtr, pbDirectoryEnd);
-                if(nError != ERROR_SUCCESS)
-                    return nError;
-
-                // Skip the directory data
-                pbPathTablePtr = pbDirectoryEnd;
-            }
-            else
-            {
-                // Capture the VFS and Container Table Entry in order to get the file EKey
-                nError = CaptureVfsSpanEntries(DirHeader, &EKey, &dwSpanSize, PathEntry.NodeValue);
-                if(nError != ERROR_SUCCESS)
-                    return nError;
-
-                // We need to check whether this is another TVFS directory file
-                if(IsVfsSubDirectory(hs, DirHeader, SubHeader, EKey, dwSpanSize) == ERROR_SUCCESS)
+                // If the TVFS_FOLDER_NODE is set, then the path node is a directory,
+                // with its data immediately following the path node. Lower 31 bits of NodeValue
+                // contain the length of the directory (including the NodeValue!)
+                if (PathEntry.NodeValue & TVFS_FOLDER_NODE)
                 {
-#ifdef _DEBUG
-                    // TODO: Support for mount points when I see some
-//                  if((PathBuffer.szPtr - PathBuffer.szBegin) > 4 && !strcmp(PathBuffer.szPtr - 4, ".w3m"))
-//                  {
-//                      *PathBuffer.szPtr++ = ':';
-//                      *PathBuffer.szPtr = 0;
-//                  }
-#endif
-                    // Add one extra backslash to the node
-                    PathBuffer_AddBackslash(PathBuffer);
+                    LPBYTE pbDirectoryEnd = pbPathTablePtr + (PathEntry.NodeValue & TVFS_FOLDER_SIZE_MASK) - sizeof(DWORD);
 
-                    // Insert the file to the file tree
-                    FileTree.Insert(&EKey, PathBuffer.szBegin, CASC_INVALID_ID, dwSpanSize);
+                    // Check the available data
+                    assert((PathEntry.NodeValue & TVFS_FOLDER_SIZE_MASK) >= sizeof(DWORD));
 
-                    ParseDirectoryData(hs, SubHeader, PathBuffer);
-                    CASC_FREE(SubHeader.pbDirectoryData);
+                    // Recursively call the folder parser on the same file
+                    nError = ParsePathFileTable(hs, DirHeader, PathBuffer, pbPathTablePtr, pbDirectoryEnd);
+                    if (nError != ERROR_SUCCESS)
+                        return nError;
+
+                    // Skip the directory data
+                    pbPathTablePtr = pbDirectoryEnd;
                 }
                 else
                 {
-                    // Insert the file to the file tree
-                    FileTree.Insert(&EKey, PathBuffer.szBegin, CASC_INVALID_ID, dwSpanSize);
-                }
-            }
+                    // Capture the VFS and Container Table Entry in order to get the file EKey
+                    nError = CaptureVfsSpanEntries(DirHeader, &EKey, &dwSpanSize, PathEntry.NodeValue);
+                    if (nError != ERROR_SUCCESS)
+                        return nError;
 
-            // Reset the position of the path buffer
-            PathBuffer.szPtr = szSavePathPtr;
+                    // We need to check whether this is another TVFS directory file
+                    if (IsVfsSubDirectory(hs, DirHeader, SubHeader, EKey, dwSpanSize) == ERROR_SUCCESS)
+                    {
+                        // Add colon (':')
+                        PathBuffer_AddChar(PathBuffer, ':');
+
+                        // Insert the file to the file tree
+                        FileTree.Insert(&EKey, PathBuffer.szBegin, CASC_INVALID_ID, dwSpanSize);
+
+                        ParseDirectoryData(hs, SubHeader, PathBuffer);
+                        CASC_FREE(SubHeader.pbDirectoryData);
+                    }
+                    else
+                    {
+//                      if (fp != NULL)
+//                      {
+//                          fwrite(PathBuffer.szBegin, 1, (PathBuffer.szPtr - PathBuffer.szBegin), fp);
+//                          fprintf(fp, "\n");
+//                      }
+
+                        // Insert the file to the file tree
+                        FileTree.Insert(&EKey, PathBuffer.szBegin, CASC_INVALID_ID, dwSpanSize);
+                    }
+                }
+
+                // Reset the position of the path buffer
+                PathBuffer.szPtr = szSavePathPtr;
+                PathBuffer.szPtr[0] = 0;
+            }
         }
 
         // Return the total number of entries
@@ -507,6 +555,8 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         // Parse the entire directory data
         return ParseDirectoryData(hs, RootHeader, PathBuffer);
     }
+
+    DWORD dwNestLevel;
 };
 
 //-----------------------------------------------------------------------------
@@ -526,6 +576,8 @@ int RootHandler_CreateTVFS(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFil
         pRootHandler = new TRootHandler_TVFS();
         if(pRootHandler != NULL)
         {
+//          fp = fopen("e:\\Multimedia\\MPQs\\2018 - Warcraft III\\9655\\ROOT-tvfs.txt", "wt");
+
             // Load the root directory. If load failed, we free the object
             nError = pRootHandler->Load(hs, RootHeader);
             if(nError != ERROR_SUCCESS)
@@ -533,6 +585,9 @@ int RootHandler_CreateTVFS(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFil
                 delete pRootHandler;
                 pRootHandler = NULL;
             }
+
+//          if(fp != NULL)
+//              fclose(fp);
         }
     }
 
