@@ -609,7 +609,7 @@ int main(int argc, char * argv[])
 //  TestOpenStorage_OpenFile("2014 - Heroes of the Storm/29049", "fd45b0f59067a8dda512b740c782cd70");
 //  TestOpenStorage_OpenFile("z:\\47161", "ROOT");
 //  TestOpenStorage_EnumFiles("2016 - WoW/23420", NULL);
-    TestOpenStorage_ExtractFiles("2018 - Warcraft III/9655", "ee0d4eea919860b99b8b7204020a5650", szListFile);
+    TestOpenStorage_ExtractFiles("2015 - Diablo III/30013", "609e34fc5d0eaa4fd36d6774a039e1f3", szListFile);
 /*
     //
     // Tests for OpenStorage + ExtractFile

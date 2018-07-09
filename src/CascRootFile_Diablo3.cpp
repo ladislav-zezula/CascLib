@@ -174,9 +174,17 @@ struct TDiabloRoot : public TFileTreeRoot
 
     TDiabloRoot() : TFileTreeRoot(0)
     {
-        LPBYTE pbClearArea = (LPBYTE)RootFolders;
-        size_t cbClearArea = FIELD_OFFSET(TDiabloRoot, RootFolders);
-        memset(pbClearArea, 0, cbClearArea);
+        memset(RootFolders, 0, sizeof(RootFolders));
+        pFileIndices = NULL;
+        pbCoreTocFile = NULL;
+        pbCoreTocData = NULL;
+        nFileIndices = 0;
+        cbCoreTocFile = 0;
+
+        // Map for searching a real file extension
+        pPackagesMap = NULL;
+        pbPackagesDat = NULL;
+        cbPackagesDat = 0;
     }
 
     ~TDiabloRoot()

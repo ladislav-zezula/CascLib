@@ -65,7 +65,7 @@ typedef struct _FILE_EKEY_ENTRY_V3
     DWORD DataHash;                                 // Jenkins hash of (EKey+FileOffsetBE+FileSizeLE)
 
     BYTE EKey[CASC_EKEY_SIZE];                      // The first 9 bytes of the encoded key
-    BYTE FileOffsetBE[5];                           // Index of data file and offset within (big endian).
+    BYTE StorageOffset[5];                          // Index of data file and offset within (big endian).
     BYTE EncodedSize[4];                            // Encoded size (big endian). This is the size of encoded header, all file frame headers and all file frames
     BYTE Unknown[2];
 } FILE_EKEY_ENTRY_V3, *PFILE_EKEY_ENTRY_V3;

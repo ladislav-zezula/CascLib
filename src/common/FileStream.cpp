@@ -1040,7 +1040,7 @@ static TFileStream * AllocateFileStream(
     if(pStream != NULL)
     {
         // Zero the entire structure
-        memset(pStream, 0, StreamSize);
+        memset(pStream, 0, StreamSize + FileNameSize + sizeof(TCHAR));
         pStream->pMaster = pMaster;
         pStream->dwFlags = dwStreamFlags;
 
