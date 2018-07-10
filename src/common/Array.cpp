@@ -14,7 +14,7 @@
 
 //-----------------------------------------------------------------------------
 // Local functions
-
+/*
 static bool EnlargeArray(PCASC_ARRAY pArray, size_t NewItemCount)
 {
     char * NewItemArray;
@@ -44,10 +44,10 @@ static bool EnlargeArray(PCASC_ARRAY pArray, size_t NewItemCount)
 
     return true;
 }
-
+*/
 //-----------------------------------------------------------------------------
 // Public functions
-
+/*
 int Array_Create_(PCASC_ARRAY pArray, size_t ItemSize, size_t ItemCountMax)
 {
     pArray->ItemArray = CASC_ALLOC(char, (ItemSize * ItemCountMax));
@@ -58,11 +58,6 @@ int Array_Create_(PCASC_ARRAY pArray, size_t ItemSize, size_t ItemCountMax)
     pArray->ItemCount = 0;
     pArray->ItemSize = ItemSize;
     return ERROR_SUCCESS;
-}
-
-void Array_ZeroItems(PCASC_ARRAY pArray)
-{
-    memset(pArray->ItemArray, 0, pArray->ItemCountMax + pArray->ItemSize);
 }
 
 void * Array_Insert(PCASC_ARRAY pArray, const void * NewItems, size_t NewItemCount)
@@ -145,3 +140,4 @@ void Array_Free(PCASC_ARRAY pArray)
         CASC_FREE(pArray->ItemArray);
     }
 }
+*/

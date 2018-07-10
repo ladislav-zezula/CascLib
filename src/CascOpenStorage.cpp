@@ -991,8 +991,8 @@ static TCascStorage * FreeCascStorage(TCascStorage * hs)
             delete hs->pRootHandler;
         hs->pRootHandler = NULL;
 
-        // Free the extra encoding entries
-        Array_Free(&hs->VfsRootList);
+        // Free the VFS root list
+        hs->VfsRootList.Free();
 
         // Free the pointers to file entries
         if(hs->pCKeyEntryMap != NULL)

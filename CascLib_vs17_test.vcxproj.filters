@@ -133,9 +133,6 @@
     <ClCompile Include="src\CascRootFile_Text.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\common\Array.cpp">
-      <Filter>Source Files\common</Filter>
-    </ClCompile>
     <ClCompile Include="src\common\FileTree.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>

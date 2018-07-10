@@ -78,9 +78,6 @@
     <ClCompile Include="src\common\Csv.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>
-    <ClCompile Include="src\common\Array.cpp">
-      <Filter>Source Files\common</Filter>
-    </ClCompile>
     <ClCompile Include="src\common\FileStream.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>

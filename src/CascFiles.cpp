@@ -400,9 +400,9 @@ static int LoadCkeyEkeySize(TCascStorage * /* hs */, const char * /* szVariableN
 
 static int LoadVfsRootEntry(TCascStorage * /* hs */, const char * szVariableName, const char * szDataPtr, const char * szDataEnd, void * pvParam)
 {
+    CASC_ARRAY * pArray = (CASC_ARRAY *)pvParam;
     PQUERY_KEY_PAIR pKeyPair;
     QUERY_KEY_PAIR KeyPair;
-    PCASC_ARRAY pArray = (PCASC_ARRAY)pvParam;
     const char * szVarPtr = szVariableName;
     const char * szVarEnd = szVarPtr + strlen(szVarPtr);
     size_t HashCount = 0;
@@ -415,7 +415,7 @@ static int LoadVfsRootEntry(TCascStorage * /* hs */, const char * szVariableName
         if ((szVarPtr = CaptureDecimalInteger(szVarPtr + 4, szVarEnd, &VfsRootIndex)) != NULL)
         {
             // We expect the array to be initialized
-            assert(pArray->ItemArray != NULL);
+            assert(pArray->IsInitialized());
             assert(VfsRootIndex != 0);
 
             // Ignore the size ("vfs-*-size"). We don't need that for now.
@@ -436,7 +436,7 @@ static int LoadVfsRootEntry(TCascStorage * /* hs */, const char * szVariableName
                     return ERROR_BAD_FORMAT;
 
                 // Make sure that the array has a minimum amount of items
-                pKeyPair = (PQUERY_KEY_PAIR)Array_InsertAt(pArray, VfsRootIndex - 1);
+                pKeyPair = (PQUERY_KEY_PAIR)pArray->InsertAt(VfsRootIndex - 1);
                 if (pKeyPair != NULL)
                     memcpy(pKeyPair, &KeyPair, sizeof(QUERY_KEY_PAIR));
                 return (pKeyPair != NULL) ? ERROR_SUCCESS : ERROR_NOT_ENOUGH_MEMORY;
@@ -737,7 +737,7 @@ static int ParseFile_CdnBuild(TCascStorage * hs, void * pvListFile)
     ConvertIntegerToBytes_4(CASC_INVALID_SIZE, hs->EncodingFile.ContentSize);
 
     // Initialize the empty VFS array
-    nError = Array_Create(&hs->VfsRootList, QUERY_KEY_PAIR, 0x10);
+    nError = hs->VfsRootList.Create<QUERY_KEY_PAIR>(0x10);
     if (nError != ERROR_SUCCESS)
         return nError;
 

@@ -233,23 +233,6 @@ typedef struct _TCascSearch
 } TCascSearch;
 
 //-----------------------------------------------------------------------------
-// Memory management
-//
-// We use our own macros for allocating/freeing memory. If you want
-// to redefine them, please keep the following rules:
-//
-//  - The memory allocation must return NULL if not enough memory
-//    (i.e not to throw exception)
-//  - The allocating function does not need to fill the allocated buffer with zeros
-//  - The reallocating function must support NULL as the previous block
-//  - Memory freeing function doesn't have to test the pointer to NULL
-//
-
-#define CASC_REALLOC(type, ptr, count) (type *)realloc(ptr, (count) * sizeof(type))
-#define CASC_ALLOC(type, count)        (type *)malloc((count) * sizeof(type))
-#define CASC_FREE(ptr)                 free(ptr)
-
-//-----------------------------------------------------------------------------
 // Common functions (CascCommon.cpp)
 
 LPBYTE LoadInternalFileToMemory(TCascStorage * hs, LPBYTE pbQueryKey, DWORD dwOpenFlags, DWORD * pcbFileData);

@@ -144,6 +144,8 @@ static int ParseBlteHeader(TCascFile * hf, ULONGLONG HeaderOffset, LPBYTE pbEnco
     DWORD HeaderSize;
     DWORD FrameCount = 0;
 
+    CASCLIB_UNUSED(HeaderOffset);
+
     // There must be at least some bytes
     if (cbEncodedBuffer < FIELD_OFFSET(BLTE_ENCODED_HEADER, MustBe0F))
         return ERROR_BAD_FORMAT;

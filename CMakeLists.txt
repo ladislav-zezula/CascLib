@@ -17,7 +17,6 @@ set(HEADER_FILES
 
 set(SRC_FILES
     src/common/Common.cpp
-    src/common/Array.cpp
     src/common/Directory.cpp
     src/common/Csv.cpp
     src/common/FileStream.cpp

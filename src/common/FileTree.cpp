@@ -82,23 +82,23 @@ PCASC_FILE_NODE CASC_FILE_TREE::GetOrInsert(
         if(szNodeBegin && szNodeEnd)
         {
             // Insert the name fragment to the name table
-            szInsertedName = (char *)Array_Insert(&NameTable, szNodeBegin, (szNodeEnd - szNodeBegin));
+            szInsertedName = (char *)NameTable.Insert(szNodeBegin, (szNodeEnd - szNodeBegin));
             if(szInsertedName == NULL)
                 return NULL;
 
             // Get the name offset
-            NameIndex = (DWORD)Array_IndexOf(&NameTable, szInsertedName);
+            NameIndex = (DWORD)NameTable.IndexOf(szInsertedName);
         }
 
         // We need to save the array pointers. If it changes, we must rebuild both maps
-        SaveItemArray = FileTable.ItemArray;
+        SaveItemArray = FileTable.ItemArray();
 
         // Create a brand new node
-        pFileNode = (PCASC_FILE_NODE)Array_Insert(&FileTable, NULL, 1);
+        pFileNode = (PCASC_FILE_NODE)FileTable.Insert(NULL, 1);
         if(pFileNode != NULL)
         {
             // Setup the node
-            memset(pFileNode, 0, FileTable.ItemSize);
+            memset(pFileNode, 0, FileTable.ItemSize());
             pFileNode->NameHash = FileNameHash;
             pFileNode->NameIndex = NameIndex;
             pFileNode->NameLength = (USHORT)(szNodeEnd - szNodeBegin);
@@ -113,7 +113,7 @@ PCASC_FILE_NODE CASC_FILE_TREE::GetOrInsert(
                 SET_NODE_INT32(pFileNode, DataIdOffset, DataId);
 
             // Did the array pointer change? If yes, then all items in the map are invalid now
-            if(FileTable.ItemArray == SaveItemArray)
+            if(FileTable.ItemArray() == SaveItemArray)
             {
                 if(pNameMap != NULL)
                     Map_InsertObject(pNameMap, pFileNode, &pFileNode->NameHash);
@@ -161,7 +161,7 @@ size_t CASC_FILE_TREE::MakePath(PCASC_FILE_NODE pFileNode, char * szBuffer, size
     if(pFileNode->Parent != CASC_INVALID_INDEX)
     {
         // Copy all parents
-        pParentNode = (PCASC_FILE_NODE)Array_ItemAt(&FileTable, pFileNode->Parent);
+        pParentNode = (PCASC_FILE_NODE)FileTable.ItemAt(pFileNode->Parent);
         if(pParentNode != NULL)
         {
             // Query the parent and move the buffer
@@ -170,7 +170,7 @@ size_t CASC_FILE_TREE::MakePath(PCASC_FILE_NODE pFileNode, char * szBuffer, size
         }
 
         // Retrieve the node name
-        szNamePtr = (const char *)Array_ItemAt(&NameTable, pFileNode->NameIndex);
+        szNamePtr = (const char *)NameTable.ItemAt(pFileNode->NameIndex);
 
         // Check whether we have enough space
         if((szBuffer + pFileNode->NameLength) < szBufferEnd)
@@ -209,7 +209,7 @@ void CASC_FILE_TREE::SetExtras(PCASC_FILE_NODE pFileNode, DWORD FileSize, DWORD 
 bool CASC_FILE_TREE::RebuildTreeMaps()
 {
     PCASC_FILE_NODE pFileNode;
-    size_t nMaxItems = FileTable.ItemCountMax;
+    size_t nMaxItems = FileTable.ItemCountMax();
     DWORD DataId = 0;
 
     // Free the map of FullName -> CASC_FILE_NODE
@@ -236,9 +236,9 @@ bool CASC_FILE_TREE::RebuildTreeMaps()
     }
 
     // Parse all items and insert them to the map
-    for(size_t i = 0; i < FileTable.ItemCount; i++)
+    for(size_t i = 0; i < FileTable.ItemCount(); i++)
     {
-        pFileNode = (PCASC_FILE_NODE)Array_ItemAt(&FileTable, i);
+        pFileNode = (PCASC_FILE_NODE)FileTable.ItemAt(i);
         if(pFileNode != NULL)
         {
             // Insert the file by name
@@ -294,19 +294,19 @@ int CASC_FILE_TREE::Create(DWORD Flags)
     }
 
     // Initialize the dynamic array
-    nError = Array_Create_(&FileTable, FileNodeSize, START_ITEM_COUNT);
+    nError = FileTable.Create(FileNodeSize, START_ITEM_COUNT);
     if(nError == ERROR_SUCCESS)
     {
         // Create the dynamic array that will hold the node names
-        nError = Array_Create(&NameTable, char, START_ITEM_COUNT);
+        nError = NameTable.Create<char>(START_ITEM_COUNT);
         if(nError == ERROR_SUCCESS)
         {
             // Insert the first "root" node, without name
-            pRootNode = (PCASC_FILE_NODE)Array_Insert(&FileTable, NULL, 1);
+            pRootNode = (PCASC_FILE_NODE)FileTable.Insert(NULL, 1);
             if(pRootNode != NULL)
             {
                 // Initialize the node
-                memset(pRootNode, 0, FileTable.ItemSize);
+                memset(pRootNode, 0, FileTable.ItemSize());
                 pRootNode->Parent = CASC_INVALID_INDEX;
                 pRootNode->NameIndex = CASC_INVALID_INDEX;
                 pRootNode->Flags = CFN_FLAG_FOLDER;
@@ -327,8 +327,8 @@ void CASC_FILE_TREE::Free()
     Map_Free(pIdMap);
     
     // Free both arrays
-    Array_Free(&FileTable);
-    Array_Free(&NameTable);
+    FileTable.Free();
+    NameTable.Free();
 
     // Zero the object
     memset(this, 0, sizeof(CASC_FILE_TREE));
@@ -361,7 +361,7 @@ PCASC_FILE_NODE CASC_FILE_TREE::Insert(PCONTENT_KEY pCKey, const char * szFullPa
             pFileNode->Flags |= CFN_FLAG_FOLDER;
 
             // Get the new parent item
-            Parent = (DWORD)Array_IndexOf(&FileTable, pFileNode);
+            Parent = (DWORD)FileTable.IndexOf(pFileNode);
 
             // Also reset the begin of the node
             szNodeBegin = szFullPath + i + 1;
@@ -400,7 +400,7 @@ PCASC_FILE_NODE CASC_FILE_TREE::Insert(PCONTENT_KEY pCKey, ULONGLONG NameHash, D
 
 PCASC_FILE_NODE CASC_FILE_TREE::ItemAt(size_t nItemIndex)
 {
-    return (PCASC_FILE_NODE)Array_ItemAt(&FileTable, nItemIndex);;
+    return (PCASC_FILE_NODE)FileTable.ItemAt(nItemIndex);
 }
 
 PCASC_FILE_NODE CASC_FILE_TREE::PathAt(char * szBuffer, size_t cchBuffer, size_t nItemIndex)
@@ -412,7 +412,7 @@ PCASC_FILE_NODE CASC_FILE_TREE::PathAt(char * szBuffer, size_t cchBuffer, size_t
     szBuffer[0] = 0;
 
     // Query the item
-    pFileNode = (PCASC_FILE_NODE)Array_ItemAt(&FileTable, nItemIndex);
+    pFileNode = (PCASC_FILE_NODE)FileTable.ItemAt(nItemIndex);
     if(pFileNode != NULL && pFileNode->NameLength != 0)
     {
         // Construct the full path
@@ -461,12 +461,12 @@ PCASC_FILE_NODE CASC_FILE_TREE::Find(DWORD DataId, PDWORD PtrFileSize)
 */
 size_t CASC_FILE_TREE::GetCount()
 {
-    return FileTable.ItemCount;
+    return FileTable.ItemCount();
 }
 
 size_t CASC_FILE_TREE::IndexOf(PCASC_FILE_NODE pFileNode)
 {
-    return Array_IndexOf(&FileTable, pFileNode);
+    return FileTable.IndexOf(pFileNode);
 }
 
 void CASC_FILE_TREE::GetExtras(PCASC_FILE_NODE pFileNode, PDWORD PtrDataId, PDWORD PtrFileSize, PDWORD PtrLocaleId)

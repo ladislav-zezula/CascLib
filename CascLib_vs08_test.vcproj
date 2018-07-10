@@ -785,10 +785,6 @@
 				Name="common"
 				>
 				<File
-					RelativePath=".\src\common\Array.cpp"
-					>
-				</File>
-				<File
 					RelativePath=".\src\common\Array.h"
 					>
 				</File>

@@ -41,6 +41,7 @@
   #include <assert.h>
   #include <ctype.h>
   #include <stdio.h>
+  #include <malloc.h>
   #include <windows.h>
   #include <wininet.h>
   #include <sys/types.h>

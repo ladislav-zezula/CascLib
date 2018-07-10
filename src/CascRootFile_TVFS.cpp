@@ -367,16 +367,12 @@ struct TRootHandler_TVFS : public TFileTreeRoot
     bool IsVfsFileEKey(TCascStorage * hs, ENCODED_KEY & EKey, size_t EKeyLength)
     {
         PQUERY_KEY_PAIR pKeyPair;
-        size_t ItemCount = 0;
-
-        // Are there some VFS items?
-        if (hs->VfsRootList.ItemArray && hs->VfsRootList.ItemCount)
-            ItemCount = hs->VfsRootList.ItemCount;
+        size_t ItemCount = hs->VfsRootList.ItemCount();
 
         // Search the array
         for (size_t i = 0; i < ItemCount; i++)
         {
-            pKeyPair = (PQUERY_KEY_PAIR)Array_ItemAt(&hs->VfsRootList, i);
+            pKeyPair = (PQUERY_KEY_PAIR)hs->VfsRootList.ItemAt(i);
             if (pKeyPair != NULL)
             {
                 if (!memcmp(pKeyPair->EKey.Value, EKey.Value, EKeyLength))
