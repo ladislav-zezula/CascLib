@@ -566,7 +566,7 @@ static STORAGE_INFO StorageInfo[] =
     {"2014 - Heroes of the Storm/39445/HeroesData", "ee5bd644554fe660a47205b3a37f4b20", "versions.osxarchive\\Versions\\Base39153\\Heroes.app\\Contents\\_CodeSignature\\CodeResources"},
     {"2014 - Heroes of the Storm/50286/HeroesData", "8ee62ff0b959992854a7faa3a4c4efc3", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
     {"2014 - Heroes of the Storm/65943", "044646b8cd27cfe9115bd55810955d40", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
-/*
+    /*
     {"2015 - Diablo III/30013", "a0b42485b79dae47069d86784564d884", "ENCODING"},
     {"2015 - Diablo III/50649", "68d14fb4c20edccd414ca8c935a5ebfe", "ENCODING" },
 
@@ -574,18 +574,18 @@ static STORAGE_INFO StorageInfo[] =
     {"2015 - Overwatch/47161", "d12b77b585ce708f1af3b1b7776a1fb0", "TactManifest\\Win_SPWin_RCN_LesMX_EExt.apm"},
 
     {"2016 - Starcraft II/45364/\\/\\/\\", "fc13de3bbca74f907f967afb9f8db830", "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
-*/
+
     {"2016 - WoW/18125", "af477d5cb467c07fef5764473b0a1155", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"2016 - WoW/18379", "f9b0f678fab0d8c67c109c6e72fbb1b6", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/18379", "e6879ab7cbd93d48718fd56633bcdcbc", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"2016 - WoW/18865", "9859fbb72f24153532b33787ac875c8d", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"2016 - WoW/18888", "91b074918ccac080355b2a76ba9a8d3b", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"2016 - WoW/19116", "cf3a4ff622fc7176ce6721f6eaf7cd2c", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"2016 - WoW/19342", "d0455d33e9011a98084764df33a93e5a", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/19342", "f9e7c440158c07f0fb8ec9a55a7679d2", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"2016 - WoW/19342-with-patch", "678d497e556b80954e4b2ce0fd90cd78", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"2016 - WoW/19678-after-patch", "a31378fbdc261e4470fc8be1175a6210", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"2016 - WoW/21742", "740a369bf6a1b81913bda719f4877840", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"2016 - WoW/22267", "02d73c992496d3f1c6b39ac6179d224a", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"2016 - WoW/23420", "0df90d85417a8a60ec5115b557fa77fa", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/22267", "f7da13a344e1d5d35a5cf85fd30831e2", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/23420", "86c513a7d6c0b3edb13e2839d96b5738", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
 
     {"2017 - Starcraft1/2457", "ee7ec3feb3636a49604d76cd1330e6cc", "music\\radiofreezerg.ogg"},
     {"2017 - Starcraft1/4037", "e3b1fbab5301fb40c603cafac3d51cf8", "music\\radiofreezerg.ogg"},
@@ -595,7 +595,7 @@ static STORAGE_INFO StorageInfo[] =
     {"2018 - New CASC/00002", "82b381a8d79907c9fd4b19e36d69078c", "ENCODING"},
 
     {"2018 - Warcraft III/9655", "ee0d4eea919860b99b8b7204020a5650", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
-
+*/
     {NULL}
 };
 
