@@ -25,6 +25,7 @@
 /CMakeCache.txt
 /*.cmake
 /Makefile
+/CMakeScripts/
 
 # Visual Studio related files
 *.opensdf
@@ -35,6 +36,9 @@
 *.db
 *.opendb
 .vs/
+
+# Xcode related files
+*.xcodeproj
 
 # KDevelop related files
 *.kdev4

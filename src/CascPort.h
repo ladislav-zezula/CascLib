@@ -77,6 +77,8 @@
   #include <dirent.h>
   #include <errno.h>
   #include <stddef.h>
+  #include <string.h>
+  #include <cassert>
 
   // Support for PowerPC on Max OS X
   #if (__ppc__ == 1) || (__POWERPC__ == 1) || (_ARCH_PPC == 1)
@@ -160,6 +162,7 @@
   typedef unsigned int   LCID;
   typedef LONG         * PLONG;
   typedef DWORD        * PDWORD;
+  typedef DWORD_PTR    * LPDWORD;
   typedef BYTE         * LPBYTE;
   typedef char         * LPSTR;
 
