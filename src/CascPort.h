@@ -150,9 +150,6 @@
   typedef unsigned short USHORT;
   typedef int            LONG;
   typedef unsigned int   DWORD;
-  typedef unsigned long  DWORD_PTR;
-  typedef long           LONG_PTR;
-  typedef long           INT_PTR;
   typedef long long      LONGLONG;
   typedef unsigned long long ULONGLONG;
   typedef unsigned long long *PULONGLONG;
@@ -162,7 +159,7 @@
   typedef unsigned int   LCID;
   typedef LONG         * PLONG;
   typedef DWORD        * PDWORD;
-  typedef DWORD_PTR    * LPDWORD;
+  typedef DWORD        * LPDWORD;
   typedef BYTE         * LPBYTE;
   typedef char         * LPSTR;
 
