@@ -30,14 +30,16 @@
 
 typedef struct _BASEVALS
 {
-    DWORD BaseValue;                // Always used as base value
-    DWORD AddValue0 : 7;            // Used when (((index >> 0x06) & 0x07) - 1) == 0
-    DWORD AddValue1 : 8;            // Used when (((index >> 0x06) & 0x07) - 1) == 1
-    DWORD AddValue2 : 8;            // Used when (((index >> 0x06) & 0x07) - 1) == 2
-    DWORD AddValue3 : 9;            // Used when (((index >> 0x06) & 0x07) - 1) == 3
-    DWORD AddValue4 : 9;            // Used when (((index >> 0x06) & 0x07) - 1) == 4
-    DWORD AddValue5 : 9;            // Used when (((index >> 0x06) & 0x07) - 1) == 5
-    DWORD AddValue6 : 9;            // Used when (((index >> 0x06) & 0x07) - 1) == 6
+    DWORD BaseValue200;             // Item value of every 0x200-th item
+
+    DWORD AddValue40 : 7;           // For each 0x40 items (above the base200),
+    DWORD AddValue80 : 8;           // we have extra shortcut to the item value
+    DWORD AddValueC0 : 8;           // that is to be added to BaseValue200
+    DWORD AddValue100 : 9;
+    DWORD AddValue140 : 9;
+    DWORD AddValue180 : 9;
+    DWORD AddValue1C0 : 9;
+
     DWORD __xalignment : 5;         // Filling
 } BASEVALS, *PBASEVALS;
 
@@ -696,87 +698,73 @@ class TSparseArray
         return (PresenceBits.ItemArray[index >> 0x05] & (1 << (index & 0x1F))) ? true : false;
     }
 
-    // HOTS: 1959B60
-    DWORD GetIntValueAt(size_t index)
+    // Retrieves the value of the n-th item in the sparse array.
+    // Note that for items that are not present, the value is equal
+    // to the nearest lower present value
+    DWORD GetItemValueAt(size_t index)
     {
-        PBASEVALS pBaseValues;
-        DWORD BaseValue;
+        PBASEVALS pBaseValues = BaseValues.ItemArray + (index >> 0x09);
+        DWORD IntValue;
         DWORD BitMask;
 
         //
-        // Divide the index to four parts:
-        //   31                      8          5           4          0
-        //   |-----------------------|----------|-----------|----------|
-        //   |           A           |    B     |     C     |     D    |
-        //   |      (23 bits)        | (3 bits) |  (1 bit)  | (5 bits) |
-        //   |-----------------------|----------|-----------|----------|
-        //
-        // A (23-bits): Index to the table (60 bits per entry)
-        //
-        // B (3 bits) : Index of the variable-bit value in the array (val[#], see below)
-        //
-        // C (32 bits): Number of bits to be checked (up to 0x3F bits).
-        //              Number of set bits is then added to the values obtained from A and B
-        //
-        //   Layout of the table entry:
-        //   |--------------------------------|-------|--------|--------|---------|---------|---------|---------|-----|
-        //   |  Base Value                    | val[0]| val[1] | val[2] | val[3]  | val[4]  | val[5]  | val[6]  |  -  |
-        //   |  32 bits                       | 7 bits| 8 bits | 8 bits | 9 bits  | 9 bits  | 9 bits  | 9 bits  |5bits|
-        //   |--------------------------------|-------|--------|--------|---------|---------|---------|---------|-----|
+        // Since we don't want to count bits for the entire array,
+        // there are item value shortcuts every 0x200 items,
+        // and then every 0x40 items above the 0x200 base
         //
 
-        // Bits Upper 23 bits contain index to the table
-        pBaseValues = BaseValues.ItemArray + (index >> 0x09);
-        BaseValue = pBaseValues->BaseValue;
+        // 1) We have base value for every 0x200-th item
+        IntValue = pBaseValues->BaseValue200;
 
-        // Next 3 bits contain the index to the VBR
+        // 2) Add the base value for each 0x40-th item above the 0x200 base
         switch(((index >> 0x06) & 0x07) - 1)
         {
             case 0:     // Add the 1st value (7 bits)
-                BaseValue += pBaseValues->AddValue0;
+                IntValue += pBaseValues->AddValue40;
                 break;
 
             case 1:     // Add the 2nd value (8 bits)
-                BaseValue += pBaseValues->AddValue1;
+                IntValue += pBaseValues->AddValue80;
                 break;
 
             case 2:     // Add the 3rd value (8 bits)
-                BaseValue += pBaseValues->AddValue2;
+                IntValue += pBaseValues->AddValueC0;
                 break;
 
             case 3:     // Add the 4th value (9 bits)
-                BaseValue += pBaseValues->AddValue3;
+                IntValue += pBaseValues->AddValue100;
                 break;
 
             case 4:     // Add the 5th value (9 bits)
-                BaseValue += pBaseValues->AddValue4;
+                IntValue += pBaseValues->AddValue140;
                 break;
 
             case 5:     // Add the 6th value (9 bits)
-                BaseValue += pBaseValues->AddValue5;
+                IntValue += pBaseValues->AddValue180;
                 break;
 
             case 6:     // Add the 7th value (9 bits)
-                BaseValue += pBaseValues->AddValue6;
+                IntValue += pBaseValues->AddValue1C0;
                 break;
         }
 
-        // 0x20 bit set: (0x20 - 0x40): Also add bits from the previous DWORD
+        // 3) Count the bits of the higher DWORD, if the index 0x20 - 0x30 above the 0x200 base
         if(index & 0x20)
-            BaseValue += GetNumbrOfSetBits32(PresenceBits.ItemArray[(index >> 0x05) - 1]);
+            IntValue += GetNumbrOfSetBits32(PresenceBits.ItemArray[(index >> 0x05) - 1]);
 
-        // Lowest 5 bits (0x00 - 0x1F): Add the number of bits in the masked current DWORD
+        // 4) Count the bits in the current DWORD (masked by bit index mask) 
         BitMask = (1 << (index & 0x1F)) - 1;
-        return BaseValue + GetNumbrOfSetBits32(PresenceBits.ItemArray[index >> 0x05] & BitMask);
+        return IntValue + GetNumbrOfSetBits32(PresenceBits.ItemArray[index >> 0x05] & BitMask);
     }
 
     // HOTS: 1959CB0
-    DWORD sub_1959CB0(DWORD PathNodeId)
+    DWORD sub_1959CB0(DWORD index)
     {
         PBASEVALS pBaseValues;
-        DWORD dwKeyShifted = (PathNodeId >> 9);
+        DWORD dwKeyShifted = (index >> 9);
         DWORD eax, ebx, ecx, esi, edi;
-        DWORD edx = PathNodeId;
+        DWORD edx = index;
+        DWORD value;
 
         // If lower 9 bits is zero
         if ((edx & 0x1FF) == 0)
@@ -784,21 +772,21 @@ class TSparseArray
 
         eax = ArrayDwords_38.ItemArray[dwKeyShifted] >> 9;
         esi = (ArrayDwords_38.ItemArray[dwKeyShifted + 1] + 0x1FF) >> 9;
-        PathNodeId = esi;
+        value = esi;
 
         if ((eax + 0x0A) >= esi)
         {
             // HOTS: 1959CF7
             pBaseValues = BaseValues.ItemArray + eax + 1;
             edi = (eax << 0x09);
-            ebx = edi - pBaseValues->BaseValue + 0x200;
+            ebx = edi - pBaseValues->BaseValue200 + 0x200;
             while (edx >= ebx)
             {
                 // HOTS: 1959D14
                 edi += 0x200;
                 pBaseValues++;
 
-                ebx = edi - pBaseValues->BaseValue + 0x200;
+                ebx = edi - pBaseValues->BaseValue200 + 0x200;
                 eax++;
             }
         }
@@ -810,37 +798,37 @@ class TSparseArray
                 // HOTS: 1959D38
                 // ecx = Struct68_00.BaseValues.ItemArray;
                 esi = (esi + eax) >> 1;
-                ebx = (esi << 0x09) - BaseValues.ItemArray[esi].BaseValue;
+                ebx = (esi << 0x09) - BaseValues.ItemArray[esi].BaseValue200;
                 if (edx < ebx)
                 {
                     // HOTS: 01959D4B
-                    PathNodeId = esi;
+                    value = esi;
                 }
                 else
                 {
                     // HOTS: 1959D50
                     eax = esi;
-                    esi = PathNodeId;
+                    esi = value;
                 }
             }
         }
 
         // HOTS: 1959D5F
         pBaseValues = BaseValues.ItemArray + eax;
-        edx += pBaseValues->BaseValue - (eax << 0x09);
+        edx += pBaseValues->BaseValue200 - (eax << 0x09);
         edi = (eax << 4);
 
-        ecx = pBaseValues->AddValue3;
-        ebx = 0x100 - pBaseValues->AddValue3;
+        ecx = pBaseValues->AddValue100;
+        ebx = 0x100 - pBaseValues->AddValue100;
         if (edx < ebx)
         {
             // HOTS: 1959D8C
-            ecx = pBaseValues->AddValue1;
+            ecx = pBaseValues->AddValue80;
             esi = 0x80 - ecx;
             if (edx < esi)
             {
                 // HOTS: 01959DA2
-                eax = pBaseValues->AddValue0;
+                eax = pBaseValues->AddValue40;
                 ecx = 0x40 - eax;
                 if (edx >= ecx)
                 {
@@ -852,7 +840,7 @@ class TSparseArray
             else
             {
                 // HOTS: 1959DC0
-                eax = pBaseValues->AddValue2;
+                eax = pBaseValues->AddValueC0;
                 esi = 0xC0 - eax;
                 if (edx < esi)
                 {
@@ -871,12 +859,12 @@ class TSparseArray
         else
         {
             // HOTS: 1959DE8
-            eax = pBaseValues->AddValue5;
+            eax = pBaseValues->AddValue180;
             ebx = 0x180 - eax;
             if (edx < ebx)
             {
                 // HOTS: 01959E00
-                esi = pBaseValues->AddValue4;
+                esi = pBaseValues->AddValue140;
                 eax = (0x140 - esi);
                 if (edx < eax)
                 {
@@ -894,7 +882,7 @@ class TSparseArray
             else
             {
                 // HOTS: 1959E29
-                esi = pBaseValues->AddValue6;
+                esi = pBaseValues->AddValue1C0;
                 ecx = (0x1C0 - esi);
                 if (edx < ecx)
                 {
@@ -972,26 +960,24 @@ class TSparseArray
         return table_1BA1818[ecx + edx] + edi;
     }
 
-    DWORD sub_1959F50(DWORD arg_0)
+    DWORD sub_1959F50(DWORD index)
     {
         PBASEVALS pBaseValues;
-        PDWORD ItemArray;
-        DWORD eax, ebx, ecx, edx, esi, edi;
+        DWORD dwKeyShifted = (index >> 9);
+        DWORD eax, ebx, ecx, esi, edi;
+        DWORD edx = index;
 
-        edx = arg_0;
-        eax = arg_0 >> 0x09;
-        if ((arg_0 & 0x1FF) == 0)
-            return ArrayDwords_50.ItemArray[eax];
+        if ((index & 0x1FF) == 0)
+            return ArrayDwords_50.ItemArray[dwKeyShifted];
 
-        ItemArray = ArrayDwords_50.ItemArray + eax;
-        eax = (ItemArray[0] >> 0x09);
-        edi = (ItemArray[1] + 0x1FF) >> 0x09;
+        eax = ArrayDwords_50.ItemArray[dwKeyShifted] >> 9;
+        edi = (ArrayDwords_50.ItemArray[dwKeyShifted + 1] + 0x1FF) >> 9;
 
         if ((eax + 0x0A) > edi)
         {
             // HOTS: 01959F94
             pBaseValues = BaseValues.ItemArray + eax + 1;
-            while (edx >= pBaseValues->BaseValue)
+            while (edx >= pBaseValues->BaseValue200)
             {
                 // HOTS: 1959FA3
                 pBaseValues++;
@@ -1006,7 +992,7 @@ class TSparseArray
             {
                 // HOTS: 1959FB4
                 esi = (edi + eax) >> 1;
-                if (edx < BaseValues.ItemArray[esi].BaseValue)
+                if (edx < BaseValues.ItemArray[esi].BaseValue200)
                 {
                     // HOTS: 1959FC4
                     edi = esi;
@@ -1021,17 +1007,17 @@ class TSparseArray
 
         // HOTS: 1959FD4
         pBaseValues = BaseValues.ItemArray + eax;
-        edx = edx - pBaseValues->BaseValue;
+        edx = edx - pBaseValues->BaseValue200;
         edi = eax << 0x04;
-        ebx = pBaseValues->AddValue3;
+        ebx = pBaseValues->AddValue100;
         if (edx < ebx)
         {
             // HOTS: 1959FF1
-            esi = pBaseValues->AddValue1;
+            esi = pBaseValues->AddValue80;
             if (edx < esi)
             {
                 // HOTS: 0195A000
-                eax = pBaseValues->AddValue0;
+                eax = pBaseValues->AddValue40;
                 if (edx >= eax)
                 {
                     // HOTS: 195A007
@@ -1042,7 +1028,7 @@ class TSparseArray
             else
             {
                 // HOTS: 195A00E
-                eax = pBaseValues->AddValue2;
+                eax = pBaseValues->AddValueC0;
                 if (edx < eax)
                 {
                     // HOTS: 195A01A
@@ -1060,11 +1046,11 @@ class TSparseArray
         else
         {
             // HOTS: 195A026
-            eax = pBaseValues->AddValue5;
+            eax = pBaseValues->AddValue180;
             if (edx < eax)
             {
                 // HOTS: 195A037
-                esi = pBaseValues->AddValue4;
+                esi = pBaseValues->AddValue140;
                 if (edx < esi)
                 {
                     // HOTS: 195A041
@@ -1081,7 +1067,7 @@ class TSparseArray
             else
             {
                 // HOTS: 195A04D
-                esi = pBaseValues->AddValue6;
+                esi = pBaseValues->AddValue1C0;
                 if (edx < esi)
                 {
                     // HOTS: 195A05A
@@ -1150,15 +1136,32 @@ class TSparseArray
         edx = edx << 0x08;
 
         // BUGBUG: Potential buffer overflow
-        // Happens in Heroes of the Storm when arg_0 == 0x5B
+        // Happens in Heroes of the Storm when index == 0x5B
         assert((esi + edx) < sizeof(table_1BA1818));
         return table_1BA1818[esi + edx] + edi;
     }
 
-    TGenericArray<DWORD> PresenceBits;          // Bit array for each item (1 = item is present)
+#ifdef _DEBUG
+    void Dump(FILE * fp)
+    {
+        for (size_t i = 0; i < TotalItemCount; i++)
+        {
+            if (IsItemPresent(i))
+            {
+                fprintf(fp, "[%04X]: %08X, %08X, %08X\n", i, GetItemValueAt(i), sub_1959CB0((DWORD)i), sub_1959F50((DWORD)i));
+            }
+            else
+            {
+                fprintf(fp, "[%04X]: NOT PRESENT\n", i);
+            }
+        }
+    }
+#endif
+
+    TGenericArray<DWORD> PresenceBits;          // For each item, its bit is set if the item is present in the array
     DWORD TotalItemCount;                       // Total number of items in the array
     DWORD ValidItemCount;                       // Number of present items in the array
-    TGenericArray<BASEVALS> BaseValues;         // Array of base values for item indexes >= 0x200
+    TGenericArray<BASEVALS> BaseValues;         // Array of BASEVALS structures
     TGenericArray<DWORD> ArrayDwords_38;
     TGenericArray<DWORD> ArrayDwords_50;
 };
@@ -1610,7 +1613,7 @@ class TFileNameDatabase
     // HOTS: 1957350, inlined
     DWORD GetPathFragmentOffset1(DWORD index_lobits)
     {
-        DWORD index_hibits = CollisionHiBitsIndexes.GetIntValueAt(index_lobits);
+        DWORD index_hibits = CollisionHiBitsIndexes.GetItemValueAt(index_lobits);
 
         return (HiBitsTable.GetItem(index_hibits) << 0x08) | LoBitsTable.ItemArray[index_lobits];
     }
@@ -1631,7 +1634,7 @@ class TFileNameDatabase
                     printf("[%02X] = NOT_PRESENT\n", i);
             }
 */
-            index_hibits = CollisionHiBitsIndexes.GetIntValueAt(index_lobits);
+            index_hibits = CollisionHiBitsIndexes.GetItemValueAt(index_lobits);
         }
         else
         {
@@ -2007,6 +2010,11 @@ class TFileNameDatabase
             return true;
         }
 
+#ifdef _DEBUG
+//      printf("\n");
+//      CollisionTable.Dump(stdout);
+#endif
+
         // HOTS: 1958BE5
         ColTableIndex = CollisionTable.sub_1959CB0(pStruct40->NodeIndex) + 1;
         pStruct40->NodeIndex = (ColTableIndex - pStruct40->NodeIndex - 1);
@@ -2183,7 +2191,7 @@ class TFileNameDatabase
                 {
                     pSearch->szFoundPath = pStruct40->PathBuffer.ItemArray;
                     pSearch->cchFoundPath = pStruct40->PathBuffer.ItemCount;
-                    pSearch->FileNameIndex = FileNameIndexes.GetIntValueAt(pStruct40->NodeIndex);
+                    pSearch->FileNameIndex = FileNameIndexes.GetItemValueAt(pStruct40->NodeIndex);
                     return true;
                 }
             }
@@ -2250,7 +2258,7 @@ class TFileNameDatabase
                             if (pPathStop->field_10 == 0xFFFFFFFF)
                             {
                                 // HOTS: 19596D9
-                                pPathStop->field_10 = FileNameIndexes.GetIntValueAt(pPathStop->LoBitsIndex);
+                                pPathStop->field_10 = FileNameIndexes.GetItemValueAt(pPathStop->LoBitsIndex);
                             }
                             else
                             {
@@ -2321,7 +2329,7 @@ class TFileNameDatabase
 
         pSearch->szFoundPath   = pSearch->szSearchMask;
         pSearch->cchFoundPath  = pSearch->cchSearchMask;
-        pSearch->FileNameIndex = FileNameIndexes.GetIntValueAt(pStruct40->NodeIndex);
+        pSearch->FileNameIndex = FileNameIndexes.GetItemValueAt(pStruct40->NodeIndex);
         return true;
     }
 
