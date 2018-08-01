@@ -293,7 +293,7 @@ HANDLE WINAPI CascFindFirstFile(
     int nError = ERROR_SUCCESS;
 
     // Check parameters
-    if((hs = IsValidStorageHandle(hStorage)) == NULL)
+    if((hs = IsValidCascStorageHandle(hStorage)) == NULL)
         nError = ERROR_INVALID_HANDLE;
     if(szMask == NULL || pFindData == NULL)
         nError = ERROR_INVALID_PARAMETER;

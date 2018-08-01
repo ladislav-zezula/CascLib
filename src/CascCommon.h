@@ -249,8 +249,8 @@ int LoadCdnBuildFile(TCascStorage * hs);
 //-----------------------------------------------------------------------------
 // Internal file functions
 
-TCascStorage * IsValidStorageHandle(HANDLE hStorage);
-TCascFile * IsValidFileHandle(HANDLE hFile);
+TCascStorage * IsValidCascStorageHandle(HANDLE hStorage);
+TCascFile * IsValidCascFileHandle(HANDLE hFile);
 
 PCASC_CKEY_ENTRY FindCKeyEntry(TCascStorage * hs, PQUERY_KEY pCKey, PDWORD PtrIndex = NULL);
 PCASC_EKEY_ENTRY FindEKeyEntry(TCascStorage * hs, PQUERY_KEY pEKey, PDWORD PtrIndex = NULL);

@@ -47,8 +47,6 @@ typedef struct _BLTE_FRAME
 //-----------------------------------------------------------------------------
 // Local functions
 
-TCascFile * IsValidFileHandle(HANDLE hFile);        // In CascOpenFile.cpp
-
 static int EnsureDataStreamIsOpen(TCascFile * hf)
 {
     TCascStorage * hs = hf->hs;
@@ -505,7 +503,7 @@ bool WINAPI CascGetFileInfo(HANDLE hFile, CASC_FILE_INFO_CLASS InfoClass, void *
     size_t cbFileInfo = 0;
 
     // Validate the file handle
-    if((hf = IsValidFileHandle(hFile)) == NULL)
+    if((hf = IsValidCascFileHandle(hFile)) == NULL)
     {
         SetLastError(ERROR_INVALID_HANDLE);
         return false;
@@ -594,7 +592,7 @@ DWORD WINAPI CascGetFileSize(HANDLE hFile, PDWORD pdwFileSizeHigh)
     CASCLIB_UNUSED(pdwFileSizeHigh);
 
     // Validate the file handle
-    if((hf = IsValidFileHandle(hFile)) == NULL)
+    if((hf = IsValidCascFileHandle(hFile)) == NULL)
     {
         SetLastError(ERROR_INVALID_HANDLE);
         return CASC_INVALID_SIZE;
@@ -630,7 +628,7 @@ DWORD WINAPI CascSetFilePointer(HANDLE hFile, LONG lFilePos, LONG * plFilePosHig
     DWORD dwFilePosHi;
 
     // If the hFile is not a valid file handle, return an error.
-    hf = IsValidFileHandle(hFile);
+    hf = IsValidCascFileHandle(hFile);
     if(hf == NULL)
     {
         SetLastError(ERROR_INVALID_HANDLE);
@@ -699,7 +697,7 @@ bool WINAPI CascReadFile(HANDLE hFile, void * pvBuffer, DWORD dwBytesToRead, PDW
     }
 
     // Validate the file handle
-    if((hf = IsValidFileHandle(hFile)) == NULL)
+    if((hf = IsValidCascFileHandle(hFile)) == NULL)
     {
         SetLastError(ERROR_INVALID_HANDLE);
         return false;

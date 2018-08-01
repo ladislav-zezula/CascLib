@@ -137,7 +137,7 @@ static void InitQuerySize(QUERY_SIZE & QuerySize)
     QuerySize.EncodedSize = CASC_INVALID_SIZE;
 }
 */
-TCascStorage * IsValidStorageHandle(HANDLE hStorage)
+TCascStorage * IsValidCascStorageHandle(HANDLE hStorage)
 {
     TCascStorage * hs = (TCascStorage *)hStorage;
 
@@ -1136,7 +1136,7 @@ bool WINAPI CascGetStorageInfo(
     DWORD dwInfoValue = 0;
 
     // Verify the storage handle
-    hs = IsValidStorageHandle(hStorage);
+    hs = IsValidCascStorageHandle(hStorage);
     if(hs == NULL)
     {
         SetLastError(ERROR_INVALID_HANDLE);
@@ -1192,7 +1192,7 @@ bool WINAPI CascCloseStorage(HANDLE hStorage)
     TCascStorage * hs;
 
     // Verify the storage handle
-    hs = IsValidStorageHandle(hStorage);
+    hs = IsValidCascStorageHandle(hStorage);
     if(hs == NULL)
     {
         SetLastError(ERROR_INVALID_PARAMETER);

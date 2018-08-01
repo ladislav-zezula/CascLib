@@ -15,7 +15,7 @@
 //-----------------------------------------------------------------------------
 // Local functions
 
-TCascFile * IsValidFileHandle(HANDLE hFile)
+TCascFile * IsValidCascFileHandle(HANDLE hFile)
 {
     TCascFile * hf = (TCascFile *)hFile;
 
@@ -139,7 +139,7 @@ bool WINAPI CascOpenFileByEKey(HANDLE hStorage, PQUERY_KEY pCKey, PQUERY_KEY pEK
     TCascStorage * hs;
 
     // Validate the storage handle
-    hs = IsValidStorageHandle(hStorage);
+    hs = IsValidCascStorageHandle(hStorage);
     if(hs == NULL)
     {
         SetLastError(ERROR_INVALID_HANDLE);
@@ -163,7 +163,7 @@ bool WINAPI CascOpenFileByCKey(HANDLE hStorage, PQUERY_KEY pCKey, DWORD dwOpenFl
     TCascStorage * hs;
 
     // Validate the storage handle
-    hs = IsValidStorageHandle(hStorage);
+    hs = IsValidCascStorageHandle(hStorage);
     if(hs == NULL)
     {
         SetLastError(ERROR_INVALID_HANDLE);
@@ -195,7 +195,7 @@ bool WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocal
     CASCLIB_UNUSED(dwLocaleFlags);
 
     // Validate the storage handle
-    hs = IsValidStorageHandle(hStorage);
+    hs = IsValidCascStorageHandle(hStorage);
     if(hs == NULL)
     {
         SetLastError(ERROR_INVALID_HANDLE);
@@ -287,7 +287,7 @@ DWORD WINAPI CascGetFileId(HANDLE hStorage, const char * szFileName)
     TCascStorage * hs;
 
     // Validate the storage handle
-    hs = IsValidStorageHandle(hStorage);
+    hs = IsValidCascStorageHandle(hStorage);
     if (hs == NULL)
     {
         SetLastError(ERROR_INVALID_HANDLE);
@@ -308,7 +308,7 @@ bool WINAPI CascCloseFile(HANDLE hFile)
 {
     TCascFile * hf;
 
-    hf = IsValidFileHandle(hFile);
+    hf = IsValidCascFileHandle(hFile);
     if(hf != NULL)
     {
         // Close (dereference) the archive handle

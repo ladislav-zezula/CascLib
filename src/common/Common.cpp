@@ -65,16 +65,16 @@ unsigned char IntToHexChar[] = "0123456789abcdef";
 // GetLastError/SetLastError support for non-Windows platform
 
 #ifndef PLATFORM_WINDOWS
-static int nLastError = ERROR_SUCCESS;
+static DWORD dwLastError = ERROR_SUCCESS;
 
-int GetLastError()
+DWORD GetLastError()
 {
-    return nLastError;
+    return dwLastError;
 }
 
-void SetLastError(int nError)
+void SetLastError(DWORD dwErrCode)
 {
-    nLastError = nError;
+    dwLastError = dwErrCode;
 }
 #endif
 

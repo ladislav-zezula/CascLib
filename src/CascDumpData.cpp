@@ -215,7 +215,7 @@ void CascDumpStorage(HANDLE hStorage, const char * szDumpFile)
     char szStringBuff[0x800];
 
     // Verify the storage handle
-    hs = IsValidStorageHandle(hStorage);
+    hs = IsValidCascStorageHandle(hStorage);
     if(hs == NULL)
         return;
 

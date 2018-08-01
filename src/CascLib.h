@@ -252,8 +252,8 @@ bool  WINAPI CascFindClose(HANDLE hFind);
 
 #ifndef PLATFORM_WINDOWS
 
-int GetLastError();
-void SetLastError(int nError);
+DWORD GetLastError();
+void SetLastError(DWORD dwErrCode);
 
 #endif  // PLATFORM_WINDOWS
 
