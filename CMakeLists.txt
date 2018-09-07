@@ -66,15 +66,23 @@ set(TEST_SRC_FILES
 
 add_definitions(-D_7ZIP_ST -DBZ_STRICT_ANSI)
 
+option(CASC_UNICODE "Compile UNICODE version instead of ANSI one (Visual Studio only)" OFF)
+
 if(WIN32)
     if(MSVC)
         message(STATUS "Using MSVC")
         add_definitions(-D_7ZIP_ST)
     else()
-        message(STATUS "Using mingw")
+        message(STATUS "Using mingw")	 
     endif()
     set(SRC_ADDITIONAL_FILES ${ZLIB_FILES} ${TOMCRYPT_FILES})
     set(LINK_LIBS wininet)
+    if(CASC_UNICODE)
+	message(STATUS "Build UNICODE version")
+        add_definitions(-DUNICODE -D_UNICODE)
+    else()
+	message(STATUS "Build ANSI version")
+    endif()
 endif()
 
 if(APPLE)
