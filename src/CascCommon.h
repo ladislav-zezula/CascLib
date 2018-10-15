@@ -186,6 +186,9 @@ typedef struct _TCascStorage
 
     TRootHandler * pRootHandler;                    // Common handler for various ROOT file formats
 
+    CASC_ARRAY ExtraKeysList;                       // List additional encryption keys
+    PCASC_MAP pEncryptionKeys;                      // Map of encryption keys
+
 } TCascStorage;
 
 typedef struct _TCascFile
@@ -256,8 +259,10 @@ PCASC_CKEY_ENTRY FindCKeyEntry(TCascStorage * hs, PQUERY_KEY pCKey, PDWORD PtrIn
 PCASC_EKEY_ENTRY FindEKeyEntry(TCascStorage * hs, PQUERY_KEY pEKey, PDWORD PtrIndex = NULL);
 
 int CascDecompress(LPBYTE pvOutBuffer, PDWORD pcbOutBuffer, LPBYTE pvInBuffer, DWORD cbInBuffer);
-int CascDecrypt   (LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBYTE pbInBuffer, DWORD cbInBuffer, DWORD dwFrameIndex);
 int CascDirectCopy(LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBYTE pbInBuffer, DWORD cbInBuffer);
+
+int CascLoadEncryptionKeys(TCascStorage * hs);
+int CascDecrypt(TCascStorage * hs, LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBYTE pbInBuffer, DWORD cbInBuffer, DWORD dwFrameIndex);
 
 //-----------------------------------------------------------------------------
 // Support for ROOT file

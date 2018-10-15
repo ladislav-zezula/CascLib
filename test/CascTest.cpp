@@ -621,7 +621,7 @@ int main(int argc, char * argv[])
 
 //  TestOpenStorage_OpenFile("2014 - Heroes of the Storm/29049", "fd45b0f59067a8dda512b740c782cd70");
 //  TestOpenStorage_OpenFile("z:\\47161", "ROOT");
-//  TestOpenStorage_EnumFiles("2016 - WoW/23420", NULL);
+    TestOpenStorage_ExtractFiles("2016 - WoW/23420", "86c513a7d6c0b3edb13e2839d96b5738", szListFile);
 //  TestOpenStorage_ExtractFiles("2014 - Heroes of the Storm/29049", "2d0209bb094127eb970f53ba29904b7d", szListFile);
 /*
     //

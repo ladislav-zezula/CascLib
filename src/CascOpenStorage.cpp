@@ -986,6 +986,11 @@ static TCascStorage * FreeCascStorage(TCascStorage * hs)
 
     if(hs != NULL)
     {
+        // Free the keys array
+        if(hs->pEncryptionKeys != NULL)
+            Map_Free(hs->pEncryptionKeys);
+        hs->ExtraKeysList.Free();
+
         // Free the root handler
         if(hs->pRootHandler != NULL)
             delete hs->pRootHandler;
@@ -1112,6 +1117,12 @@ bool WINAPI CascOpenStorage(const TCHAR * szPath, DWORD dwLocaleMask, HANDLE * p
     if(nError == ERROR_SUCCESS)
     {
         nError = LoadRootFile(hs, dwLocaleMask);
+    }
+
+    // Load the encryption keys
+    if (nError == ERROR_SUCCESS)
+    {
+        nError = CascLoadEncryptionKeys(hs);
     }
 
     // If something failed, free the storage and return

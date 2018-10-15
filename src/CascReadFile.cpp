@@ -408,6 +408,7 @@ static int LoadEncodedFrame(TFileStream * pStream, PCASC_FILE_FRAME pFrame, LPBY
 }
 
 static int ProcessFileFrame(
+    TCascStorage * hs,
     LPBYTE pbOutBuffer,
     DWORD  cbOutBuffer,
     LPBYTE pbInBuffer,
@@ -443,7 +444,7 @@ static int ProcessFileFrame(
                     return ERROR_NOT_ENOUGH_MEMORY;
 
                 // Decrypt the stream to the work buffer
-                nError = CascDecrypt(pbWorkBuffer, &cbWorkBuffer, pbInBuffer + 1, cbInBuffer - 1, dwFrameIndex);
+                nError = CascDecrypt(hs, pbWorkBuffer, &cbWorkBuffer, pbInBuffer + 1, cbInBuffer - 1, dwFrameIndex);
                 if(nError != ERROR_SUCCESS)
                 {
                     bWorkComplete = true;
@@ -771,7 +772,8 @@ bool WINAPI CascReadFile(HANDLE hFile, void * pvBuffer, DWORD dwBytesToRead, PDW
                         if (nError == ERROR_SUCCESS)
                         {
                             // Decode the frame
-                            nError = ProcessFileFrame(pbDecodedFrame,
+                            nError = ProcessFileFrame(hf->hs,
+                                                      pbDecodedFrame,
                                                       pFrame->ContentSize,
                                                       pbEncodedFrame,
                                                       pFrame->EncodedSize,

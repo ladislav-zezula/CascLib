@@ -15,6 +15,8 @@
 //-----------------------------------------------------------------------------
 // Local structures
 
+#define CASC_EXTRA_KEYS 0x80
+
 typedef struct _CASC_ENCRYPTION_KEY
 {
     ULONGLONG KeyName;                  // "Name" of the key
@@ -178,8 +180,6 @@ static CASC_ENCRYPTION_KEY CascKeys[] =
     { 0x3C6243057F3D9B24ULL, { 0x58, 0xAE, 0x3E, 0x06, 0x42, 0x10, 0xE3, 0xED, 0xF9, 0xC1, 0x25, 0x9C, 0xDE, 0x91, 0x4C, 0x5D } },   // 231 WOW-26871patch8.0.1_Beta  ktf cinematic
     { 0x7827FBE24427E27DULL, { 0x34, 0xA4, 0x32, 0x04, 0x20, 0x73, 0xCD, 0x0B, 0x51, 0x62, 0x70, 0x68, 0xD2, 0xE0, 0xBD, 0x3E } },   // 232 WOW-26871patch8.0.1_Beta  rot cinematic
 //  { 0x5DD92EE32BBF9ABDULL, { 0x??, 0x??, 0x??, 0x??, 0x??, 0x??, 0x??, 0x??, 0x??, 0x??, 0x??, 0x??, 0x??, 0x??, 0x??, 0x?? } },   // 234 WOW-27004patch8.0.1_Subm  filedataid 2238294
-
-    { 0, { 0 } }
 };
                                                                                                           
 //-----------------------------------------------------------------------------
@@ -188,19 +188,6 @@ static CASC_ENCRYPTION_KEY CascKeys[] =
 static DWORD Rol32(DWORD dwValue, DWORD dwRolCount)
 {
     return (dwValue << dwRolCount) | (dwValue >> (32 - dwRolCount));
-}
-
-static LPBYTE FindCascKey(ULONGLONG KeyName)
-{
-    // Search the known keys
-    for(size_t i = 0; CascKeys[i].KeyName != 0; i++)
-    {
-        if(CascKeys[i].KeyName == KeyName)
-            return CascKeys[i].Key;
-    }
-
-    // Key not found
-    return NULL;
 }
 
 static void Initialize(PCASC_SALSA20 pState, LPBYTE pbKey, DWORD cbKeyLength, LPBYTE pbVector)
@@ -327,7 +314,34 @@ static int Decrypt_Salsa20(LPBYTE pbOutBuffer, LPBYTE pbInBuffer, size_t cbInBuf
 //-----------------------------------------------------------------------------
 // Public functions
 
-int CascDecrypt(LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBYTE pbInBuffer, DWORD cbInBuffer, DWORD dwFrameIndex)
+int CascLoadEncryptionKeys(TCascStorage * hs)
+{
+    size_t nMaxItems = _countof(CascKeys) + CASC_EXTRA_KEYS;
+    int nError;
+
+    // Create fast map of KeyName -> Key
+    hs->pEncryptionKeys = Map_Create(nMaxItems, sizeof(ULONGLONG), FIELD_OFFSET(CASC_ENCRYPTION_KEY, KeyName));
+    if (hs->pEncryptionKeys == NULL)
+        return ERROR_NOT_ENOUGH_MEMORY;
+
+    // Insert all static keys
+    for (size_t i = 0; i < _countof(CascKeys); i++)
+        Map_InsertObject(hs->pEncryptionKeys, &CascKeys[i], &CascKeys[i].KeyName);
+
+    // Create array for extra keys
+    nError = hs->ExtraKeysList.Create<CASC_ENCRYPTION_KEY>(CASC_EXTRA_KEYS);
+    return nError;
+}
+
+LPBYTE CascFindKey(TCascStorage * hs, ULONGLONG KeyName)
+{
+    PCASC_ENCRYPTION_KEY pKey;
+
+    pKey = (PCASC_ENCRYPTION_KEY)Map_FindObject(hs->pEncryptionKeys, &KeyName);
+    return (pKey != NULL) ? pKey->Key : NULL;
+}
+
+int CascDecrypt(TCascStorage * hs, LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBYTE pbInBuffer, DWORD cbInBuffer, DWORD dwFrameIndex)
 {
     ULONGLONG KeyName = 0;
     LPBYTE pbBufferEnd = pbInBuffer + cbInBuffer;
@@ -378,7 +392,7 @@ int CascDecrypt(LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBYTE pbInBuffer, DWOR
         return ERROR_INSUFFICIENT_BUFFER;
 
     // Check if we know the key
-    pbKey = FindCascKey(KeyName);
+    pbKey = CascFindKey(hs, KeyName);
     if(pbKey == NULL)
         return ERROR_FILE_ENCRYPTED;
 
@@ -423,3 +437,38 @@ int CascDirectCopy(LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBYTE pbInBuffer, D
     return ERROR_SUCCESS;
 }
 
+bool WINAPI CascAddEncryptionKey(HANDLE hStorage, ULONGLONG KeyName, LPBYTE Key)
+{
+    PCASC_ENCRYPTION_KEY pEncKey;
+    TCascStorage * hs;
+
+    // Validate the storage handle
+    hs = IsValidCascStorageHandle(hStorage);
+    if (hs == NULL)
+    {
+        SetLastError(ERROR_INVALID_HANDLE);
+        return false;
+    }
+
+    // Don't allow more than CASC_EXTRA_KEYS keys
+    if (hs->ExtraKeysList.ItemCount() >= CASC_EXTRA_KEYS)
+    {
+        SetLastError(ERROR_INSUFFICIENT_BUFFER);
+        return false;
+    }
+
+    // Insert the key to the array
+    pEncKey = (PCASC_ENCRYPTION_KEY)hs->ExtraKeysList.Insert(NULL, 1);
+    if (pEncKey == NULL)
+    {
+        SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+        return false;
+    }
+
+    // Fill the key
+    memcpy(pEncKey->Key, Key, sizeof(pEncKey->Key));
+    pEncKey->KeyName = KeyName;
+
+    // Also insert the key to the map
+    return Map_InsertObject(hs->pEncryptionKeys, pEncKey, &pEncKey->KeyName);
+}
