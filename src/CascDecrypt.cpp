@@ -316,7 +316,8 @@ static int Decrypt_Salsa20(LPBYTE pbOutBuffer, LPBYTE pbInBuffer, size_t cbInBuf
 
 int CascLoadEncryptionKeys(TCascStorage * hs)
 {
-    size_t nMaxItems = _countof(CascKeys) + CASC_EXTRA_KEYS;
+    size_t nKeyCount = (sizeof(CascKeys) / sizeof(CASC_ENCRYPTION_KEY));
+    size_t nMaxItems = nKeyCount + CASC_EXTRA_KEYS;
     int nError;
 
     // Create fast map of KeyName -> Key
@@ -325,7 +326,7 @@ int CascLoadEncryptionKeys(TCascStorage * hs)
         return ERROR_NOT_ENOUGH_MEMORY;
 
     // Insert all static keys
-    for (size_t i = 0; i < _countof(CascKeys); i++)
+    for (size_t i = 0; i < nKeyCount; i++)
         Map_InsertObject(hs->pEncryptionKeys, &CascKeys[i], &CascKeys[i].KeyName);
 
     // Create array for extra keys
