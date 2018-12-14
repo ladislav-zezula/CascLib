@@ -2,6 +2,7 @@
 /* CascRootFile_TVFS.cpp                  Copyright (c) Ladislav Zezula 2018 */
 /*---------------------------------------------------------------------------*/
 /* ROOT handler for TACT VFS manifest format (root)                          */
+/* Note: TACT = Trusted Application Content Transfer                         */
 /*---------------------------------------------------------------------------*/
 /*   Date    Ver   Who  Comment                                              */
 /* --------  ----  ---  -------                                              */
