@@ -619,6 +619,7 @@ static int LoadIndexFile(PCASC_INDEX_FILE pIndexFile, DWORD KeyIndex)
     assert(pIndexFile->szFileName != NULL && pIndexFile->szFileName[0] != 0);
 
     // Open the stream for read-only access and read the file
+    // Note that this fails when the game is running (sharing violation).
     pStream = FileStream_OpenFile(pIndexFile->szFileName, STREAM_FLAG_READ_ONLY | STREAM_PROVIDER_FLAT | BASE_PROVIDER_FILE);
     if(pStream != NULL)
     {

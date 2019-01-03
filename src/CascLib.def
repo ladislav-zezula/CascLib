@@ -10,7 +10,7 @@ EXPORTS
 
     CascOpenStorage
     CascGetStorageInfo
-	CascAddEncryptionKey
+    CascAddEncryptionKey
     CascCloseStorage
 
     CascOpenFileByEKey

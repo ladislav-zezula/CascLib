@@ -410,8 +410,8 @@ static int TestOpenStorage_EnumFiles(const char * szStorage, const TCHAR * szLis
                 // Show the file name to the user
                 MakeShortName(cf.szFileName, szShortName, sizeof(szShortName));
 
-                if(fp != NULL)
-                    fprintf(fp, "%s\n", cf.szFileName);
+//              if(fp != NULL)
+//                  fprintf(fp, "%s\n", cf.szFileName);
 
                 // Show progress
                 if((dwFileCount % 5) == 0)
@@ -623,7 +623,8 @@ int main(int argc, char * argv[])
 //  TestOpenStorage_OpenFile("z:\\47161", "ROOT");
 //  TestOpenStorage_ExtractFiles("2016 - WoW/23420", "86c513a7d6c0b3edb13e2839d96b5738", szListFile);
 //  TestOpenStorage_ExtractFiles("2014 - Heroes of the Storm/29049", "2d0209bb094127eb970f53ba29904b7d", szListFile);
-    TestOpenStorage_EnumFiles("2014 - Heroes of the Storm/29049", "2d0209bb094127eb970f53ba29904b7d", szListFile);
+    __debugbreak();
+    TestOpenStorage_EnumFiles("Starcraft II");
 /*
     //
     // Tests for OpenStorage + ExtractFile
