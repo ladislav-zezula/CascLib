@@ -108,6 +108,11 @@ if(CASC_BUILD_SHARED_LIB)
 	add_library(casc SHARED ${SRC_FILES} ${HEADER_FILES} ${SRC_ADDITIONAL_FILES})
 	target_link_libraries(casc ${LINK_LIBS})
 	install(TARGETS casc RUNTIME DESTINATION bin LIBRARY DESTINATION lib${LIB_SUFFIX} ARCHIVE DESTINATION lib${LIB_SUFFIX} FRAMEWORK DESTINATION /Library/Frameworks)
+	target_include_directories(casc
+			PUBLIC
+			$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+			$<INSTALL_INTERFACE:include>
+	)
 	# On Win32, build CascLib.dll
 	if(WIN32)
 		set_target_properties(casc PROPERTIES OUTPUT_NAME CascLib)
@@ -142,6 +147,11 @@ if(CASC_BUILD_STATIC_LIB)
     add_library(casc_static STATIC ${SRC_FILES} ${HEADER_FILES} ${SRC_ADDITIONAL_FILES})
     target_link_libraries(casc_static ${LINK_LIBS})
     set_target_properties(casc_static PROPERTIES OUTPUT_NAME casc)
+	target_include_directories(casc_static
+			PUBLIC
+			$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+			$<INSTALL_INTERFACE:include>
+	)
 	install(TARGETS casc_static RUNTIME DESTINATION bin LIBRARY DESTINATION lib${LIB_SUFFIX} ARCHIVE DESTINATION lib${LIB_SUFFIX} FRAMEWORK DESTINATION /Library/Frameworks)
 	
 	if(APPLE)
