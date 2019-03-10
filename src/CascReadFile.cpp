@@ -66,7 +66,10 @@ static int EnsureDataStreamIsOpen(TCascFile * hf)
         {
             // Open the stream. Make sure that the encoded handlers will fill eventual
             // missing data with zeros. Observed in Overwatch build 24919
-            pStream = FileStream_OpenFile(szDataFile, STREAM_FLAG_READ_ONLY | STREAM_PROVIDER_FLAT | STREAM_FLAG_FILL_MISSING | BASE_PROVIDER_FILE);
+            // Open the data stream with write access and sharing for read+write
+            // to prevent Battle.net Agent detecting a corruption and redownloading the entire package
+//          pStream = FileStream_OpenFile(szDataFile, STREAM_FLAG_READ_ONLY | STREAM_PROVIDER_FLAT | STREAM_FLAG_FILL_MISSING | BASE_PROVIDER_FILE);
+            pStream = FileStream_OpenFile(szDataFile, STREAM_FLAG_WRITE_SHARE | STREAM_PROVIDER_FLAT | STREAM_FLAG_FILL_MISSING | BASE_PROVIDER_FILE);
             hs->DataFiles[hf->ArchiveIndex] = pStream;
             CASC_FREE(szDataFile);
         }

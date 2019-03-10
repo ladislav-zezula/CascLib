@@ -379,7 +379,7 @@ static int TestOpenStorage_EnumFiles(const char * szStorage, const TCHAR * szLis
     TLogHelper LogHelper(szStorage);
     HANDLE hStorage;
     HANDLE hFind;
-    FILE * fp;
+//  FILE * fp;
     TCHAR szFullPath[MAX_PATH];
     DWORD dwTotalFileCount = 0;
     DWORD dwFileCount = 0;
@@ -428,8 +428,8 @@ static int TestOpenStorage_EnumFiles(const char * szStorage, const TCHAR * szLis
             CascFindClose(hFind);
         }
 
-        if(fp != NULL)
-            fclose(fp);
+//      if(fp != NULL)
+//          fclose(fp);
 
         CascCloseStorage(hStorage);
         LogHelper.PrintMessage("Work complete.");
@@ -622,8 +622,8 @@ int main(int argc, char * argv[])
 //  TestOpenStorage_OpenFile("2014 - Heroes of the Storm/29049", "fd45b0f59067a8dda512b740c782cd70");
 //  TestOpenStorage_OpenFile("z:\\47161", "ROOT");
 //  TestOpenStorage_ExtractFiles("2016 - WoW/23420", "86c513a7d6c0b3edb13e2839d96b5738", szListFile);
-//  TestOpenStorage_ExtractFiles("2014 - Heroes of the Storm/29049", "2d0209bb094127eb970f53ba29904b7d", szListFile);
-    TestOpenStorage_EnumFiles("Starcraft II");
+//  TestOpenStorage_ExtractFiles("2017 - Starcraft1\\5458B\\Data", szListFile);
+    TestOpenStorage_EnumFiles("d:\\Hry\\StarCraft\\Data");
 /*
     //
     // Tests for OpenStorage + ExtractFile
