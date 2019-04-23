@@ -17,6 +17,7 @@
 #define CASC_MNDX_ROOT_SIGNATURE        0x58444E4D  // 'MNDX'
 #define CASC_TVFS_ROOT_SIGNATURE        0x53465654  // 'TVFS'
 #define CASC_DIABLO3_ROOT_SIGNATURE     0x8007D0C4
+#define CASC_WOW82_ROOT_SIGNATURE       0x4D465354  // 'TSFM', WoW since 8.2
 
 #define ROOT_FLAG_HAS_NAMES             0x00000001  // The root file contains file names
 #define ROOT_FLAG_USES_EKEY             0x00000002  // ROOT_SEARCH and ROOT_GETKEY returns EKey instead of CKey

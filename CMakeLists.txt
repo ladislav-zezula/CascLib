@@ -39,7 +39,7 @@ set(SRC_FILES
     src/CascRootFile_Text.cpp
     src/CascRootFile_TVFS.cpp
     src/CascRootFile_OW.cpp
-    src/CascRootFile_WoW6.cpp
+    src/CascRootFile_WoW.cpp
 )
 
 set(TOMCRYPT_FILES

@@ -192,7 +192,7 @@
     <ClCompile Include="src\CascRootFile_OW.cpp" />
     <ClCompile Include="src\CascRootFile_Text.cpp" />
     <ClCompile Include="src\CascRootFile_TVFS.cpp" />
-    <ClCompile Include="src\CascRootFile_WoW6.cpp" />
+    <ClCompile Include="src\CascRootFile_WoW.cpp" />
     <ClCompile Include="src\common\Common.cpp" />
     <ClCompile Include="src\common\Directory.cpp" />
     <ClCompile Include="src\common\Csv.cpp" />

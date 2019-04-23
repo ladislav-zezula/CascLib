@@ -60,7 +60,7 @@
     <ClCompile Include="src\CascRootFile_MNDX.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\CascRootFile_WoW6.cpp">
+    <ClCompile Include="src\CascRootFile_WoW.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\DllMain.c">

@@ -12,6 +12,7 @@
 #define _CRT_SECURE_NO_DEPRECATE
 #define __INCLUDE_CRYPTOGRAPHY__
 #define __CASCLIB_SELF__                    // Don't use CascLib.lib
+#include <io.h>
 #include <stdio.h>
 #include <time.h>
 
@@ -133,8 +134,8 @@ static TCHAR * MakeFullPath(const char * szStorage, TCHAR * szBuffer, size_t ccB
     TCHAR * szBufferEnd = szBuffer + ccBuffer - 1;
     const char * szPathRoot = CASC_PATH_ROOT;
 
-    // If the folder name is already a full path, do nothing
-    if(isalpha(szStorage[0]) && szStorage[1] == ':' && szStorage[2] == '\\')
+    // If we can access the file directly, use the path as-is
+    if(_access(szStorage, 0) != -1)
     {
         while(szStorage[0] != 0 && szBuffer < szBufferEnd)
             *szBuffer++ = *szStorage++;
@@ -623,7 +624,7 @@ int main(int argc, char * argv[])
 //  TestOpenStorage_OpenFile("z:\\47161", "ROOT");
 //  TestOpenStorage_ExtractFiles("2016 - WoW/23420", "86c513a7d6c0b3edb13e2839d96b5738", szListFile);
 //  TestOpenStorage_ExtractFiles("2017 - Starcraft1\\5458B\\Data", szListFile);
-    TestOpenStorage_EnumFiles("d:\\Hry\\StarCraft\\Data");
+    TestOpenStorage_EnumFiles("d:\\Hry\\World of Warcraft Public Test");
 /*
     //
     // Tests for OpenStorage + ExtractFile

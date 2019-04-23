@@ -946,6 +946,10 @@ static int LoadRootFile(TCascStorage * hs, DWORD dwLocaleMask)
                 nError = RootHandler_CreateTVFS(hs, pbRootFile, cbRootFile);
                 break;
 
+            case CASC_WOW82_ROOT_SIGNATURE:
+                nError = RootHandler_CreateWoW8(hs, pbRootFile, cbRootFile, dwLocaleMask);
+                break;
+
             default:
 
                 //

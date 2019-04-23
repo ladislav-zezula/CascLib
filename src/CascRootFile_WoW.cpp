@@ -1,13 +1,13 @@
 /*****************************************************************************/
-/* CascRootFile_WoW6.cpp                  Copyright (c) Ladislav Zezula 2014 */
+/* CascRootFile_WoW.cpp                   Copyright (c) Ladislav Zezula 2014 */
 /*---------------------------------------------------------------------------*/
 /* Storage functions for CASC                                                */
-/* Note: WoW6 offsets refer to WoW.exe 6.0.3.19116 (32-bit)                  */
+/* Note: WoW offsets refer to WoW.exe 6.0.3.19116 (32-bit)                   */
 /* SHA1: c10e9ffb7d040a37a356b96042657e1a0c95c0dd                            */
 /*---------------------------------------------------------------------------*/
 /*   Date    Ver   Who  Comment                                              */
 /* --------  ----  ---  -------                                              */
-/* 29.04.14  1.00  Lad  The first version of CascRootFile_WoW6.cpp           */
+/* 29.04.14  1.00  Lad  The first version of CascRootFile_WoW.cpp            */
 /*****************************************************************************/
 
 #define __CASCLIB_SELF__
@@ -71,13 +71,13 @@ typedef struct _FILE_LOCALE_BLOCK
 } FILE_LOCALE_BLOCK, *PFILE_LOCALE_BLOCK;
 
 //-----------------------------------------------------------------------------
-// TRootHandler_WoW6 interface / implementation
+// TRootHandler_WoW interface / implementation
 
-struct TRootHandler_WoW6 : public TFileTreeRoot
+struct TRootHandler_WoW : public TFileTreeRoot
 {
     public:
 
-    TRootHandler_WoW6() : TFileTreeRoot(FTREE_FLAG_USE_DATA_ID | FTREE_FLAG_USE_LOCALE)
+    TRootHandler_WoW() : TFileTreeRoot(FTREE_FLAG_USE_DATA_ID | FTREE_FLAG_USE_LOCALE)
     {
         // Turn off the "we know file names" bit 
         dwRootFlags &= ~ROOT_FLAG_HAS_NAMES;
@@ -262,14 +262,14 @@ struct TRootHandler_WoW6 : public TFileTreeRoot
 
 int RootHandler_CreateWoW6(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile, DWORD dwLocaleMask)
 {
-    TRootHandler_WoW6 * pRootHandler = NULL;
+    TRootHandler_WoW * pRootHandler = NULL;
     FILE_LOCALE_BLOCK LocaleBlock;
     int nError = ERROR_BAD_FORMAT;
 
     // Verify whether this is really a WoW block
-    if(TRootHandler_WoW6::CaptureLocaleBlock(LocaleBlock, pbRootFile, pbRootFile + cbRootFile))
+    if(TRootHandler_WoW::CaptureLocaleBlock(LocaleBlock, pbRootFile, pbRootFile + cbRootFile))
     {
-        pRootHandler = new TRootHandler_WoW6();
+        pRootHandler = new TRootHandler_WoW();
         if(pRootHandler != NULL)
         {
             // Load the root directory. If load failed, we free the object
@@ -285,4 +285,9 @@ int RootHandler_CreateWoW6(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFil
     // Assign the root directory (or NULL) and return error
     hs->pRootHandler = pRootHandler;
     return nError;
+}
+
+int RootHandler_CreateWoW8(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile, DWORD dwLocaleMask)
+{
+    return ERROR_NOT_SUPPORTED;
 }
