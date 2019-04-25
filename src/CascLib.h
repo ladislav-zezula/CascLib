@@ -193,21 +193,21 @@ typedef struct _CASC_FIND_DATA
     // this will be just string representation of the key stored in 'FileKey'
     char   szFileName[MAX_PATH];
     
-    // Plain name of the found file. Pointing inside the 'szFileName' array
-    char * szPlainName;
-
     // Content/Encoded key. The type can be determined by dwOpenFlags
     // (CASC_OPEN_BY_CKEY vs CASC_OPEN_BY_EKEY)
     BYTE   FileKey[MD5_HASH_SIZE];
 
-    // Locale flags. Only for games that support locale flags (WoW)
-    DWORD  dwLocaleFlags;
+    // Plain name of the found file. Pointing inside the 'szFileName' array
+    char * szPlainName;
 
     // File data ID. Only for games that support File data ID (WoW)
     DWORD  dwFileDataId;
     
     // Size of the file, as retrieved from encoding entry or index entry
     DWORD  dwFileSize;
+
+    // Locale flags. Only for games that support locale flags (WoW)
+    DWORD  dwLocaleFlags;
 
     // It is recommended to use this value for subsequent CascOpenFile
     // Contains valid value if the 'szFileName' contains file key.

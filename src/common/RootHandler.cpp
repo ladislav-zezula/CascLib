@@ -76,8 +76,8 @@ int TFileTreeRoot::Insert(
     PCASC_CKEY_ENTRY pCKeyEntry)
 {
     PCONTENT_KEY pCKey = (PCONTENT_KEY)pCKeyEntry->CKey;
-    DWORD FileSize = ConvertBytesToInteger_4(pCKeyEntry->ContentSize);
     void * pItem;
+    DWORD FileSize = ConvertBytesToInteger_4(pCKeyEntry->ContentSize);
 
     // We can support both mappings (FileName->CKey or FileName->CKey)
     if(dwRootFlags & ROOT_FLAG_USES_EKEY)
@@ -88,7 +88,7 @@ int TFileTreeRoot::Insert(
     }
 
     // Insert the entry
-    pItem = FileTree.Insert(pCKey, szFileName, CASC_INVALID_ID, FileSize);
+    pItem = FileTree.Insert(pCKey, szFileName, FileTree.GetMaxFileDataId() + 1, FileSize);
     return (pItem != NULL) ? ERROR_SUCCESS : ERROR_CAN_NOT_COMPLETE;
 }
 
@@ -104,8 +104,8 @@ LPBYTE TFileTreeRoot::Search(TCascSearch * pSearch)
         pFileNode = FileTree.PathAt(pSearch->szFileName, MAX_PATH, pSearch->IndexLevel1);
         pSearch->IndexLevel1++;
         
-        // Ignore folders and items with no name
-        if(pFileNode->NameLength != 0 && (pFileNode->Flags & CFN_FLAG_FOLDER) == 0)
+        // Ignore folders, include unnamed items in the search
+        if(!(pFileNode->Flags & CFN_FLAG_FOLDER))
         {
             // Check the wildcard
             if (CheckWildCard(pSearch->szFileName, pSearch->szMask))

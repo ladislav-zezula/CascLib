@@ -218,11 +218,11 @@ static bool DoStorageSearch_CKey(TCascSearch * pSearch, PCASC_FIND_DATA pFindDat
                 {
                     // Fill-in the found file
                     StringFromBinary(pCKeyEntry->CKey, MD5_HASH_SIZE, pFindData->szFileName);
-                    pFindData->szFileName[MD5_STRING_SIZE] = 0;
                     memcpy(pFindData->FileKey, pCKeyEntry->CKey, MD5_HASH_SIZE);
                     pFindData->szPlainName = pFindData->szFileName;
-                    pFindData->dwLocaleFlags = CASC_LOCALE_NONE;
+                    pFindData->dwFileDataId = CASC_INVALID_ID;
                     pFindData->dwFileSize = ConvertBytesToInteger_4(pCKeyEntry->ContentSize);
+                    pFindData->dwLocaleFlags = CASC_INVALID_ID;
                     pFindData->dwOpenFlags = CASC_OPEN_BY_CKEY;
                     return true;
                 }

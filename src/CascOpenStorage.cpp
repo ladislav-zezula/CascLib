@@ -947,7 +947,7 @@ static int LoadRootFile(TCascStorage * hs, DWORD dwLocaleMask)
                 break;
 
             case CASC_WOW82_ROOT_SIGNATURE:
-                nError = RootHandler_CreateWoW8(hs, pbRootFile, cbRootFile, dwLocaleMask);
+                nError = RootHandler_CreateWoW(hs, pbRootFile, cbRootFile, dwLocaleMask);
                 break;
 
             default:
@@ -963,7 +963,7 @@ static int LoadRootFile(TCascStorage * hs, DWORD dwLocaleMask)
                     nError = RootHandler_CreateStarcraft1(hs, pbRootFile, cbRootFile);
                     if(nError == ERROR_BAD_FORMAT)
                     {
-                        nError = RootHandler_CreateWoW6(hs, pbRootFile, cbRootFile, dwLocaleMask);
+                        nError = RootHandler_CreateWoW(hs, pbRootFile, cbRootFile, dwLocaleMask);
                     }
                 }
                 break;
