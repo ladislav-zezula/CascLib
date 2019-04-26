@@ -61,8 +61,7 @@ class CASC_ARRAY
     // Returns an item at a given index
     void * ItemAt(size_t ItemIndex)
     {
-        assert(ItemIndex < m_ItemCount);
-        return m_pItemArray + (ItemIndex * m_ItemSize);
+        return (ItemIndex < m_ItemCount) ? (m_pItemArray + (ItemIndex * m_ItemSize)) : NULL;
     }
 
     // Inserts an item at a given index. If there is not enough items in the array,
@@ -131,6 +130,12 @@ class CASC_ARRAY
     bool IsInitialized()
     {
         return (m_pItemArray && m_ItemCountMax);
+    }
+
+    // Invalidates the entire array, but keeps memory allocated
+    void Reset()
+    {
+        m_ItemCount = 0;
     }
 
     // Frees the array

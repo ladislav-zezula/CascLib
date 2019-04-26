@@ -224,6 +224,7 @@ typedef struct _TCascSearch
     DWORD dwFileDataId;                             // For File Data ID
     DWORD dwFileSize;                               // For file size
     DWORD dwLocaleFlags;                            // For locale flags
+    DWORD dwOpenFlags;
 
     // Provider-specific data
     void * pRootContext;                            // Root-specific search context

@@ -15,11 +15,14 @@
 //-----------------------------------------------------------------------------
 // Listfile cache structure
 
+#define LISTFILE_FLAG_USES_FILEDATAID   0x0001   // A new CSV format, containing FileDataId; FullFileName
+
 typedef struct _LISTFILE_CACHE
 {
-    char * pBegin;                      // The begin of the listfile cache
-    char * pPos;                        // Current position in the cache
-    char * pEnd;                        // The last character in the file cache
+    char * pBegin;                              // The begin of the listfile cache
+    char * pPos;                                // Current position in the cache
+    char * pEnd;                                // The last character in the file cache
+    DWORD Flags;
 
     // Followed by the cache (variable length)
 
@@ -28,7 +31,7 @@ typedef struct _LISTFILE_CACHE
 //-----------------------------------------------------------------------------
 // Creating the listfile cache for the given amount of data
 
-static PLISTFILE_CACHE CreateListFileCache(DWORD dwFileSize)
+static PLISTFILE_CACHE ListFile_CreateCache(DWORD dwFileSize)
 {
     PLISTFILE_CACHE pCache;
 
@@ -40,10 +43,79 @@ static PLISTFILE_CACHE CreateListFileCache(DWORD dwFileSize)
         pCache->pBegin =
         pCache->pPos   = (char *)(pCache + 1);
         pCache->pEnd   = pCache->pBegin + dwFileSize;
+        pCache->Flags  = 0;
     }
 
     // Return the cache
     return pCache;
+}
+
+static char * ListFile_SkipSpaces(PLISTFILE_CACHE pCache)
+{
+    // Skip newlines, spaces, tabs and another non-printable stuff
+    while(pCache->pPos < pCache->pEnd && pCache->pPos[0] <= 0x20)
+        pCache->pPos++;
+
+    // Remember the begin of the line
+    return pCache->pPos;
+}
+
+static void ListFile_CheckFormat(PLISTFILE_CACHE pCache)
+{
+    // Only if the listfile is greatger than 2 MB
+    if((pCache->pEnd - pCache->pBegin) > 0x100000)
+    {
+        char * szPtr = pCache->pBegin;
+        size_t nDigitCount = 0;
+
+        // Calculate the amount of digits
+        while(nDigitCount <= 20 && '0' <= szPtr[nDigitCount] && szPtr[nDigitCount] <= '9')
+            nDigitCount++;
+
+        // There must be a semicolon after
+        if(nDigitCount <= 10 && szPtr[nDigitCount] == ';')
+        {
+            pCache->Flags |= LISTFILE_FLAG_USES_FILEDATAID;
+        }
+    }
+}
+
+static int ListFile_GetFileDataId(PLISTFILE_CACHE pCache, PDWORD PtrFileDataId)
+{
+    char * szLineBegin = ListFile_SkipSpaces(pCache);
+    char * szLineEnd;
+    DWORD dwNewInt32 = 0;
+    DWORD dwInt32 = 0;
+
+    // Set the limit for loading the number
+    szLineEnd = min((szLineBegin + 20), pCache->pEnd);
+
+    // Extract decimal digits from the string
+    while(szLineBegin < szLineEnd && '0' <= szLineBegin[0] && szLineBegin[0] <= '9')
+    {
+        // Check integer overflow
+        dwNewInt32 = (dwInt32 * 10) + (szLineBegin[0] - '0');
+        if(dwNewInt32 < dwInt32)
+            return ERROR_BAD_FORMAT;
+
+        dwInt32 = dwNewInt32;
+        szLineBegin++;
+    }
+
+    // There must still be some space
+    if(szLineBegin < szLineEnd)
+    {
+        // There must be a semicolon after the decimal integer
+        // The decimal integer must be smaller than 10 MB (files)
+        if(szLineBegin[0] != ';' || dwInt32 >= 0xA00000)
+            return ERROR_BAD_FORMAT;
+
+        pCache->pPos = szLineBegin + 1;
+        PtrFileDataId[0] = dwInt32;
+        return ERROR_SUCCESS;
+    }
+
+    return ERROR_NO_MORE_FILES;
 }
 
 //-----------------------------------------------------------------------------
@@ -65,10 +137,14 @@ void * ListFile_OpenExternal(const TCHAR * szListFile)
         {
             // Create the in-memory cache for the entire listfile
             // The listfile does not have any data loaded yet
-            pCache = CreateListFileCache((DWORD)FileSize);
+            pCache = ListFile_CreateCache((DWORD)FileSize);
             if(pCache != NULL)
             {
-                if(!FileStream_Read(pStream, NULL, pCache->pBegin, (DWORD)FileSize))
+                if(FileStream_Read(pStream, NULL, pCache->pBegin, (DWORD)FileSize))
+                {
+                    ListFile_CheckFormat(pCache);
+                }
+                else
                 {
                     ListFile_Free(pCache);
                     pCache = NULL;
@@ -89,7 +165,7 @@ void * ListFile_FromBuffer(LPBYTE pbBuffer, DWORD cbBuffer)
 
     // Create the in-memory cache for the entire listfile
     // The listfile does not have any data loaded yet
-    pCache = CreateListFileCache(cbBuffer);
+    pCache = ListFile_CreateCache(cbBuffer);
     if(pCache != NULL)
         memcpy(pCache->pBegin, pbBuffer, cbBuffer);
 
@@ -116,11 +192,8 @@ size_t ListFile_GetNextLine(void * pvListFile, const char ** pszLineBegin, const
     char * szLineEnd;
 
     // Skip newlines, spaces, tabs and another non-printable stuff
-    while(pCache->pPos < pCache->pEnd && pCache->pPos[0] <= 0x20)
-        pCache->pPos++;
-
     // Remember the begin of the line
-    szLineBegin = pCache->pPos;
+    szLineBegin = ListFile_SkipSpaces(pCache);
 
     // Copy the remaining characters
     while(pCache->pPos < pCache->pEnd)
@@ -170,14 +243,28 @@ size_t ListFile_GetNextLine(void * pvListFile, char * szBuffer, size_t nMaxChars
     return nLength;
 }
 
-size_t ListFile_GetNext(void * pvListFile, const char * szMask, char * szBuffer, size_t nMaxChars)
+size_t ListFile_GetNext(void * pvListFile, const char * szMask, char * szBuffer, size_t nMaxChars, PDWORD PtrFileDataId)
 {
+    PLISTFILE_CACHE pCache = (PLISTFILE_CACHE)pvListFile;
     size_t nLength = 0;
     int nError = ERROR_SUCCESS;
 
     // Check for parameters
     for(;;)
     {
+        DWORD FileDataId = CASC_INVALID_ID;
+
+        // If this is a CSV-format listfile, we need to extract the FileDataId
+        // Lines that contain bogus data, invalid numbers or too big values will be skipped
+        if(pCache->Flags & LISTFILE_FLAG_USES_FILEDATAID)
+        {
+            nError = ListFile_GetFileDataId(pCache, &FileDataId);
+            if(nError == ERROR_NO_MORE_FILES)
+                break;
+            if(nError != ERROR_SUCCESS || FileDataId == CASC_INVALID_ID)
+                continue;
+        }
+
         // Read the (next) line
         nLength = ListFile_GetNextLine(pvListFile, szBuffer, nMaxChars);
         if(nLength == 0)
@@ -189,6 +276,7 @@ size_t ListFile_GetNext(void * pvListFile, const char * szMask, char * szBuffer,
         // If some mask entered, check it
         if(CheckWildCard(szBuffer, szMask))
         {
+            PtrFileDataId[0] = FileDataId;
             nError = ERROR_SUCCESS;
             break;
         }

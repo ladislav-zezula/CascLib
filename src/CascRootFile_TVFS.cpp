@@ -110,7 +110,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
 
     TRootHandler_TVFS() : TFileTreeRoot(FTREE_FLAG_USE_FILE_SIZE)
     {
-        dwRootFlags |= (ROOT_FLAG_HAS_NAMES | ROOT_FLAG_USES_EKEY | ROOT_FLAG_DONT_SEARCH_CKEY);
+        dwRootFlags |= (ROOT_FLAG_USES_EKEY | ROOT_FLAG_DONT_SEARCH_CKEY);
         dwNestLevel = 0;
     }
 

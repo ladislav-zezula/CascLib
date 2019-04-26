@@ -1167,8 +1167,25 @@ bool WINAPI CascGetStorageInfo(
             break;
 
         case CascStorageFeatures:
-            dwInfoValue |= (hs->pRootHandler->GetFlags() & ROOT_FLAG_HAS_NAMES) ? CASC_FEATURE_HAS_NAMES : 0;
-            break;
+        {
+            PCASC_STORAGE_FEATURES pInfo = (PCASC_STORAGE_FEATURES)pvStorageInfo;
+            DWORD dwRootFlags = hs->pRootHandler->GetFlags();
+
+            if(cbStorageInfo >= sizeof(DWORD))
+            {
+                if(dwRootFlags & ROOT_FLAG_FILE_DATA_IDS)
+                    pInfo->dwListFileFlags = CASC_LISTFILE_NEED_NAMES | CASC_LISTFILE_NEED_FILEID;
+                if(dwRootFlags & ROOT_FLAG_NAME_HASHES)
+                    pInfo->dwListFileFlags = CASC_LISTFILE_NEED_NAMES;
+                return true;
+            }
+            else
+            {
+                SetLastError(ERROR_INSUFFICIENT_BUFFER);
+                *pcbLengthNeeded = sizeof(CASC_STORAGE_FEATURES);
+                return false;
+            }
+        }
 
         case CascStorageGameInfo:
             dwInfoValue = hs->dwGameInfo;

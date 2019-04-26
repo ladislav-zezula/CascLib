@@ -569,9 +569,8 @@ char * StringFromBinary(LPBYTE pbBinary, size_t cbBinary, char * szBuffer)
         // Copy the blob data as text
         for(size_t i = 0; i < cbBinary; i++)
         {
-            *szBuffer++ = IntToHexChar[pbBinary[0] >> 0x04];
-            *szBuffer++ = IntToHexChar[pbBinary[0] & 0x0F];
-            pbBinary++;
+            *szBuffer++ = IntToHexChar[pbBinary[i] >> 0x04];
+            *szBuffer++ = IntToHexChar[pbBinary[i] & 0x0F];
         }
     }
 

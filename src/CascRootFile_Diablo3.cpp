@@ -236,7 +236,7 @@ struct TDiabloRoot : public TFileTreeRoot
         DWORD dwDummy;
 
         // Try to find CKey for the file
-        pbCKey = GetKey(szFileName, &dwDummy);
+        pbCKey = GetKey(szFileName, CASC_INVALID_ID, &dwDummy);
         if(pbCKey != NULL)
             pbFileData = LoadInternalFileToMemory(hs, pbCKey, CASC_OPEN_BY_CKEY, pcbFileData);
 
@@ -651,6 +651,7 @@ struct TDiabloRoot : public TFileTreeRoot
         PDIABLO3_CORE_TOC_HEADER pTocHeader = NULL;
         LPBYTE pbCoreTocPtr = pbCoreTocFile;
         DWORD dwMaxFileIndex = 0;
+        int nError = ERROR_CAN_NOT_COMPLETE;
 
         // Load the entire file to memory
         pbCoreTocFile = pbCoreTocPtr = LoadFileToMemory(hs, szFileName, &cbCoreTocFile);
@@ -694,9 +695,10 @@ struct TDiabloRoot : public TFileTreeRoot
                 // Save the file to the root handler
                 pbCoreTocData = pbCoreTocPtr;
                 nFileIndices = dwMaxFileIndex;
+                nError = ERROR_SUCCESS;
             }
         }
-        return ERROR_SUCCESS;
+        return nError;
     }
 
     // Packages.dat contains a list of full file names (without locale prefix).

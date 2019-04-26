@@ -21,12 +21,6 @@
 #define CFN_FLAG_FOLDER               0x0001        // This item is a folder
 #define CFN_FLAG_MOUNT_POINT          0x0002        // This item is a mount point.
 
-typedef enum _CASC_NODE_SEARCH_TYPE
-{
-    CascSearchByFileNameHash,                       // Perform search by file name hash
-    CascSearchByFileDataId                          // Perform search by file data id
-} CASC_NODE_SEARCH_TYPE, *PCASC_NODE_SEARCH_TYPE;
-
 // Common structure for holding a single folder/file node
 typedef struct _CASC_FILE_NODE
 {
@@ -60,7 +54,11 @@ class CASC_FILE_TREE
     PCASC_FILE_NODE PathAt(char * szBuffer, size_t cchBuffer, size_t nItemIndex);
 
     // Finds a file using its full path or FileDataId
-    PCASC_FILE_NODE Find(const char * szFullPath, PDWORD PtrFileSize);
+    PCASC_FILE_NODE Find(const char * szFullPath, DWORD FileDataId, PDWORD PtrFileSize);
+
+    // Get/Set by FileDataId
+    bool SetFileNodeById(PCASC_FILE_NODE pFileNode, DWORD FileDataId);
+    PCASC_FILE_NODE GetFileNodeById(DWORD FileDataId);
 
     // Returns the number of items in the tree
     size_t GetCount();
@@ -73,26 +71,27 @@ class CASC_FILE_TREE
     void SetExtras(PCASC_FILE_NODE pFileNode, DWORD FileDataId, DWORD FileSize, DWORD LocaleId);
 
     // Retrieve the maximum FileDataId ever inserted
-    void SetPreferredSearchMethod(CASC_NODE_SEARCH_TYPE SearchMethod);
     DWORD GetMaxFileDataId();
 
     protected:
 
     PCASC_FILE_NODE GetOrInsert(ULONGLONG FileNameHash, const char * szNodeBegin, const char * szNodeEnd, PCONTENT_KEY pCKey, DWORD Parent, DWORD FileDataId);
     PCASC_FILE_NODE GetOrInsert(const char * szNormPath, size_t nLength, const char * szNodeBegin, const char * szNodeEnd, PCONTENT_KEY pCKey, DWORD Parent, DWORD FileDataId);
+    PCASC_FILE_NODE FindFileNode(const char * szFullPath, DWORD FileDataId);
+    PCASC_FILE_NODE FindFileNode(ULONGLONG FileNameHash, DWORD FileDataId);
     size_t MakePath(PCASC_FILE_NODE pFileNode, char * szBuffer, size_t cchBuffer);
-    bool RebuildTreeMaps();
+    bool RebuildNameMaps();
 
     CASC_ARRAY FileTable;                           // Dynamic array that holds all CASC_FILE_NODEs
     CASC_ARRAY NameTable;                           // Dynamic array that holds all node names
+    CASC_ARRAY FileDataIds;                         // Dynamic array that maps FileDataId -> CASC_FILE_NODE
 
     PCASC_MAP pNameMap;                             // Map of FullFileName -> CASC_FILE_NODE
-    PCASC_MAP pFileDataIdMap;                       // Map of FileDataId -> CASC_FILE_NODE
 
-    CASC_NODE_SEARCH_TYPE PrefferedSearch;          // Preferred method of searching for duplicities
     size_t FileDataIdOffset;                        // If nonzero, this is the offset of the "FileDataId" field in the CASC_FILE_NODE
     size_t FileSizeOffset;                          // If nonzero, this is the offset of the "FileSize" field in the CASC_FILE_NODE
     size_t LocaleIdOffset;                          // If nonzero, this is the offset of the "LocaleId" field in the CASC_FILE_NODE
+    DWORD MinFileDataId;                            // The smallest value of FileDataId ever inserted
     DWORD MaxFileDataId;                            // The largest value of FileDataId ever inserted
 };
 

@@ -82,6 +82,7 @@ extern "C" {
 #define CASC_OPEN_BY_NAME           0x00000000  // Open the file by name. This is the default value
 #define CASC_OPEN_BY_CKEY           0x00000001  // The name is just the content key; skip ROOT file processing
 #define CASC_OPEN_BY_EKEY           0x00000002  // The name is just the encoded key; skip ROOT file processing
+#define CASC_OPEN_BY_FILEID         0x00000003  // The name is CASC_IDTONAME(FileDataId)
 #define CASC_OPEN_TYPE_MASK         0x0000000F  // The mask which gets open type from the dwFlags
 #define CASC_STRICT_DATA_CHECK      0x00000010  // Verify all data read from a file
 
@@ -144,8 +145,13 @@ extern "C" {
 #define CASC_INVALID_POS            0xFFFFFFFF
 #define CASC_INVALID_ID             0xFFFFFFFF
 
-// Flags for CascGetStorageInfo
-#define CASC_FEATURE_HAS_NAMES      0x00000001  // The storage contains file names
+// Flags for CASC_STORAGE_FEATURES::dwListfileFlags
+#define CASC_LISTFILE_NEED_NAMES    0x00000001  // The listfile should contain file names
+#define CASC_LISTFILE_NEED_FILEID   0x00000002  // The listfile should contain file data ids
+
+// Macro to convert FileDataId to the argument of CascOpenFile
+#define CASC_IDTONAME(FileDataId) ((const char *)FileDataId)
+#define CASC_NAMETOID(szFileName) ((DWORD)(ULONGLONG)szFileName)
 
 //-----------------------------------------------------------------------------
 // Structures
@@ -157,6 +163,7 @@ typedef enum _CASC_STORAGE_INFO_CLASS
     // can be higher than the value returned by this info class
     CascStorageFileCount,
 
+    // Returns the CASC_STORAGE_FEATURES structure.
     CascStorageFeatures,
     CascStorageGameInfo,
     CascStorageGameBuild,
@@ -185,6 +192,12 @@ typedef struct _QUERY_SIZE
     DWORD ContentSize;
     DWORD EncodedSize;
 } QUERY_SIZE, *PQUERY_SIZE;
+
+typedef struct _CASC_STORAGE_FEATURES
+{
+    DWORD dwListFileFlags;                      // See CASC_LISTFILE_XXX
+
+} CASC_STORAGE_FEATURES, *PCASC_STORAGE_FEATURES;
 
 // Structure for SFileFindFirstFile and SFileFindNextFile
 typedef struct _CASC_FIND_DATA
@@ -239,7 +252,6 @@ bool  WINAPI CascOpenFileByCKey(HANDLE hStorage, PQUERY_KEY pCKey, DWORD dwOpenF
 bool  WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocaleFlags, DWORD dwOpenFlags, HANDLE * phFile);
 bool  WINAPI CascGetFileInfo(HANDLE hFile, CASC_FILE_INFO_CLASS InfoClass, void * pvFileInfo, size_t cbFileInfo, size_t * pcbLengthNeeded);
 DWORD WINAPI CascGetFileSize(HANDLE hFile, PDWORD pdwFileSizeHigh);
-DWORD WINAPI CascGetFileId(HANDLE hStorage, const char * szFileName);
 DWORD WINAPI CascSetFilePointer(HANDLE hFile, LONG lFilePos, LONG * plFilePosHigh, DWORD dwMoveMethod);
 bool  WINAPI CascReadFile(HANDLE hFile, void * lpBuffer, DWORD dwToRead, PDWORD pdwRead);
 bool  WINAPI CascCloseFile(HANDLE hFile);

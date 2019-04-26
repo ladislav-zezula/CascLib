@@ -15,7 +15,7 @@
 //-----------------------------------------------------------------------------
 // Local defines
 
-#define START_ITEM_COUNT    0x1000
+#define START_ITEM_COUNT          0x1000
 
 inline DWORD GET_NODE_INT32(void * node, size_t offset)
 {
@@ -67,7 +67,7 @@ PCASC_FILE_NODE CASC_FILE_TREE::GetOrInsert(
     DWORD Parent,
     DWORD FileDataId)
 {
-    PCASC_FILE_NODE pFileNode = NULL;
+    PCASC_FILE_NODE pFileNode;
     char * szInsertedName = NULL;
     void * SaveItemArray;
     DWORD NameIndex = 0;
@@ -76,19 +76,7 @@ PCASC_FILE_NODE CASC_FILE_TREE::GetOrInsert(
     assert(FileNameHash != 0 || FileDataId != 0);
 
     // Check if the path fragment is already in the file table.
-    // Use the preferred search method for this purpose
-    switch (PrefferedSearch)
-    {
-        case CascSearchByFileNameHash:
-            pFileNode = (PCASC_FILE_NODE)Map_FindObject(pNameMap, &FileNameHash);
-            assert(FileNameHash != 0);
-            break;
-
-        case CascSearchByFileDataId:
-            pFileNode = (PCASC_FILE_NODE)Map_FindObject(pFileDataIdMap, &FileDataId);
-            assert(FileDataId != CASC_INVALID_ID);
-            break;
-    }
+    pFileNode = FindFileNode(FileNameHash, FileDataId);
 
     // If the node is not there yet, we need to insert it
     if(pFileNode == NULL)
@@ -126,21 +114,27 @@ PCASC_FILE_NODE CASC_FILE_TREE::GetOrInsert(
             // Supply the FileDataId, Locale and FileSize
             SetExtras(pFileNode, FileDataId, CASC_INVALID_SIZE, CASC_INVALID_ID);
 
-            // Update the maximum file data id ever inserted
+            // Update the biggest file data id ever inserted
             if(FileDataId != CASC_INVALID_ID)
-                MaxFileDataId = max(FileDataId, MaxFileDataId);
+            {
+                MinFileDataId = min(MinFileDataId, FileDataId);
+                MaxFileDataId = max(MaxFileDataId, FileDataId);
+            }
 
             // Did the array pointer change? If yes, then all items in the map are invalid now
             if(FileTable.ItemArray() == SaveItemArray)
             {
+                // Insert the item to the map "FileNameHash -> CASC_FILE_NODE"
                 if(pNameMap != NULL && FileNameHash != 0)
                     Map_InsertObject(pNameMap, pFileNode, &pFileNode->NameHash);
-                if(pFileDataIdMap != NULL && FileDataId != CASC_INVALID_ID)
-                    Map_InsertObject(pFileDataIdMap, pFileNode, &FileDataId);
+
+                // Insert the item to the array "FileDataId -> CASC_FILE_NODE"
+                if(FileDataIds.IsInitialized())
+                    SetFileNodeById(pFileNode, FileDataId);
             }
             else
             {
-                if(!RebuildTreeMaps())
+                if(!RebuildNameMaps())
                 {
                     pFileNode = NULL;
                     assert(false);
@@ -167,6 +161,48 @@ PCASC_FILE_NODE CASC_FILE_TREE::GetOrInsert(
     DWORD FileDataId)
 {
     return GetOrInsert(CalcNormNameHash(szNormPath, nLength), szNodeBegin, szNodeEnd, pCKey, Parent, FileDataId);
+}
+
+PCASC_FILE_NODE CASC_FILE_TREE::FindFileNode(const char * szFullPath, DWORD FileDataId)
+{
+    PCASC_FILE_NODE pFileNode = NULL;
+    ULONGLONG FileNameHash;
+
+    // Can we search by FileDataId?
+    if(FileDataIds.IsInitialized() && (FileDataId != CASC_INVALID_ID || IsFileDataIdName(szFullPath, FileDataId)))
+    {
+        pFileNode = GetFileNodeById(FileDataId);
+    }
+    else
+    {
+        if(szFullPath != NULL && szFullPath[0] != 0)
+        {
+            FileNameHash = CalcFileNameHash(szFullPath);
+            pFileNode = (PCASC_FILE_NODE)Map_FindObject(pNameMap, &FileNameHash);
+        }
+    }
+
+    return pFileNode;
+}
+
+PCASC_FILE_NODE CASC_FILE_TREE::FindFileNode(ULONGLONG FileNameHash, DWORD FileDataId)
+{
+    PCASC_FILE_NODE pFileNode = NULL;
+
+    // Can we search by FileDataId?
+    if(FileDataIds.IsInitialized() && FileDataId != CASC_INVALID_ID)
+    {
+        pFileNode = GetFileNodeById(FileDataId);
+    }
+    else
+    {
+        if(FileNameHash != 0)
+        {
+            pFileNode = (PCASC_FILE_NODE)Map_FindObject(pNameMap, &FileNameHash);
+        }
+    }
+
+    return pFileNode;
 }
 
 size_t CASC_FILE_TREE::MakePath(PCASC_FILE_NODE pFileNode, char * szBuffer, size_t cchBuffer)
@@ -209,65 +245,46 @@ size_t CASC_FILE_TREE::MakePath(PCASC_FILE_NODE pFileNode, char * szBuffer, size
     return nLength;
 }
 
-void CASC_FILE_TREE::SetPreferredSearchMethod(CASC_NODE_SEARCH_TYPE SearchMethod)
-{
-    PrefferedSearch = SearchMethod;
-}
-
-
 DWORD CASC_FILE_TREE::GetMaxFileDataId()
 {
     return MaxFileDataId;
 }
 
-bool CASC_FILE_TREE::RebuildTreeMaps()
+bool CASC_FILE_TREE::RebuildNameMaps()
 {
     PCASC_FILE_NODE pFileNode;
     size_t nMaxItems = FileTable.ItemCountMax();
-    DWORD FileDataId = 0;
 
-    // Free the map of FullName -> CASC_FILE_NODE
+    // Free the map of "FullName -> CASC_FILE_NODE"
     if(pNameMap != NULL)
         Map_Free(pNameMap);
     pNameMap = NULL;
 
-    // Free the map of FileDataId -> CASC_FILE_NODE
-    if(pFileDataIdMap != NULL)
-        Map_Free(pFileDataIdMap);
-    pFileDataIdMap = NULL;
-
-    // Create the name map
+    // Create new map map "FullName -> CASC_FILE_NODE"
     pNameMap = Map_Create(nMaxItems, sizeof(ULONGLONG), FIELD_OFFSET(CASC_FILE_NODE, NameHash));
     if(pNameMap == NULL)
         return false;
 
-    // Create the FileDataId map
-    if(FileDataIdOffset != 0)
-    {
-        pFileDataIdMap = Map_Create(nMaxItems, sizeof(DWORD), FileDataIdOffset);
-        if(pFileDataIdMap == NULL)
-            return false;
-    }
+    // Reset the entire array, but keep the buffer allocated
+    FileDataIds.Reset();
 
     // Parse all items and insert them to the map
     for(size_t i = 0; i < FileTable.ItemCount(); i++)
     {
+        // Retrieve the n-th object
         pFileNode = (PCASC_FILE_NODE)FileTable.ItemAt(i);
-        if(pFileNode != NULL)
-        {
-            // Insert the file by name
-            if(pNameMap != NULL && pFileNode->NameHash != 0)
-                Map_InsertObject(pNameMap, pFileNode, &pFileNode->NameHash);
 
-            // Insert the file by data ID, if supported
-            if(FileDataIdOffset != 0)
-            {
-                GetExtras(pFileNode, &FileDataId, NULL, NULL);
-                if(pFileDataIdMap != NULL && FileDataId != CASC_INVALID_ID)
-                {
-                    Map_InsertObject(pFileDataIdMap, pFileNode, &FileDataId);
-                }
-            }
+        // Insert it to the map "FileNameHash -> CASC_FILE_NODE"
+        if(pFileNode != NULL && pFileNode->NameHash != 0)
+            Map_InsertObject(pNameMap, pFileNode, &pFileNode->NameHash);
+
+        // Insert it to the array "FileDataId -> CASC_FILE_NODE"
+        if(FileDataIds.IsInitialized())
+        {
+            DWORD FileDataId = CASC_INVALID_ID;
+
+            GetExtras(pFileNode, &FileDataId, NULL, NULL);
+            SetFileNodeById(pFileNode, FileDataId);
         }
     }
 
@@ -285,14 +302,19 @@ int CASC_FILE_TREE::Create(DWORD Flags)
 
     // Initialize the file tree
     memset(this, 0, sizeof(CASC_FILE_TREE));
-    PrefferedSearch = CascSearchByFileNameHash;
     MaxFileDataId = 0;
 
     // Shall we use the data ID in the tree node?
     if(Flags & FTREE_FLAG_USE_DATA_ID)
     {
+        // Set the offset of the file data id in the entry
         FileDataIdOffset = FileNodeSize;
         FileNodeSize += sizeof(DWORD);
+
+        // Create the array for FileDataId -> CASC_FILE_NODE
+        nError = FileDataIds.Create<PCASC_FILE_NODE>(START_ITEM_COUNT);
+        if(nError != ERROR_SUCCESS)
+            return nError;
     }
 
     // Shall we use the file size in the tree node?
@@ -332,7 +354,7 @@ int CASC_FILE_TREE::Create(DWORD Flags)
     }
 
     // Create both maps
-    if(!RebuildTreeMaps())
+    if(!RebuildNameMaps())
         nError = ERROR_NOT_ENOUGH_MEMORY;
     return nError;
 }
@@ -341,11 +363,11 @@ void CASC_FILE_TREE::Free()
 {
     // Free both maps
     Map_Free(pNameMap);
-    Map_Free(pFileDataIdMap);
     
     // Free both arrays
     FileTable.Free();
     NameTable.Free();
+    FileDataIds.Free();
 
     // Zero the object
     memset(this, 0, sizeof(CASC_FILE_TREE));
@@ -446,27 +468,41 @@ PCASC_FILE_NODE CASC_FILE_TREE::PathAt(char * szBuffer, size_t cchBuffer, size_t
 
     // Query the item
     pFileNode = (PCASC_FILE_NODE)FileTable.ItemAt(nItemIndex);
-    if(pFileNode != NULL && pFileNode->NameLength != 0)
+    if(pFileNode != NULL)
     {
-        // Construct the full path
-        nLength = MakePath(pFileNode, szBuffer, cchBuffer);
-        szBuffer[nLength] = 0;
+        // Is there a path?
+        if(pFileNode->NameLength != 0)
+        {
+            // Construct the full path
+            nLength = MakePath(pFileNode, szBuffer, cchBuffer);
+            szBuffer[nLength] = 0;
+        }
+        else
+        {
+            StringFromBinary(pFileNode->CKey.Value, MD5_HASH_SIZE, szBuffer);
+        }
     }
     
     return pFileNode;
 }
 
-PCASC_FILE_NODE CASC_FILE_TREE::Find(const char * szFullPath, PDWORD PtrFileSize)
+PCASC_FILE_NODE CASC_FILE_TREE::Find(const char * szFullPath, DWORD FileDataId, PDWORD PtrFileSize)
 {
-    PCASC_FILE_NODE pFileNode;
-    ULONGLONG FileNameHash = CalcFileNameHash(szFullPath);
-    DWORD FileDataId = CASC_INVALID_ID;
+    PCASC_FILE_NODE pFileNode = NULL;
+    ULONGLONG FileNameHash;
 
-    // Lookup the path in the name map
-    pFileNode = (PCASC_FILE_NODE)Map_FindObject(pNameMap, &FileNameHash);
-    if(pFileNode == NULL && FileDataIdOffset != 0 && IsFileDataIdName(szFullPath, FileDataId))
+    // Can we search by FileDataId?
+    if(FileDataIds.IsInitialized() && (FileDataId != CASC_INVALID_ID || IsFileDataIdName(szFullPath, FileDataId)))
     {
-        pFileNode = (PCASC_FILE_NODE)Map_FindObject(pFileDataIdMap, &FileDataId);
+        pFileNode = GetFileNodeById(FileDataId);
+    }
+    else
+    {
+        if(szFullPath != NULL && szFullPath[0] != 0)
+        {
+            FileNameHash = CalcFileNameHash(szFullPath);
+            pFileNode = (PCASC_FILE_NODE)Map_FindObject(pNameMap, &FileNameHash);
+        }
     }
 
     // Did we find anything?
@@ -477,21 +513,43 @@ PCASC_FILE_NODE CASC_FILE_TREE::Find(const char * szFullPath, PDWORD PtrFileSize
 
     return pFileNode;
 }
-/*
-PCASC_FILE_NODE CASC_FILE_TREE::Find(DWORD FileDataId, PDWORD PtrFileSize)
+
+bool CASC_FILE_TREE::SetFileNodeById(PCASC_FILE_NODE pFileNode, DWORD FileDataId)
 {
+    PCASC_FILE_NODE * RefElement;
+
+    if(FileDataId != CASC_INVALID_ID)
+    {
+        // Insert the element to the array
+        RefElement = (PCASC_FILE_NODE *)FileDataIds.InsertAt(FileDataId);
+        if(RefElement != NULL)
+        {
+            RefElement[0] = pFileNode;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+PCASC_FILE_NODE CASC_FILE_TREE::GetFileNodeById(DWORD FileDataId)
+{
+    PCASC_FILE_NODE * RefElement;
     PCASC_FILE_NODE pFileNode = NULL;
 
-    // Lookup the path in the name map
-    pFileNode = (PCASC_FILE_NODE)Map_FindObject(pIdMap, &FileDataId);
-    if(pFileNode != NULL)
+    if(FileDataId != CASC_INVALID_ID)
     {
-        GetExtras(pFileNode, NULL, PtrFileSize, NULL);
+        // Insert the element to the array
+        RefElement = (PCASC_FILE_NODE *)FileDataIds.ItemAt(FileDataId);
+        if(RefElement != NULL)
+        {
+            pFileNode = RefElement[0];
+        }
     }
 
     return pFileNode;
 }
-*/
+
 size_t CASC_FILE_TREE::GetCount()
 {
     return FileTable.ItemCount();

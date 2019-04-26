@@ -2638,7 +2638,6 @@ struct TRootHandler_MNDX : public TRootHandler
     TRootHandler_MNDX()
     {
         memset(&MndxInfo, 0, sizeof(TRootHandler_MNDX) - FIELD_OFFSET(TRootHandler_MNDX, MndxInfo));
-        dwRootFlags |= ROOT_FLAG_HAS_NAMES;
     }
 
     ~TRootHandler_MNDX()
@@ -3039,7 +3038,7 @@ struct TRootHandler_MNDX : public TRootHandler
         }
     }
 
-    LPBYTE GetKey(const char * szFileName, PDWORD /* PtrFileSize */)
+    LPBYTE GetKey(const char * szFileName, DWORD /* FileDataId */, PDWORD /* PtrFileSize */)
     {
         PMNDX_ROOT_ENTRY pRootEntry = NULL;
         PMNDX_PACKAGE pPackage;

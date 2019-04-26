@@ -203,7 +203,14 @@ bool WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocal
     }
 
     // Validate the other parameters
-    if(szFileName == NULL || szFileName[0] == 0 || phFile == NULL)
+    if(szFileName == NULL || phFile == NULL)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return false;
+    }
+
+    // Unless opening by FileDataId, the file name must not be empty
+    if((dwOpenFlags & CASC_OPEN_TYPE_MASK) != CASC_OPEN_BY_FILEID && szFileName[0] == 0)
     {
         SetLastError(ERROR_INVALID_PARAMETER);
         return false;
@@ -215,7 +222,7 @@ bool WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocal
         case CASC_OPEN_BY_NAME:
             
             // Retrieve the file CKey/EKey
-            pbQueryKey = hs->pRootHandler->GetKey(szFileName, &dwContentSize);
+            pbQueryKey = hs->pRootHandler->GetKey(szFileName, CASC_INVALID_ID, &dwContentSize);
             if(pbQueryKey == NULL)
             {
                 nError = ERROR_FILE_NOT_FOUND;
@@ -236,6 +243,21 @@ bool WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocal
             
             // Proceed opening by CKey
             pbQueryKey = KeyBuffer;
+            break;
+
+        case CASC_OPEN_BY_FILEID:
+
+            // Retrieve the file CKey/EKey
+            pbQueryKey = hs->pRootHandler->GetKey(NULL, CASC_NAMETOID(szFileName), &dwContentSize);
+            if(pbQueryKey == NULL)
+            {
+                nError = ERROR_FILE_NOT_FOUND;
+                break;
+            }
+
+            // Change the proper open flags
+            dwOpenFlags = dwOpenFlags & ~CASC_OPEN_TYPE_MASK;
+            dwOpenFlags |= (hs->pRootHandler->GetFlags() & ROOT_FLAG_USES_EKEY) ? CASC_OPEN_BY_EKEY : CASC_OPEN_BY_CKEY;
             break;
 
         default:
@@ -280,28 +302,6 @@ bool WINAPI CascOpenFile(HANDLE hStorage, const char * szFileName, DWORD dwLocal
     if(nError != ERROR_SUCCESS)
         SetLastError(nError);
     return (nError == ERROR_SUCCESS);
-}
-
-DWORD WINAPI CascGetFileId(HANDLE hStorage, const char * szFileName)
-{
-    TCascStorage * hs;
-
-    // Validate the storage handle
-    hs = IsValidCascStorageHandle(hStorage);
-    if (hs == NULL)
-    {
-        SetLastError(ERROR_INVALID_HANDLE);
-        return false;
-    }
-
-    // Validate the other parameters
-    if (szFileName == NULL || szFileName[0] == 0)
-    {
-        SetLastError(ERROR_INVALID_PARAMETER);
-        return false;
-    }
-
-    return hs->pRootHandler->GetFileId(szFileName);
 }
 
 bool WINAPI CascCloseFile(HANDLE hFile)

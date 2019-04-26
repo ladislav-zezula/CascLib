@@ -88,15 +88,20 @@ struct TRootHandler_WoW : public TFileTreeRoot
     TRootHandler_WoW(ROOT_FORMAT RFormat, ULONG HashlessFileCount) : TFileTreeRoot(FTREE_FLAG_USE_DATA_ID | FTREE_FLAG_USE_LOCALE)
     {
         // Turn off the "we know file names" bit 
-        dwRootFlags &= ~ROOT_FLAG_HAS_NAMES;
         FileCounterHashless = HashlessFileCount;
         FileCounter = 0;
         RootFormat = RFormat;
 
-        // Update the preferred search method, if needed
-        if(RootFormat == RootFormatWoW82)
+        // Update the flags based on format
+        switch(RootFormat)
         {
-            FileTree.SetPreferredSearchMethod(CascSearchByFileDataId);
+            case RootFormatWoW6x:
+                dwRootFlags |= ROOT_FLAG_NAME_HASHES;
+                break;
+
+            case RootFormatWoW82:
+                dwRootFlags |= ROOT_FLAG_FILE_DATA_IDS;
+                break;
         }
     }
 
@@ -343,19 +348,18 @@ struct TRootHandler_WoW : public TFileTreeRoot
         // Only if we have a listfile
         if(pSearch->pCache != NULL)
         {
+            DWORD FileDataId = CASC_INVALID_ID;
+
             // Keep going through the listfile
-            while(ListFile_GetNext(pSearch->pCache, pSearch->szMask, pSearch->szFileName, MAX_PATH))
+            while(ListFile_GetNext(pSearch->pCache, pSearch->szMask, pSearch->szFileName, MAX_PATH, &FileDataId))
             {
-                // Check the wildcard first
-                if (CheckWildCard(pSearch->szFileName, pSearch->szMask))
+                // Retrieve the file item
+                pFileNode = FileTree.Find(pSearch->szFileName, FileDataId, NULL);
+                if(pFileNode != NULL)
                 {
-                    // Retrieve the file item
-                    pFileNode = FileTree.Find(pSearch->szFileName, NULL);
-                    if(pFileNode != NULL)
-                    {
-                        FileTree.GetExtras(pFileNode, &pSearch->dwFileDataId, NULL, &pSearch->dwLocaleFlags);
-                        return pFileNode->CKey.Value;
-                    }
+                    // Give the file data id, file size and locale flags
+                    FileTree.GetExtras(pFileNode, &pSearch->dwFileDataId, &pSearch->dwFileSize, &pSearch->dwLocaleFlags);
+                    return pFileNode->CKey.Value;
                 }
             }
         }

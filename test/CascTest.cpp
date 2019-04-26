@@ -99,33 +99,40 @@ static const char * GetHashResult(const char * szExpectedHash, const char * szFi
     }
 }
 
-static void MakeShortName(const char * szFileName, char * szShortName, size_t ccShortName)
+static void MakeShortName(const char * szFileName, char * szShortName, size_t ccShortName, DWORD dwOpenFlags)
 {
-    char * szShortNameEnd = szShortName + ccShortName - 1;
-    size_t nLength = strlen(szFileName);
-
-    // Is the name too long?
-    if(nLength >= ccShortName)
+    if((dwOpenFlags & CASC_OPEN_TYPE_MASK) != CASC_OPEN_BY_FILEID)
     {
-        size_t nFirstPart = (ccShortName / 2) - 3;
-        size_t nRemaining;
+        char * szShortNameEnd = szShortName + ccShortName - 1;
+        size_t nLength = strlen(szFileName);
 
-        // Copy the first part
-        memcpy(szShortName, szFileName, nFirstPart);
-        szShortName += nFirstPart;
+        // Is the name too long?
+        if(nLength >= ccShortName)
+        {
+            size_t nFirstPart = (ccShortName / 2) - 3;
+            size_t nRemaining;
 
-        // Copy "..."
-        memcpy(szShortName, "...", 3);
-        szShortName += 3;
+            // Copy the first part
+            memcpy(szShortName, szFileName, nFirstPart);
+            szShortName += nFirstPart;
 
-        // Copy the rest
-        nRemaining = szShortNameEnd - szShortName;
-        memcpy(szShortName, szFileName + nLength - nRemaining, nRemaining);
-        szShortName[nRemaining] = 0;
+            // Copy "..."
+            memcpy(szShortName, "...", 3);
+            szShortName += 3;
+
+            // Copy the rest
+            nRemaining = szShortNameEnd - szShortName;
+            memcpy(szShortName, szFileName + nLength - nRemaining, nRemaining);
+            szShortName[nRemaining] = 0;
+        }
+        else
+        {
+            strcpy(szShortName, szFileName);
+        }
     }
     else
     {
-        strcpy(szShortName, szFileName);
+        sprintf(szShortName, "%u", CASC_NAMETOID(szFileName));
     }
 }
 
@@ -211,7 +218,7 @@ static int ExtractFile(
     int nError = ERROR_SUCCESS;
 
     // Show the file name to the user
-    MakeShortName(szFileName, szShortName, sizeof(szShortName));
+    MakeShortName(szFileName, szShortName, sizeof(szShortName), dwOpenFlags);
 
     // Show progress
     if((LogHelper.FileCount % 5) == 0)
@@ -334,12 +341,11 @@ static int ExtractFile(
 //-----------------------------------------------------------------------------
 // Testing functions
 
-static int TestOpenStorage_OpenFile(const char * szStorage, const char * szFileName)
+static int TestOpenStorage_OpenFile(const char * szStorage, const char * szFileName, DWORD dwOpenFlags = 0)
 {
     TLogHelper LogHelper(szStorage);
     HANDLE hStorage;
     TCHAR szFullPath[MAX_PATH];
-    DWORD dwOpenFlags = 0;
     int nError = ERROR_SUCCESS;
 
     // Setup the counters
@@ -352,10 +358,10 @@ static int TestOpenStorage_OpenFile(const char * szStorage, const char * szFileN
     {
         // Dump the storage
 //      CascDumpStorage(hStorage, "E:\\storage-dump.txt");
-//      CascGetFileId(hStorage, szFileName);
 
         // Check whether the name is the CKey
-        dwOpenFlags |= IsFileKey(szFileName) ? CASC_OPEN_BY_CKEY : 0;
+        if(dwOpenFlags == 0 && IsFileKey(szFileName))
+            dwOpenFlags |= CASC_OPEN_BY_CKEY;
 
         // Extract the entire file
         ExtractFile(LogHelper, hStorage, szFileName, dwOpenFlags);
@@ -409,7 +415,8 @@ static int TestOpenStorage_EnumFiles(const char * szStorage, const TCHAR * szLis
             while(bFileFound)
             {
                 // Show the file name to the user
-                MakeShortName(cf.szFileName, szShortName, sizeof(szShortName));
+                assert(cf.szFileName[0] != 0);
+                MakeShortName(cf.szFileName, szShortName, sizeof(szShortName), 0);
 
 //              if(fp != NULL)
 //                  fprintf(fp, "%s\n", cf.szFileName);
@@ -523,36 +530,6 @@ static int TestOpenStorage_ExtractFiles(const char * szStorage, const char * szE
     return nError;
 }
 
-static int TestOpenStorage_GetFileDataId(const TCHAR * szStorage, const char * szFileName, DWORD expectedId)
-{
-    TLogHelper LogHelper("GetFileDataId");
-    HANDLE hStorage;
-    int nError = ERROR_FILE_NOT_FOUND;
-
-    // Open the storage directory
-    LogHelper.PrintProgress("Opening storage ...");
-    if(!CascOpenStorage(szStorage, 0, &hStorage))
-    {
-        assert(GetLastError() != ERROR_SUCCESS);
-        nError = GetLastError();
-    }
-    else
-    {
-        nError = ERROR_SUCCESS;
-    }
-
-    if(nError == ERROR_SUCCESS)
-    {
-        if(CascGetFileId(hStorage, szFileName) != expectedId)
-            nError = ERROR_BAD_FORMAT;
-    }
-
-    // Close storage and return
-    if(hStorage != NULL)
-        CascCloseStorage(hStorage);
-    return nError;
-}
-
 //-----------------------------------------------------------------------------
 // Storage list
 
@@ -566,36 +543,36 @@ static STORAGE_INFO StorageInfo[] =
     {"2014 - Heroes of the Storm/39445/HeroesData", "ee5bd644554fe660a47205b3a37f4b20", "versions.osxarchive\\Versions\\Base39153\\Heroes.app\\Contents\\_CodeSignature\\CodeResources"},
     {"2014 - Heroes of the Storm/50286/HeroesData", "8ee62ff0b959992854a7faa3a4c4efc3", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
     {"2014 - Heroes of the Storm/65943", "044646b8cd27cfe9115bd55810955d40", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
-/*
+
     {"2015 - Diablo III/30013", "a0b42485b79dae47069d86784564d884", "ENCODING"},
     {"2015 - Diablo III/50649", "68d14fb4c20edccd414ca8c935a5ebfe", "ENCODING" },
 
     {"2015 - Overwatch/24919/data/casc/data", "2c3b0eae9b059e64ad605270e5f3fb42", "ROOT"},
-    {"2015 - Overwatch/47161", "d12b77b585ce708f1af3b1b7776a1fb0", "TactManifest\\Win_SPWin_RCN_LesMX_EExt.apm"},
-*/
-    {"2016 - Starcraft II/45364/\\/\\/\\", "fc13de3bbca74f907f967afb9f8db830", "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
-/*
-    {"2016 - WoW/18125", "af477d5cb467c07fef5764473b0a1155", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"2016 - WoW/18379", "e6879ab7cbd93d48718fd56633bcdcbc", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"2016 - WoW/18865", "9859fbb72f24153532b33787ac875c8d", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"2016 - WoW/18888", "91b074918ccac080355b2a76ba9a8d3b", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"2016 - WoW/19116", "cf3a4ff622fc7176ce6721f6eaf7cd2c", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"2016 - WoW/19342", "f9e7c440158c07f0fb8ec9a55a7679d2", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"2016 - WoW/19342-with-patch", "678d497e556b80954e4b2ce0fd90cd78", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"2016 - WoW/19678-after-patch", "a31378fbdc261e4470fc8be1175a6210", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"2016 - WoW/21742", "740a369bf6a1b81913bda719f4877840", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"2016 - WoW/22267", "f7da13a344e1d5d35a5cf85fd30831e2", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"2016 - WoW/23420", "86c513a7d6c0b3edb13e2839d96b5738", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2015 - Overwatch/47161", "660cbd3206dbe3bd6889ca3a75a98615", "TactManifest\\Win_SPWin_RCN_LesMX_EExt.apm"},
 
-    {"2017 - Starcraft1/2457", "ee7ec3feb3636a49604d76cd1330e6cc", "music\\radiofreezerg.ogg"},
+    {"2016 - Starcraft II/45364/\\/\\/\\", "fc13de3bbca74f907f967afb9f8db830", "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
+
+    {"2016 - WoW/18125", "8e832d7b774a0158278b0d44625c7de8", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/18379", "d095440c697bb12bd60f20da7a756614", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/18865", "f2a24c074f5ad87f1db340ba565f1966", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/18888", "74ed127aa26936125920af3645d69c5e", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/19116", "7f17f5b9334bea3f12f33782a23879a5", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/19342", "3b1e2cda307bfcfec2b96dd6f7e22f1a", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/21742", "e031c7f8cd732f5aa048d88277a00d3f", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/22267", "b774baa36e794253c3975c51ff3aa778", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/23420", "8d9e79eb7913434f5629b193b1eb0fa4", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/29981", "081d525b3235de6697897d5dc8cba835", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/30123", "1d84d8682149533d90fdbc46be2fcfc3", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+
+    {"2017 - Starcraft1/2457", "7a953a1e8713feeebf3a6d29e85731fb", "music\\radiofreezerg.ogg"},
     {"2017 - Starcraft1/4037", "e3b1fbab5301fb40c603cafac3d51cf8", "music\\radiofreezerg.ogg"},
-    {"2017 - Starcraft1/4261", NULL, "music\\radiofreezerg.ogg"},
+    {"2017 - Starcraft1/4261", "2e35ddd46976326f9301ed04bf84e30c", "music\\radiofreezerg.ogg"},
 
     {"2018 - New CASC/00001", "971803daed7ea8685a94d9c22c5cffe6", "ROOT"},
     {"2018 - New CASC/00002", "82b381a8d79907c9fd4b19e36d69078c", "ENCODING"},
 
-    {"2018 - Warcraft III/9655", "ee0d4eea919860b99b8b7204020a5650", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
-*/
+    {"2018 - Warcraft III/9655", "629ed47991b2c4a29f6411d00cf72fa6", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
+
     {NULL}
 };
 
@@ -622,23 +599,12 @@ int main(int argc, char * argv[])
 
 //  TestOpenStorage_OpenFile("2014 - Heroes of the Storm/29049", "fd45b0f59067a8dda512b740c782cd70");
 //  TestOpenStorage_OpenFile("z:\\47161", "ROOT");
+//  TestOpenStorage_OpenFile("d:\\Hry\\World of Warcraft Public Test", CASC_IDTONAME(372761), CASC_OPEN_BY_FILEID);
 //  TestOpenStorage_ExtractFiles("2016 - WoW/23420", "86c513a7d6c0b3edb13e2839d96b5738", szListFile);
 //  TestOpenStorage_ExtractFiles("2017 - Starcraft1\\5458B\\Data", szListFile);
-    TestOpenStorage_EnumFiles("2016 - WoW/29981");
-//  TestOpenStorage_EnumFiles("d:\\Hry\\World of Warcraft Public Test");
-/*
-    //
-    // Tests for OpenStorage + ExtractFile
-    //
+//  TestOpenStorage_EnumFiles("2016 - WoW/29981");
+//  TestOpenStorage_EnumFiles("d:\\Hry\\World of Warcraft Public Test", _T("c:\\Tools32\\ListFiles\\World of Warcraft 8x.csv"));
 
-    for(size_t i = 0; StorageInfo[i].szPath != NULL; i++)
-    {
-        // Attempt to open the storage and extract single file
-        nError = TestOpenStorage_OpenFile(StorageInfo[i].szPath, StorageInfo[i].szFile);
-        if(nError != ERROR_SUCCESS)
-            break;
-    }
-*/
     //
     // Tests for OpenStorage + EnumAllFiles + ExtractAllFiles
     //

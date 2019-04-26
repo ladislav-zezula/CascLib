@@ -39,14 +39,9 @@ LPBYTE TRootHandler::Search(struct _TCascSearch * /* pSearch */)
 void TRootHandler::EndSearch(struct _TCascSearch * /* pSearch */)
 {}
 
-LPBYTE TRootHandler::GetKey(const char * /* szFileName */, PDWORD /* PtrFileSize */)
+LPBYTE TRootHandler::GetKey(const char * /* szFileName */, DWORD /* FileDataId */, PDWORD /* PtrFileSize */)
 {
     return NULL;
-}
-
-DWORD TRootHandler::GetFileId(const char * /* szFileName */)
-{
-    return 0;
 }
 
 //-----------------------------------------------------------------------------
@@ -56,9 +51,6 @@ TFileTreeRoot::TFileTreeRoot(DWORD FileTreeFlags) : TRootHandler()
 {
     // Initialize the file tree
     FileTree.Create(FileTreeFlags);
-
-    // Remember that we have file names
-    dwRootFlags |= ROOT_FLAG_HAS_NAMES;
 }
 
 TFileTreeRoot::~TFileTreeRoot()
@@ -110,7 +102,13 @@ LPBYTE TFileTreeRoot::Search(TCascSearch * pSearch)
             // Check the wildcard
             if (CheckWildCard(pSearch->szFileName, pSearch->szMask))
             {
+                // Retrieve the extra values (FileDataId, file size and locale flags)
                 FileTree.GetExtras(pFileNode, &pSearch->dwFileDataId, &pSearch->dwFileSize, &pSearch->dwLocaleFlags);
+
+                // If this is an unnamed item, we need to put the flag to the search structure
+                pSearch->dwOpenFlags |= (pFileNode->NameLength == 0) ? CASC_OPEN_BY_CKEY : 0;
+                
+                // Return the found CKey value
                 return pFileNode->CKey.Value;
             }
         }
@@ -120,19 +118,21 @@ LPBYTE TFileTreeRoot::Search(TCascSearch * pSearch)
     return NULL;
 }
 
-LPBYTE TFileTreeRoot::GetKey(const char * szFileName, PDWORD PtrFileSize)
+LPBYTE TFileTreeRoot::GetKey(const char * szFileName, DWORD FileDataId, PDWORD PtrFileSize)
 {
-    PCASC_FILE_NODE pFileNode = FileTree.Find(szFileName, PtrFileSize);
+    PCASC_FILE_NODE pFileNode = FileTree.Find(szFileName, FileDataId, PtrFileSize);
 
     return (pFileNode != NULL) ? pFileNode->CKey.Value : NULL;
 }
 
-DWORD TFileTreeRoot::GetFileId(const char * szFileName)
+DWORD TFileTreeRoot::GetFileDataId(const char * szFileName)
 {
-    PCASC_FILE_NODE pFileNode = FileTree.Find(szFileName, NULL);
-    DWORD FileId = CASC_INVALID_ID;
+    PCASC_FILE_NODE pFileNode;
+    DWORD FileDataId = CASC_INVALID_ID;
 
+    pFileNode = FileTree.Find(szFileName, CASC_INVALID_ID, NULL);
     if(pFileNode != NULL)
-        FileTree.GetExtras(pFileNode, &FileId, NULL, NULL);
-    return FileId;
+        FileTree.GetExtras(pFileNode, &FileDataId, NULL, NULL);
+
+    return FileDataId;
 }

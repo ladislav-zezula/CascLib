@@ -124,6 +124,7 @@ static bool DoStorageSearch_RootFile(TCascSearch * pSearch, PCASC_FIND_DATA pFin
     QUERY_KEY EKey;
     LPBYTE pbQueryKey;
     DWORD EKeyIndex = 0;
+    bool bFoundBefore;
 
     for(;;)
     {
@@ -132,6 +133,7 @@ static bool DoStorageSearch_RootFile(TCascSearch * pSearch, PCASC_FIND_DATA pFin
         pSearch->dwFileSize = CASC_INVALID_SIZE;
         pSearch->dwLocaleFlags = 0;
         pSearch->dwFileDataId = CASC_INVALID_ID;
+        pSearch->dwOpenFlags = 0;
 
         // Attempt to find (the next) file from the root handler
         pbQueryKey = hs->pRootHandler->Search(pSearch);
@@ -164,9 +166,11 @@ static bool DoStorageSearch_RootFile(TCascSearch * pSearch, PCASC_FIND_DATA pFin
         if(pEKeyEntry == NULL)
             continue;
 
-        // Check whether this file was found before. Do not skip already found items,
-        // as they might have been put to the storage with the different name
-        FileFoundBefore(pSearch, EKeyIndex);
+        // Check whether this file was found before.
+        // If we know the name, do not skip it, as it might have been under multiple names in the storage
+        bFoundBefore = FileFoundBefore(pSearch, EKeyIndex);
+        if((pSearch->dwOpenFlags & CASC_OPEN_BY_CKEY) && (bFoundBefore))
+            continue;
 
         // If we retrieved the file size directly from the root provider, use it
         // Otherwise, we need to retrieve it from the encoding entry
@@ -185,7 +189,7 @@ static bool DoStorageSearch_RootFile(TCascSearch * pSearch, PCASC_FIND_DATA pFin
         pFindData->dwLocaleFlags = pSearch->dwLocaleFlags;
         pFindData->dwFileDataId = pSearch->dwFileDataId;
         pFindData->dwFileSize = pSearch->dwFileSize;
-        pFindData->dwOpenFlags = 0;
+        pFindData->dwOpenFlags = pSearch->dwOpenFlags;
         return true;
     }
 }
