@@ -124,7 +124,7 @@ static bool DoStorageSearch_RootFile(TCascSearch * pSearch, PCASC_FIND_DATA pFin
     QUERY_KEY EKey;
     LPBYTE pbQueryKey;
     DWORD EKeyIndex = 0;
-    bool bFoundBefore;
+//  bool bFoundBefore;
 
     for(;;)
     {
@@ -161,16 +161,16 @@ static bool DoStorageSearch_RootFile(TCascSearch * pSearch, PCASC_FIND_DATA pFin
             EKey.cbData = MD5_HASH_SIZE;
         }
 
-        // Locate the EKey entry
+        // Locate the EKey entry. If it doesn§t exist, then the file is not present in the storage.
         pEKeyEntry = FindEKeyEntry(pSearch->hs, &EKey, &EKeyIndex);
         if(pEKeyEntry == NULL)
             continue;
 
-        // Check whether this file was found before.
-        // If we know the name, do not skip it, as it might have been under multiple names in the storage
-        bFoundBefore = FileFoundBefore(pSearch, EKeyIndex);
-        if((pSearch->dwOpenFlags & CASC_OPEN_BY_CKEY) && (bFoundBefore))
-            continue;
+        // Remember that this file was found before.
+        // DO NOT exclude files from search while searching by root.
+        // * Multiple file names may be mapped to the same CKey
+        // * Multiple file data ids may be mapped to the same CKey
+        FileFoundBefore(pSearch, EKeyIndex);
 
         // If we retrieved the file size directly from the root provider, use it
         // Otherwise, we need to retrieve it from the encoding entry

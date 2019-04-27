@@ -535,7 +535,7 @@ static int TestOpenStorage_ExtractFiles(const char * szStorage, const char * szE
 
 static STORAGE_INFO StorageInfo[] = 
 {
-
+/*
     {"2014 - Heroes of the Storm/29049", "2d0209bb094127eb970f53ba29904b7d", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_autoai1.dds"},
     {"2014 - Heroes of the Storm/30027", "b9cf425da4d836b0b1fabb6702c24111", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_claim1.dds"},
     {"2014 - Heroes of the Storm\\30414\\HeroesData\\config\\09\\32", "c07afadc372bffccf70b93533b4f1845", "mods\\heromods\\murky.stormmod\\base.stormdata\\gamedata\\buttondata.xml"},
@@ -551,7 +551,7 @@ static STORAGE_INFO StorageInfo[] =
     {"2015 - Overwatch/47161", "660cbd3206dbe3bd6889ca3a75a98615", "TactManifest\\Win_SPWin_RCN_LesMX_EExt.apm"},
 
     {"2016 - Starcraft II/45364/\\/\\/\\", "fc13de3bbca74f907f967afb9f8db830", "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
-
+*/
     {"2016 - WoW/18125", "8e832d7b774a0158278b0d44625c7de8", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"2016 - WoW/18379", "d095440c697bb12bd60f20da7a756614", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"2016 - WoW/18865", "f2a24c074f5ad87f1db340ba565f1966", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
@@ -603,7 +603,7 @@ int main(int argc, char * argv[])
 //  TestOpenStorage_ExtractFiles("2016 - WoW/23420", "86c513a7d6c0b3edb13e2839d96b5738", szListFile);
 //  TestOpenStorage_ExtractFiles("2017 - Starcraft1\\5458B\\Data", szListFile);
 //  TestOpenStorage_EnumFiles("2016 - WoW/29981");
-    TestOpenStorage_EnumFiles("d:\\Hry\\World of Warcraft Public Test", _T("c:\\Tools32\\ListFiles\\World of Warcraft 8x.csv"));
+//  TestOpenStorage_EnumFiles("d:\\Hry\\World of Warcraft Public Test", _T("c:\\Tools32\\ListFiles\\World of Warcraft 8x.csv"));
 
     //
     // Tests for OpenStorage + EnumAllFiles + ExtractAllFiles
