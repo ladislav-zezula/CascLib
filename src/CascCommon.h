@@ -172,6 +172,7 @@ typedef struct _TCascStorage
     CASC_CKEY_ENTRY InstallFile;                    // Information about INSTALL file
     CASC_CKEY_ENTRY DownloadFile;                   // Information about DOWNLOAD file
     CASC_CKEY_ENTRY PatchFile;                      // Information about PATCH file
+    CASC_CKEY_ENTRY SizeFile;                       // Information about SIZE file
 
     CASC_CKEY_ENTRY VfsRoot;                        // The main VFS root file
     CASC_ARRAY VfsRootList;                         // List of VFS root files. Used on TVFS root keys

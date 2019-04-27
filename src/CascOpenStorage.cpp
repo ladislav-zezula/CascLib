@@ -29,6 +29,7 @@ typedef struct _BLOCK_SIZE_AND_HASH
 // * File header. Fixed length.
 // * Encoding Specification (ESpec) in the string form. Length is stored in FILE_ENCODING_HEADER::ESpecBlockSize
 // https://wowdev.wiki/CASC#Encoding
+// https://wowdev.wiki/TACT#Encoding_table
 typedef struct _FILE_ENCODING_HEADER
 {
     BYTE Magic[2];                                  // "EN"
@@ -970,13 +971,15 @@ static int LoadRootFile(TCascStorage * hs, DWORD dwLocaleMask)
         }
     }
 
-    // Insert entries for files with well-known names, mainly from the BUILD file
+    // Insert entries for files with well-known names. Their CKeys are in the BUILD file
+    // See https://wowdev.wiki/TACT#Encoding_table for their list
     if(nError == ERROR_SUCCESS)
     {
-        InsertNamedInternalFile(hs, "ENCODING", hs->EncodingFile);
         InsertNamedInternalFile(hs, "ROOT", hs->RootFile);
         InsertNamedInternalFile(hs, "INSTALL", hs->InstallFile);
         InsertNamedInternalFile(hs, "DOWNLOAD", hs->DownloadFile);
+        InsertNamedInternalFile(hs, "SIZE", hs->SizeFile);
+        InsertNamedInternalFile(hs, "ENCODING", hs->EncodingFile);
         InsertNamedInternalFile(hs, "PATCH", hs->PatchFile);
     }
 

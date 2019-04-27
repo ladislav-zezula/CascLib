@@ -758,31 +758,38 @@ static int ParseFile_CdnBuild(TCascStorage * hs, void * pvListFile)
         // If CKey is absent, you need to query the ENCODING file for it
         if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "install", LoadCkeyEkey, &hs->InstallFile))
             continue;
+        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "install-size", LoadCkeyEkeySize, &hs->InstallFile))
+            continue;
 
         // Content key [+ encoded key] of the DOWNLOAD file
         // If CKey is absent, you need to query the ENCODING file for it
         if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "download", LoadCkeyEkey, &hs->DownloadFile))
+            continue;
+        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "download-size", LoadCkeyEkeySize, &hs->DownloadFile))
             continue;
 
         // Content key + encoded key of the ENCODING file. Contains CKey+EKey
         // If either none or 1 is found, the game (at least Wow) switches to plain-data(?). Seen in build 20173 
         if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "encoding", LoadCkeyEkey, &hs->EncodingFile))
             continue;
-
-        // Content and encoded size of the ENCODING file. This helps us to determine size
-        // of the ENCODING file better, as the size in the EKEY entries is almost always wrong on WoW storages
         if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "encoding-size", LoadCkeyEkeySize, &hs->EncodingFile))
             continue;
 
         // PATCH file
         if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "patch", LoadCkeyEkey, &hs->PatchFile))
             continue;
-
-        // Load the CKey+EKey of a VFS root file (the root file of the storage VFS)
-        if (CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "vfs-root", LoadCkeyEkey, &hs->VfsRoot))
+        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "patch-size", LoadCkeyEkeySize, &hs->PatchFile))
             continue;
 
-        // Load the content size of the VFS root
+        // SIZE file
+        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "size", LoadCkeyEkey, &hs->SizeFile))
+            continue;
+        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "size-size", LoadCkeyEkeySize, &hs->SizeFile))
+            continue;
+
+        // VFS root file (the root file of the storage VFS)
+        if (CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "vfs-root", LoadCkeyEkey, &hs->VfsRoot))
+            continue;
         if (CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "vfs-root-size", LoadCkeyEkeySize, &hs->VfsRoot))
             continue;
 
