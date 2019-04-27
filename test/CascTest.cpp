@@ -603,7 +603,7 @@ int main(int argc, char * argv[])
 //  TestOpenStorage_ExtractFiles("2016 - WoW/23420", "86c513a7d6c0b3edb13e2839d96b5738", szListFile);
 //  TestOpenStorage_ExtractFiles("2017 - Starcraft1\\5458B\\Data", szListFile);
 //  TestOpenStorage_EnumFiles("2016 - WoW/29981");
-//  TestOpenStorage_EnumFiles("d:\\Hry\\World of Warcraft Public Test", _T("c:\\Tools32\\ListFiles\\World of Warcraft 8x.csv"));
+    TestOpenStorage_EnumFiles("d:\\Hry\\World of Warcraft Public Test", _T("c:\\Tools32\\ListFiles\\World of Warcraft 8x.csv"));
 
     //
     // Tests for OpenStorage + EnumAllFiles + ExtractAllFiles

@@ -145,7 +145,7 @@ struct TRootHandler_WoW : public TFileTreeRoot
         switch(RootFormat)
         {
             case RootFormatWoW6x:
-                if((pbRootPtr + (sizeof(FILE_ROOT_ENTRY) * RootGroup.Header.NumberOfFiles)) >= pbRootEnd)
+                if((pbRootPtr + (sizeof(FILE_ROOT_ENTRY) * RootGroup.Header.NumberOfFiles)) > pbRootEnd)
                     return NULL;
                 RootGroup.pRootEntries = (PFILE_ROOT_ENTRY)pbRootPtr;
 
@@ -155,7 +155,7 @@ struct TRootHandler_WoW : public TFileTreeRoot
             case RootFormatWoW82:
                 
                 // Verify the position of array of CONTENT_KEY
-                if((pbRootPtr + (sizeof(CONTENT_KEY) * RootGroup.Header.NumberOfFiles)) >= pbRootEnd)
+                if((pbRootPtr + (sizeof(CONTENT_KEY) * RootGroup.Header.NumberOfFiles)) > pbRootEnd)
                     return NULL;
                 RootGroup.pCKeyEntries = (PCONTENT_KEY)pbRootPtr;
                 pbRootPtr = pbRootPtr + (sizeof(CONTENT_KEY) * RootGroup.Header.NumberOfFiles);
@@ -163,7 +163,7 @@ struct TRootHandler_WoW : public TFileTreeRoot
                 // Also include array of file hashes
                 if(FileCounter > FileCounterHashless)
                 {
-                    if((pbRootPtr + (sizeof(ULONGLONG) * RootGroup.Header.NumberOfFiles)) >= pbRootEnd)
+                    if((pbRootPtr + (sizeof(ULONGLONG) * RootGroup.Header.NumberOfFiles)) > pbRootEnd)
                         return NULL;
                     RootGroup.pHashes = (PULONGLONG)pbRootPtr;
                     pbRootPtr = pbRootPtr + (sizeof(ULONGLONG) * RootGroup.Header.NumberOfFiles);
