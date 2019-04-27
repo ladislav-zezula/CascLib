@@ -161,7 +161,7 @@ static bool DoStorageSearch_RootFile(TCascSearch * pSearch, PCASC_FIND_DATA pFin
             EKey.cbData = MD5_HASH_SIZE;
         }
 
-        // Locate the EKey entry. If it doesn§t exist, then the file is not present in the storage.
+        // Locate the EKey entry. If it doesn't exist, then the file is not present in the storage.
         pEKeyEntry = FindEKeyEntry(pSearch->hs, &EKey, &EKeyIndex);
         if(pEKeyEntry == NULL)
             continue;
