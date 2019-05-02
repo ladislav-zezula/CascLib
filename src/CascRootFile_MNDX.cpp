@@ -2638,6 +2638,9 @@ struct TRootHandler_MNDX : public TRootHandler
     TRootHandler_MNDX()
     {
         memset(&MndxInfo, 0, sizeof(TRootHandler_MNDX) - FIELD_OFFSET(TRootHandler_MNDX, MndxInfo));
+
+        // We have file names and return CKey as result of search
+        dwFeatures |= (CASC_FEATURE_FILE_NAMES | CASC_FEATURE_ROOT_CKEY);
     }
 
     ~TRootHandler_MNDX()
@@ -2754,7 +2757,7 @@ struct TRootHandler_MNDX : public TRootHandler
         return ERROR_FILE_NOT_FOUND;
     }
 
-    LPBYTE FillFindData(TCascSearch * hs, TMndxSearch * pSearch)
+    LPBYTE FillFindData(TMndxSearch * pSearch, PCASC_FIND_DATA pFindData)
     {
         PMNDX_ROOT_ENTRY pRootEntry = NULL;
         PMNDX_PACKAGE pPackage;
@@ -2767,16 +2770,16 @@ struct TRootHandler_MNDX : public TRootHandler
         CASCLIB_UNUSED(pSearch);
 
         // Fill the file name
-        memcpy(hs->szFileName, pSearch->szFoundPath, pSearch->cchFoundPath);
-        hs->szFileName[pSearch->cchFoundPath] = 0;
+        memcpy(pFindData->szFileName, pSearch->szFoundPath, pSearch->cchFoundPath);
+        pFindData->szFileName[pSearch->cchFoundPath] = 0;
 
         // Fill the file size
-        pPackage = FindMndxPackage(hs->szFileName);
+        pPackage = FindMndxPackage(pFindData->szFileName);
         if(pPackage == NULL)
             return NULL;
 
         // Cut the package name off the full path
-        szStrippedPtr = hs->szFileName + pPackage->nLength;
+        szStrippedPtr = pFindData->szFileName + pPackage->nLength;
         while(szStrippedPtr[0] == '/')
             szStrippedPtr++;
 
@@ -2789,7 +2792,8 @@ struct TRootHandler_MNDX : public TRootHandler
             return NULL;
 
         // Give the file size
-        hs->dwFileSize = pRootEntry->ContentSize;
+        pFindData->dwFileSize = pRootEntry->ContentSize;
+        pFindData->bCanOpenByName = true;
         return pRootEntry->CKey;
     }
 
@@ -2983,7 +2987,7 @@ struct TRootHandler_MNDX : public TRootHandler
     //  Virtual root functions
     //
 
-    LPBYTE Search(TCascSearch * hs)
+    LPBYTE Search(TCascSearch * hs, PCASC_FIND_DATA pFindData)
     {
         TMndxMarFile * pMarFile = MndxInfo.MarFiles[2];
         TMndxSearch * pSearch = NULL;
@@ -3019,14 +3023,14 @@ struct TRootHandler_MNDX : public TRootHandler
                 break;
 
             // Copy the found name to the buffer
-            memcpy(hs->szFileName, pSearch->szFoundPath, pSearch->cchFoundPath);
-            hs->szFileName[pSearch->cchFoundPath] = 0;
-            if (CheckWildCard(hs->szFileName, hs->szMask))
+            memcpy(pFindData->szFileName, pSearch->szFoundPath, pSearch->cchFoundPath);
+            pFindData->szFileName[pSearch->cchFoundPath] = 0;
+            if (CheckWildCard(pFindData->szFileName, hs->szMask))
                 break;
         }
 
         // Give the file size and CKey
-        return FillFindData(hs, pSearch);
+        return FillFindData(pSearch, pFindData);
     }
 
     void EndSearch(TCascSearch * pSearch)

@@ -309,7 +309,6 @@
     <ClCompile Include="src\common\FileStream.cpp" />
     <ClCompile Include="src\common\FileTree.cpp" />
     <ClCompile Include="src\common\ListFile.cpp" />
-    <ClCompile Include="src\common\Map.cpp" />
     <ClCompile Include="src\common\RootHandler.cpp" />
     <ClCompile Include="src\jenkins\lookup3.c">
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Level1</WarningLevel>

@@ -81,11 +81,13 @@ typedef struct _FILE_ROOT_GROUP
 //-----------------------------------------------------------------------------
 // TRootHandler_WoW interface / implementation
 
+#define FTREE_FLAGS_WOW (FTREE_FLAG_USE_DATA_ID | FTREE_FLAG_USE_LOCALE_FLAGS | FTREE_FLAG_USE_CONTENT_FLAGS)
+
 struct TRootHandler_WoW : public TFileTreeRoot
 {
     public:
 
-    TRootHandler_WoW(ROOT_FORMAT RFormat, ULONG HashlessFileCount) : TFileTreeRoot(FTREE_FLAG_USE_DATA_ID | FTREE_FLAG_USE_LOCALE)
+    TRootHandler_WoW(ROOT_FORMAT RFormat, DWORD HashlessFileCount) : TFileTreeRoot(FTREE_FLAGS_WOW)
     {
         // Turn off the "we know file names" bit 
         FileCounterHashless = HashlessFileCount;
@@ -96,11 +98,11 @@ struct TRootHandler_WoW : public TFileTreeRoot
         switch(RootFormat)
         {
             case RootFormatWoW6x:
-                dwRootFlags |= ROOT_FLAG_NAME_HASHES;
+                dwFeatures |= CASC_FEATURE_ROOT_CKEY | CASC_FEATURE_FNAME_HASHES | CASC_FEATURE_FILE_DATA_IDS | CASC_FEATURE_LOCALE_FLAGS | CASC_FEATURE_CONTENT_FLAGS;
                 break;
 
             case RootFormatWoW82:
-                dwRootFlags |= ROOT_FLAG_FILE_DATA_IDS;
+                dwFeatures |= CASC_FEATURE_ROOT_CKEY | CASC_FEATURE_FNAME_HASHES_OPTIONAL | CASC_FEATURE_FILE_DATA_IDS | CASC_FEATURE_LOCALE_FLAGS | CASC_FEATURE_CONTENT_FLAGS;
                 break;
         }
     }
@@ -190,8 +192,11 @@ struct TRootHandler_WoW : public TFileTreeRoot
             // Set the file data ID
             dwFileDataId = dwFileDataId + RootGroup.FileDataIds[i];
 
+            if(dwFileDataId < 5)
+                __debugbreak();
+
             // Insert the file node to the tree
-            FileTree.Insert(&pRootEntry->CKey, pRootEntry->FileNameHash, dwFileDataId, CASC_INVALID_SIZE, RootGroup.Header.LocaleFlags);
+            FileTree.Insert(&pRootEntry->CKey, pRootEntry->FileNameHash, dwFileDataId, CASC_INVALID_SIZE, RootGroup.Header.LocaleFlags, RootGroup.Header.ContentFlags);
 
             // Update the file data ID
             assert((dwFileDataId + 1) > dwFileDataId);
@@ -222,7 +227,7 @@ struct TRootHandler_WoW : public TFileTreeRoot
                 FileNameHash = RootGroup.pHashes[i];
 
             // Insert the file node to the tree
-            FileTree.Insert(pCKeyEntry, FileNameHash, dwFileDataId, CASC_INVALID_SIZE, RootGroup.Header.LocaleFlags);
+            FileTree.Insert(pCKeyEntry, FileNameHash, dwFileDataId, CASC_INVALID_SIZE, RootGroup.Header.LocaleFlags, RootGroup.Header.ContentFlags);
 
             // Update the file data ID
             assert((dwFileDataId + 1) > dwFileDataId);
@@ -341,7 +346,7 @@ struct TRootHandler_WoW : public TFileTreeRoot
     }
 
     // Search for files
-    LPBYTE Search(TCascSearch * pSearch)
+    LPBYTE Search(TCascSearch * pSearch, PCASC_FIND_DATA pFindData)
     {
         PCASC_FILE_NODE pFileNode;
 
@@ -351,21 +356,19 @@ struct TRootHandler_WoW : public TFileTreeRoot
             DWORD FileDataId = CASC_INVALID_ID;
 
             // Keep going through the listfile
-            while(ListFile_GetNext(pSearch->pCache, pSearch->szMask, pSearch->szFileName, MAX_PATH, &FileDataId))
+            while(ListFile_GetNext(pSearch->pCache, pSearch->szMask, pFindData->szFileName, MAX_PATH, &FileDataId))
             {
                 // Retrieve the file item
-                pFileNode = FileTree.Find(pSearch->szFileName, FileDataId, NULL);
+                pFileNode = FileTree.Find(pFindData->szFileName, FileDataId, pFindData);
                 if(pFileNode != NULL)
                 {
-                    // Give the file data id, file size and locale flags
-                    FileTree.GetExtras(pFileNode, &pSearch->dwFileDataId, &pSearch->dwFileSize, &pSearch->dwLocaleFlags);
                     return pFileNode->CKey.Value;
                 }
             }
         }
 
         // Try to find ANY items remaining
-        return TFileTreeRoot::Search(pSearch);
+        return TFileTreeRoot::Search(pSearch, pFindData);
     }
 
     ROOT_FORMAT RootFormat;                 // Root file format

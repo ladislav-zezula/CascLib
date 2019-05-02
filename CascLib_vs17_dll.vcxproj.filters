@@ -81,9 +81,6 @@
     <ClCompile Include="src\common\ListFile.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>
-    <ClCompile Include="src\common\Map.cpp">
-      <Filter>Source Files\common</Filter>
-    </ClCompile>
     <ClCompile Include="src\common\RootHandler.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>

@@ -363,13 +363,13 @@ int CascLoadEncryptionKeys(TCascStorage * hs)
     int nError;
 
     // Create fast map of KeyName -> Key
-    hs->pEncryptionKeys = Map_Create(nMaxItems, sizeof(ULONGLONG), FIELD_OFFSET(CASC_ENCRYPTION_KEY, KeyName));
-    if (hs->pEncryptionKeys == NULL)
-        return ERROR_NOT_ENOUGH_MEMORY;
+    nError = hs->EncryptionKeys.Create(nMaxItems, sizeof(ULONGLONG), FIELD_OFFSET(CASC_ENCRYPTION_KEY, KeyName), true);
+    if(nError != ERROR_SUCCESS)
+        return nError;
 
     // Insert all static keys
     for (size_t i = 0; i < nKeyCount; i++)
-        Map_InsertObject(hs->pEncryptionKeys, &CascKeys[i], &CascKeys[i].KeyName);
+        hs->EncryptionKeys.InsertObject(&CascKeys[i], &CascKeys[i].KeyName);
 
     // Create array for extra keys
     nError = hs->ExtraKeysList.Create<CASC_ENCRYPTION_KEY>(CASC_EXTRA_KEYS);
@@ -380,7 +380,7 @@ LPBYTE CascFindKey(TCascStorage * hs, ULONGLONG KeyName)
 {
     PCASC_ENCRYPTION_KEY pKey;
 
-    pKey = (PCASC_ENCRYPTION_KEY)Map_FindObject(hs->pEncryptionKeys, &KeyName);
+    pKey = (PCASC_ENCRYPTION_KEY)hs->EncryptionKeys.FindObject(&KeyName);
     return (pKey != NULL) ? pKey->Key : NULL;
 }
 
@@ -513,5 +513,5 @@ bool WINAPI CascAddEncryptionKey(HANDLE hStorage, ULONGLONG KeyName, LPBYTE Key)
     pEncKey->KeyName = KeyName;
 
     // Also insert the key to the map
-    return Map_InsertObject(hs->pEncryptionKeys, pEncKey, &pEncKey->KeyName);
+    return hs->EncryptionKeys.InsertObject(pEncKey, &pEncKey->KeyName);
 }

@@ -21,6 +21,12 @@
 #define ALIGN_TO_SIZE(x, a)   (((x) + (a)-1) & ~((a)-1))
 #endif
 
+// Prevent problems with CRT "min" and "max" functions,
+// as they are not defined on all platforms
+#define CASCLIB_MIN(a, b) ((a < b) ? a : b)
+#define CASCLIB_MAX(a, b) ((a > b) ? a : b)
+#define CASCLIB_UNUSED(p) ((void)(p))
+
 //-----------------------------------------------------------------------------
 // Common structures
 
@@ -75,15 +81,120 @@ extern unsigned char IntToHexChar[];
 //-----------------------------------------------------------------------------
 // Big endian number manipulation
 
-DWORD ConvertBytesToInteger_2(LPBYTE ValueAsBytes);
-DWORD ConvertBytesToInteger_3(LPBYTE ValueAsBytes);
-DWORD ConvertBytesToInteger_4(LPBYTE ValueAsBytes);
-DWORD ConvertBytesToInteger_X(LPBYTE ValueAsBytes, DWORD dwByteSize);
-DWORD ConvertBytesToInteger_4_LE(LPBYTE ValueAsBytes);
-ULONGLONG ConvertBytesToInteger_5(LPBYTE ValueAsBytes);
+inline DWORD ConvertBytesToInteger_2(LPBYTE ValueAsBytes)
+{
+    USHORT Value = 0;
 
-void ConvertIntegerToBytes_4(DWORD Value, LPBYTE ValueAsBytes);
-void ConvertIntegerToBytes_4_LE(DWORD Value, LPBYTE ValueAsBytes);
+    Value = (Value << 0x08) | ValueAsBytes[0];
+    Value = (Value << 0x08) | ValueAsBytes[1];
+
+    return Value;
+}
+
+inline DWORD ConvertBytesToInteger_3(LPBYTE ValueAsBytes)
+{
+    DWORD Value = 0;
+
+    Value = (Value << 0x08) | ValueAsBytes[0];
+    Value = (Value << 0x08) | ValueAsBytes[1];
+    Value = (Value << 0x08) | ValueAsBytes[2];
+
+    return Value;
+}
+
+inline DWORD ConvertBytesToInteger_4(LPBYTE ValueAsBytes)
+{
+    DWORD Value = 0;
+
+    Value = (Value << 0x08) | ValueAsBytes[0];
+    Value = (Value << 0x08) | ValueAsBytes[1];
+    Value = (Value << 0x08) | ValueAsBytes[2];
+    Value = (Value << 0x08) | ValueAsBytes[3];
+
+    return Value;
+}
+
+// Converts the variable-size big-endian into integer
+inline DWORD ConvertBytesToInteger_X(LPBYTE ValueAsBytes, DWORD dwByteSize)
+{
+    DWORD Value = 0;
+
+    if(dwByteSize > 0)
+        Value = (Value << 0x08) | ValueAsBytes[0];
+    if(dwByteSize > 1)
+        Value = (Value << 0x08) | ValueAsBytes[1];
+    if(dwByteSize > 2)
+        Value = (Value << 0x08) | ValueAsBytes[2];
+    if(dwByteSize > 3)
+        Value = (Value << 0x08) | ValueAsBytes[3];
+
+    return Value;
+}
+
+inline DWORD ConvertBytesToInteger_4_LE(LPBYTE ValueAsBytes)
+{
+    DWORD Value = 0;
+
+    Value = (Value << 0x08) | ValueAsBytes[3];
+    Value = (Value << 0x08) | ValueAsBytes[2];
+    Value = (Value << 0x08) | ValueAsBytes[1];
+    Value = (Value << 0x08) | ValueAsBytes[0];
+
+    return Value;
+}
+
+// Read the 40-bit big-endian offset into ULONGLONG
+inline ULONGLONG ConvertBytesToInteger_5(LPBYTE ValueAsBytes)
+{
+    ULONGLONG Value = 0;
+
+    Value = (Value << 0x08) | ValueAsBytes[0];
+    Value = (Value << 0x08) | ValueAsBytes[1];
+    Value = (Value << 0x08) | ValueAsBytes[2];
+    Value = (Value << 0x08) | ValueAsBytes[3];
+    Value = (Value << 0x08) | ValueAsBytes[4];
+
+    return Value;
+}
+
+inline void ConvertIntegerToBytes_4(DWORD Value, LPBYTE ValueAsBytes)
+{
+    ValueAsBytes[0] = (Value >> 0x18) & 0xFF;
+    ValueAsBytes[1] = (Value >> 0x10) & 0xFF;
+    ValueAsBytes[2] = (Value >> 0x08) & 0xFF;
+    ValueAsBytes[3] = (Value >> 0x00) & 0xFF;
+}
+
+inline void ConvertIntegerToBytes_4_LE(DWORD Value, LPBYTE ValueAsBytes)
+{
+    ValueAsBytes[0] = (Value >> 0x00) & 0xFF;
+    ValueAsBytes[1] = (Value >> 0x08) & 0xFF;
+    ValueAsBytes[2] = (Value >> 0x10) & 0xFF;
+    ValueAsBytes[3] = (Value >> 0x18) & 0xFF;
+}
+
+// Faster than memset(Buffer, 0, 0x10)
+inline void ZeroMemory16(void * Buffer)
+{
+    PDWORD PtrBuffer = (PDWORD)Buffer;
+
+    PtrBuffer[0] = 0;
+    PtrBuffer[1] = 0;
+    PtrBuffer[2] = 0;
+    PtrBuffer[3] = 0;
+}
+
+// Faster than memcpy(Target, Source, 0x10)
+inline void CopyMemory16(void * Target, void * Source)
+{
+    PDWORD PtrTarget = (PDWORD)Target;
+    PDWORD PtrSource = (PDWORD)Source;
+
+    PtrTarget[0] = PtrSource[0];
+    PtrTarget[1] = PtrSource[1];
+    PtrTarget[2] = PtrSource[2];
+    PtrTarget[3] = PtrSource[3];
+}
 
 //-----------------------------------------------------------------------------
 // Linear data stream manipulation
@@ -163,6 +274,9 @@ const XCHAR * GetFileExtension(const XCHAR * szFileName)
     // If not found, return the end of the file name
     return (XCHAR *)((szExtension != NULL) ? szExtension : szFileName);
 }
+
+bool IsFileDataIdName(const char * szFileName, DWORD & FileDataId);
+bool IsFileCKeyEKeyName(const char * szFileName, LPBYTE PtrKeyBuffer);
 
 bool CheckWildCard(const char * szString, const char * szWildCard);
 

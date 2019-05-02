@@ -182,9 +182,12 @@ struct TDiabloRoot : public TFileTreeRoot
         cbCoreTocFile = 0;
 
         // Map for searching a real file extension
-        pPackagesMap = NULL;
+        memset(&PackagesMap, 0, sizeof(CASC_MAP));
         pbPackagesDat = NULL;
         cbPackagesDat = 0;
+
+        // We have file names and return CKey as result of search
+        dwFeatures |= (CASC_FEATURE_FILE_NAMES | CASC_FEATURE_ROOT_CKEY);
     }
 
     ~TDiabloRoot()
@@ -226,19 +229,18 @@ struct TDiabloRoot : public TFileTreeRoot
 
         // Construct the name without extension and find it in the map
         nLength = sprintf(szFileName, "%s\\%s", szAssetName, szPlainName);
-        return (char *)Map_FindString(pPackagesMap, szFileName, szFileName + nLength);
+        return (char *)PackagesMap.FindString(szFileName, szFileName + nLength);
     }
 
     LPBYTE LoadFileToMemory(TCascStorage * hs, const char * szFileName, DWORD * pcbFileData)
     {
         LPBYTE pbCKey = NULL;
         LPBYTE pbFileData = NULL;
-        DWORD dwDummy;
 
         // Try to find CKey for the file
-        pbCKey = GetKey(szFileName, CASC_INVALID_ID, &dwDummy);
+        pbCKey = GetKey(szFileName, CASC_INVALID_ID);
         if(pbCKey != NULL)
-            pbFileData = LoadInternalFileToMemory(hs, pbCKey, CASC_OPEN_BY_CKEY, pcbFileData);
+            pbFileData = LoadInternalFileToMemory(hs, pbCKey, CASC_OPEN_BY_CKEY, CASC_INVALID_SIZE, pcbFileData);
 
         return pbFileData;
     }
@@ -385,7 +387,7 @@ struct TDiabloRoot : public TFileTreeRoot
             return ERROR_NOT_ENOUGH_MEMORY;
 
         // Load the n-th folder
-        pbData = LoadInternalFileToMemory(hs, pCKey->Value, CASC_OPEN_BY_CKEY, &cbData);
+        pbData = LoadInternalFileToMemory(hs, pCKey->Value, CASC_OPEN_BY_CKEY, CASC_INVALID_SIZE, &cbData);
         if(pbData && cbData)
         {
             if(CaptureDirectoryData(RootFolders[nIndex], pbData, cbData) == NULL)
@@ -460,7 +462,7 @@ struct TDiabloRoot : public TFileTreeRoot
             // We use the Base\Data_D3\PC\Misc\Packages.dat for real file extensions, where possible
             //
 
-            if(pPackagesMap != NULL && pAssetInfo != NULL)
+            if(PackagesMap.IsInitialized() && pAssetInfo != NULL)
             {
                 // Retrieve the asset name
                 szPackageName = FindPackageName(pAssetInfo->szDirectoryName, szPathPtr);
@@ -737,8 +739,7 @@ struct TDiabloRoot : public TFileTreeRoot
                 return ERROR_BAD_FORMAT;
 
             // Create the map for fast search of the file name
-            pPackagesMap = Map_Create(NumberOfNames, KEY_LENGTH_STRING, 0);
-            if(pPackagesMap != NULL)
+            if(PackagesMap.Create(NumberOfNames, KEY_LENGTH_STRING, 0) == ERROR_SUCCESS)
             {
                 const char * szPackageName = (const char *)pbPackagesPtr;
 
@@ -750,7 +751,7 @@ struct TDiabloRoot : public TFileTreeRoot
                         break;
 
                     // Insert the file name to the map. The file extension is not included
-                    Map_InsertString(pPackagesMap, szPackageName, true);
+                    PackagesMap.InsertString(szPackageName, true);
                     szPackageName = szPackageName + strlen(szPackageName) + 1;
                 }
             }
@@ -807,15 +808,13 @@ struct TDiabloRoot : public TFileTreeRoot
             RootFolders[i].pbDirectoryData = NULL;
         }
 
+        // Free the package map
+        PackagesMap.Free();
+
         // Free the array of file indices
         if(pFileIndices != NULL)
             CASC_FREE(pFileIndices);
         pFileIndices = NULL;
-
-        // Free the package map
-        if(pPackagesMap != NULL)
-            Map_Free(pPackagesMap);
-        pPackagesMap = NULL;
 
         // Free the loaded CoreTOC.dat file
         if(pbCoreTocFile != NULL)
@@ -840,7 +839,7 @@ struct TDiabloRoot : public TFileTreeRoot
     DWORD cbCoreTocFile;
 
     // Map for searching a real file extension
-    PCASC_MAP pPackagesMap;
+    CASC_MAP PackagesMap;
     LPBYTE pbPackagesDat;
     DWORD cbPackagesDat;
 };

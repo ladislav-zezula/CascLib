@@ -20,29 +20,16 @@ typedef bool (WINAPI * OPEN_FILE)(HANDLE hStorage, PQUERY_KEY pCKey, DWORD dwFla
 //-----------------------------------------------------------------------------
 // Functions
 
-LPBYTE LoadInternalFileToMemory(TCascStorage * hs, LPBYTE pbQueryKey, DWORD dwOpenFlags, DWORD * pcbFileData)
+LPBYTE LoadInternalFileToMemory(TCascStorage * hs, LPBYTE pbQueryKey, DWORD dwOpenFlags, DWORD ContentSize, DWORD * pcbFileData)
 {
-    QUERY_KEY QueryKey;
     LPBYTE pbFileData = NULL;
     HANDLE hFile = NULL;
     DWORD cbFileData = pcbFileData[0];
     DWORD dwBytesRead = 0;
-    bool bOpenResult = false;
     int nError = ERROR_SUCCESS;
 
-    // Prepare the query key
-    QueryKey.pbData = pbQueryKey;
-    QueryKey.cbData = MD5_HASH_SIZE;
-    dwOpenFlags |= CASC_STRICT_DATA_CHECK;
-
-    // Open the file
-    if((dwOpenFlags & CASC_OPEN_TYPE_MASK) == CASC_OPEN_BY_CKEY)
-        bOpenResult = CascOpenFileByCKey((HANDLE)hs, &QueryKey, dwOpenFlags, &hFile);
-    else
-        bOpenResult = CascOpenFileByEKey((HANDLE)hs, NULL, &QueryKey, dwOpenFlags, cbFileData, &hFile);
-
-    // Load the internal file
-    if(bOpenResult)
+    // Open the file either by CKey or by EKey
+    if(OpenFileInternal(hs, pbQueryKey, (dwOpenFlags | CASC_STRICT_DATA_CHECK), ContentSize, &hFile))
     {
         // Retrieve the size of the file. Note that the caller might specify
         // the real size of the file, in case the file size is not retrievable
@@ -89,17 +76,68 @@ LPBYTE LoadInternalFileToMemory(TCascStorage * hs, LPBYTE pbQueryKey, DWORD dwOp
         if(pbFileData != NULL)
             CASC_FREE(pbFileData);
         pbFileData = NULL;
+        cbFileData = 0;
 
         // Set the last error
         SetLastError(nError);
     }
-    else
+
+    // Give the loaded file length
+    if(pcbFileData != NULL)
+        *pcbFileData = cbFileData;
+    return pbFileData;
+}
+
+LPBYTE LoadExternalFileToMemory(const TCHAR * szFileName, DWORD * pcbFileData)
+{
+    TFileStream * pStream;
+    ULONGLONG FileSize = 0;
+    LPBYTE pbFileData = NULL;
+    DWORD cbFileData = 0;
+
+    // Open the stream for read-only access and read the file
+    // Note that this fails when the game is running (sharing violation).
+    pStream = FileStream_OpenFile(szFileName, STREAM_FLAG_READ_ONLY | STREAM_PROVIDER_FLAT | BASE_PROVIDER_FILE);
+    if(pStream != NULL)
     {
-        // Give the loaded file length
-        if(pcbFileData != NULL)
-            *pcbFileData = cbFileData;
+        // Retrieve the file size
+        FileStream_GetSize(pStream, &FileSize);
+        cbFileData = (DWORD)FileSize;
+
+        // Do not load zero files or too larget files
+        if(0 < FileSize && FileSize <= 0x2000000)
+        {
+            // Allocate file data buffer
+            pbFileData = CASC_ALLOC(BYTE, (DWORD)FileSize);
+            if(pbFileData != NULL)
+            {
+                if(!FileStream_Read(pStream, NULL, pbFileData, cbFileData))
+                {
+                    CASC_FREE(pbFileData);
+                    pbFileData = NULL;
+                    cbFileData = NULL;
+                }
+            }
+            else
+            {
+                SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+                cbFileData = 0;
+            }
+        }
+        else
+        {
+            SetLastError(ERROR_BAD_FORMAT);
+            cbFileData = 0;
+            assert(false);
+        }
+
+        // Close the file stream
+        FileStream_Close(pStream);
     }
 
+    // Give out values
+    if(pcbFileData != NULL)
+        pcbFileData[0] = cbFileData;
     return pbFileData;
 }
 

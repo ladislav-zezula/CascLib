@@ -2361,19 +2361,6 @@
 					>
 				</File>
 				<File
-					RelativePath=".\src\common\Map.cpp"
-					>
-					<FileConfiguration
-						Name="DebugAD|Win32"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							UsePrecompiledHeader="0"
-							PrecompiledHeaderThrough="CascCommon.h"
-						/>
-					</FileConfiguration>
-				</File>
-				<File
 					RelativePath=".\src\common\Map.h"
 					>
 				</File>

@@ -797,19 +797,19 @@
 					>
 				</File>
 				<File
-					RelativePath=".\src\common\Directory.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\src\common\Directory.h"
-					>
-				</File>
-				<File
 					RelativePath=".\src\common\Csv.cpp"
 					>
 				</File>
 				<File
 					RelativePath=".\src\common\Csv.h"
+					>
+				</File>
+				<File
+					RelativePath=".\src\common\Directory.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\src\common\Directory.h"
 					>
 				</File>
 				<File
@@ -834,10 +834,6 @@
 				</File>
 				<File
 					RelativePath=".\src\common\ListFile.h"
-					>
-				</File>
-				<File
-					RelativePath=".\src\common\Map.cpp"
 					>
 				</File>
 				<File
@@ -867,6 +863,10 @@
 			</File>
 			<File
 				RelativePath=".\src\CascPort.h"
+				>
+			</File>
+			<File
+				RelativePath=".\src\CascStructs.h"
 				>
 			</File>
 		</Filter>

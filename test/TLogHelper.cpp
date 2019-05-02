@@ -213,6 +213,16 @@ class TLogHelper
         va_end(argList);
     }
 
+    void PrintTotalTime()
+    {
+        ULONG TotalTime = SetEndTime();
+
+        if(TotalTime != 0)
+        {
+            PrintMessage("TotalTime: %u.%u second(s)", (TotalTime / 1000), (TotalTime % 1000));
+        }
+    }
+
     template <typename XCHAR>
     int PrintErrorVa(const XCHAR * szFormat, ...)
     {
@@ -236,15 +246,54 @@ class TLogHelper
     //  Time functions
     //
 
-    void SetStartTime()
+    ULONGLONG GetCurrentThreadTime()
     {
-        StartTime = time(NULL);
+#ifdef _WIN32
+        ULONGLONG KernelTime = 0;
+        ULONGLONG UserTime = 0;
+        ULONGLONG TempTime = 0;
+
+        GetThreadTimes(GetCurrentThread(), (LPFILETIME)&TempTime, (LPFILETIME)&TempTime, (LPFILETIME)&KernelTime, (LPFILETIME)&UserTime);
+        return ((KernelTime + UserTime) / 10 / 1000);
+#else
+        return time(NULL) * 1000;
+#endif
     }
 
-    time_t SetEndTime()
+    void SetStartTime()
     {
-        EndTime = time(NULL);
-        return (EndTime - StartTime);
+        StartTime = GetCurrentThreadTime();
+    }
+
+    ULONG SetEndTime()
+    {
+        EndTime = GetCurrentThreadTime();
+        return (ULONG)(EndTime - StartTime);
+    }
+
+    void FormatTotalBytes(char * szBuffer, size_t ccBuffer)
+    {
+        ULONGLONG Bytes = TotalBytes;
+        ULONGLONG Divider = 1000000000;
+        char * szBufferEnd = szBuffer + ccBuffer;
+        bool bDividingOn = false;
+
+        while((szBuffer + 4) < szBufferEnd && Divider > 0)
+        {
+            // Are we already dividing?
+            if(bDividingOn)
+            {
+                szBuffer += sprintf(szBuffer, " %03u", (ULONG)(Bytes / Divider));
+                Bytes = Bytes % Divider;
+            }
+            else if(Bytes > Divider)
+            {
+                szBuffer += sprintf(szBuffer, "%u", (ULONG)(Bytes / Divider));
+                Bytes = Bytes % Divider;
+                bDividingOn = true;
+            }
+            Divider /= 1000;
+        }
     }
 
     //
@@ -284,8 +333,8 @@ class TLogHelper
     ULONGLONG TotalBytes;                           // For user's convenience: Total number of bytes
     ULONGLONG ByteCount;                            // For user's convenience: Current number of bytes
     hash_state MD5State;                            // For user's convenience: Md5 state
-    time_t StartTime;                               // Start time of an operation
-    time_t EndTime;                                 // End time of an operation
+    ULONGLONG StartTime;                            // Start time of an operation, in milliseconds
+    ULONGLONG EndTime;                              // End time of an operation, in milliseconds
     DWORD TotalFiles;                               // For user's convenience: Total number of files
     DWORD FileCount;                                // For user's convenience: Curernt number of files
     char  szHashString[MD5_STRING_SIZE+1];          // Final hash of the data

@@ -20,7 +20,10 @@ struct TRootHandler_SC1 : public TFileTreeRoot
     public:
 
     TRootHandler_SC1() : TFileTreeRoot(0)
-    {}
+    {
+        // We have file names and return CKey as result of search
+        dwFeatures |= (CASC_FEATURE_FILE_NAMES | CASC_FEATURE_ROOT_CKEY);
+    }
 
     static bool IsRootFile(void * pvTextFile)
     {

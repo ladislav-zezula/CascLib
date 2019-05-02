@@ -110,7 +110,8 @@ struct TRootHandler_TVFS : public TFileTreeRoot
 
     TRootHandler_TVFS() : TFileTreeRoot(FTREE_FLAG_USE_FILE_SIZE)
     {
-        dwRootFlags |= (ROOT_FLAG_USES_EKEY | ROOT_FLAG_DONT_SEARCH_CKEY);
+        // TVFS supports file names, but DOESN'T support CKeys.
+        dwFeatures |= CASC_FEATURE_FILE_NAMES;
         dwNestLevel = 0;
     }
 
@@ -397,7 +398,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         if(IsVfsFileEKey(hs, EKey, DirHeader.EKeySize))
         {
             // Load the entire file into memory
-            pbVfsData = LoadInternalFileToMemory(hs, EKey.Value, CASC_OPEN_BY_EKEY, &cbVfsData);
+            pbVfsData = LoadInternalFileToMemory(hs, EKey.Value, CASC_OPEN_BY_EKEY, dwFileSize, &cbVfsData);
             if (pbVfsData && cbVfsData)
             {
                 // Capture the file folder. This also serves as test
@@ -549,6 +550,9 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         PathBuffer.szPtr = szPathBuffer;
         PathBuffer.szEnd = szPathBuffer + MAX_PATH;
 
+        // Save the length of the key
+        FileTree.SetKeyLength(RootHeader.EKeySize);
+
         // Parse the entire directory data
         return ParseDirectoryData(hs, RootHeader, PathBuffer);
     }
@@ -573,8 +577,6 @@ int RootHandler_CreateTVFS(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFil
         pRootHandler = new TRootHandler_TVFS();
         if(pRootHandler != NULL)
         {
-//          fp = fopen("e:\\Multimedia\\MPQs\\2018 - Warcraft III\\9655\\ROOT-tvfs.txt", "wt");
-
             // Load the root directory. If load failed, we free the object
             nError = pRootHandler->Load(hs, RootHeader);
             if(nError != ERROR_SUCCESS)
@@ -582,9 +584,6 @@ int RootHandler_CreateTVFS(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFil
                 delete pRootHandler;
                 pRootHandler = NULL;
             }
-
-//          if(fp != NULL)
-//              fclose(fp);
         }
     }
 

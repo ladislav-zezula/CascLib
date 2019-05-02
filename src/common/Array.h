@@ -64,6 +64,11 @@ class CASC_ARRAY
         return (ItemIndex < m_ItemCount) ? (m_pItemArray + (ItemIndex * m_ItemSize)) : NULL;
     }
 
+    void * LastItem()
+    {
+        return m_pItemArray + (m_ItemCount + m_ItemSize);
+    }
+
     // Inserts an item at a given index. If there is not enough items in the array,
     // the array will be enlarged. Should any gaps to be created, the function will zero them
     void * InsertAt(size_t ItemIndex)

@@ -79,104 +79,6 @@ void SetLastError(DWORD dwErrCode)
 #endif
 
 //-----------------------------------------------------------------------------
-// Conversion of big-endian to integer
-
-// Read the 16-bit big-endian offset into ULONGLONG
-DWORD ConvertBytesToInteger_2(LPBYTE ValueAsBytes)
-{
-    USHORT Value = 0;
-
-    Value = (Value << 0x08) | ValueAsBytes[0];
-    Value = (Value << 0x08) | ValueAsBytes[1];
-
-    return Value;
-}
-
-// Read the 24-bit big-endian offset into ULONGLONG
-DWORD ConvertBytesToInteger_3(LPBYTE ValueAsBytes)
-{
-    DWORD Value = 0;
-
-    Value = (Value << 0x08) | ValueAsBytes[0];
-    Value = (Value << 0x08) | ValueAsBytes[1];
-    Value = (Value << 0x08) | ValueAsBytes[2];
-
-    return Value;
-}
-
-// Read the 32-bit big-endian offset into ULONGLONG
-DWORD ConvertBytesToInteger_4(LPBYTE ValueAsBytes)
-{
-    DWORD Value = 0;
-
-    Value = (Value << 0x08) | ValueAsBytes[0];
-    Value = (Value << 0x08) | ValueAsBytes[1];
-    Value = (Value << 0x08) | ValueAsBytes[2];
-    Value = (Value << 0x08) | ValueAsBytes[3];
-
-    return Value;
-}
-
-// Converts the variable-size big-endian into integer
-DWORD ConvertBytesToInteger_X(LPBYTE ValueAsBytes, DWORD dwByteSize)
-{
-    DWORD Value = 0;
-
-    if(dwByteSize > 0)
-        Value = (Value << 0x08) | ValueAsBytes[0];
-    if(dwByteSize > 1)
-        Value = (Value << 0x08) | ValueAsBytes[1];
-    if(dwByteSize > 2)
-        Value = (Value << 0x08) | ValueAsBytes[2];
-    if(dwByteSize > 3)
-        Value = (Value << 0x08) | ValueAsBytes[3];
-
-    return Value;
-}
-
-DWORD ConvertBytesToInteger_4_LE(LPBYTE ValueAsBytes)
-{
-    DWORD Value = 0;
-
-    Value = (Value << 0x08) | ValueAsBytes[3];
-    Value = (Value << 0x08) | ValueAsBytes[2];
-    Value = (Value << 0x08) | ValueAsBytes[1];
-    Value = (Value << 0x08) | ValueAsBytes[0];
-
-    return Value;
-}
-
-// Read the 40-bit big-endian offset into ULONGLONG
-ULONGLONG ConvertBytesToInteger_5(LPBYTE ValueAsBytes)
-{
-    ULONGLONG Value = 0;
-
-    Value = (Value << 0x08) | ValueAsBytes[0];
-    Value = (Value << 0x08) | ValueAsBytes[1];
-    Value = (Value << 0x08) | ValueAsBytes[2];
-    Value = (Value << 0x08) | ValueAsBytes[3];
-    Value = (Value << 0x08) | ValueAsBytes[4];
-
-    return Value;
-}
-
-void ConvertIntegerToBytes_4(DWORD Value, LPBYTE ValueAsBytes)
-{
-    ValueAsBytes[0] = (Value >> 0x18) & 0xFF;
-    ValueAsBytes[1] = (Value >> 0x10) & 0xFF;
-    ValueAsBytes[2] = (Value >> 0x08) & 0xFF;
-    ValueAsBytes[3] = (Value >> 0x00) & 0xFF;
-}
-
-void ConvertIntegerToBytes_4_LE(DWORD Value, LPBYTE ValueAsBytes)
-{
-    ValueAsBytes[0] = (Value >> 0x00) & 0xFF;
-    ValueAsBytes[1] = (Value >> 0x08) & 0xFF;
-    ValueAsBytes[2] = (Value >> 0x10) & 0xFF;
-    ValueAsBytes[3] = (Value >> 0x18) & 0xFF;
-}
-
-//-----------------------------------------------------------------------------
 // Linear data stream manipulation
 
 LPBYTE CaptureInteger32(LPBYTE pbDataPtr, LPBYTE pbDataEnd, PDWORD PtrValue)
@@ -587,6 +489,46 @@ char * StringFromMD5(LPBYTE md5, char * szBuffer)
 //-----------------------------------------------------------------------------
 // File name utilities
 
+bool IsFileDataIdName(const char * szFileName, DWORD & FileDataId)
+{
+    BYTE BinaryValue[4];
+
+    // File name must begin with "File", case insensitive
+    if(AsciiToUpperTable_BkSlash[szFileName[0]] == 'F' &&
+       AsciiToUpperTable_BkSlash[szFileName[1]] == 'I' &&
+       AsciiToUpperTable_BkSlash[szFileName[2]] == 'L' &&
+       AsciiToUpperTable_BkSlash[szFileName[3]] == 'E')
+    {
+        // Then, 8 hexadecimal digits must follow
+        if(ConvertStringToBinary(szFileName + 4, 8, BinaryValue) == ERROR_SUCCESS)
+        {
+            // Must be followed by an extension or end-of-string
+            if(szFileName[0x0C] == 0 || szFileName[0x0C] == '.')
+            {
+                FileDataId = ConvertBytesToInteger_4(BinaryValue);
+                return (FileDataId != CASC_INVALID_ID);
+            }
+        }
+    }
+
+    return false;
+}
+
+bool IsFileCKeyEKeyName(const char * szFileName, LPBYTE PtrKeyBuffer)
+{
+    size_t nLength = strlen(szFileName);
+
+    if(nLength == MD5_STRING_SIZE)
+    {
+        if(ConvertStringToBinary(szFileName, MD5_STRING_SIZE, PtrKeyBuffer) == ERROR_SUCCESS)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 bool CheckWildCard(const char * szString, const char * szWildCard)
 {
     const char * szWildCardPtr;
@@ -647,7 +589,7 @@ bool CheckWildCard(const char * szString, const char * szWildCard)
 
 bool IsValidMD5(LPBYTE pbMd5)
 {
-    LPDWORD Int32Array = (LPDWORD)pbMd5;
+    PDWORD Int32Array = (LPDWORD)pbMd5;
 
     // The MD5 is considered invalid if it is zeroed
     return (Int32Array[0] | Int32Array[1] | Int32Array[2] | Int32Array[3]) ? true : false;
@@ -678,204 +620,4 @@ void CalculateDataBlockHash(void * pvDataBlock, DWORD cbDataBlock, LPBYTE md5_ha
     md5_init(&md5_state);
     md5_process(&md5_state, (unsigned char *)pvDataBlock, cbDataBlock);
     md5_done(&md5_state, md5_hash);
-}
-
-//-----------------------------------------------------------------------------
-// We have our own qsort implementation, optimized for using array of pointers
-
-#define STKSIZ (8*sizeof(void*) - 2)
-
-#define SWAP_ENTRIES(index1, index2)        \
-{                                           \
-    temp = base[index1];                    \
-    base[index1] = base[index2];            \
-    base[index2] = temp;                    \
-}
-
-void qsort_pointer_array(void ** base, size_t num, int (*compare)(const void *, const void *, const void *), const void * context)
-{
-    size_t lo, hi;                  /* ends of sub-array currently sorting */
-    size_t mid;                     /* points to middle of subarray */
-    size_t loguy, higuy;            /* traveling pointers for partition step */
-    size_t size;                    /* size of the sub-array */
-    size_t lostk[STKSIZ], histk[STKSIZ];
-    void * temp;
-    int stkptr;                     /* stack for saving sub-array to be processed */
-
-    /* validation section */
-    assert(base != NULL);
-    assert(compare != NULL);
-
-    if (num < 2)
-        return;                 /* nothing to do */
-
-    stkptr = 0;                 /* initialize stack */
-
-    lo = 0;
-    hi = (num-1);               /* initialize limits */
-
-    /* this entry point is for pseudo-recursion calling: setting
-       lo and hi and jumping to here is like recursion, but stkptr is
-       preserved, locals aren't, so we preserve stuff on the stack */
-recurse:
-
-    size = (hi - lo) + 1;       /* number of el's to sort */
-
-    /* First we pick a partitioning element.  The efficiency of the
-       algorithm demands that we find one that is approximately the median
-       of the values, but also that we select one fast.  We choose the
-       median of the first, middle, and last elements, to avoid bad
-       performance in the face of already sorted data, or data that is made
-       up of multiple sorted runs appended together.  Testing shows that a
-       median-of-three algorithm provides better performance than simply
-       picking the middle element for the latter case. */
-
-    mid = lo + (size / 2);      /* find middle element */
-
-    /* Sort the first, middle, last elements into order */
-    if (compare(context, base[lo], base[mid]) > 0) {
-        SWAP_ENTRIES(lo, mid);
-    }
-    if (compare(context, base[lo], base[hi]) > 0) {
-        SWAP_ENTRIES(lo, hi);
-    }
-    if (compare(context, base[mid], base[hi]) > 0) {
-        SWAP_ENTRIES(mid, hi);
-    }
-
-    /* We now wish to partition the array into three pieces, one consisting
-       of elements <= partition element, one of elements equal to the
-       partition element, and one of elements > than it.  This is done
-       below; comments indicate conditions established at every step. */
-
-    loguy = lo;
-    higuy = hi;
-
-    /* Note that higuy decreases and loguy increases on every iteration,
-       so loop must terminate. */
-    for (;;) {
-        /* lo <= loguy < hi, lo < higuy <= hi,
-           A[i] <= A[mid] for lo <= i <= loguy,
-           A[i] > A[mid] for higuy <= i < hi,
-           A[hi] >= A[mid] */
-
-        /* The doubled loop is to avoid calling comp(mid,mid), since some
-           existing comparison funcs don't work when passed the same
-           value for both pointers. */
-
-        if (mid > loguy) {
-            do  {
-                loguy ++;
-            } while (loguy < mid && compare(context, base[loguy], base[mid]) <= 0);
-        }
-        if (mid <= loguy) {
-            do  {
-                loguy ++;
-            } while (loguy <= hi && compare(context, base[loguy], base[mid]) <= 0);
-        }
-
-        /* lo < loguy <= hi+1, A[i] <= A[mid] for lo <= i < loguy,
-           either loguy > hi or A[loguy] > A[mid] */
-
-        do  {
-            higuy --;
-        } while (higuy > mid && compare(context, base[higuy], base[mid]) > 0);
-
-        /* lo <= higuy < hi, A[i] > A[mid] for higuy < i < hi,
-           either higuy == lo or A[higuy] <= A[mid] */
-
-        if (higuy < loguy)
-            break;
-
-        /* if loguy > hi or higuy == lo, then we would have exited, so
-           A[loguy] > A[mid], A[higuy] <= A[mid],
-           loguy <= hi, higuy > lo */
-
-        SWAP_ENTRIES(loguy, higuy);
-
-        /* If the partition element was moved, follow it.  Only need
-           to check for mid == higuy, since before the swap,
-           A[loguy] > A[mid] implies loguy != mid. */
-
-        if (mid == higuy)
-            mid = loguy;
-
-        /* A[loguy] <= A[mid], A[higuy] > A[mid]; so condition at top
-           of loop is re-established */
-    }
-
-    /*     A[i] <= A[mid] for lo <= i < loguy,
-           A[i] > A[mid] for higuy < i < hi,
-           A[hi] >= A[mid]
-           higuy < loguy
-       implying:
-           higuy == loguy-1
-           or higuy == hi - 1, loguy == hi + 1, A[hi] == A[mid] */
-
-    /* Find adjacent elements equal to the partition element.  The
-       doubled loop is to avoid calling comp(mid,mid), since some
-       existing comparison funcs don't work when passed the same value
-       for both pointers. */
-
-    higuy ++;
-    if (mid < higuy) {
-        do  {
-            higuy --;
-        } while (higuy > mid && compare(context, base[higuy], base[mid]) == 0);
-    }
-    if (mid >= higuy) {
-        do  {
-            higuy --;
-        } while (higuy > lo && compare(context, base[higuy], base[mid]) == 0);
-    }
-
-    /* OK, now we have the following:
-          higuy < loguy
-          lo <= higuy <= hi
-          A[i]  <= A[mid] for lo <= i <= higuy
-          A[i]  == A[mid] for higuy < i < loguy
-          A[i]  >  A[mid] for loguy <= i < hi
-          A[hi] >= A[mid] */
-
-    /* We've finished the partition, now we want to sort the subarrays
-       [lo, higuy] and [loguy, hi].
-       We do the smaller one first to minimize stack usage.
-       We only sort arrays of length 2 or more.*/
-
-    if ( higuy - lo >= hi - loguy ) {
-        if (lo < higuy) {
-            lostk[stkptr] = lo;
-            histk[stkptr] = higuy;
-            ++stkptr;
-        }                           /* save big recursion for later */
-
-        if (loguy < hi) {
-            lo = loguy;
-            goto recurse;           /* do small recursion */
-        }
-    }
-    else {
-        if (loguy < hi) {
-            lostk[stkptr] = loguy;
-            histk[stkptr] = hi;
-            ++stkptr;               /* save big recursion for later */
-        }
-
-        if (lo < higuy) {
-            hi = higuy;
-            goto recurse;           /* do small recursion */
-        }
-    }
-
-    /* We have sorted the array, except for any pending sorts on the stack.
-       Check if there are any, and do them. */
-
-    --stkptr;
-    if (stkptr >= 0) {
-        lo = lostk[stkptr];
-        hi = histk[stkptr];
-        goto recurse;           /* pop subarray from stack */
-    }
-    else
-        return;                 /* all subarrays done */
 }

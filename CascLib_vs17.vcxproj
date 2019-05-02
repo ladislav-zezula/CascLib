@@ -593,6 +593,7 @@
     <ClInclude Include="src\CascCommon.h" />
     <ClInclude Include="src\CascLib.h" />
     <ClInclude Include="src\CascPort.h" />
+    <ClInclude Include="src\CascStructs.h" />
     <ClInclude Include="src\common\Common.h" />
     <ClInclude Include="src\common\Directory.h" />
     <ClInclude Include="src\common\Csv.h" />
@@ -625,7 +626,6 @@
     <ClCompile Include="src\common\FileStream.cpp" />
     <ClCompile Include="src\common\FileTree.cpp" />
     <ClCompile Include="src\common\ListFile.cpp" />
-    <ClCompile Include="src\common\Map.cpp" />
     <ClCompile Include="src\common\RootHandler.cpp" />
     <ClCompile Include="src\jenkins\lookup3.c" />
     <ClCompile Include="src\libtomcrypt\src\hashes\hash_memory.c" />

@@ -401,7 +401,10 @@ struct TApmFile
 struct TRootHandler_OW : public TFileTreeRoot
 {
     TRootHandler_OW() : TFileTreeRoot(0)
-    {}
+    {
+        // We have file names and return CKey as result of search
+        dwFeatures |= (CASC_FEATURE_FILE_NAMES | CASC_FEATURE_ROOT_CKEY);
+    }
 /*
     bool IsManifestFolderName(const char * szFileName, const char * szManifestFolder, size_t nLength)
     {

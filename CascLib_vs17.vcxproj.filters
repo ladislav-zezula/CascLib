@@ -71,6 +71,9 @@
     <ClInclude Include="src\common\FileTree.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
+    <ClInclude Include="src\CascStructs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\CascFiles.cpp">
@@ -119,9 +122,6 @@
       <Filter>Source Files\common</Filter>
     </ClCompile>
     <ClCompile Include="src\common\ListFile.cpp">
-      <Filter>Source Files\common</Filter>
-    </ClCompile>
-    <ClCompile Include="src\common\Map.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>
     <ClCompile Include="src\common\RootHandler.cpp">

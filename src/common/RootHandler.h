@@ -19,11 +19,6 @@
 #define CASC_DIABLO3_ROOT_SIGNATURE     0x8007D0C4
 #define CASC_WOW82_ROOT_SIGNATURE       0x4D465354  // 'TSFM', WoW since 8.2
 
-#define ROOT_FLAG_NAME_HASHES           0x00000001  // The root file contains name hashes only; no file names present
-#define ROOT_FLAG_FILE_DATA_IDS         0x00000002  // The root file contains file data ids only; no file names present
-#define ROOT_FLAG_USES_EKEY             0x00000004  // ROOT_SEARCH and ROOT_GETKEY returns EKey instead of CKey
-#define ROOT_FLAG_DONT_SEARCH_CKEY      0x00000008  // Disable searching the files by CKey
-
 #define DUMP_LEVEL_ROOT_FILE                     1  // Dump root file
 #define DUMP_LEVEL_ENCODING_FILE                 2  // Dump root file + encoding file
 #define DUMP_LEVEL_INDEX_ENTRIES                 3  // Dump root file + encoding file + index entries
@@ -46,7 +41,8 @@ struct TRootHandler
 
     // Performs find-next-file operation. Only returns known names
     virtual LPBYTE Search(
-        struct _TCascSearch * pSearch               // Pointer to the initialized search structure
+        struct _TCascSearch * pSearch,              // Pointer to the initialized search structure
+        struct _CASC_FIND_DATA * pFindData          // Pointer to output structure that will contain the information
         );
 
     // Cleanup handler. Called when the search is complete.
@@ -58,17 +54,23 @@ struct TRootHandler
     virtual LPBYTE GetKey(
         const char * szFileName,                    // Pointer to the name of a file
         DWORD FileDataId,                           // FileDataId. Use CASC_INVALID_ID if the file data ID is not supported
-        PDWORD PtrFileSize                          // The root handler may maintain file size
+        PDWORD PtrFileSize = NULL                   // The root handler can maintain the file size
         );
 
-    DWORD GetFlags()
+    // Returns advanced info from the root file entry.
+    virtual bool GetInfo(
+        LPBYTE pbRootKey,                           // CKey/EKey, depending on which type the root handler provides
+        struct _CASC_FILE_FULL_INFO * pFileInfo     // Pointer to CASC_FILE_FULL_INFO structure
+        );
+
+    DWORD GetFeatures()
     {
-        return dwRootFlags;
+        return dwFeatures;
     }
 
     protected:
 
-    DWORD dwRootFlags;                              // Root flags - see the ROOT_FLAG_XXX
+    DWORD dwFeatures;                               // CASC features. See CASAC_FEATURE_XXX
 };
 
 //-----------------------------------------------------------------------------
@@ -80,8 +82,9 @@ struct TFileTreeRoot : public TRootHandler
     virtual ~TFileTreeRoot();
 
     int    Insert(const char * szFileName, struct _CASC_CKEY_ENTRY * pCKeyEntry);
-    LPBYTE Search(struct _TCascSearch * pSearch);
-    LPBYTE GetKey(const char * szFileName, DWORD FileDataId, PDWORD PtrFileSize);
+    LPBYTE Search(struct _TCascSearch * pSearch, struct _CASC_FIND_DATA * pFindData);
+    LPBYTE GetKey(const char * szFileName, DWORD FileDataId, PDWORD PtrFileSize = NULL);
+    bool   GetInfo(LPBYTE pbRootKey, struct _CASC_FILE_FULL_INFO * pFileInfo);
     DWORD  GetFileDataId(const char * szFileName);
 
     protected:

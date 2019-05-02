@@ -184,7 +184,7 @@ static int ParseBlteHeader(TCascFile * hf, ULONGLONG HeaderOffset, LPBYTE pbEnco
     }
 
     // Capture the EKey
-    hf->EKey = pBlteHeader->EKey;
+//  hf->EKey = pBlteHeader->EKey;
 
     // Give the frame count
     hf->FrameCount = FrameCount;
@@ -388,7 +388,7 @@ static int EnsureFileFramesLoaded(TCascFile * hf)
     return ERROR_SUCCESS;
 }
 
-static int LoadEncodedFrame(TFileStream * pStream, PCASC_FILE_FRAME pFrame, LPBYTE pbEncodedFrame, DWORD dwVerifyIntegrity)
+static int LoadEncodedFrame(TFileStream * pStream, PCASC_FILE_FRAME pFrame, LPBYTE pbEncodedFrame, bool bVerifyIntegrity)
 {
     ULONGLONG FileOffset = pFrame->DataFileOffset;
     int nError = ERROR_SUCCESS;
@@ -396,7 +396,7 @@ static int LoadEncodedFrame(TFileStream * pStream, PCASC_FILE_FRAME pFrame, LPBY
     // Load the encoded frame to memory
     if(FileStream_Read(pStream, &FileOffset, pbEncodedFrame, pFrame->EncodedSize))
     {
-        if (dwVerifyIntegrity)
+        if (bVerifyIntegrity)
         {
             if (!VerifyDataBlockHash(pbEncodedFrame, pFrame->EncodedSize, pFrame->FrameHash.Value))
                 nError = ERROR_FILE_CORRUPT;
@@ -497,14 +497,108 @@ static int ProcessFileFrame(
     return nError;
 }
 
+static PCASC_CKEY_ENTRY ReverseLookupCKeyEntry(TCascStorage * hs, LPBYTE pbEKey, size_t EKeyLength)
+{
+    PCASC_CKEY_ENTRY pCKeyEntry;
+
+    // Note that this is quite slow operation, as we need to iterate over the entire map
+    for(size_t i = 0; i < hs->CKeyMap.HashTableSize(); i++)
+    {
+        if((pCKeyEntry = (PCASC_CKEY_ENTRY)hs->CKeyMap.ItemAt(i)) != NULL)
+        {
+            if(!memcmp(pCKeyEntry->EKey, pbEKey, EKeyLength))
+                return pCKeyEntry;
+        }
+    }
+    
+    // No such CKey entry found
+    return NULL;
+}
+
+static bool GetFileFullInfo(TCascFile * hf, void * pvFileInfo, size_t cbFileInfo, size_t * pcbLengthNeeded)
+{
+    PCASC_FILE_FULL_INFO pFileInfo;
+    PCASC_CKEY_ENTRY pCKeyEntry = hf->pCKeyEntry;
+    PCASC_EKEY_ENTRY pEKeyEntry = hf->pEKeyEntry;
+    TCascStorage * hs = hf->hs;
+    LPBYTE pbKeyBuffer;
+    LPBYTE pbRootKey;
+    size_t cbMinLength = 0;
+    DWORD EKeyCount = 1;
+
+    // Make sure we have CKey entry. Note that this is quite slow operation,
+    // as we need to search the entire array
+    if(pCKeyEntry == NULL)
+    {
+        if(pEKeyEntry == NULL)
+        {
+            SetLastError(ERROR_CAN_NOT_COMPLETE);
+            return false;
+        }
+
+        pCKeyEntry = ReverseLookupCKeyEntry(hs, pEKeyEntry->EKey, hs->InHeader.EKeyLength);
+    }
+
+    // Calculate the length needed
+    EKeyCount = (pCKeyEntry != NULL) ? pCKeyEntry->EKeyCount : 1;
+    cbMinLength = FIELD_OFFSET(CASC_FILE_FULL_INFO, KeyBuffer) + MD5_HASH_SIZE + (EKeyCount * MD5_HASH_SIZE);
+
+    // Verify whether we have enough space in the buffer
+    pFileInfo = (PCASC_FILE_FULL_INFO)ProbeOutputBuffer(pvFileInfo, cbFileInfo, cbMinLength, pcbLengthNeeded);
+    if(pFileInfo != NULL)
+    {
+        // Reset the entire structure
+        memset(pFileInfo, 0, cbMinLength);
+        pFileInfo->FileDataId = CASC_INVALID_ID;
+        pFileInfo->LocaleFlags = CASC_INVALID_ID;
+        pFileInfo->ContentFlags = CASC_INVALID_ID;
+        pbKeyBuffer = pFileInfo->KeyBuffer;
+
+        // Supply the CKey and EKeys
+        if(pCKeyEntry != NULL)
+        {
+            // Copy the CKey
+            memcpy(pbKeyBuffer, pCKeyEntry->CKey, MD5_HASH_SIZE);
+            pFileInfo->CKey = pbKeyBuffer;
+            pbKeyBuffer += MD5_HASH_SIZE;
+
+            memcpy(pbKeyBuffer, pCKeyEntry->EKey, EKeyCount * MD5_HASH_SIZE);
+            pFileInfo->EKey = pbKeyBuffer;
+            pbKeyBuffer += (EKeyCount * MD5_HASH_SIZE);
+        }
+        else if(pEKeyEntry != NULL)
+        {
+            memcpy(pbKeyBuffer, pEKeyEntry->EKey, MD5_HASH_SIZE);
+            pFileInfo->EKey = pbKeyBuffer;
+        }
+
+        // Supply information not depending on root
+        sprintf(pFileInfo->DataFileName, "data.%03u", hf->ArchiveIndex);
+        pFileInfo->StorageOffset = pEKeyEntry->StorageOffset;
+        pFileInfo->SegmentOffset = hf->ArchiveOffset;
+        pFileInfo->TagBitMask = pEKeyEntry->TagBitMask;
+        pFileInfo->SegmentIndex = hf->ArchiveIndex;
+        pFileInfo->ContentSize = hf->ContentSize;
+        pFileInfo->EncodedSize = hf->EncodedSize;
+        pFileInfo->EKeyCount = EKeyCount;
+
+        // Supply the root-specific information
+        pbRootKey = (hs->pRootHandler->GetFeatures() & CASC_FEATURE_ROOT_CKEY) ? pFileInfo->CKey : pFileInfo->EKey;
+        hs->pRootHandler->GetInfo(pbRootKey, pFileInfo);
+    }
+
+    return (pFileInfo != NULL);
+}
+
 //-----------------------------------------------------------------------------
 // Public functions
 
-bool WINAPI CascGetFileInfo(HANDLE hFile, CASC_FILE_INFO_CLASS InfoClass, void * pvOutFileInfo, size_t cbOutFileInfo, size_t * pcbLengthNeeded)
+bool WINAPI CascGetFileInfo(HANDLE hFile, CASC_FILE_INFO_CLASS InfoClass, void * pvFileInfo, size_t cbFileInfo, size_t * pcbLengthNeeded)
 {
     TCascFile * hf;
-    void * pvFileInfo = NULL;
-    size_t cbFileInfo = 0;
+    LPBYTE pbOutputValue = NULL;
+    LPBYTE pbInfoValue = NULL;
+    size_t cbInfoValue = 0;
 
     // Validate the file handle
     if((hf = IsValidCascFileHandle(hFile)) == NULL)
@@ -519,30 +613,33 @@ bool WINAPI CascGetFileInfo(HANDLE hFile, CASC_FILE_INFO_CLASS InfoClass, void *
         case CascFileContentKey:
 
             // Do we have content key at all?
-            if(!IsValidMD5(hf->CKey.Value))
+            if(hf->pCKeyEntry == NULL)
             {
                 SetLastError(ERROR_NOT_SUPPORTED);
                 return false;
             }
 
             // Give the content key
-            pvFileInfo = hf->CKey.Value;
-            cbFileInfo = CASC_CKEY_SIZE;
+            pbInfoValue = hf->pCKeyEntry->CKey;
+            cbInfoValue = CASC_CKEY_SIZE;
             break;
 
         case CascFileEncodedKey:
 
             // Do we have content key at all?
-            if(!IsValidMD5(hf->EKey.Value))
+            if(hf->pCKeyEntry == NULL)
             {
                 SetLastError(ERROR_NOT_SUPPORTED);
                 return false;
             }
 
             // Give the content key
-            pvFileInfo = hf->EKey.Value;
-            cbFileInfo = CASC_CKEY_SIZE;
+            pbInfoValue = hf->pCKeyEntry->EKey;
+            cbInfoValue = CASC_CKEY_SIZE;
             break;
+
+        case CascFileFullInfo:
+            return GetFileFullInfo(hf, pvFileInfo, cbFileInfo, pcbLengthNeeded);
 
         default:
             SetLastError(ERROR_INVALID_PARAMETER);
@@ -550,25 +647,14 @@ bool WINAPI CascGetFileInfo(HANDLE hFile, CASC_FILE_INFO_CLASS InfoClass, void *
     }
 
     // Sanity check
-    assert(pvFileInfo != NULL);
-    assert(cbFileInfo != 0);
+    assert(pbInfoValue != NULL);
+    assert(cbInfoValue != 0);
 
-    // Always give the length needed
-    if(pcbLengthNeeded != NULL)
-    {
-        pcbLengthNeeded[0] = cbFileInfo;
-    }
-
-    // Do we have enough space?
-    if(cbFileInfo > cbOutFileInfo)
-    {
-        SetLastError(ERROR_INSUFFICIENT_BUFFER);
-        return false;
-    }
-
-    // Give the information
-    memcpy(pvOutFileInfo, pvFileInfo, cbFileInfo);
-    return true;
+    // Give the result
+    pbOutputValue = (LPBYTE)ProbeOutputBuffer(pvFileInfo, cbFileInfo, cbInfoValue, pcbLengthNeeded);
+    if(pbOutputValue != NULL)
+        memcpy(pbOutputValue, pbInfoValue, cbInfoValue);
+    return (pbOutputValue != NULL);
 }
 
 //
@@ -771,7 +857,7 @@ bool WINAPI CascReadFile(HANDLE hFile, void * pvBuffer, DWORD dwBytesToRead, PDW
                     if (pbEncodedFrame != NULL)
                     {
                         // Load the encoded frame data
-                        nError = LoadEncodedFrame(hf->pStream, pFrame, pbEncodedFrame, (hf->OpenFlags & CASC_STRICT_DATA_CHECK));
+                        nError = LoadEncodedFrame(hf->pStream, pFrame, pbEncodedFrame, hf->bVerifyIntegrity);
                         if (nError == ERROR_SUCCESS)
                         {
                             // Decode the frame

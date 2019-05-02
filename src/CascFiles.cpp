@@ -388,7 +388,7 @@ static int LoadCkeyEkeySize(TCascStorage * /* hs */, const char * /* szVariableN
     PCASC_CKEY_ENTRY pCKeyEntry = (PCASC_CKEY_ENTRY)pvParam;
     DWORD ContentSize = 0;
 
-    // Load the content size. The encoded size is ignored for now
+    // Load the content size
     szDataPtr = CaptureDecimalInteger(szDataPtr, szDataEnd, &ContentSize);
     if(szDataPtr == NULL)
         return ERROR_BAD_FORMAT;
@@ -733,7 +733,7 @@ static int ParseFile_CdnBuild(TCascStorage * hs, void * pvListFile)
     const char * szLineEnd = NULL;
     int nError;
 
-    // Initialize the size of the internal files
+    // Invalidate the size of the ENCODING manifest
     ConvertIntegerToBytes_4(CASC_INVALID_SIZE, hs->EncodingFile.ContentSize);
 
     // Initialize the empty VFS array
