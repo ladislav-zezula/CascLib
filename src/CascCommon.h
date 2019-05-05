@@ -206,10 +206,9 @@ typedef struct _TCascStorage
     QUERY_KEY BuildFiles;                           // List of supported build files
 
     TFileStream * DataFiles[CASC_MAX_DATA_FILES];   // Array of open data files
-    PCASC_CKEY_ENTRY pCKeyEntry_ENCODING;           // CKey entry for ENCODING file
 
-    CASC_CKEY_ENTRY EncodingFile;                   // Information about ENCODING file
-    CASC_CKEY_ENTRY DownloadFile;                   // Information about DOWNLOAD file
+    CASC_CKEY_ENTRY EncodingCKey;                   // Information about ENCODING file
+    CASC_CKEY_ENTRY DownloadCKey;                   // Information about DOWNLOAD file
     CASC_CKEY_ENTRY InstallFile;                    // Information about INSTALL file
     CASC_CKEY_ENTRY PatchFile;                      // Information about PATCH file
     CASC_CKEY_ENTRY RootFile;                       // Information about ROOT file

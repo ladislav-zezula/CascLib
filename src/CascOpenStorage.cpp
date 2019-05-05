@@ -179,17 +179,7 @@ static bool IndexDirectory_OnFileFound(
     // Any additional index files are deleted at this point
     return true;
 }
-/*
-static int CreateCKeyArray(TCascStorage * hs)
-{
-    size_t EstimatedEntryCount;
-    DWORD ContentSize = hs->DownloadFile.ContentSize;
 
-    // Calculate or estimate the possible number of items
-    EstimatedEntryCount = (ContentSize != CASC_INVALID_SIZE) ? (ContentSize / sizeof(FILE_DOWNLOAD_ENTRY)) : 0x200000;
-    return hs->CKeyArray.Create(sizeof(CASC_CKEY_ENTRY), EstimatedEntryCount);
-}
-*/
 static int CreateCKeyMaps(TCascStorage * hs, CASC_ENCODING_HEADER & EnHeader)
 {
     size_t EstimatedEntryCount = (EnHeader.CKeyPageCount * EnHeader.CKeyPageSize) / sizeof(FILE_CKEY_ENTRY);
@@ -346,11 +336,15 @@ static bool CaptureEKeyEntry(CASC_INDEX_HEADER & InHeader, PCASC_CKEY_ENTRY pCKe
 
 static void CheckForEncodingManifestCKey(TCascStorage * hs, PCASC_CKEY_ENTRY pCKeyEntry)
 {
-    // Only perform the test if there is no ENCODING file yet
-    if(hs->pCKeyEntry_ENCODING == NULL)
+    // If the encoding file was not found yet
+    if((hs->EncodingCKey.Flags & CASC_CE_FILE_IS_LOCAL) == 0)
     {
-        if(!memcmp(pCKeyEntry->EKey, hs->EncodingFile.EKey, hs->InHeader.EKeyLength))
-            hs->pCKeyEntry_ENCODING = pCKeyEntry;
+        if(!memcmp(pCKeyEntry->EKey, hs->EncodingCKey.EKey, hs->InHeader.EKeyLength))
+        {
+            hs->EncodingCKey.StorageOffset = pCKeyEntry->StorageOffset;
+            hs->EncodingCKey.EncodedSize = pCKeyEntry->EncodedSize;
+            hs->EncodingCKey.Flags |= CASC_CE_FILE_IS_LOCAL;
+        }
     }
 }
 
@@ -725,7 +719,7 @@ static int LoadEncodingManifest(TCascStorage * hs)
     int nError = ERROR_SUCCESS;
 
     // Load the entire encoding file to memory
-    pbEncodingFile = LoadInternalFileToMemory(hs, hs->pCKeyEntry_ENCODING, &cbEncodingFile);
+    pbEncodingFile = LoadInternalFileToMemory(hs, &hs->EncodingCKey, &cbEncodingFile);
     if(pbEncodingFile != NULL && cbEncodingFile != 0)
     {
         CASC_ENCODING_HEADER EnHeader;
@@ -1034,7 +1028,7 @@ static int LoadDownloadManifest(TCascStorage * hs, CASC_DOWNLOAD_HEADER & DlHead
 
 static int LoadDownloadManifest(TCascStorage * hs)
 {
-    PCASC_CKEY_ENTRY pCKeyEntry = FindCKeyEntry_CKey(hs, hs->DownloadFile.CKey);
+    PCASC_CKEY_ENTRY pCKeyEntry = FindCKeyEntry_CKey(hs, hs->DownloadCKey.CKey);
     LPBYTE pbDownloadFile = NULL;
     DWORD cbDownloadFile = 0;
     int nError = ERROR_SUCCESS;
@@ -1225,8 +1219,8 @@ static int LoadBuildManifest(TCascStorage * hs, DWORD dwLocaleMask)
         // See https://wowdev.wiki/TACT#Encoding_table for their list
         if(nError == ERROR_SUCCESS)
         {
-            InsertWellKnownFile(hs, "ENCODING", hs->EncodingFile);
-            InsertWellKnownFile(hs, "DOWNLOAD", hs->DownloadFile);
+            InsertWellKnownFile(hs, "ENCODING", hs->EncodingCKey);
+            InsertWellKnownFile(hs, "DOWNLOAD", hs->DownloadCKey);
             InsertWellKnownFile(hs, "INSTALL", hs->InstallFile);
             InsertWellKnownFile(hs, "PATCH", hs->PatchFile);
             InsertWellKnownFile(hs, "ROOT", hs->RootFile);

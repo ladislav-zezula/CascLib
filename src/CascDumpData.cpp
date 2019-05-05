@@ -513,8 +513,8 @@ void CascDumpStorage(HANDLE hStorage, const char * szDumpFile)
         DumpKey(fp, "Archives Key:   %s\n", hs->ArchivesKey.pbData, hs->ArchivesKey.cbData);
         DumpKey(fp, "ROOT file:      %s\n", hs->RootFile.CKey, CASC_CKEY_SIZE);
         DumpKey(fp, "PATCH file:     %s\n", hs->PatchFile.CKey, CASC_CKEY_SIZE);
-        DumpKey(fp, "ENCODING file:  %s\n", hs->EncodingFile.CKey, CASC_CKEY_SIZE);
-        DumpKey(fp, "DOWNLOAD file:  %s\n", hs->DownloadFile.CKey, CASC_CKEY_SIZE);
+        DumpKey(fp, "ENCODING file:  %s\n", hs->EncodingCKey.CKey, CASC_CKEY_SIZE);
+        DumpKey(fp, "DOWNLOAD file:  %s\n", hs->DownloadCKey.CKey, CASC_CKEY_SIZE);
         DumpKey(fp, "INSTALL file:   %s\n", hs->InstallFile.CKey, CASC_CKEY_SIZE);
         fprintf(fp, "\n");
 

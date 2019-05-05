@@ -754,11 +754,11 @@ static int ParseFile_CdnBuild(TCascStorage * hs, void * pvListFile)
         return nError;
 
     // Initialize entries for the internal files
-    InitCKeyEntry(&hs->EncodingFile);
-    InitCKeyEntry(&hs->RootFile);
+    InitCKeyEntry(&hs->EncodingCKey);
+    InitCKeyEntry(&hs->DownloadCKey);
     InitCKeyEntry(&hs->InstallFile);
-    InitCKeyEntry(&hs->DownloadFile);
     InitCKeyEntry(&hs->PatchFile);
+    InitCKeyEntry(&hs->RootFile);
     InitCKeyEntry(&hs->SizeFile);
     InitCKeyEntry(&hs->VfsRoot);
 
@@ -782,12 +782,12 @@ static int ParseFile_CdnBuild(TCascStorage * hs, void * pvListFile)
 
         // Content key [+ encoded key] of the DOWNLOAD file
         // If EKey is absent, you need to query the ENCODING file for it
-        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "download*", LoadCKeyEntry, &hs->DownloadFile))
+        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "download*", LoadCKeyEntry, &hs->DownloadCKey))
             continue;
 
         // Content key + encoded key of the ENCODING file. Contains CKey+EKey
         // If either none or 1 is found, the game (at least Wow) switches to plain-data(?). Seen in build 20173 
-        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "encoding*", LoadCKeyEntry, &hs->EncodingFile))
+        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "encoding*", LoadCKeyEntry, &hs->EncodingCKey))
             continue;
 
         // PATCH file
@@ -808,7 +808,7 @@ static int ParseFile_CdnBuild(TCascStorage * hs, void * pvListFile)
     }
 
     // Both CKey and EKey of ENCODING file is required
-    if((hs->EncodingFile.Flags & (CASC_CE_HAS_CKEY | CASC_CE_HAS_EKEY)) != (CASC_CE_HAS_CKEY | CASC_CE_HAS_EKEY))
+    if((hs->EncodingCKey.Flags & (CASC_CE_HAS_CKEY | CASC_CE_HAS_EKEY)) != (CASC_CE_HAS_CKEY | CASC_CE_HAS_EKEY))
         return ERROR_BAD_FORMAT;
     return nError;
 }
