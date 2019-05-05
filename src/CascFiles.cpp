@@ -111,8 +111,16 @@ static bool IsCharDigit(BYTE OneByte)
     return ('0' <= OneByte && OneByte <= '9');
 }
 
+static void InitCKeyEntry(PCASC_CKEY_ENTRY pCKeyEntry)
+{
+    memset(pCKeyEntry, 0, sizeof(CASC_CKEY_ENTRY));
+    pCKeyEntry->EncodedSize = CASC_INVALID_SIZE;
+    pCKeyEntry->ContentSize = CASC_INVALID_SIZE;
+}
+
 static const char * CaptureDecimalInteger(const char * szDataPtr, const char * szDataEnd, PDWORD PtrValue)
 {
+    const char * szSaveDataPtr = szDataPtr;
     DWORD TotalValue = 0;
     DWORD AddValue = 0;
 
@@ -125,7 +133,7 @@ static const char * CaptureDecimalInteger(const char * szDataPtr, const char * s
     {
         // Must only contain decimal digits ('0' - '9')
         if (!IsCharDigit(szDataPtr[0]))
-            return NULL;
+            break;
 
         // Get the next value and verify overflow
         AddValue = szDataPtr[0] - '0';
@@ -135,6 +143,10 @@ static const char * CaptureDecimalInteger(const char * szDataPtr, const char * s
         TotalValue = (TotalValue * 10) + AddValue;
         szDataPtr++;
     }
+
+    // If there were no decimal digits, we consider it failure
+    if(szDataPtr == szSaveDataPtr)
+        return NULL;
 
     // Give the result
     PtrValue[0] = TotalValue;
@@ -353,93 +365,96 @@ static int LoadQueryKey(TCascStorage * /* hs */, const char * /* szVariableName 
     return LoadMultipleHashes((PQUERY_KEY)pvParam, szDataBegin, szDataEnd);
 }
 
-static int LoadCkeyEkey(TCascStorage * /* hs */, const char * /* szVariableName */, const char * szDataPtr, const char * szDataEnd, void * pvParam)
+static int LoadCKeyEntry(TCascStorage * /* hs */, const char * szVariableName, const char * szDataPtr, const char * szDataEnd, void * pvParam)
 {
     PCASC_CKEY_ENTRY pCKeyEntry = (PCASC_CKEY_ENTRY)pvParam;
+    size_t nLength = strlen(szVariableName);
     size_t HashCount = 0;
 
-    // Get the number of hashes. It is expected to be 1 or 2
-    if(CaptureHashCount(szDataPtr, szDataEnd, &HashCount) == NULL)
-        return ERROR_BAD_FORMAT;
-    if(HashCount != 1 && HashCount != 2)
-        return ERROR_BAD_FORMAT;
-
-    // Load the CKey. This should alway be there
-    szDataPtr = CaptureSingleHash(szDataPtr, szDataEnd, pCKeyEntry->CKey, MD5_HASH_SIZE);
-    if(szDataPtr == NULL)
-        return ERROR_BAD_FORMAT;
-
-    // Is there an optional EKey?
-    if(HashCount == 2)
+    // If the variable ends at "-size", it means we need to capture the size
+    if((nLength > 5) && !strcmp(szVariableName + nLength - 5, "-size"))
     {
-        // Load the EKey into the structure
-        szDataPtr = CaptureSingleHash(szDataPtr, szDataEnd, pCKeyEntry->EKey, MD5_HASH_SIZE);
-        if(szDataPtr == NULL)
-            return ERROR_BAD_FORMAT;
+        DWORD ContentSize = CASC_INVALID_SIZE;
+        DWORD EncodedSize = CASC_INVALID_SIZE;
+
+        // Load the content size
+        szDataPtr = CaptureDecimalInteger(szDataPtr, szDataEnd, &ContentSize);
+        if(szDataPtr != NULL)
+        {
+            CaptureDecimalInteger(szDataPtr, szDataEnd, &EncodedSize);
+            pCKeyEntry->ContentSize = ContentSize;
+            pCKeyEntry->EncodedSize = EncodedSize;
+            return ERROR_SUCCESS;
+        }
+    }
+    else
+    {
+        // Get the number of hashes. It is expected to be 1 or 2
+        if(CaptureHashCount(szDataPtr, szDataEnd, &HashCount) != NULL)
+        {
+            // Capture the CKey
+            if(HashCount >= 1)
+            {
+                // Load the CKey. This should alway be there
+                szDataPtr = CaptureSingleHash(szDataPtr, szDataEnd, pCKeyEntry->CKey, MD5_HASH_SIZE);
+                if(szDataPtr == NULL)
+                    return ERROR_BAD_FORMAT;
+                pCKeyEntry->Flags |= CASC_CE_HAS_CKEY;
+            }
+
+            // Capture EKey, if any
+            if(HashCount == 2)
+            {
+                // Load the EKey into the structure
+                szDataPtr = CaptureSingleHash(szDataPtr, szDataEnd, pCKeyEntry->EKey, MD5_HASH_SIZE);
+                if(szDataPtr == NULL)
+                    return ERROR_BAD_FORMAT;
+                pCKeyEntry->Flags |= CASC_CE_HAS_EKEY;
+            }
+
+            return (HashCount == 1 || HashCount == 2) ? ERROR_SUCCESS : ERROR_BAD_FORMAT;
+        }
     }
 
-    // Fill the number of EKeys
-    pCKeyEntry->EKeyCount = (USHORT)(HashCount - 1);
-    return ERROR_SUCCESS;
+    // Unrecognized
+    return ERROR_BAD_FORMAT;
 }
 
-static int LoadCkeyEkeySize(TCascStorage * /* hs */, const char * /* szVariableName */, const char * szDataPtr, const char * szDataEnd, void * pvParam)
+static int LoadVfsRootEntry(TCascStorage * hs, const char * szVariableName, const char * szDataPtr, const char * szDataEnd, void * pvParam)
 {
-    PCASC_CKEY_ENTRY pCKeyEntry = (PCASC_CKEY_ENTRY)pvParam;
-    DWORD ContentSize = 0;
-
-    // Load the content size
-    szDataPtr = CaptureDecimalInteger(szDataPtr, szDataEnd, &ContentSize);
-    if(szDataPtr == NULL)
-        return ERROR_BAD_FORMAT;
-
-    // Convert the content size into the big-endian
-    ConvertIntegerToBytes_4(ContentSize, pCKeyEntry->ContentSize);
-    return ERROR_SUCCESS;
-}
-
-static int LoadVfsRootEntry(TCascStorage * /* hs */, const char * szVariableName, const char * szDataPtr, const char * szDataEnd, void * pvParam)
-{
+    PCASC_CKEY_ENTRY pCKeyEntry;
     CASC_ARRAY * pArray = (CASC_ARRAY *)pvParam;
-    PQUERY_KEY_PAIR pKeyPair;
-    QUERY_KEY_PAIR KeyPair;
     const char * szVarPtr = szVariableName;
     const char * szVarEnd = szVarPtr + strlen(szVarPtr);
-    size_t HashCount = 0;
     DWORD VfsRootIndex = CASC_INVALID_INDEX;
 
     // Skip the "vfs-" part
     if (!strncmp(szVariableName, "vfs-", 4))
     {
-        // Then, there must be a decimal number
+        // Then, there must be a decimal number as index
         if ((szVarPtr = CaptureDecimalInteger(szVarPtr + 4, szVarEnd, &VfsRootIndex)) != NULL)
         {
             // We expect the array to be initialized
             assert(pArray->IsInitialized());
-            assert(VfsRootIndex != 0);
 
-            // Ignore the size ("vfs-*-size"). We don't need that for now.
-            if (szVarPtr[0] == 0)
+            // The index of the key must not be NULL
+            if(VfsRootIndex != 0)
             {
-                // Check for the hash array. We expect exactly 2 hashes there (CKey and EKey)
-                if (CaptureHashCount(szDataPtr, szDataEnd, &HashCount) == NULL || HashCount != 2)
-                    return ERROR_BAD_FORMAT;
+                // Make sure that he entry is in the array
+                pCKeyEntry = (PCASC_CKEY_ENTRY)pArray->ItemAt(VfsRootIndex - 1);
+                if(pCKeyEntry == NULL)
+                {
+                    // Insert a new entry
+                    pCKeyEntry = (PCASC_CKEY_ENTRY)pArray->InsertAt(VfsRootIndex - 1);
+                    if(pCKeyEntry == NULL)
+                        return ERROR_NOT_ENOUGH_MEMORY;
+                    
+                    // Initialize the new entry
+                    InitCKeyEntry(pCKeyEntry);
+                }
 
-                // Get the CKey value
-                szDataPtr = CaptureSingleHash(szDataPtr, szDataEnd, KeyPair.CKey.Value, MD5_HASH_SIZE);
-                if (szDataPtr == NULL)
-                    return ERROR_BAD_FORMAT;
-
-                // Get the single hash
-                szDataPtr = CaptureSingleHash(szDataPtr, szDataEnd, KeyPair.EKey.Value, MD5_HASH_SIZE);
-                if (szDataPtr == NULL)
-                    return ERROR_BAD_FORMAT;
-
-                // Make sure that the array has a minimum amount of items
-                pKeyPair = (PQUERY_KEY_PAIR)pArray->InsertAt(VfsRootIndex - 1);
-                if (pKeyPair != NULL)
-                    memcpy(pKeyPair, &KeyPair, sizeof(QUERY_KEY_PAIR));
-                return (pKeyPair != NULL) ? ERROR_SUCCESS : ERROR_NOT_ENOUGH_MEMORY;
+                // Call just a normal parse function
+                return LoadCKeyEntry(hs, szVariableName, szDataPtr, szDataEnd, pCKeyEntry);
             }
         }
     }
@@ -733,13 +748,19 @@ static int ParseFile_CdnBuild(TCascStorage * hs, void * pvListFile)
     const char * szLineEnd = NULL;
     int nError;
 
-    // Invalidate the size of the ENCODING manifest
-    ConvertIntegerToBytes_4(CASC_INVALID_SIZE, hs->EncodingFile.ContentSize);
-
     // Initialize the empty VFS array
-    nError = hs->VfsRootList.Create<QUERY_KEY_PAIR>(0x10);
+    nError = hs->VfsRootList.Create<CASC_CKEY_ENTRY>(0x10);
     if (nError != ERROR_SUCCESS)
         return nError;
+
+    // Initialize entries for the internal files
+    InitCKeyEntry(&hs->EncodingFile);
+    InitCKeyEntry(&hs->RootFile);
+    InitCKeyEntry(&hs->InstallFile);
+    InitCKeyEntry(&hs->DownloadFile);
+    InitCKeyEntry(&hs->PatchFile);
+    InitCKeyEntry(&hs->SizeFile);
+    InitCKeyEntry(&hs->VfsRoot);
 
     // Parse all variables
     while(ListFile_GetNextLine(pvListFile, &szLineBegin, &szLineEnd) != 0)
@@ -751,46 +772,34 @@ static int ParseFile_CdnBuild(TCascStorage * hs, void * pvListFile)
             continue;
 
         // Content key of the ROOT file. Look this up in ENCODING to get the encoded key
-        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "root", LoadCkeyEkey, &hs->RootFile))
+        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "root*", LoadCKeyEntry, &hs->RootFile))
             continue;
 
         // Content key [+ encoded key] of the INSTALL file
-        // If CKey is absent, you need to query the ENCODING file for it
-        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "install", LoadCkeyEkey, &hs->InstallFile))
-            continue;
-        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "install-size", LoadCkeyEkeySize, &hs->InstallFile))
+        // If EKey is absent, you need to query the ENCODING file for it
+        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "install*", LoadCKeyEntry, &hs->InstallFile))
             continue;
 
         // Content key [+ encoded key] of the DOWNLOAD file
-        // If CKey is absent, you need to query the ENCODING file for it
-        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "download", LoadCkeyEkey, &hs->DownloadFile))
-            continue;
-        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "download-size", LoadCkeyEkeySize, &hs->DownloadFile))
+        // If EKey is absent, you need to query the ENCODING file for it
+        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "download*", LoadCKeyEntry, &hs->DownloadFile))
             continue;
 
         // Content key + encoded key of the ENCODING file. Contains CKey+EKey
         // If either none or 1 is found, the game (at least Wow) switches to plain-data(?). Seen in build 20173 
-        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "encoding", LoadCkeyEkey, &hs->EncodingFile))
-            continue;
-        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "encoding-size", LoadCkeyEkeySize, &hs->EncodingFile))
+        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "encoding*", LoadCKeyEntry, &hs->EncodingFile))
             continue;
 
         // PATCH file
-        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "patch", LoadCkeyEkey, &hs->PatchFile))
-            continue;
-        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "patch-size", LoadCkeyEkeySize, &hs->PatchFile))
+        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "patch*", LoadCKeyEntry, &hs->PatchFile))
             continue;
 
         // SIZE file
-        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "size", LoadCkeyEkey, &hs->SizeFile))
-            continue;
-        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "size-size", LoadCkeyEkeySize, &hs->SizeFile))
+        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "size*", LoadCKeyEntry, &hs->SizeFile))
             continue;
 
         // VFS root file (the root file of the storage VFS)
-        if (CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "vfs-root", LoadCkeyEkey, &hs->VfsRoot))
-            continue;
-        if (CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "vfs-root-size", LoadCkeyEkeySize, &hs->VfsRoot))
+        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "vfs-root*", LoadCKeyEntry, &hs->VfsRoot))
             continue;
 
         // Load a directory entry to the VFS
@@ -799,7 +808,7 @@ static int ParseFile_CdnBuild(TCascStorage * hs, void * pvListFile)
     }
 
     // Both CKey and EKey of ENCODING file is required
-    if(!IsValidMD5(hs->EncodingFile.CKey) || !IsValidMD5(hs->EncodingFile.EKey))
+    if((hs->EncodingFile.Flags & (CASC_CE_HAS_CKEY | CASC_CE_HAS_EKEY)) != (CASC_CE_HAS_CKEY | CASC_CE_HAS_EKEY))
         return ERROR_BAD_FORMAT;
     return nError;
 }

@@ -13,10 +13,6 @@ EXPORTS
     CascAddEncryptionKey
     CascCloseStorage
 
-    CascOpenFileByEKey
-    CascOpenFileByIndexKey = CascOpenFileByEKey
-    CascOpenFileByCKey
-    CascOpenFileByEncodingKey = CascOpenFileByCKey
     CascOpenFile
     CascGetFileInfo
     CascGetFileSize

@@ -363,7 +363,7 @@ int CascLoadEncryptionKeys(TCascStorage * hs)
     int nError;
 
     // Create fast map of KeyName -> Key
-    nError = hs->EncryptionKeys.Create(nMaxItems, sizeof(ULONGLONG), FIELD_OFFSET(CASC_ENCRYPTION_KEY, KeyName), true);
+    nError = hs->EncryptionKeys.Create(nMaxItems, sizeof(ULONGLONG), FIELD_OFFSET(CASC_ENCRYPTION_KEY, KeyName));
     if(nError != ERROR_SUCCESS)
         return nError;
 

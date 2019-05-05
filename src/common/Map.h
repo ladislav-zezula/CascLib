@@ -14,28 +14,101 @@
 //-----------------------------------------------------------------------------
 // Structures
 
-#define KEY_LENGTH_STRING       0xFFFFFFFF      // Pass this to Map_Create as dwKeyLength when you want map of string->object
-
+#define MIN_HASH_TABLE_SIZE     0x00000100      // The smallest size of the hash table.
 #define MAX_HASH_TABLE_SIZE     0x00800000      // The largest size of the hash table. Should be enough for any game.
 
+typedef bool  (*PFNCOMPAREFUNC)(void * pvObject, void * pvKey, size_t nKeyLength);
+typedef DWORD (*PFNHASHFUNC)(void * pvKey, size_t nKeyLength);
+
+typedef enum _KEY_TYPE
+{
+    KeyIsHash,                                  // Use when the key is already a hash. If specified, the map will not hash the key
+    KeyIsArbitrary,                             // The key is an arbitrary array of bytes. The map will hash it to get a map index
+    KeyIsString                                 // Use when the key is a string
+} KEY_TYPE, *PKEY_TYPE;
+
+#define KEY_LENGTH_STRING 0xFFFFFFFF
+
+//-----------------------------------------------------------------------------
+// Hashing functions
+
+// Used when the key is a hash already - no need to hash it again
+inline DWORD CalcHashValue_Hash(void * pvKey, size_t /* nKeyLength */)
+{
+    // Get the hash directly as value
+    return ConvertBytesToInteger_4((LPBYTE)pvKey);
+}
+
+// Calculates hash value from a key
+inline DWORD CalcHashValue_Key(void * pvKey, size_t nKeyLength)
+{
+    LPBYTE pbKey = (LPBYTE)pvKey;
+    DWORD dwHash = 0x7EEE7EEE;
+
+    // Construct the hash from the key
+    for(DWORD i = 0; i < nKeyLength; i++)
+        dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbKey[i];
+
+    // Return the hash limited by the table size
+    return dwHash;
+}
+
+// Calculates hash value from a string
+inline DWORD CalcHashValue_String(const char * szString, const char * szStringEnd)
+{
+    LPBYTE pbKeyEnd = (LPBYTE)szStringEnd;
+    LPBYTE pbKey = (LPBYTE)szString;
+    DWORD dwHash = 0x7EEE7EEE;
+
+    // Hash the string itself
+    while(pbKey < pbKeyEnd)
+    {
+        dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ AsciiToUpperTable_BkSlash[pbKey[0]];
+        pbKey++;
+    }
+
+    // Return the hash limited by the table size
+    return dwHash;
+}
+
+//-----------------------------------------------------------------------------
+// Map implementation
 
 class CASC_MAP
 {
     public:
 
-    int Create(size_t MaxItems, size_t KeyLength, size_t KeyOffset, bool bKeyIsHash = false)
+    int Create(size_t MaxItems, size_t KeyLength, size_t KeyOffset, KEY_TYPE KeyType = KeyIsHash)
     {
         // Set the class variables
-        m_KeyLength = CASCLIB_MIN(KeyLength, 8);
+        m_KeyLength = CASCLIB_MAX(KeyLength, 8);
         m_KeyOffset = KeyOffset;
         m_ItemCount = 0;
-        m_bKeyIsHash = bKeyIsHash;
+
+        // Setup the hashing function
+        switch(KeyType)
+        {
+            case KeyIsHash:
+                PfnCalcHashValue = CalcHashValue_Hash;
+                break;
+
+            case KeyIsArbitrary:
+                PfnCalcHashValue = CalcHashValue_Key;
+                break;
+
+            case KeyIsString:
+                PfnCalcHashValue = NULL;
+                break;
+
+            default:
+                assert(false);
+                return ERROR_NOT_SUPPORTED;
+        }
 
         // Calculate the hash table size. Take 133% of the item count and round it up to the next power of two
         // This will make the hash table indexes somewhat more resilient against count changes and will make
         // e.g. file order in the file tree more stable.
         m_HashTableSize = GetNearestPowerOfTwo(MaxItems * 4 / 3);
-        m_HashTableSize = CASCLIB_MAX(m_HashTableSize, 0x100);
         if(m_HashTableSize == 0)
             return ERROR_NOT_ENOUGH_MEMORY;
 
@@ -49,27 +122,6 @@ class CASC_MAP
         return ERROR_SUCCESS;
     }
 
-    size_t EnumObjects(void **ppvArray)
-    {
-        size_t nIndex = 0;
-
-        // Verify pointer to the map
-        if(m_HashTable != NULL && ppvArray != NULL)
-        {
-            // Enumerate all items in main table
-            for(size_t i = 0; i < m_HashTableSize; i++)
-            {
-                // Is that cell valid?
-                if(m_HashTable[i] != NULL)
-                {
-                    ppvArray[nIndex++] = m_HashTable[i];
-                }
-            }
-        }
-
-        return nIndex;
-    }
-
     void * FindObject(void * pvKey, PDWORD PtrIndex = NULL)
     {
         void * pvObject;
@@ -79,7 +131,7 @@ class CASC_MAP
         if(m_HashTable != NULL)
         {
             // Construct the hash index
-            dwHashIndex = CalcHashIndex_Key(pvKey);
+            dwHashIndex = HashToIndex(PfnCalcHashValue(pvKey, m_KeyLength));
 
             // Search the hash table
             while((pvObject = m_HashTable[dwHashIndex]) != NULL)
@@ -93,7 +145,7 @@ class CASC_MAP
                 }
 
                 // Move to the next entry
-                dwHashIndex = (dwHashIndex + 1) & (m_HashTableSize - 1);
+                dwHashIndex = HashToIndex(dwHashIndex + 1);
             }
         }
 
@@ -110,11 +162,11 @@ class CASC_MAP
         if(m_HashTable != NULL)
         {
             // Limit check
-            if(m_ItemCount >= m_HashTableSize)
+            if((m_ItemCount + 1) >= m_HashTableSize)
                 return false;
 
             // Construct the hash index
-            dwHashIndex = CalcHashIndex_Key(pvKey);
+            dwHashIndex = HashToIndex(PfnCalcHashValue(pvKey, m_KeyLength));
 
             // Search the hash table
             while((pvExistingObject = m_HashTable[dwHashIndex]) != NULL)
@@ -124,54 +176,11 @@ class CASC_MAP
                     return false;
 
                 // Move to the next entry
-                dwHashIndex = (dwHashIndex + 1) & (m_HashTableSize - 1);
+                dwHashIndex = HashToIndex(dwHashIndex + 1);
             }
 
             // Insert at that position
             m_HashTable[dwHashIndex] = pvNewObject;
-            m_ItemCount++;
-            return true;
-        }
-
-        // Failed
-        return false;
-    }
-
-    bool InsertString(const char * szString, bool bCutExtension)
-    {
-        const char * szExistingString;
-        const char * szStringEnd = NULL;
-        DWORD dwHashIndex;
-
-        // Verify pointer to the map
-        if(m_HashTable != NULL)
-        {
-            // Limit check
-            if(m_ItemCount >= m_HashTableSize)
-                return false;
-
-            // Retrieve the length of the string without extension
-            if(bCutExtension)
-                szStringEnd = GetFileExtension(szString);
-            if(szStringEnd == NULL)
-                szStringEnd = szString + strlen(szString);
-
-            // Construct the hash index
-            dwHashIndex = CalcHashIndex_String(szString, szStringEnd);
-
-            // Search the hash table
-            while((szExistingString = (const char *)m_HashTable[dwHashIndex]) != NULL)
-            {
-                // Check if hash being inserted conflicts with an existing hash
-                if(CompareObject_String(szExistingString, szString, szStringEnd))
-                    return false;
-
-                // Move to the next entry
-                dwHashIndex = (dwHashIndex + 1) & (m_HashTableSize - 1);
-            }
-
-            // Insert at that position
-            m_HashTable[dwHashIndex] = (void *)szString;
             m_ItemCount++;
             return true;
         }
@@ -189,7 +198,7 @@ class CASC_MAP
         if(m_HashTable != NULL)
         {
             // Construct the main index
-            dwHashIndex = CalcHashIndex_String(szString, szStringEnd);
+            dwHashIndex = HashToIndex(CalcHashValue_String(szString, szStringEnd));
 
             // Search the hash table
             while((szExistingString = (const char *)m_HashTable[dwHashIndex]) != NULL)
@@ -199,12 +208,55 @@ class CASC_MAP
                     return szExistingString;
 
                 // Move to the next entry
-                dwHashIndex = (dwHashIndex + 1) & (m_HashTableSize - 1);
+                dwHashIndex = HashToIndex(dwHashIndex + 1);
             }
         }
 
         // Not found, sorry
         return NULL;
+    }
+
+    bool InsertString(const char * szString, bool bCutExtension)
+    {
+        const char * szExistingString;
+        const char * szStringEnd = NULL;
+        DWORD dwHashIndex;
+
+        // Verify pointer to the map
+        if(m_HashTable != NULL)
+        {
+            // Limit check
+            if((m_ItemCount + 1) >= m_HashTableSize)
+                return false;
+
+            // Retrieve the length of the string without extension
+            if(bCutExtension)
+                szStringEnd = GetFileExtension(szString);
+            else
+                szStringEnd = szString + strlen(szString);
+
+            // Construct the hash index
+            dwHashIndex = HashToIndex(CalcHashValue_String(szString, szStringEnd));
+
+            // Search the hash table
+            while((szExistingString = (const char *)m_HashTable[dwHashIndex]) != NULL)
+            {
+                // Check if hash being inserted conflicts with an existing hash
+                if(CompareObject_String(szExistingString, szString, szStringEnd))
+                    return false;
+
+                // Move to the next entry
+                dwHashIndex = HashToIndex(dwHashIndex + 1);
+            }
+
+            // Insert at that position
+            m_HashTable[dwHashIndex] = (void *)szString;
+            m_ItemCount++;
+            return true;
+        }
+
+        // Failed
+        return false;
     }
 
     void * ItemAt(size_t nIndex)
@@ -237,46 +289,9 @@ class CASC_MAP
 
     protected:
 
-    // Calculates hash index from a key
-    DWORD CalcHashIndex_Key(void * pvKey)
+    DWORD HashToIndex(DWORD HashValue)
     {
-        if(!m_bKeyIsHash)
-        {
-            LPBYTE pbKey = (LPBYTE)pvKey;
-            DWORD dwHash = 0x7EEE7EEE;
-
-            // Construct the hash from the key
-            for(DWORD i = 0; i < m_KeyLength; i++)
-                dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ pbKey[i];
-
-            // Return the hash limited by the table size
-            return dwHash & (m_HashTableSize - 1);
-        }
-        else
-        {
-            // Get the hash directly as value
-            DWORD dwHash = ConvertBytesToInteger_4((LPBYTE)pvKey);
-
-            // Return the hash limited by the table size
-            return dwHash % (m_HashTableSize - 1);
-        }
-    }
-
-    DWORD CalcHashIndex_String(const char * szString, const char * szStringEnd)
-    {
-        LPBYTE pbKeyEnd = (LPBYTE)szStringEnd;
-        LPBYTE pbKey = (LPBYTE)szString;
-        DWORD dwHash = 0x7EEE7EEE;
-
-        // Hash the string itself
-        while(pbKey < pbKeyEnd)
-        {
-            dwHash = (dwHash >> 24) ^ (dwHash << 5) ^ dwHash ^ AsciiToUpperTable_BkSlash[pbKey[0]];
-            pbKey++;
-        }
-
-        // Return the hash limited by the table size
-        return dwHash & (m_HashTableSize - 1);
+        return HashValue & (m_HashTableSize - 1);
     }
 
     bool CompareObject_Key(void * pvObject, void * pvKey)
@@ -306,7 +321,7 @@ class CASC_MAP
         size_t PowerOfTwo;
         
         // Round the hash table size up to the nearest power of two
-        for(PowerOfTwo = 0x1000; PowerOfTwo < MAX_HASH_TABLE_SIZE; PowerOfTwo <<= 1)
+        for(PowerOfTwo = MIN_HASH_TABLE_SIZE; PowerOfTwo < MAX_HASH_TABLE_SIZE; PowerOfTwo <<= 1)
         {
             if(PowerOfTwo > MaxItems)
             {
@@ -319,7 +334,7 @@ class CASC_MAP
         return 0;
     }
 
-
+    PFNHASHFUNC PfnCalcHashValue;
     void ** m_HashTable;                        // Hash table
     size_t m_HashTableSize;                     // Size of the hash table, in entries. Always a power of two.
     size_t m_ItemCount;                         // Number of objects in the map

@@ -108,7 +108,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
 {
     public:
 
-    TRootHandler_TVFS() : TFileTreeRoot(FTREE_FLAG_USE_FILE_SIZE)
+    TRootHandler_TVFS() : TFileTreeRoot(0)
     {
         // TVFS supports file names, but DOESN'T support CKeys.
         dwFeatures |= CASC_FEATURE_FILE_NAMES;
@@ -368,16 +368,16 @@ struct TRootHandler_TVFS : public TFileTreeRoot
 
     bool IsVfsFileEKey(TCascStorage * hs, ENCODED_KEY & EKey, size_t EKeyLength)
     {
-        PQUERY_KEY_PAIR pKeyPair;
+        PCASC_CKEY_ENTRY pCKeyEntry;
         size_t ItemCount = hs->VfsRootList.ItemCount();
 
         // Search the array
         for (size_t i = 0; i < ItemCount; i++)
         {
-            pKeyPair = (PQUERY_KEY_PAIR)hs->VfsRootList.ItemAt(i);
-            if (pKeyPair != NULL)
+            pCKeyEntry = (PCASC_CKEY_ENTRY)hs->VfsRootList.ItemAt(i);
+            if (pCKeyEntry != NULL)
             {
-                if (!memcmp(pKeyPair->EKey.Value, EKey.Value, EKeyLength))
+                if (!memcmp(pCKeyEntry->EKey, EKey.Value, EKeyLength))
                     return true;
             }
         }
@@ -390,6 +390,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
     // If yes, it contains just another "TVFS" virtual file system, just like the ROOT file.
     int IsVfsSubDirectory(TCascStorage * hs,  TVFS_DIRECTORY_HEADER & DirHeader, TVFS_DIRECTORY_HEADER & SubHeader, ENCODED_KEY & EKey, DWORD dwFileSize)
     {
+        PCASC_CKEY_ENTRY pCKeyEntry;
         LPBYTE pbVfsData = NULL;
         DWORD cbVfsData = dwFileSize;
         int nError = ERROR_BAD_FORMAT;
@@ -397,28 +398,46 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         // Verify whether the EKey is in the list of VFS root files
         if(IsVfsFileEKey(hs, EKey, DirHeader.EKeySize))
         {
-            // Load the entire file into memory
-            pbVfsData = LoadInternalFileToMemory(hs, EKey.Value, CASC_OPEN_BY_EKEY, dwFileSize, &cbVfsData);
-            if (pbVfsData && cbVfsData)
+            // Locate the CKey entry
+            if((pCKeyEntry = FindCKeyEntry_EKey(hs, EKey.Value)) != NULL)
             {
-                // Capture the file folder. This also serves as test
-                nError = CaptureDirectoryHeader(SubHeader, pbVfsData, pbVfsData + cbVfsData);
-                if (nError == ERROR_SUCCESS)
-                    return nError;
+                // Load the entire file into memory
+                pbVfsData = LoadInternalFileToMemory(hs, pCKeyEntry, &cbVfsData);
+                if (pbVfsData && cbVfsData)
+                {
+                    // Capture the file folder. This also serves as test
+                    nError = CaptureDirectoryHeader(SubHeader, pbVfsData, pbVfsData + cbVfsData);
+                    if (nError == ERROR_SUCCESS)
+                        return nError;
 
-                // Clear the captured header
-                memset(&SubHeader, 0, sizeof(TVFS_DIRECTORY_HEADER));
-                CASC_FREE(pbVfsData);
+                    // Clear the captured header
+                    memset(&SubHeader, 0, sizeof(TVFS_DIRECTORY_HEADER));
+                    CASC_FREE(pbVfsData);
+                }
             }
         }
 
         return nError;
     }
 
+    void InsertRootVfsEntry(TCascStorage * hs, LPBYTE pbCKey, const char * szFormat, size_t nIndex)
+    {
+        PCASC_CKEY_ENTRY pCKeyEntry;
+        char szFileName[0x20];
+
+        // The CKey entry must exist
+        if((pCKeyEntry = FindCKeyEntry_CKey(hs, pbCKey)) != NULL)
+        {
+            sprintf(szFileName, szFormat, nIndex);
+            Insert(szFileName, pCKeyEntry);
+        }
+    }
+
     DWORD ParsePathFileTable(TCascStorage * hs, TVFS_DIRECTORY_HEADER & DirHeader, PATH_BUFFER & PathBuffer, LPBYTE pbPathTablePtr, LPBYTE pbPathTableEnd)
     {
         TVFS_DIRECTORY_HEADER SubHeader;
         TVFS_PATH_TABLE_ENTRY PathEntry;
+        PCASC_CKEY_ENTRY pCKeyEntry;
         ENCODED_KEY EKey;
         char * szSavePathPtr = PathBuffer.szPtr;
         DWORD dwSpanSize = 0;
@@ -473,7 +492,12 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                         PathBuffer_AddChar(PathBuffer, ':');
 
                         // Insert the file to the file tree
-                        FileTree.Insert(&EKey, PathBuffer.szBegin, CASC_INVALID_ID, dwSpanSize);
+                        if((pCKeyEntry = FindCKeyEntry_EKey(hs, EKey.Value)) != NULL)
+                        {
+                            // The file content size should already be there
+                            assert(pCKeyEntry->ContentSize == dwSpanSize);
+                            FileTree.Insert(pCKeyEntry, PathBuffer.szBegin);
+                        }
 
                         ParseDirectoryData(hs, SubHeader, PathBuffer);
                         CASC_FREE(SubHeader.pbDirectoryData);
@@ -487,7 +511,12 @@ struct TRootHandler_TVFS : public TFileTreeRoot
 //                      }
 
                         // Insert the file to the file tree
-                        FileTree.Insert(&EKey, PathBuffer.szBegin, CASC_INVALID_ID, dwSpanSize);
+                        if((pCKeyEntry = FindCKeyEntry_EKey(hs, EKey.Value)) != NULL)
+                        {
+                            // The file content size should already be there
+                            assert(pCKeyEntry->ContentSize == dwSpanSize);
+                            FileTree.Insert(pCKeyEntry, PathBuffer.szBegin);
+                        }
                     }
                 }
 
@@ -541,6 +570,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
 
     int Load(TCascStorage * hs, TVFS_DIRECTORY_HEADER & RootHeader)
     {
+        PCASC_CKEY_ENTRY pCKeyEntry;
         PATH_BUFFER PathBuffer;
         char szPathBuffer[MAX_PATH];
 
@@ -552,6 +582,16 @@ struct TRootHandler_TVFS : public TFileTreeRoot
 
         // Save the length of the key
         FileTree.SetKeyLength(RootHeader.EKeySize);
+
+        // Insert the main VFS root file as named entry
+        InsertRootVfsEntry(hs, hs->VfsRoot.CKey, "vfs-root", 0);
+
+        // Insert all VFS roots folders as files
+        for(size_t i = 0; i < hs->VfsRootList.ItemCount(); i++)
+        {
+            pCKeyEntry = (PCASC_CKEY_ENTRY)hs->VfsRootList.ItemAt(i);
+            InsertRootVfsEntry(hs, pCKeyEntry->CKey, "vfs-%u", i+1);
+        }
 
         // Parse the entire directory data
         return ParseDirectoryData(hs, RootHeader, PathBuffer);

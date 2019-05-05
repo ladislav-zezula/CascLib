@@ -2757,44 +2757,34 @@ struct TRootHandler_MNDX : public TRootHandler
         return ERROR_FILE_NOT_FOUND;
     }
 
-    LPBYTE FillFindData(TMndxSearch * pSearch, PCASC_FIND_DATA pFindData)
+    PCASC_CKEY_ENTRY CheckResultAndFillFindData(TCascStorage * hs, const char * szWildCard, const char * szFileName)
     {
         PMNDX_ROOT_ENTRY pRootEntry = NULL;
         PMNDX_PACKAGE pPackage;
-        char * szStrippedPtr;
-        char szStrippedName[MAX_PATH+1];
+        const char * szStrippedName;
         int nError;
 
-        // Sanity check
-        assert(pSearch->cchFoundPath < MAX_PATH);
-        CASCLIB_UNUSED(pSearch);
-
-        // Fill the file name
-        memcpy(pFindData->szFileName, pSearch->szFoundPath, pSearch->cchFoundPath);
-        pFindData->szFileName[pSearch->cchFoundPath] = 0;
-
         // Fill the file size
-        pPackage = FindMndxPackage(pFindData->szFileName);
+        pPackage = FindMndxPackage(szFileName);
         if(pPackage == NULL)
             return NULL;
 
-        // Cut the package name off the full path
-        szStrippedPtr = pFindData->szFileName + pPackage->nLength;
-        while(szStrippedPtr[0] == '/')
-            szStrippedPtr++;
+        // Filter the file names by wildcard
+        if(!CheckWildCard(szFileName, szWildCard))
+            return NULL;
 
-        // We need to convert the stripped name to lowercase, replacing backslashes with slashes
-        NormalizeFileName_LowerSlash(szStrippedName, szStrippedPtr, MAX_PATH);
+        // Cut the package name off the full path
+        szStrippedName = szFileName + pPackage->nLength;
+        while(szStrippedName[0] == '/')
+            szStrippedName++;
 
         // Search the package
         nError = SearchMndxInfo(szStrippedName, pPackage->nIndex, &pRootEntry);
         if(nError != ERROR_SUCCESS)
             return NULL;
 
-        // Give the file size
-        pFindData->dwFileSize = pRootEntry->ContentSize;
-        pFindData->bCanOpenByName = true;
-        return pRootEntry->CKey;
+        // Now try to find the CKey entry
+        return FindCKeyEntry_CKey(hs, pRootEntry->CKey);
     }
 
     int LoadPackageNames()
@@ -2987,8 +2977,21 @@ struct TRootHandler_MNDX : public TRootHandler
     //  Virtual root functions
     //
 
-    LPBYTE Search(TCascSearch * hs, PCASC_FIND_DATA pFindData)
+    // Searches the file by file name
+    PCASC_CKEY_ENTRY GetFile(TCascStorage * hs, const char * szFileName)
     {
+        char szNormalizedName[MAX_PATH+1];
+
+        // Convert the file name to lowercase + slashes
+        NormalizeFileName_LowerSlash(szNormalizedName, szFileName, MAX_PATH);
+
+        // Return the file name
+        return CheckResultAndFillFindData(hs, NULL, szNormalizedName);
+    }
+
+    PCASC_CKEY_ENTRY Search(TCascSearch * hs, PCASC_FIND_DATA pFindData)
+    {
+        PCASC_CKEY_ENTRY pCKeyEntry = NULL;
         TMndxMarFile * pMarFile = MndxInfo.MarFiles[2];
         TMndxSearch * pSearch = NULL;
         bool bFindResult = false;
@@ -3018,19 +3021,21 @@ struct TRootHandler_MNDX : public TRootHandler
             if (bFindResult == false)
                 return NULL;
 
-            // If we have no wild mask, we found it
-            if (hs->szMask == NULL || hs->szMask[0] == 0)
-                break;
+            // Sanity check
+            assert(pSearch->cchFoundPath < MAX_PATH);
 
-            // Copy the found name to the buffer
+            // Fill the file name
             memcpy(pFindData->szFileName, pSearch->szFoundPath, pSearch->cchFoundPath);
             pFindData->szFileName[pSearch->cchFoundPath] = 0;
-            if (CheckWildCard(pFindData->szFileName, hs->szMask))
-                break;
-        }
 
-        // Give the file size and CKey
-        return FillFindData(pSearch, pFindData);
+            // Check what we found
+            pCKeyEntry = CheckResultAndFillFindData(hs->hs, hs->szMask, pFindData->szFileName);
+            if(pCKeyEntry != NULL)
+            {
+                pFindData->bCanOpenByName = true;
+                return pCKeyEntry;
+            }
+        }
     }
 
     void EndSearch(TCascSearch * pSearch)
@@ -3040,36 +3045,6 @@ struct TRootHandler_MNDX : public TRootHandler
             delete (TMndxSearch *)pSearch->pRootContext;
             pSearch->pRootContext = NULL;
         }
-    }
-
-    LPBYTE GetKey(const char * szFileName, DWORD /* FileDataId */, PDWORD /* PtrFileSize */)
-    {
-        PMNDX_ROOT_ENTRY pRootEntry = NULL;
-        PMNDX_PACKAGE pPackage;
-        char * szStrippedName;
-        char szNormName[MAX_PATH+1];
-        int nError;
-
-        // Convert the file name to lowercase + slashes
-        NormalizeFileName_LowerSlash(szNormName, szFileName, MAX_PATH);
-
-        // Find the package number
-        pPackage = FindMndxPackage(szNormName);
-        if(pPackage == NULL)
-            return NULL;
-
-        // Cut the package name off the full path
-        szStrippedName = szNormName + pPackage->nLength;
-        while(szStrippedName[0] == '/')
-            szStrippedName++;
-
-        // Find the root entry
-        nError = SearchMndxInfo(szStrippedName, (DWORD)(pPackage->nIndex), &pRootEntry);
-        if(nError != ERROR_SUCCESS || pRootEntry == NULL)
-            return NULL;
-
-        // Return the CKey
-        return pRootEntry->CKey;
     }
 
     protected:

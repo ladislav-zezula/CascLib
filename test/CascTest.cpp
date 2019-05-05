@@ -66,7 +66,8 @@ static const char szCircleChar[] = "|/-\\";
 typedef struct _STORAGE_INFO
 {
     const char * szPath;                        // Path to the CASC storage
-    const char * szHash;                        // MD5 of all files extracted sequentially
+    const char * szNameHash;                    // MD5 of all file names extracted sequentially
+    const char * szDataHash;                    // MD5 of all file data extracted sequentially
     const char * szFile;                        // Example file in the storage
 } STORAGE_INFO, *PSTORAGE_INFO;
 
@@ -76,13 +77,19 @@ typedef struct _STORAGE_INFO
 static bool IsFileKey(const char * szFileName)
 {
     BYTE KeyBuffer[MD5_HASH_SIZE];
+    bool bIsKey = false;
 
-    // The length must be at least the length of the CKey
-    if(strlen(szFileName) < MD5_STRING_SIZE)
-        return false;
+    if(szFileName && szFileName[0])
+    {
+        // The length must be at least the length of the CKey
+        if(strlen(szFileName) < MD5_STRING_SIZE)
+            return false;
 
-    // Convert the BLOB to binary.
-    return (ConvertStringToBinary(szFileName, MD5_STRING_SIZE, KeyBuffer) == ERROR_SUCCESS);
+        // Convert the BLOB to binary.
+        bIsKey = (ConvertStringToBinary(szFileName, MD5_STRING_SIZE, KeyBuffer) == ERROR_SUCCESS);
+    }
+
+    return bIsKey;
 }
 
 // Compares the expected hash with the real one. If they match, returns "match"
@@ -99,29 +106,49 @@ static const char * GetHashResult(const char * szExpectedHash, const char * szFi
     }
 }
 
-static void MakeShortName(const char * szFileName, char * szShortName, size_t ccShortName)
+static void MakeShortName(const char * szFileName, DWORD dwOpenFlags, char * szShortName, size_t ccShortName)
 {
     char * szShortNameEnd = szShortName + ccShortName - 1;
-    size_t nLength = strlen(szFileName);
+    size_t nLength;
 
-    // Is the name too long?
-    if(nLength >= ccShortName)
+    // Is that a file data id?
+    switch(dwOpenFlags & CASC_OPEN_TYPE_MASK)
     {
-        size_t nFirstPart = (ccShortName / 2) - 3;
-        size_t nRemaining;
+        case CASC_OPEN_BY_NAME:
 
-        // Copy the first part
-        memcpy(szShortName, szFileName, nFirstPart);
-        szShortName += nFirstPart;
+            // Is the name too long?
+            if((nLength = strlen(szFileName)) >= ccShortName)
+            {
+                size_t nFirstPart = (ccShortName / 2) - 3;
+                size_t nRemaining;
 
-        // Copy "..."
-        memcpy(szShortName, "...", 3);
-        szShortName += 3;
+                // Copy the first part
+                memcpy(szShortName, szFileName, nFirstPart);
+                szShortName += nFirstPart;
 
-        // Copy the rest
-        nRemaining = szShortNameEnd - szShortName;
-        memcpy(szShortName, szFileName + nLength - nRemaining, nRemaining);
-        szShortName[nRemaining] = 0;
+                // Copy "..."
+                memcpy(szShortName, "...", 3);
+                szShortName += 3;
+
+                // Copy the rest
+                nRemaining = szShortNameEnd - szShortName;
+                memcpy(szShortName, szFileName + nLength - nRemaining, nRemaining);
+                szShortName[nRemaining] = 0;
+            }
+            else
+            {
+                strcpy(szShortName, szFileName);
+            }
+            break;
+
+        case CASC_OPEN_BY_FILEID:
+            sprintf(szShortName, "FILE%08X.dat", CASC_FILE_DATA_ID_FROM_STRING(szFileName));
+            break;
+
+        default:
+            szShortName[0] = 0;
+            assert(false);
+            break;
     }
 }
 
@@ -211,7 +238,7 @@ static void TestFileGetFullInfo(HANDLE hFile)
     pFileInfo = (PCASC_FILE_FULL_INFO)CASC_ALLOC(BYTE, cbFileInfo);
     if(pFileInfo != NULL)
     {
-        if(!CascGetFileInfo(hFile, CascFileFullInfo, pFileInfo, cbFileInfo, &cbFileInfo) && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
+        if(CascGetFileInfo(hFile, CascFileFullInfo, pFileInfo, cbFileInfo, &cbFileInfo) && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
         {
             pFileInfo = (PCASC_FILE_FULL_INFO)CASC_REALLOC(BYTE, pFileInfo, cbFileInfo);
             CascGetFileInfo(hFile, CascFileFullInfo, pFileInfo, cbFileInfo, &cbFileInfo);
@@ -224,6 +251,7 @@ static int ExtractFile(
     TLogHelper & LogHelper,
     HANDLE hStorage,
     const char * szFileName,
+    DWORD dwOpenFlags,
     FILE * fpListFile = NULL)
 {
     hash_state md5_state;
@@ -235,24 +263,15 @@ static int ExtractFile(
     DWORD dwTotalRead = 0;
     DWORD dwBytesRead = 1;
     DWORD dwFileSize;
-    DWORD dwOpenFlags = 0;
     bool bWeHaveContentKey;
     bool bHashFileContent = true;
     int nError = ERROR_SUCCESS;
 
-#ifdef CASC_STRICT_DATA_CHECK
-    dwOpenFlags |= CASC_STRICT_DATA_CHECK;
-#endif
-
-    // Show the file name to the user
-    MakeShortName(szFileName, szShortName, sizeof(szShortName));
-    if((LogHelper.FileCount % 5) == 0)
-    {
-        LogHelper.PrintProgress("Extracting (%u of %u) %s ...", LogHelper.FileCount, LogHelper.TotalFiles, szShortName);
-    }
+    // Show the file name to the user if open succeeded
+    MakeShortName(szFileName, dwOpenFlags, szShortName, sizeof(szShortName));
 
     // Open the CASC file
-    if(CascOpenFile(hStorage, szFileName, 0, 0, &hFile))
+    if(CascOpenFile(hStorage, szFileName, 0, dwOpenFlags | CASC_STRICT_DATA_CHECK, &hFile))
     {
         // Test retrieving full file info
         TestFileGetFullInfo(hFile);
@@ -274,8 +293,9 @@ static int ExtractFile(
         if (fpListFile != NULL)
             fprintf(fpListFile, "%s\n", szFileName);
 
-        // Test: Open a local file
-        // fp = fopen("e:\\Multimedia\\MPQs\\Work\\Character\\BloodElf\\Female\\BloodElfFemale-TEST.M2", "wb");
+        // Show the progress, if open succeeded
+        if((LogHelper.FileCount % 5) == 0)
+            LogHelper.PrintProgress("Extracting (%u of %u) %s ...", LogHelper.FileCount, LogHelper.TotalFiles, szShortName);
 
         // Load the entire file, piece-by-piece, and calculate MD5
         while(dwBytesRead != 0)
@@ -298,10 +318,6 @@ static int ExtractFile(
                 }
                 break;
             }
-
-            // Write the data to a local file
-//          if(fp != NULL)
-//              fwrite(Buffer, 1, dwBytesRead, fp);
 
             // Per-file hashing
             if(bHashFileContent && bWeHaveContentKey)
@@ -346,7 +362,7 @@ static int ExtractFile(
     }
     else
     {
-        LogHelper.PrintError("Warning: %s: Failed to open", szShortName);
+        LogHelper.PrintError("OpenFailed: %s", szShortName);
         assert(GetLastError() != ERROR_SUCCESS);
         nError = GetLastError();
     }
@@ -380,7 +396,7 @@ static int TestOpenStorage_OpenFile(const char * szStorage, const char * szFileN
             dwOpenFlags |= CASC_OPEN_BY_CKEY;
 
         // Extract the entire file
-        ExtractFile(LogHelper, hStorage, szFileName);
+        ExtractFile(LogHelper, hStorage, szFileName, dwOpenFlags);
 
         // Close the storage
         CascCloseStorage(hStorage);
@@ -414,13 +430,21 @@ static int TestOpenStorage_EnumFiles(const char * szStorage, const TCHAR * szLis
     LogHelper.SetStartTime();
     if(CascOpenStorage(szFullPath, 0, &hStorage))
     {
+        FILE * fp;
+        char szOutFileName[MAX_PATH];
+
+        // Create listfile for dumping
+        sprintf(szOutFileName, "E:\\%s", szStorage);
+        strcpy(strrchr(szOutFileName, '\\'), "-002.txt");
+        fp = fopen(szOutFileName, "wt");
+
         // Dump the storage
 //      LogHelper.PrintProgress("Dumping storage ...");
 //      CascDumpStorage(hStorage, "E:\\storage-dump.txt");
 //      CascDumpStorage(hStorage, NULL);
 
         // Retrieve the total number of files
-        CascGetStorageInfo(hStorage, CascStorageFileCount, &dwTotalFileCount, sizeof(dwTotalFileCount), NULL);
+        CascGetStorageInfo(hStorage, CascStorageLocalFileCount, &dwTotalFileCount, sizeof(dwTotalFileCount), NULL);
 
         // Retrieve the tags
         TestStorageGetTagInfo(hStorage);
@@ -434,14 +458,15 @@ static int TestOpenStorage_EnumFiles(const char * szStorage, const TCHAR * szLis
             {
                 // There should always be a name
                 assert(cf.szFileName[0] != 0);
+                fprintf(fp, "%s\n", cf.szFileName);
 
                 // Show the file name to the user
-//              if((dwFileCount % 5) == 0)
-//              {
-//                  char szShortName[SHORT_NAME_SIZE];
-//                  MakeShortName(cf, szShortName, sizeof(szShortName));
-//                  LogHelper.PrintProgress("Enumerating (%u of %u) %s ...", dwFileCount, dwTotalFileCount, szShortName);
-//              }
+                //if((dwFileCount % 5) == 0)
+                //{
+                //    char szShortName[SHORT_NAME_SIZE];
+                //    MakeShortName(cf.szFileName, 0, szShortName, sizeof(szShortName));
+                //    LogHelper.PrintProgress("Enumerating (%u of %u) %s ...", dwFileCount, dwTotalFileCount, szShortName);
+                //}
 
                 // Find the next file in CASC
                 bFileFound = CascFindNextFile(hFind, &cf);
@@ -453,6 +478,7 @@ static int TestOpenStorage_EnumFiles(const char * szStorage, const TCHAR * szLis
         }
 
         CascCloseStorage(hStorage);
+        fclose(fp);
 
         LogHelper.PrintTotalTime();
         LogHelper.PrintMessage("Work complete.");
@@ -467,7 +493,7 @@ static int TestOpenStorage_EnumFiles(const char * szStorage, const TCHAR * szLis
     return nError;
 }
 
-static int TestOpenStorage_ExtractFiles(const char * szStorage, const char * szExpectedHash, const TCHAR * szListFile)
+static int TestOpenStorage_ExtractFiles(const char * szStorage, const char * szExpectedNameHash, const char * szExpectedDataHash, const TCHAR * szListFile)
 {
     CASC_FIND_DATA cf;
     TLogHelper LogHelper(szStorage);
@@ -475,7 +501,8 @@ static int TestOpenStorage_ExtractFiles(const char * szStorage, const char * szE
     HANDLE hFind;
     TCHAR szFullPath[MAX_PATH];
     DWORD dwTotalFileCount = 0;
-    const char * szFinalHash;
+    const char * szNameHash;
+    const char * szDataHash;
     char szTotalBytes[0x20];
     bool bFileFound = true;
     int nError = ERROR_SUCCESS;
@@ -491,11 +518,11 @@ static int TestOpenStorage_ExtractFiles(const char * szStorage, const char * szE
 //      CascDumpStorage(hStorage, "E:\\storage-dump.txt");
 
         // Retrieve the total file count
-        CascGetStorageInfo(hStorage, CascStorageFileCount, &dwTotalFileCount, sizeof(dwTotalFileCount), NULL);
+        CascGetStorageInfo(hStorage, CascStorageLocalFileCount, &dwTotalFileCount, sizeof(dwTotalFileCount), NULL);
         LogHelper.TotalFiles = dwTotalFileCount;
 
         // Init the hasher
-        LogHelper.InitHasher();
+        LogHelper.InitHashers();
 
         // Search the storage
         LogHelper.PrintProgress("Searching storage ...");
@@ -505,8 +532,14 @@ static int TestOpenStorage_ExtractFiles(const char * szStorage, const char * szE
             // Search the storage
             while(bFileFound)
             {
-                // Extract the file
-                ExtractFile(LogHelper, hStorage, cf.szFileName /*, fp */);
+                // Add the file name to the name hash
+                LogHelper.HashName(cf.szFileName);
+
+                // Extract the file if available locally
+                if(cf.bFileAvailable)
+                {
+                    ExtractFile(LogHelper, hStorage, cf.szFileName, 0 /*, fp */);
+                }
 
                 // Find the next file in CASC
                 bFileFound = CascFindNextFile(hFind, &cf);
@@ -517,7 +550,8 @@ static int TestOpenStorage_ExtractFiles(const char * szStorage, const char * szE
         }
 
         // Catch the hash and time
-        szFinalHash = LogHelper.GetHash();
+        szNameHash = LogHelper.GetNameHash();
+        szDataHash = LogHelper.GetDataHash();
 
         // Close the storage
         CascCloseStorage(hStorage);
@@ -525,7 +559,8 @@ static int TestOpenStorage_ExtractFiles(const char * szStorage, const char * szE
         // Show the summary
         LogHelper.FormatTotalBytes(szTotalBytes, _countof(szTotalBytes));
         LogHelper.PrintMessage("Extracted: %u of %u files (%s bytes total)", LogHelper.FileCount, LogHelper.TotalFiles, szTotalBytes);
-        LogHelper.PrintMessage("Data Hash: %s%s", szFinalHash, GetHashResult(szExpectedHash, szFinalHash));
+        LogHelper.PrintMessage("Name Hash: %s%s", szNameHash, GetHashResult(szExpectedNameHash, szNameHash));
+        LogHelper.PrintMessage("Data Hash: %s%s", szDataHash, GetHashResult(szExpectedDataHash, szDataHash));
         LogHelper.PrintTotalTime();
         LogHelper.PrintMessage("Work complete.");
     }
@@ -543,43 +578,44 @@ static int TestOpenStorage_ExtractFiles(const char * szStorage, const char * szE
 
 static STORAGE_INFO StorageInfo[] = 
 {
+    //- Name of the storage folder -------- Compound file name hash ----------- Compound file data hash ----------- Example file to extract -----------------------------------------------------------
+    {"2014 - Heroes of the Storm/29049", "5af1b6b3c6b1444134f0ae43863f22cb", "754d713197f1ba27651483f01155027b", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_autoai1.dds"},
+    {"2014 - Heroes of the Storm/30027", "48d8027d1f1f52c22a6c2999de039663", "ee00dd0f415aaae7b517964af9227871", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_claim1.dds"},
+    {"2014 - Heroes of the Storm/30414", "a38b7ada09d58a0ef44f01f5c9238eeb", "fc68e89a4492e9959c1b17dd24a89fce", "mods\\heromods\\murky.stormmod\\base.stormdata\\gamedata\\buttondata.xml"},
+    {"2014 - Heroes of the Storm/31726", "62cedf27ba1cda971fe023169de91d6f", "ca66c0a0850f832434b2e7dd0773747c", "mods\\heroes.stormmod\\base.stormassets\\Assets\\modeltextures.db"},
+    {"2014 - Heroes of the Storm/39445", "e1b332fba8b10c1e267f4a85000a57e9", "95b19b57fde5e44a0d21f5b63a8fb46e", "versions.osxarchive\\Versions\\Base39153\\Heroes.app\\Contents\\_CodeSignature\\CodeResources"},
+    {"2014 - Heroes of the Storm/50286", "4a7df6bdc0e4ec4db53f58f495c44e40", "49d7b2a2efb4b08a43d65da01a931ab9", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
+    {"2014 - Heroes of the Storm/65943", "9dd64ac0f43d1e67bcbc3ade27e6faa6", "fa9ec8110527fe0855ad68951d35f4de", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
 
-    {"2014 - Heroes of the Storm/29049", "9831124bfb892df078eb13e019786759", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_autoai1.dds"},
-    {"2014 - Heroes of the Storm/30027", "a6adff2566e727bae3e309fa55154dfb", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_claim1.dds"},
-    {"2014 - Heroes of the Storm\\30414\\HeroesData\\config\\09\\32", "4eb51f28f927fde181ad35f8c57867eb", "mods\\heromods\\murky.stormmod\\base.stormdata\\gamedata\\buttondata.xml"},
-    {"2014 - Heroes of the Storm/31726", "deb9b7bce86d30265626035e4c39aaac", "mods\\heroes.stormmod\\base.stormassets\\Assets\\modeltextures.db"},
-    {"2014 - Heroes of the Storm/39445/HeroesData", "6167931a0a982c67dfd2a66e130f3891", "versions.osxarchive\\Versions\\Base39153\\Heroes.app\\Contents\\_CodeSignature\\CodeResources"},
-    {"2014 - Heroes of the Storm/50286/HeroesData", "15c024f2111dade74609ed5c2f068a00", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
-    {"2014 - Heroes of the Storm/65943", "ffd87a52b69f08c1d9ae609721fbf6e0", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
+    {"2015 - Diablo III/30013",          "2d1984dbdeeacea9ef43d07c2ee49522", "1d7dcff7d9198bf503a072e5fae41b2e", "ENCODING"},
+    {"2015 - Diablo III/50649",          "ff896a9f3c52f23326e9d88f133443d0", "d628554699d6b0764757ec421645caab", "ENCODING"},
 
-    {"2015 - Diablo III/30013", "01f165a76e44482f9a04f3fe367cd904", "ENCODING"},
-    {"2015 - Diablo III/50649", "79c80d0aa5acdee8558787b4d85810d2", "ENCODING" },
+    {"2015 - Overwatch/24919/data/casc", "96cada34b1e98552ff16224774a8e20a", "348a299aaba1f3d77d7592c55ee5c22a", "ROOT"},
+    {"2015 - Overwatch/47161",           "fee1d8dc4e763eaa49dcabeebc3875fc", "e6f94b43188a791c05e3a9468e8f3417", "TactManifest\\Win_SPWin_RCN_LesMX_EExt.apm"},
 
-    {"2015 - Overwatch/24919/data/casc/data", "68e10e07e763178b086c331b50fd4028", "ROOT"},
-    {"2015 - Overwatch/47161", "9344f30476ca9980b6822193235c6166", "TactManifest\\Win_SPWin_RCN_LesMX_EExt.apm"},
+    {"2016 - Starcraft II/45364/\\/",    "9bd5b4588ad6b2976a63258b58c52ac3", "c07ffe613e73a4966ab2fc137130f86e", "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
 
-    {"2016 - Starcraft II/45364/\\/\\/\\", "c4de9a5c11c4b99e58710aea94ad0b78", "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
+    {"2016 - WoW/18125",                 "00631d425536a6b45cdc7cdee2749d6e", "9131b459d8eb34122ee70d6c84280b5f", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/18379",                 "501f23575a042e96a640fc0b27e38f2e", "5a47a7d5a943493e2751560df2073379", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/18865",                 "3ca3739c5941dbe07d19d9eef6c4caf1", "798903b59dee4f50f0668b08d7ad3443", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/18888",                 "e9e74cdc739a2a3b7f75adc5889c3982", "d276fb39b7ece7a51bd38e0940c038db", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/19116",                 "df3233caa9f450ac8bd4896dedf458fe", "7f17f5b9334bea3f12f33782a23879a5", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/19342",                 "08435dd4aa28f3026c4dd353515e6131", "4174b8c855c0c466f2f270f5bd6b1318", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/21742",                 "a4e10c21d460426c8a0d0558fdc1cceb", "e031c7f8cd732f5aa048d88277a00d3f", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/22267",                 "7bce9384681232aa7a6a1075b560a22b", "b774baa36e794253c3975c51ff3aa778", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/23420",                 "3aef7cd675ab850005cc693386d09901", "8d9e79eb7913434f5629b193b1eb0fa4", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/29981",                 "125ff65f0bffd8ff502cb7f1fb383247", "081d525b3235de6697897d5dc8cba835", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/30123",                 NULL, "1d84d8682149533d90fdbc46be2fcfc3", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
 
-    {"2016 - WoW/18125", "9131b459d8eb34122ee70d6c84280b5f", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"2016 - WoW/18379", "5a47a7d5a943493e2751560df2073379", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"2016 - WoW/18865", "798903b59dee4f50f0668b08d7ad3443", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"2016 - WoW/18888", "d276fb39b7ece7a51bd38e0940c038db", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"2016 - WoW/19116", "7f17f5b9334bea3f12f33782a23879a5", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"2016 - WoW/19342", "4174b8c855c0c466f2f270f5bd6b1318", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"2016 - WoW/21742", "e031c7f8cd732f5aa048d88277a00d3f", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"2016 - WoW/22267", "b774baa36e794253c3975c51ff3aa778", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"2016 - WoW/23420", "8d9e79eb7913434f5629b193b1eb0fa4", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"2016 - WoW/29981", "081d525b3235de6697897d5dc8cba835", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"2016 - WoW/30123", "1d84d8682149533d90fdbc46be2fcfc3", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2017 - Starcraft1/2457",           NULL, "7a953a1e8713feeebf3a6d29e85731fb", "music\\radiofreezerg.ogg"},
+    {"2017 - Starcraft1/4037",           NULL, "e3b1fbab5301fb40c603cafac3d51cf8", "music\\radiofreezerg.ogg"},
+    {"2017 - Starcraft1/4261",           NULL, "2e35ddd46976326f9301ed04bf84e30c", "music\\radiofreezerg.ogg"},
 
-    {"2017 - Starcraft1/2457", "7a953a1e8713feeebf3a6d29e85731fb", "music\\radiofreezerg.ogg"},
-    {"2017 - Starcraft1/4037", "e3b1fbab5301fb40c603cafac3d51cf8", "music\\radiofreezerg.ogg"},
-    {"2017 - Starcraft1/4261", "2e35ddd46976326f9301ed04bf84e30c", "music\\radiofreezerg.ogg"},
+    {"2018 - New CASC/00001",            NULL, "971803daed7ea8685a94d9c22c5cffe6", "ROOT"},
+    {"2018 - New CASC/00002",            NULL, "82b381a8d79907c9fd4b19e36d69078c", "ENCODING"},
 
-    {"2018 - New CASC/00001", "971803daed7ea8685a94d9c22c5cffe6", "ROOT"},
-    {"2018 - New CASC/00002", "82b381a8d79907c9fd4b19e36d69078c", "ENCODING"},
-
-    {"2018 - Warcraft III/09655", "629ed47991b2c4a29f6411d00cf72fa6", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
+    {"2018 - Warcraft III/09655",        NULL, "629ed47991b2c4a29f6411d00cf72fa6", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
+    {"2018 - Warcraft III/11889",        NULL, "629ed47991b2c4a29f6411d00cf72fa6", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
 
     {NULL}
 };
@@ -596,6 +632,7 @@ int main(int argc, char * argv[])
     szListFile = szListFile;
     argc = argc;
     argv = argv;
+    printf("\n");
 
 #if defined(_MSC_VER) && defined(_DEBUG)
     _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
@@ -603,18 +640,16 @@ int main(int argc, char * argv[])
 
     //
     // Single tests
-    //                                   
+    //
 
-//  TestOpenStorage_OpenFile("2014 - Heroes of the Storm/29049", "fd45b0f59067a8dda512b740c782cd70");
-//  TestOpenStorage_OpenFile("z:\\47161", "ROOT");
-//  TestOpenStorage_OpenFile("d:\\Hry\\World of Warcraft Public Test", CASC_IDTONAME(372761), CASC_OPEN_BY_FILEID);
-//  TestOpenStorage_ExtractFiles("2016 - WoW/23420", "86c513a7d6c0b3edb13e2839d96b5738", szListFile);
-//  TestOpenStorage_ExtractFiles("2017 - Starcraft1\\5458B\\Data", szListFile);
-
-    TestOpenStorage_EnumFiles("2014 - Heroes of the Storm/29049", szListFile);
+//  TestOpenStorage_EnumFiles("2015 - Diablo III\\30013", szListFile);
+//  TestOpenStorage_EnumFiles("2014 - Heroes of the Storm\\29049", szListFile);
+//  TestOpenStorage_EnumFiles("2015 - Overwatch\\24919", szListFile);
+//  TestOpenStorage_EnumFiles("2017 - Starcraft1\\2457", szListFile);
+//  TestOpenStorage_EnumFiles("2016 - WoW\\18125", szListFile);
 //  TestOpenStorage_EnumFiles("2016 - WoW\\29981", szListFile);
-//  TestOpenStorage_EnumFiles("2018 - Warcraft III\\11889", szListFile);
-//  TestOpenStorage_OpenFile("2018 - Warcraft III\\11889", "war3.w3mod:_locales\\dede.w3mod:abilities\\spells\\human\\avatar\\avatar.wav");
+//  TestOpenStorage_EnumFiles("2016 - WoW\\30123", szListFile);
+//  TestOpenStorage_EnumFiles("2018 - Warcraft III\\11889", NULL);
 
     //
     // Tests for OpenStorage + EnumAllFiles + ExtractAllFiles
@@ -622,7 +657,7 @@ int main(int argc, char * argv[])
     for(size_t i = 0; StorageInfo[i].szPath != NULL; i++)
     {
         // Attempt to open the storage and extract single file
-        nError = TestOpenStorage_ExtractFiles(StorageInfo[i].szPath, StorageInfo[i].szHash, szListFile);
+        nError = TestOpenStorage_ExtractFiles(StorageInfo[i].szPath, StorageInfo[i].szNameHash, StorageInfo[i].szDataHash, szListFile);
 //      nError = TestOpenStorage_EnumFiles(StorageInfo[i].szPath, szListFile);
         if(nError != ERROR_SUCCESS)
             break;

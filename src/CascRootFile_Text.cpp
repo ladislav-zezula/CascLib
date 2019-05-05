@@ -27,10 +27,10 @@ struct TRootHandler_SC1 : public TFileTreeRoot
 
     static bool IsRootFile(void * pvTextFile)
     {
-        CONTENT_KEY CKey;
         CASC_CSV Csv;
         size_t nColumns;
         char szFileName[MAX_PATH];
+        BYTE CKey[MD5_HASH_SIZE];
         bool bResult = false;
 
         // Get the first line from the listfile
@@ -40,7 +40,7 @@ struct TRootHandler_SC1 : public TFileTreeRoot
             nColumns = Csv.GetColumnCount();
             if (nColumns == 2 || nColumns == 3)
             {
-                if (Csv.GetString(szFileName, MAX_PATH, 0) == ERROR_SUCCESS && Csv.GetBinary(CKey.Value, MD5_HASH_SIZE, 1) == ERROR_SUCCESS)
+                if (Csv.GetString(szFileName, MAX_PATH, 0) == ERROR_SUCCESS && Csv.GetBinary(CKey, MD5_HASH_SIZE, 1) == ERROR_SUCCESS)
                 {
                     bResult = true;
                 }
@@ -52,25 +52,30 @@ struct TRootHandler_SC1 : public TFileTreeRoot
         return bResult;
     }
 
-    int Load(void * pvTextFile)
+    int Load(TCascStorage * hs, void * pvTextFile)
     {
-        CONTENT_KEY CKey;
+        PCASC_CKEY_ENTRY pCKeyEntry;
         CASC_CSV Csv;
         char szFileName[MAX_PATH];
+        BYTE CKey[MD5_HASH_SIZE];
 
         // Parse all lines
         while(Csv.LoadNextLine(pvTextFile) != 0)
         {
             // Retrieve the file name and the content key
-            if(Csv.GetString(szFileName, MAX_PATH, 0) == ERROR_SUCCESS && Csv.GetBinary(CKey.Value, MD5_HASH_SIZE, 1) == ERROR_SUCCESS)
+            if(Csv.GetString(szFileName, MAX_PATH, 0) == ERROR_SUCCESS && Csv.GetBinary(CKey, MD5_HASH_SIZE, 1) == ERROR_SUCCESS)
             {
-                // Insert the FileName+CKey to the file tree
-//              void * pItem1 = FileTree_Insert(&pRootHandler->FileTree, &CKey, szFileName);
-//              void * pItem2 = FileTree_Find(&pRootHandler->FileTree, szFileName);
-//              assert(pItem1 == pItem2);
+                // Verify whether it is a known entry
+                if((pCKeyEntry = FindCKeyEntry_CKey(hs, CKey)) != NULL)
+                {
+                    // Insert the FileName+CKey to the file tree
+//                  void * pItem1 = FileTree_Insert(&pRootHandler->FileTree, &CKey, szFileName);
+//                  void * pItem2 = FileTree_Find(&pRootHandler->FileTree, szFileName);
+//                  assert(pItem1 == pItem2);
 
-                // Insert the FileName+CKey to the file tree
-                FileTree.Insert(&CKey, szFileName);
+                    // Insert the FileName+CKey to the file tree
+                    FileTree.Insert(pCKeyEntry, szFileName);
+                }
             }
         }
 
@@ -106,7 +111,7 @@ int RootHandler_CreateStarcraft1(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbR
             if(pRootHandler != NULL)
             {
                 // Load the root directory. If load failed, we free the object
-                nError = pRootHandler->Load(pvTextFile);
+                nError = pRootHandler->Load(hs, pvTextFile);
                 if(nError != ERROR_SUCCESS)
                 {
                     delete pRootHandler;

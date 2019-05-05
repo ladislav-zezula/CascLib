@@ -533,7 +533,7 @@ bool CheckWildCard(const char * szString, const char * szWildCard)
 {
     const char * szWildCardPtr;
 
-    for(;;)
+    while(szWildCard && szWildCard[0])
     {
         // If there is '?' in the wildcard, we skip one char
         while(szWildCard[0] == '?')
@@ -582,6 +582,7 @@ bool CheckWildCard(const char * szString, const char * szWildCard)
             return (szString[0] == 0) ? true : false;
         }
     }
+    return true;
 }
 
 //-----------------------------------------------------------------------------

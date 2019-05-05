@@ -13,14 +13,9 @@
 #include "CascCommon.h"
 
 //-----------------------------------------------------------------------------
-// Local defines
-
-typedef bool (WINAPI * OPEN_FILE)(HANDLE hStorage, PQUERY_KEY pCKey, DWORD dwFlags, HANDLE * phFile);
-
-//-----------------------------------------------------------------------------
 // Functions
 
-LPBYTE LoadInternalFileToMemory(TCascStorage * hs, LPBYTE pbQueryKey, DWORD dwOpenFlags, DWORD ContentSize, DWORD * pcbFileData)
+LPBYTE LoadInternalFileToMemory(TCascStorage * hs, PCASC_CKEY_ENTRY pCKeyEntry, DWORD * pcbFileData)
 {
     LPBYTE pbFileData = NULL;
     HANDLE hFile = NULL;
@@ -29,7 +24,7 @@ LPBYTE LoadInternalFileToMemory(TCascStorage * hs, LPBYTE pbQueryKey, DWORD dwOp
     int nError = ERROR_SUCCESS;
 
     // Open the file either by CKey or by EKey
-    if(OpenFileInternal(hs, pbQueryKey, (dwOpenFlags | CASC_STRICT_DATA_CHECK), ContentSize, &hFile))
+    if(OpenFileByCKeyEntry(hs, pCKeyEntry, CASC_STRICT_DATA_CHECK, &hFile))
     {
         // Retrieve the size of the file. Note that the caller might specify
         // the real size of the file, in case the file size is not retrievable

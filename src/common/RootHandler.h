@@ -30,38 +30,58 @@ struct TRootHandler
 {
     public:
 
-    TRootHandler();
-    virtual ~TRootHandler();
+    TRootHandler()
+    {
+        dwFeatures = 0;
+    }
+
+    virtual ~TRootHandler()
+    {}
 
     // Inserts new file name to the root handler
-    virtual int Insert(
-        const char * szFileName,                    // Pointer to the file name
-        struct _CASC_CKEY_ENTRY * pCKeyEntry        // Pointer to the CASC_CKEY_ENTRY for the file
-        );
+    // szFileName - Pointer to the file name
+    // pCKeyEntry - Pointer to the CASC_CKEY_ENTRY for the file
+    virtual int Insert(const char * /* szFileName */, PCASC_CKEY_ENTRY /* pCKeyEntry */)
+    {
+        return ERROR_NOT_SUPPORTED;
+    }
 
-    // Performs find-next-file operation. Only returns known names
-    virtual LPBYTE Search(
-        struct _TCascSearch * pSearch,              // Pointer to the initialized search structure
-        struct _CASC_FIND_DATA * pFindData          // Pointer to output structure that will contain the information
-        );
+    // Searches the file by file name
+    // hs         - Pointer to the storage structure
+    // szFileName - Pointer to the file name
+    virtual PCASC_CKEY_ENTRY GetFile(struct _TCascStorage * /* hs */, const char * /* szFileName */)
+    {
+        return NULL;
+    }
+
+    // Searches the file by file data id
+    // hs         - Pointer to the storage structure
+    // FileDataId - File data id
+    virtual PCASC_CKEY_ENTRY GetFile(struct _TCascStorage * /* hs */, DWORD /* FileDataId */)
+    {
+        return NULL;
+    }
+
+    // Performs find-next-file operation
+    // pSearch   - Pointer to the initialized search structure
+    // pFindData - Pointer to output structure that will contain the information
+    virtual PCASC_CKEY_ENTRY Search(struct _TCascSearch * /* pSearch */, struct _CASC_FIND_DATA * /* pFindData */)
+    {
+        return NULL;
+    }
 
     // Cleanup handler. Called when the search is complete.
-    virtual void EndSearch(
-        struct _TCascSearch * pSearch               // Pointer to the initialized search structure
-        );
-
-    // Retrieves CKey/EKey for a given file name.
-    virtual LPBYTE GetKey(
-        const char * szFileName,                    // Pointer to the name of a file
-        DWORD FileDataId,                           // FileDataId. Use CASC_INVALID_ID if the file data ID is not supported
-        PDWORD PtrFileSize = NULL                   // The root handler can maintain the file size
-        );
+    // pSearch - Pointer to the initialized search structure
+    virtual void EndSearch(struct _TCascSearch *)
+    {}
 
     // Returns advanced info from the root file entry.
-    virtual bool GetInfo(
-        LPBYTE pbRootKey,                           // CKey/EKey, depending on which type the root handler provides
-        struct _CASC_FILE_FULL_INFO * pFileInfo     // Pointer to CASC_FILE_FULL_INFO structure
-        );
+    // pCKeyEntry - CKey/EKey, depending on which type the root handler provides
+    // pFileInfo - Pointer to CASC_FILE_FULL_INFO structure
+    virtual bool GetInfo(PCASC_CKEY_ENTRY /* pCKeyEntry */, struct _CASC_FILE_FULL_INFO * /* pFileInfo */)
+    {
+        return false;
+    }
 
     DWORD GetFeatures()
     {
@@ -70,7 +90,7 @@ struct TRootHandler
 
     protected:
 
-    DWORD dwFeatures;                               // CASC features. See CASAC_FEATURE_XXX
+    DWORD dwFeatures;                               // CASC features. See CASC_FEATURE_XXX
 };
 
 //-----------------------------------------------------------------------------
@@ -81,11 +101,12 @@ struct TFileTreeRoot : public TRootHandler
     TFileTreeRoot(DWORD FileTreeFlags);
     virtual ~TFileTreeRoot();
 
-    int    Insert(const char * szFileName, struct _CASC_CKEY_ENTRY * pCKeyEntry);
-    LPBYTE Search(struct _TCascSearch * pSearch, struct _CASC_FIND_DATA * pFindData);
-    LPBYTE GetKey(const char * szFileName, DWORD FileDataId, PDWORD PtrFileSize = NULL);
-    bool   GetInfo(LPBYTE pbRootKey, struct _CASC_FILE_FULL_INFO * pFileInfo);
-    DWORD  GetFileDataId(const char * szFileName);
+    int Insert(const char * szFileName, PCASC_CKEY_ENTRY pCKeyEntry);
+
+    PCASC_CKEY_ENTRY GetFile(struct _TCascStorage * hs, const char * szFileName);
+    PCASC_CKEY_ENTRY GetFile(struct _TCascStorage * hs, DWORD FileDataId);
+    PCASC_CKEY_ENTRY Search(struct _TCascSearch * pSearch, struct _CASC_FIND_DATA * pFindData);
+    bool GetInfo(PCASC_CKEY_ENTRY pCKeyEntry, struct _CASC_FILE_FULL_INFO * pFileInfo);
 
     protected:
 

@@ -110,7 +110,7 @@ class CASC_ARRAY
         assert(((pbItem - m_pItemArray) % m_ItemSize) == 0);
 
         return ((pbItem - m_pItemArray) / m_ItemSize);
-    }
+     }
 
     void * ItemArray()
     {

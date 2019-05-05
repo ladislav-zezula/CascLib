@@ -494,8 +494,9 @@ struct TRootHandler_OW : public TFileTreeRoot
 */
     int Load(TCascStorage * hs, CASC_CSV & Csv, void * pvTextFile, size_t nFileNameIndex, size_t nCKeyIndex)
     {
-        CONTENT_KEY CKey;
+        PCASC_CKEY_ENTRY pCKeyEntry;
         char szFileName[MAX_PATH+1];
+        BYTE CKey[MD5_HASH_SIZE];
 //      size_t ApmFiles[0x80];
 //      size_t nApmFiles = 0;
 
@@ -505,16 +506,20 @@ struct TRootHandler_OW : public TFileTreeRoot
         while(Csv.LoadNextLine(pvTextFile) != 0)
         {
             // Retrieve the file name and the content key
-            if(Csv.GetString(szFileName, MAX_PATH, nFileNameIndex) == ERROR_SUCCESS && Csv.GetBinary(CKey.Value, MD5_HASH_SIZE, nCKeyIndex) == ERROR_SUCCESS)
+            if(Csv.GetString(szFileName, MAX_PATH, nFileNameIndex) == ERROR_SUCCESS && Csv.GetBinary(CKey, MD5_HASH_SIZE, nCKeyIndex) == ERROR_SUCCESS)
             {
-                // Insert the file name and the CKey into the tree
-                FileTree.Insert(&CKey, szFileName);
+                // Find the item in the tree
+                if((pCKeyEntry = FindCKeyEntry_CKey(hs, CKey)) != NULL)
+                {
+                    // Insert the file name and the CKey into the tree
+                    FileTree.Insert(pCKeyEntry, szFileName);
 
-                // If the file name is actually an asset, we need to parse that asset and load files in it
-//              if(IsApmFileName(szFileName))
-//              {
-//                  ApmFiles[nApmFiles++] = FileTree_IndexOf(&pRootHandler->FileTree, pFileNode1);
-//              }
+                    // If the file name is actually an asset, we need to parse that asset and load files in it
+//                  if(IsApmFileName(szFileName))
+//                  {
+//                      ApmFiles[nApmFiles++] = FileTree_IndexOf(&pRootHandler->FileTree, pFileNode1);
+//                  }
+                }
             }
         }
 /*

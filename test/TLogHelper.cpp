@@ -300,44 +300,69 @@ class TLogHelper
     //  Hashing functions
     //
 
-    void InitHasher()
+    void InitHashers()
     {
-        md5_init(&MD5State);
+        md5_init(&MD5State_Name);
+        md5_init(&MD5State_Data);
         HasherReady = true;
+    }
+
+    void HashName(const char * name)
+    {
+        if(HasherReady)
+        {
+            md5_process(&MD5State_Name, (const unsigned char *)name, (unsigned long)(strlen(name) + 1));
+        }
     }
 
     void HashData(const unsigned char * data, size_t length)
     {
         if(HasherReady)
         {
-            md5_process(&MD5State, data, (unsigned long)length);
+            md5_process(&MD5State_Data, data, (unsigned long)length);
         }
     }
 
-    const char * GetHash()
+    const char * GetNameHash()
     {
         // If we are in the hashing process, we get the hash and convert to string
         if(HasherReady)
         {
             unsigned char md5_binary[MD5_HASH_SIZE];
 
-            md5_done(&MD5State, md5_binary);
-            StringFromBinary(md5_binary, MD5_HASH_SIZE, szHashString);
-            HasherReady = false;
+            md5_done(&MD5State_Name, md5_binary);
+            StringFromBinary(md5_binary, MD5_HASH_SIZE, szHashString_Name);
         }
 
         // Return the hash as string
-        return szHashString;
+        return szHashString_Name;
+    }
+
+    const char * GetDataHash()
+    {
+        // If we are in the hashing process, we get the hash and convert to string
+        if(HasherReady)
+        {
+            unsigned char md5_binary[MD5_HASH_SIZE];
+
+            md5_done(&MD5State_Data, md5_binary);
+            StringFromBinary(md5_binary, MD5_HASH_SIZE, szHashString_Data);
+        }
+
+        // Return the hash as string
+        return szHashString_Data;
     }
 
     ULONGLONG TotalBytes;                           // For user's convenience: Total number of bytes
     ULONGLONG ByteCount;                            // For user's convenience: Current number of bytes
-    hash_state MD5State;                            // For user's convenience: Md5 state
+    hash_state MD5State_Name;                       // For user's convenience: Md5 state of the file name hasher
+    hash_state MD5State_Data;                       // For user's convenience: Md5 state of the file data hasher
     ULONGLONG StartTime;                            // Start time of an operation, in milliseconds
     ULONGLONG EndTime;                              // End time of an operation, in milliseconds
     DWORD TotalFiles;                               // For user's convenience: Total number of files
     DWORD FileCount;                                // For user's convenience: Curernt number of files
-    char  szHashString[MD5_STRING_SIZE+1];          // Final hash of the data
+    char  szHashString_Name[MD5_STRING_SIZE+1];     // Final hash of the file names
+    char  szHashString_Data[MD5_STRING_SIZE+1];     // Final hash of the file data
     DWORD DontPrintResult:1;                        // If true, supresset pringing result from the destructor
     DWORD HasherReady:1;                            // If true, supresset pringing result from the destructor
 

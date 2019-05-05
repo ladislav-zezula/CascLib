@@ -162,7 +162,6 @@ typedef struct _FILE_DOWNLOAD_HEADER
 
 } FILE_DOWNLOAD_HEADER, *PFILE_DOWNLOAD_HEADER;
 
-
 typedef struct _FILE_DOWNLOAD_ENTRY
 {
     BYTE EKey[MD5_HASH_SIZE];                       // Encoding key (variable length)
@@ -173,6 +172,25 @@ typedef struct _FILE_DOWNLOAD_ENTRY
     // BYTE Flags;
 
 } FILE_DOWNLOAD_ENTRY, *PFILE_DOWNLOAD_ENTRY;
+
+//-----------------------------------------------------------------------------
+// The INSTALL manifest structures
+//
+// See https://wowdev.wiki/TACT#Install_manifest
+//
+
+#define FILE_MAGIC_INSTALL 'NI'
+
+// File header of the INSTALL manifest
+typedef struct _FILE_INSTALL_HEADER
+{
+    USHORT Magic;                                   // FILE_MAGIC_INSTALL ('DL')
+    BYTE Version;                                   // Expected to be 1 by CascLib
+    BYTE EKeyLength;                                // The content key length in INSTALL file. Expected to be 0x10
+    BYTE TagCount[2];                               // Number of tag entries (big endian)
+    BYTE EntryCount[4];                             // Number of entries (big-endian)
+
+} FILE_INSTALL_HEADER, *PFILE_INSTALL_HEADER;
 
 #endif  // __CASC_STRUCTS_H__
 

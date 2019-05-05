@@ -230,7 +230,7 @@ void DumpEKeyEntries(TCascStorage * hs, FILE * fp)
 
 //-----------------------------------------------------------------------------
 // Dumping the ENCODING manifest
-
+/*
 static void DumpESpecEntries(FILE * fp, LPBYTE pbDataPtr, LPBYTE pbDataEnd)
 {
     fprintf(fp, "--- ESpec Entries -----------------------------------------------------------\n");
@@ -303,7 +303,7 @@ static void DumpCKeyPages(FILE * fp, CASC_ENCODING_HEADER & EnHeader, LPBYTE pbD
             DumpCKeyEntry(pCKeyEntry, fp, nCKeyIndex++);
 
             // Move to the next encoding entry
-            pbCKeyEntry += sizeof(CASC_CKEY_ENTRY) + ((pCKeyEntry->EKeyCount - 1) * EnHeader.CKeyLength);
+            pbCKeyEntry += sizeof(FILE_CKEY_ENTRY) + ((pCKeyEntry->EKeyCount - 1) * EnHeader.CKeyLength);
         }
 
         // Move to the next segment
@@ -312,7 +312,7 @@ static void DumpCKeyPages(FILE * fp, CASC_ENCODING_HEADER & EnHeader, LPBYTE pbD
     }
 }
 
-void DumpEncodingManifest(TCascStorage * hs, FILE * fp)
+void DumpEncodingManifest(TCascStorage * hs, LPBYTE pbData, ULONG cbData, FILE * fp)
 {
     // Dump header
     fprintf(fp, "=== ENCODING Manifest =======================================================\n");
@@ -357,10 +357,10 @@ void DumpEncodingManifest(TCascStorage * hs, FILE * fp)
     // Dump tail
     fprintf(fp, "=============================================================================\n\n");
 }
-
+*/
 //-----------------------------------------------------------------------------
 // Dumping the DOWNLOAD manifest
-
+/*
 static void DumpDownloadEntries(FILE * fp, CASC_DOWNLOAD_HEADER & DlHeader, LPBYTE pbDownloadPtr, LPBYTE pbDownloadEnd)
 {
     fprintf(fp, "--- DOWNLOAD Entries --------------------------------------------------------\n");
@@ -452,7 +452,7 @@ void DumpDownloadManifest(TCascStorage * hs, FILE * fp)
     // Dump tail
     fprintf(fp, "=============================================================================\n\n");
 }
-
+*/
 //-----------------------------------------------------------------------------
 // Public dumping functions
 
@@ -519,10 +519,10 @@ void CascDumpStorage(HANDLE hStorage, const char * szDumpFile)
         fprintf(fp, "\n");
 
         // Dump the complete ENCODING manifest
-        DumpEncodingManifest(hs, fp);
+//      DumpEncodingManifest(hs, fp);
 
         // Dump the complete ENCODING manifest
-        DumpDownloadManifest(hs, fp);
+//      DumpDownloadManifest(hs, fp);
 
         // Close the dump file
         CloseDumpFile(szDumpFile, fp);

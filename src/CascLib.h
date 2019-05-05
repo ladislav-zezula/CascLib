@@ -84,6 +84,7 @@ extern "C" {
 #define CASC_OPEN_BY_EKEY           0x00000002  // The name is just the encoded key; skip ROOT file processing
 #define CASC_OPEN_BY_FILEID         0x00000003  // The name is CASC_IDTONAME(FileDataId)
 #define CASC_OPEN_TYPE_MASK         0x0000000F  // The mask which gets open type from the dwFlags
+#define CASC_OPEN_FLAGS_MASK        0xFFFFFFF0  // The mask which gets open type from the dwFlags
 #define CASC_STRICT_DATA_CHECK      0x00000010  // Verify all data read from a file
 
 #define CASC_LOCALE_ALL             0xFFFFFFFF
@@ -156,18 +157,21 @@ extern "C" {
 #define CASC_FEATURE_CONTENT_FLAGS  0x00000040  // Content flags are supported
 
 // Macro to convert FileDataId to the argument of CascOpenFile
-#define CASC_IDTONAME(FileDataId) ((const char *)FileDataId)
-#define CASC_NAMETOID(szFileName) ((DWORD)(ULONGLONG)szFileName)
+#define CASC_FILE_DATA_ID(FileDataId) ((const char *)FileDataId)
+#define CASC_FILE_DATA_ID_FROM_STRING(szFileName)  ((DWORD)(ULONGLONG)szFileName)
 
 //-----------------------------------------------------------------------------
 // Structures
 
 typedef enum _CASC_STORAGE_INFO_CLASS
 {
-    // Return the total number of unique files in the storage. Note that files
+    // Returns the number of local files in the storage. Note that files
     // can exist under different names, so the total number of files in the archive
     // can be higher than the value returned by this info class
-    CascStorageFileCount,
+    CascStorageLocalFileCount,
+
+    // Returns the total file count, including the offline files
+    CascStorageTotalFileCount,
 
     // Returns the CASC_STORAGE_FEATURES structure.
     CascStorageFeatures,
@@ -226,7 +230,7 @@ typedef struct _CASC_FIND_DATA
     BYTE EKey[MD5_HASH_SIZE];
 
     // Tag mask. Only valid if the storage supports tags, otherwise 0
-    ULONGLONG TagMask;
+    ULONGLONG TagBitMask;
 
     // Plain name of the found file. Pointing inside the 'szFileName' array
     char * szPlainName;
@@ -244,6 +248,7 @@ typedef struct _CASC_FIND_DATA
     DWORD dwContentFlags;
 
     // Hints as for which open method is suitable
+    DWORD bFileAvailable:1;                     // If true the file is available locally
     DWORD bCanOpenByName:1;
     DWORD bCanOpenByDataId:1;
     DWORD bCanOpenByCKey:1;
@@ -270,23 +275,19 @@ typedef struct _CASC_STORAGE_TAGS
 
 typedef struct _CASC_FILE_FULL_INFO
 {
-    LPBYTE CKey;                                // Pointer to the CKey
-    LPBYTE EKey;                                // Pointer to the first EKey. There can be more than 1.
+    BYTE CKey[MD5_HASH_SIZE];                   // CKey
+    BYTE EKey[MD5_HASH_SIZE];                   // EKey
     char  DataFileName[0x10];                   // Plain name of the data file where the file is stored
     ULONGLONG StorageOffset;                    // Offset of the file over the entire storage
     ULONGLONG SegmentOffset;                    // Offset of the file in the segment file ("data.###")
-    ULONGLONG TagBitMask;                       // Bitmask of tags. If not supported, it's 0
-    ULONGLONG FileNameHash;                     // Hash of the file name. If not supported, it's 0
+    ULONGLONG TagBitMask;                       // Bitmask of tags. Zero if not supported
+    ULONGLONG FileNameHash;                     // Hash of the file name. Zero if not supported
     DWORD SegmentIndex;                         // Index of the segment file (aka 0 = "data.000")
-    DWORD FileDataId;                           // File data ID. If not supported, it's CASC_INVALID_ID
-    DWORD EKeyCount;                            // Number of EKeys
+    DWORD FileDataId;                           // File data ID. CASC_INVALID_ID if not supported.
     DWORD ContentSize;                          // Content size of the file
     DWORD EncodedSize;                          // Encoded size of the file
-    DWORD LocaleFlags;                          // Locale flags. If not supported, it's CASC_INVALID_ID
-    DWORD ContentFlags;                         // Locale flags. If not supported, it's 0
-
-    BYTE KeyBuffer[MD5_HASH_SIZE];              // This a variable length buffer for CKey and EKeys
-                                                // Do not assume fixed size of the structure, use CascGetFileInfo for querying the actual size.
+    DWORD LocaleFlags;                          // Locale flags. CASC_INVALID_ID if not supported.
+    DWORD ContentFlags;                         // Locale flags. CASC_INVALID_ID if not supported
 
 } CASC_FILE_FULL_INFO, *PCASC_FILE_FULL_INFO;
 

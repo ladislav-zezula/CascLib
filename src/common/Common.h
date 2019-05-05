@@ -39,13 +39,6 @@ typedef struct _CONTENT_KEY
 
 } CONTENT_KEY, *PCONTENT_KEY, ENCODED_KEY, *PENCODED_KEY;
 
-// Structure for key pair of CKey+EKey
-typedef struct _QUERY_KEY_PAIR
-{
-    CONTENT_KEY CKey;
-    ENCODED_KEY EKey;
-} QUERY_KEY_PAIR, *PQUERY_KEY_PAIR;
-
 // Helper structure for merging file paths
 typedef struct _PATH_BUFFER
 {
@@ -53,6 +46,34 @@ typedef struct _PATH_BUFFER
     char * szPtr;
     char * szEnd;
 } PATH_BUFFER, *PPATH_BUFFER;
+
+//-----------------------------------------------------------------------------
+// Basic structure used by all CascLib objects to describe a single entry
+// in the CASC storage. Each entry represents one physical file
+// in the storage. Note that the file may be present under several file names.
+
+// Flags for CASC_CKEY_ENTRY::Flags
+#define CASC_CE_FILE_IS_LOCAL   0x00000001          // The file is available locally. Keep this flag to have value of 1
+#define CASC_CE_HAS_CKEY        0x00000002          // The CKey is present in the entry
+#define CASC_CE_HAS_EKEY        0x00000004          // The EKey is present (always set)
+#define CASC_CE_IN_ENCODING     0x00000008          // Present in the ENCODING manifest
+#define CASC_CE_IN_DOWNLOAD     0x00000010          // Present in the DOWNLOAD manifest
+
+// In-memory representation of a single entry. 
+typedef struct _CASC_CKEY_ENTRY
+{
+    BYTE CKey[MD5_HASH_SIZE];                       // Content key of the full length
+    BYTE EKey[MD5_HASH_SIZE];                       // Encoded key of the full length
+    ULONGLONG StorageOffset;                        // Linear offset over the entire storage. 0 if not present
+    ULONGLONG TagBitMask;                           // Bitmap for the tags. 0 ig tags are not supported
+    DWORD EncodedSize;                              // Encoded size of the file. 0 if not supported
+    DWORD ContentSize;                              // Content size of the file. 0 if not supported
+    DWORD Flags;                                    // See CASC_CE_XXX
+    BYTE RefCount;                                  // This is the number of file names referencing this entry
+    BYTE Priority;                                  // Download priority
+    BYTE Alignment[2];
+
+} CASC_CKEY_ENTRY, *PCASC_CKEY_ENTRY;
 
 //-----------------------------------------------------------------------------
 // Conversion tables

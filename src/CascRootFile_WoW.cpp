@@ -178,9 +178,10 @@ struct TRootHandler_WoW : public TFileTreeRoot
         }
     }
 
-    int ParseWowRootFile_AddFiles_6x(FILE_ROOT_GROUP & RootGroup)
+    int ParseWowRootFile_AddFiles_6x(TCascStorage * hs, FILE_ROOT_GROUP & RootGroup)
     {
         PFILE_ROOT_ENTRY pRootEntry = RootGroup.pRootEntries;
+        PCASC_CKEY_ENTRY pCKeyEntry;
         DWORD dwFileDataId = 0;
 
         // Sanity check
@@ -192,11 +193,9 @@ struct TRootHandler_WoW : public TFileTreeRoot
             // Set the file data ID
             dwFileDataId = dwFileDataId + RootGroup.FileDataIds[i];
 
-            if(dwFileDataId < 5)
-                __debugbreak();
-
-            // Insert the file node to the tree
-            FileTree.Insert(&pRootEntry->CKey, pRootEntry->FileNameHash, dwFileDataId, CASC_INVALID_SIZE, RootGroup.Header.LocaleFlags, RootGroup.Header.ContentFlags);
+            // Find the item in the central storage. Insert it to the tree
+            if((pCKeyEntry = FindCKeyEntry_CKey(hs, pRootEntry->CKey.Value)) != NULL)
+                FileTree.Insert(pCKeyEntry, pRootEntry->FileNameHash, dwFileDataId, RootGroup.Header.LocaleFlags, RootGroup.Header.ContentFlags);
 
             // Update the file data ID
             assert((dwFileDataId + 1) > dwFileDataId);
@@ -206,16 +205,17 @@ struct TRootHandler_WoW : public TFileTreeRoot
         return ERROR_SUCCESS;
     }
 
-    int ParseWowRootFile_AddFiles_82(FILE_ROOT_GROUP & RootGroup)
+    int ParseWowRootFile_AddFiles_82(TCascStorage * hs, FILE_ROOT_GROUP & RootGroup)
     {
-        PCONTENT_KEY pCKeyEntry = RootGroup.pCKeyEntries;
+        PCASC_CKEY_ENTRY pCKeyEntry;
+        PCONTENT_KEY pCKey = RootGroup.pCKeyEntries;
         DWORD dwFileDataId = 0;
 
         // Sanity check
         assert(RootGroup.pCKeyEntries != NULL);
 
         // WoW.exe (build 19116): Blocks with zero files are skipped
-        for(DWORD i = 0; i < RootGroup.Header.NumberOfFiles; i++, pCKeyEntry++)
+        for(DWORD i = 0; i < RootGroup.Header.NumberOfFiles; i++, pCKey++)
         {
             ULONGLONG FileNameHash = 0;
 
@@ -226,8 +226,9 @@ struct TRootHandler_WoW : public TFileTreeRoot
             if(RootGroup.pHashes != NULL)
                 FileNameHash = RootGroup.pHashes[i];
 
-            // Insert the file node to the tree
-            FileTree.Insert(pCKeyEntry, FileNameHash, dwFileDataId, CASC_INVALID_SIZE, RootGroup.Header.LocaleFlags, RootGroup.Header.ContentFlags);
+            // Find the item in the central storage. Insert it to the tree
+            if((pCKeyEntry = FindCKeyEntry_CKey(hs, pCKey->Value)) != NULL)
+                FileTree.Insert(pCKeyEntry, FileNameHash, dwFileDataId, RootGroup.Header.LocaleFlags, RootGroup.Header.ContentFlags);
 
             // Update the file data ID
             assert((dwFileDataId + 1) > dwFileDataId);
@@ -238,6 +239,7 @@ struct TRootHandler_WoW : public TFileTreeRoot
     }
 
     int ParseWowRootFile_Level2(
+        TCascStorage * hs,
         LPBYTE pbRootPtr,
         LPBYTE pbRootEnd,
         DWORD dwLocaleMask,
@@ -277,11 +279,11 @@ struct TRootHandler_WoW : public TFileTreeRoot
             switch(RootFormat)
             {
                 case RootFormatWoW82:
-                    ParseWowRootFile_AddFiles_82(RootBlock);
+                    ParseWowRootFile_AddFiles_82(hs, RootBlock);
                     break;
 
                 case RootFormatWoW6x:
-                    ParseWowRootFile_AddFiles_6x(RootBlock);
+                    ParseWowRootFile_AddFiles_6x(hs, RootBlock);
                     break;
 
                 default:
@@ -319,34 +321,35 @@ struct TRootHandler_WoW : public TFileTreeRoot
     */
 
     int ParseWowRootFile_Level1(
+        TCascStorage * hs, 
         LPBYTE pbRootPtr,
         LPBYTE pbRootEnd,
         DWORD dwLocaleMask,
         BYTE bAudioLocale)
     {
         // Load the locale as-is
-        ParseWowRootFile_Level2(pbRootPtr, pbRootEnd, dwLocaleMask, false, bAudioLocale);
+        ParseWowRootFile_Level2(hs, pbRootPtr, pbRootEnd, dwLocaleMask, false, bAudioLocale);
 
         // If we wanted enGB, we also load enUS for the missing files
         if(dwLocaleMask == CASC_LOCALE_ENGB)
-            ParseWowRootFile_Level2(pbRootPtr, pbRootEnd, CASC_LOCALE_ENUS, false, bAudioLocale);
+            ParseWowRootFile_Level2(hs, pbRootPtr, pbRootEnd, CASC_LOCALE_ENUS, false, bAudioLocale);
 
         if(dwLocaleMask == CASC_LOCALE_PTPT)
-            ParseWowRootFile_Level2(pbRootPtr, pbRootEnd, CASC_LOCALE_PTBR, false, bAudioLocale);
+            ParseWowRootFile_Level2(hs, pbRootPtr, pbRootEnd, CASC_LOCALE_PTBR, false, bAudioLocale);
 
         return ERROR_SUCCESS;
     }
 
     // WoW.exe: 004146C7 (BuildManifest::Load)
-    int Load(LPBYTE pbRootPtr, LPBYTE pbRootEnd, DWORD dwLocaleMask)
+    int Load(TCascStorage * hs, LPBYTE pbRootPtr, LPBYTE pbRootEnd, DWORD dwLocaleMask)
     {
-        ParseWowRootFile_Level1(pbRootPtr, pbRootEnd, dwLocaleMask, 0);
-        ParseWowRootFile_Level1(pbRootPtr, pbRootEnd, dwLocaleMask, 1);
+        ParseWowRootFile_Level1(hs, pbRootPtr, pbRootEnd, dwLocaleMask, 0);
+        ParseWowRootFile_Level1(hs, pbRootPtr, pbRootEnd, dwLocaleMask, 1);
         return ERROR_SUCCESS;
     }
 
     // Search for files
-    LPBYTE Search(TCascSearch * pSearch, PCASC_FIND_DATA pFindData)
+    PCASC_CKEY_ENTRY Search(TCascSearch * pSearch, PCASC_FIND_DATA pFindData)
     {
         PCASC_FILE_NODE pFileNode;
 
@@ -362,7 +365,7 @@ struct TRootHandler_WoW : public TFileTreeRoot
                 pFileNode = FileTree.Find(pFindData->szFileName, FileDataId, pFindData);
                 if(pFileNode != NULL)
                 {
-                    return pFileNode->CKey.Value;
+                    return pFileNode->pCKeyEntry;
                 }
             }
         }
@@ -403,7 +406,7 @@ int RootHandler_CreateWoW(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile
     if(pRootHandler != NULL)
     {
         // Load the root directory. If load failed, we free the object
-        nError = pRootHandler->Load(pbRootFile, pbRootEnd, dwLocaleMask);
+        nError = pRootHandler->Load(hs, pbRootFile, pbRootEnd, dwLocaleMask);
         if(nError != ERROR_SUCCESS)
         {
             delete pRootHandler;
