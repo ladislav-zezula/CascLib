@@ -216,17 +216,16 @@ typedef struct _TCascStorage
     CASC_CKEY_ENTRY VfsRoot;                        // The main VFS root file
     CASC_ARRAY VfsRootList;                         // List of CASC_EKEY_ENTRY for each TVFS sub-root
 
-    CASC_DOWNLOAD_HEADER DlHeader;                  // Captured header of DOWNLOAD manifest, containing useful info
-    CASC_ENCODING_HEADER EnHeader;                  // Captured header of ENCODING manifest, containing useful info
-    CASC_INDEX_HEADER InHeader;                     // Captured header of index files, containing useful info
     TRootHandler * pRootHandler;                    // Common handler for various ROOT file formats
     CASC_ARRAY IndexArray;                          // This is the array that contains the list CASC_CKEY_ENTRY loaded from index files
     CASC_ARRAY CKeyArray;                           // This is the array that contains the list CASC_CKEY_ENTRY, one entry for each physical file
     CASC_ARRAY TagsArray;                           // Array of tags (CASC_DOWNLOAD_TAG2)
-    CASC_MAP   CKeyMap;                             // Map of CKey -> CASC_CKEY_ENTRY
-    CASC_MAP   EKeyMap;                             // Map of EKey -> CASC_EKEY_ENTRY
+    CASC_MAP CKeyMap;                               // Map of CKey -> CASC_CKEY_ENTRY
+    CASC_MAP EKeyMap;                               // Map of EKey -> CASC_EKEY_ENTRY
     size_t LocalFiles;                              // Number of files that are present locally
     size_t TotalFiles;                              // Total number of files in the storage, some may not be present locally
+    size_t EKeyLength;                              // EKey length from the index files
+    DWORD FileOffsetBits;                           // Nimber of bits in the storage offset which mean data segent offset
 
     CASC_ARRAY ExtraKeysList;                       // List additional encryption keys
     CASC_MAP   EncryptionKeys;                      // Map of encryption keys

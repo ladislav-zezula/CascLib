@@ -2762,19 +2762,23 @@ struct TRootHandler_MNDX : public TRootHandler
         PMNDX_ROOT_ENTRY pRootEntry = NULL;
         PMNDX_PACKAGE pPackage;
         const char * szStrippedName;
+        char szNormalizedName[MAX_PATH];
         int nError;
-
-        // Fill the file size
-        pPackage = FindMndxPackage(szFileName);
-        if(pPackage == NULL)
-            return NULL;
 
         // Filter the file names by wildcard
         if(!CheckWildCard(szFileName, szWildCard))
             return NULL;
 
+        // We need the normalized name here
+        NormalizeFileName_LowerSlash(szNormalizedName, szFileName, MAX_PATH);
+
+        // Fill the file size
+        pPackage = FindMndxPackage(szNormalizedName);
+        if(pPackage == NULL)
+            return NULL;
+
         // Cut the package name off the full path
-        szStrippedName = szFileName + pPackage->nLength;
+        szStrippedName = szNormalizedName + pPackage->nLength;
         while(szStrippedName[0] == '/')
             szStrippedName++;
 
@@ -2980,13 +2984,7 @@ struct TRootHandler_MNDX : public TRootHandler
     // Searches the file by file name
     PCASC_CKEY_ENTRY GetFile(TCascStorage * hs, const char * szFileName)
     {
-        char szNormalizedName[MAX_PATH+1];
-
-        // Convert the file name to lowercase + slashes
-        NormalizeFileName_LowerSlash(szNormalizedName, szFileName, MAX_PATH);
-
-        // Return the file name
-        return CheckResultAndFillFindData(hs, NULL, szNormalizedName);
+        return CheckResultAndFillFindData(hs, NULL, szFileName);
     }
 
     PCASC_CKEY_ENTRY Search(TCascSearch * hs, PCASC_FIND_DATA pFindData)

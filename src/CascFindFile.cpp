@@ -162,8 +162,8 @@ static bool CopyCKeyEntryToFindData(PCASC_FIND_DATA pFindData, PCASC_CKEY_ENTRY 
     // Supply both keys
     CopyMemory16(pFindData->CKey, pCKeyEntry->CKey);
     CopyMemory16(pFindData->EKey, pCKeyEntry->EKey);
-    pFindData->bCanOpenByCKey = true;
-    pFindData->bCanOpenByEKey = true;
+    pFindData->bCanOpenByCKey = (pCKeyEntry->Flags & CASC_CE_HAS_CKEY) ? true : false;
+    pFindData->bCanOpenByEKey = (pCKeyEntry->Flags & CASC_CE_HAS_EKEY) ? true : false;
 
     // Supply the tag mask
     pFindData->TagBitMask = pCKeyEntry->TagBitMask;

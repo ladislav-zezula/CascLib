@@ -182,21 +182,33 @@ static bool IndexDirectory_OnFileFound(
 
 static int CreateCKeyMaps(TCascStorage * hs, CASC_ENCODING_HEADER & EnHeader)
 {
-    size_t EstimatedEntryCount = (EnHeader.CKeyPageCount * EnHeader.CKeyPageSize) / sizeof(FILE_CKEY_ENTRY);
+    size_t nEstimatedEntries;
+    size_t nEnEntries = (EnHeader.CKeyPageCount * EnHeader.CKeyPageSize) / sizeof(FILE_CKEY_ENTRY);
+    size_t nIxEntries = hs->IndexArray.ItemCount();
     int nError;
 
+    // Storages "2018 - New CASC\00001" and "2018 - New CASC\00001":
+    // There are many items in index files which are not present in the ENCODING manifest.
+    // Probably a bug, but we want to open the storage nontheless.
+    // To prevent CKey map overflow, we make sure that the array is large enough
+    if(nEnEntries < 0x100 || nIxEntries < 0x100)
+        nEstimatedEntries = (nIxEntries + nEnEntries);
+    else
+        nEstimatedEntries = nEnEntries;
+    nEstimatedEntries = CASCLIB_MAX(nEstimatedEntries, 0x1000);
+
     // Create the array of CKey items
-    nError = hs->CKeyArray.Create(sizeof(CASC_CKEY_ENTRY), EstimatedEntryCount);
+    nError = hs->CKeyArray.Create(sizeof(CASC_CKEY_ENTRY), nEstimatedEntries);
     if(nError != ERROR_SUCCESS)
         return nError;
 
     // Create the map CKey -> CASC_CKEY_ENTRY
-    nError = hs->CKeyMap.Create(EstimatedEntryCount, EnHeader.CKeyLength, FIELD_OFFSET(CASC_CKEY_ENTRY, CKey));
+    nError = hs->CKeyMap.Create(nEstimatedEntries, EnHeader.CKeyLength, FIELD_OFFSET(CASC_CKEY_ENTRY, CKey));
     if(nError != ERROR_SUCCESS)
         return nError;
 
     // Create the map EKey -> CASC_CKEY_ENTRY
-    nError = hs->EKeyMap.Create(EstimatedEntryCount, hs->InHeader.EKeyLength, FIELD_OFFSET(CASC_CKEY_ENTRY, EKey));
+    nError = hs->EKeyMap.Create(nEstimatedEntries, hs->EKeyLength, FIELD_OFFSET(CASC_CKEY_ENTRY, EKey));
     if(nError != ERROR_SUCCESS)
         return nError;
 
@@ -339,7 +351,7 @@ static void CheckForEncodingManifestCKey(TCascStorage * hs, PCASC_CKEY_ENTRY pCK
     // If the encoding file was not found yet
     if((hs->EncodingCKey.Flags & CASC_CE_FILE_IS_LOCAL) == 0)
     {
-        if(!memcmp(pCKeyEntry->EKey, hs->EncodingCKey.EKey, hs->InHeader.EKeyLength))
+        if(!memcmp(pCKeyEntry->EKey, hs->EncodingCKey.EKey, hs->EKeyLength))
         {
             hs->EncodingCKey.StorageOffset = pCKeyEntry->StorageOffset;
             hs->EncodingCKey.EncodedSize = pCKeyEntry->EncodedSize;
@@ -348,10 +360,10 @@ static void CheckForEncodingManifestCKey(TCascStorage * hs, PCASC_CKEY_ENTRY pCK
     }
 }
 
-static int LoadEKeyItems(TCascStorage * hs, LPBYTE pbEKeyEntry, LPBYTE pbEKeyEnd)
+static int LoadEKeyItems(TCascStorage * hs, CASC_INDEX_HEADER & InHeader, LPBYTE pbEKeyEntry, LPBYTE pbEKeyEnd)
 {
     PCASC_CKEY_ENTRY pCKeyEntry;
-    size_t EntryLength = hs->InHeader.EntryLength;
+    size_t EntryLength = InHeader.EntryLength;
 
     while((pbEKeyEntry + EntryLength) <= pbEKeyEnd)
     {
@@ -361,7 +373,7 @@ static int LoadEKeyItems(TCascStorage * hs, LPBYTE pbEKeyEntry, LPBYTE pbEKeyEnd
             return ERROR_NOT_ENOUGH_MEMORY;
 
         // Capture the EKey entry
-        if(!CaptureEKeyEntry(hs->InHeader, pCKeyEntry, pbEKeyEntry))
+        if(!CaptureEKeyEntry(InHeader, pCKeyEntry, pbEKeyEntry))
             break;
 
         // Verify whether the key is not a CKEy entry for ENCODING file
@@ -466,24 +478,30 @@ static int CaptureIndexHeader_V2(CASC_INDEX_HEADER & InHeader, LPBYTE pbFileData
     return ERROR_SUCCESS;
 }    
 
-static int LoadIndexFile_V1(TCascStorage * hs, LPBYTE pbFileData, DWORD cbFileData)
+static int LoadIndexFile_V1(TCascStorage * hs, CASC_INDEX_HEADER & InHeader, LPBYTE pbFileData, DWORD cbFileData)
 {
-    CASC_INDEX_HEADER & InHeader = hs->InHeader;
     LPBYTE pbEKeyEntries = pbFileData + InHeader.HeaderLength + InHeader.HeaderPadding;
 
+    // Remember the values from the index header
+    hs->FileOffsetBits = InHeader.FileOffsetBits;
+    hs->EKeyLength = InHeader.EKeyLength;
+
     // Load the entries from a continuous array
-    return LoadEKeyItems(hs, pbEKeyEntries, pbFileData + cbFileData);
+    return LoadEKeyItems(hs, InHeader, pbEKeyEntries, pbFileData + cbFileData);
 }
 
-static int LoadIndexFile_V2(TCascStorage * hs, LPBYTE pbFileData, DWORD cbFileData)
+static int LoadIndexFile_V2(TCascStorage * hs, CASC_INDEX_HEADER & InHeader, LPBYTE pbFileData, DWORD cbFileData)
 {
-    CASC_INDEX_HEADER & InHeader = hs->InHeader;
     LPBYTE pbEKeyEntry;
     LPBYTE pbFileEnd = pbFileData + cbFileData;
     LPBYTE pbFilePtr = pbFileData + InHeader.HeaderLength + InHeader.HeaderPadding;
     size_t EKeyEntriesLength;
     DWORD BlockSize = 0;
     int nError = ERROR_NOT_SUPPORTED;
+
+    // Remember the values from the index header
+    hs->FileOffsetBits = InHeader.FileOffsetBits;
+    hs->EKeyLength = InHeader.EKeyLength;
 
     // Get the pointer to the first block of EKey entries
     if((pbEKeyEntry = CaptureGuardedBlock2(pbFilePtr, pbFileEnd, InHeader.EntryLength, &BlockSize)) != NULL)
@@ -492,7 +510,7 @@ static int LoadIndexFile_V2(TCascStorage * hs, LPBYTE pbFileData, DWORD cbFileDa
         InHeader.HeaderPadding += sizeof(FILE_INDEX_GUARDED_BLOCK);
 
         // Load the continuous array of EKeys
-        return LoadEKeyItems(hs, pbEKeyEntry, pbEKeyEntry + BlockSize);
+        return LoadEKeyItems(hs, InHeader, pbEKeyEntry, pbEKeyEntry + BlockSize);
     }
 
     // Get the pointer to the second block of EKey entries.
@@ -521,6 +539,9 @@ static int LoadIndexFile_V2(TCascStorage * hs, LPBYTE pbFileData, DWORD cbFileDa
                 if(pCKeyEntry == NULL)
                     return ERROR_NOT_ENOUGH_MEMORY;
 
+//              if(pbEKeyEntry[0] == 0x37 && pbEKeyEntry[1] == 0x89 && pbEKeyEntry[2] == 0x16)
+//                  __debugbreak();
+
                 // Capture the EKey entry
                 if(!CaptureEKeyEntry(InHeader, pCKeyEntry, pbEKeyEntry))
                     break;
@@ -541,13 +562,15 @@ static int LoadIndexFile_V2(TCascStorage * hs, LPBYTE pbFileData, DWORD cbFileDa
 
 static int LoadIndexFile(TCascStorage * hs, LPBYTE pbFileData, ULONG cbFileData, DWORD BucketIndex)
 {
+    CASC_INDEX_HEADER InHeader;
+
     // Check for CASC version 2
-    if(CaptureIndexHeader_V2(hs->InHeader, pbFileData, cbFileData, BucketIndex) == ERROR_SUCCESS)
-        return LoadIndexFile_V2(hs, pbFileData, cbFileData);
+    if(CaptureIndexHeader_V2(InHeader, pbFileData, cbFileData, BucketIndex) == ERROR_SUCCESS)
+        return LoadIndexFile_V2(hs, InHeader, pbFileData, cbFileData);
 
     // Check for CASC index version 1
-    if(CaptureIndexHeader_V1(hs->InHeader, pbFileData, cbFileData, BucketIndex) == ERROR_SUCCESS)
-        return LoadIndexFile_V1(hs, pbFileData, cbFileData);
+    if(CaptureIndexHeader_V1(InHeader, pbFileData, cbFileData, BucketIndex) == ERROR_SUCCESS)
+        return LoadIndexFile_V1(hs, InHeader, pbFileData, cbFileData);
 
     // Should never happen
     assert(false);
@@ -658,6 +681,8 @@ static int LoadCKeyPage(TCascStorage * hs, CASC_ENCODING_HEADER & EnHeader, LPBY
         // Overwatch build 24919, CKey: 0e 90 94 fa d2 cb 85 ac d0 7c ea 09 f9 c5 ba 00 
 //      if(pFileEntry->EKeyCount > 1)
 //          __debugbreak();
+//      if(pFileEntry->EKey[0] == 0x37 && pFileEntry->EKey[1] == 0x89 && pFileEntry->EKey[2] == 0x16)
+//          __debugbreak();
 
         // Insert the CKey entry into the array
         pCKeyEntry = (PCASC_CKEY_ENTRY)hs->CKeyArray.Insert(NULL, 1);
@@ -698,13 +723,42 @@ static int CopyIndexItemsToCKeyArray(TCascStorage * hs)
         pCKeyEntry1 = (PCASC_CKEY_ENTRY)hs->IndexArray.ItemAt(i);
         pCKeyEntry2 = FindCKeyEntry_EKey(hs, pCKeyEntry1->EKey);
 
-        // If the item is in the map, we supply the stuff from the index entry
-        if(pCKeyEntry2 != NULL)
+        // An entry missing in the ENCODING (2018 - New CASC\\00001)
+        // 37 89 16 5b 2d cc 71 c1 25 00 00 00 00 00 00 00
+//      if(pCKeyEntry1->EKey[0] == 0x37 && pCKeyEntry1->EKey[1] == 0x89 && pCKeyEntry1->EKey[2] == 0x16)
+//          __debugbreak();
+
+        if(pCKeyEntry2 == NULL)
         {
-            pCKeyEntry2->StorageOffset = pCKeyEntry1->StorageOffset;
-            pCKeyEntry2->EncodedSize = pCKeyEntry1->EncodedSize;
-            pCKeyEntry2->Flags |= CASC_CE_FILE_IS_LOCAL;
+            // Under no circumstances we can overflow the array
+            if((hs->CKeyArray.ItemCount() + 1) >= hs->CKeyArray.ItemCountMax())
+            {
+                assert(false);
+                break;
+            }
+
+            // Insert a new entry to the array
+            pCKeyEntry2 = (PCASC_CKEY_ENTRY)hs->CKeyArray.Insert(NULL, 1);
+            if(pCKeyEntry2 == NULL)
+                break;
+
+            // Initialize the item
+            ZeroMemory16(pCKeyEntry2->CKey);
+            CopyMemory16(pCKeyEntry2->EKey, pCKeyEntry1->EKey);
+            pCKeyEntry2->TagBitMask = 0;
+            pCKeyEntry2->ContentSize = CASC_INVALID_SIZE;
+            pCKeyEntry2->RefCount = 0;
+            pCKeyEntry2->Priority = 0;
+            pCKeyEntry2->Flags = CASC_CE_HAS_EKEY | CASC_CE_HAS_EKEY_PARTIAL;
+
+            // Insert the item to the map
+            hs->EKeyMap.InsertObject(pCKeyEntry2, pCKeyEntry2->EKey);
         }
+
+        // Supply the variables from the index entry
+        pCKeyEntry2->StorageOffset = pCKeyEntry1->StorageOffset;
+        pCKeyEntry2->EncodedSize = pCKeyEntry1->EncodedSize;
+        pCKeyEntry2->Flags |= CASC_CE_FILE_IS_LOCAL;
     }
 
     // We free the index array at this point
@@ -737,9 +791,6 @@ static int LoadEncodingManifest(TCascStorage * hs)
             // So, we can build the maps CKey and EKey map.
             if((nError = CreateCKeyMaps(hs, EnHeader)) == ERROR_SUCCESS)
             {
-                // Copy the encoding header to the storage structure
-                hs->EnHeader = EnHeader;
-
                 // Go through all CKey pages and verify them
                 for(DWORD i = 0; i < EnHeader.CKeyPageCount; i++)
                 {
@@ -897,7 +948,7 @@ int CaptureDownloadTag(CASC_DOWNLOAD_HEADER & DlHeader, CASC_TAG_ENTRY1 & DlTag,
 
     // Get the bitmap length.
     // If the bitmap is last in the list and it's shorter than declared, we make it shorter
-    DlTag.BitmapLength = (DlHeader.EntryCount / 8) + ((DlHeader.EntryCount & 0x03) ? 1 : 0);
+    DlTag.BitmapLength = (DlHeader.EntryCount / 8) + ((DlHeader.EntryCount & 0x07) ? 1 : 0);
     if((pbFilePtr + DlTag.BitmapLength) > pbFileEnd)
         DlTag.BitmapLength = (pbFileEnd - pbFilePtr);
     
@@ -915,7 +966,7 @@ static int LoadDownloadManifest(TCascStorage * hs, CASC_DOWNLOAD_HEADER & DlHead
     LPBYTE pbTag = pbTags;
     size_t nMaxNameLength = 0;
     size_t nTagEntryLengh = 0;
-    int nError = ERROR_NOT_ENOUGH_MEMORY;
+    int nError = ERROR_SUCCESS;
 
     // Does the storage support tags?
     if(DlHeader.TagCount != 0)
@@ -975,6 +1026,10 @@ static int LoadDownloadManifest(TCascStorage * hs, CASC_DOWNLOAD_HEADER & DlHead
                 }
             }
         }
+        else
+        {
+            nError = ERROR_NOT_ENOUGH_MEMORY;
+        }
     }
 
     // Now parse all entries. For each entry, mark the corresponding tag bit in the EKey table
@@ -1005,6 +1060,13 @@ static int LoadDownloadManifest(TCascStorage * hs, CASC_DOWNLOAD_HEADER & DlHead
 
                 // Move to the next bit
                 TagBit <<= 1;
+            }
+
+            // If the EKey has partial EKey only, fix that
+            if(pCKeyEntry->Flags & CASC_CE_HAS_EKEY_PARTIAL)
+            {
+                CopyMemory16(pCKeyEntry->EKey, DlEntry.EKey);
+                pCKeyEntry->Flags &= ~CASC_CE_HAS_EKEY_PARTIAL;
             }
 
             // Supply the priority
@@ -1043,9 +1105,6 @@ static int LoadDownloadManifest(TCascStorage * hs)
         nError = CaptureDownloadHeader(DlHeader, pbDownloadFile, cbDownloadFile);
         if(nError == ERROR_SUCCESS)
         {
-            // Remember the DOWNLOAD header in the storage structure
-            hs->DlHeader = DlHeader;
-
             // Parse the entire download manifest
             nError = LoadDownloadManifest(hs, DlHeader, pbDownloadFile, pbDownloadFile + cbDownloadFile); 
         }

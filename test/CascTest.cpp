@@ -280,7 +280,7 @@ static int ExtractFile(
         dwFileSize = CascGetFileSize(hFile, NULL);
         if(dwFileSize == CASC_INVALID_SIZE)
         {
-            LogHelper.PrintError("Warning: %s: Failed to retrieve the size", szShortName);
+            LogHelper.PrintError("Warning: %s: Failed to get file size", szShortName);
             return GetLastError();
         }
 
@@ -362,7 +362,7 @@ static int ExtractFile(
     }
     else
     {
-        LogHelper.PrintError("OpenFailed: %s", szShortName);
+        LogHelper.PrintError("Warning: %s: Open error", szShortName);
         assert(GetLastError() != ERROR_SUCCESS);
         nError = GetLastError();
     }
@@ -643,12 +643,13 @@ int main(int argc, char * argv[])
     //
 
 //  TestOpenStorage_EnumFiles("2015 - Diablo III\\30013", szListFile);
-//  TestOpenStorage_EnumFiles("2014 - Heroes of the Storm\\29049", szListFile);
+    TestOpenStorage_EnumFiles("2014 - Heroes of the Storm\\50286", szListFile);
 //  TestOpenStorage_EnumFiles("2015 - Overwatch\\24919", szListFile);
 //  TestOpenStorage_EnumFiles("2017 - Starcraft1\\2457", szListFile);
 //  TestOpenStorage_EnumFiles("2016 - WoW\\18125", szListFile);
 //  TestOpenStorage_EnumFiles("2016 - WoW\\29981", szListFile);
 //  TestOpenStorage_EnumFiles("2016 - WoW\\30123", szListFile);
+//  TestOpenStorage_EnumFiles("2018 - New CASC\\00002", szListFile);
 //  TestOpenStorage_EnumFiles("2018 - Warcraft III\\11889", NULL);
 
     //

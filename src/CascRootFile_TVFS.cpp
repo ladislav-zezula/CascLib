@@ -513,8 +513,9 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                         // Insert the file to the file tree
                         if((pCKeyEntry = FindCKeyEntry_EKey(hs, EKey.Value)) != NULL)
                         {
-                            // The file content size should already be there
-                            assert(pCKeyEntry->ContentSize == dwSpanSize);
+                            // If the file content is not there, supply it now
+                            if(pCKeyEntry->ContentSize == CASC_INVALID_SIZE)
+                                pCKeyEntry->ContentSize = dwSpanSize;
                             FileTree.Insert(pCKeyEntry, PathBuffer.szBegin);
                         }
                     }

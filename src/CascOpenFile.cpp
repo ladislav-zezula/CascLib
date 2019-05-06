@@ -35,7 +35,7 @@ PCASC_CKEY_ENTRY FindCKeyEntry_EKey(TCascStorage * hs, LPBYTE pbEKey, PDWORD Ptr
 static TCascFile * CreateFileHandle(TCascStorage * hs, PCASC_CKEY_ENTRY pCKeyEntry)
 {
     ULONGLONG StorageOffset = pCKeyEntry->StorageOffset;
-    ULONGLONG FileOffsMask = ((ULONGLONG)1 << hs->InHeader.FileOffsetBits) - 1;
+    ULONGLONG FileOffsMask = ((ULONGLONG)1 << hs->FileOffsetBits) - 1;
     TCascFile * hf;
 
     // Allocate the CASC file structure
@@ -43,7 +43,7 @@ static TCascFile * CreateFileHandle(TCascStorage * hs, PCASC_CKEY_ENTRY pCKeyEnt
     if(hf != NULL)
     {
         // Initialize the structure
-        hf->ArchiveIndex = (DWORD)(StorageOffset >> hs->InHeader.FileOffsetBits);
+        hf->ArchiveIndex = (DWORD)(StorageOffset >> hs->FileOffsetBits);
         hf->ArchiveOffset = (DWORD)(StorageOffset & FileOffsMask);
         hf->szClassName = "TCascFile";
         hf->pCKeyEntry = pCKeyEntry;
