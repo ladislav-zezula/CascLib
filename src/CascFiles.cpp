@@ -30,13 +30,6 @@ struct TBuildFileInfo
     CBLD_TYPE BuildFileType;
 };
 
-struct TGameIdString
-{
-    const char * szGameInfo;
-    size_t cchGameInfo;
-    DWORD dwGameInfo;
-};
-
 struct TGameLocaleString
 {
     const char * szLocale;
@@ -59,18 +52,6 @@ static const TCHAR * DataDirs[] =
     _T("HeroesData"),                               // Heroes of the Storm
     _T("BNTData"),                                  // Heroes of the Storm, until build 30414
     NULL,
-};
-
-static const TGameIdString GameIds[] =
-{
-    {"Hero",       0x04, CASC_GAME_HOTS},           // Heroes of the Storm
-    {"WoW",        0x03, CASC_GAME_WOW6},           // World of Warcraft since Warlords of Draenor
-    {"Diablo3",    0x07, CASC_GAME_DIABLO3},        // Diablo III since BETA 2.2.0
-    {"Prometheus", 0x0A, CASC_GAME_OVERWATCH},      // Overwatch BETA since build 24919
-    {"SC2",        0x03, CASC_GAME_STARCRAFT2},     // Starcraft II - Legacy of the Void
-    {"Starcraft1", 0x0A, CASC_GAME_STARCRAFT1},     // Starcraft 1 (remake)
-    {"War3",       0x04, CASC_GAME_WARCRAFT3},      // Warcraft III (since version 1.30, build 9655)
-    {NULL, 0, 0},
 };
 
 static const TGameLocaleString LocaleStrings[] = 
@@ -462,54 +443,132 @@ static int LoadVfsRootEntry(TCascStorage * hs, const char * szVariableName, cons
     return ERROR_SUCCESS;
 }
 
-static int LoadBuildProduct(TCascStorage * hs, const char * /* szVariableName */, const char * szDataBegin, const char * szDataEnd, void * /* pvParam */)
+static int LoadBuildProductId(TCascStorage * hs, const char * /* szVariableName */, const char * szDataBegin, const char * szDataEnd, void * /* pvParam */)
 {
-    // Go through all games that we support
-    for(size_t i = 0; GameIds[i].szGameInfo != NULL; i++)
+    DWORD dwBuildUid = 0;
+
+    // Convert up to 4 chars to DWORD
+    for(size_t i = 0; i < 4 && szDataBegin < szDataEnd; i++)
     {
-        // Check the length of the variable
-        if((size_t)(szDataEnd - szDataBegin) == GameIds[i].cchGameInfo)
-        {
-            // Check the string
-            if(!_strnicmp(szDataBegin, GameIds[i].szGameInfo, GameIds[i].cchGameInfo))
-            {
-                hs->dwGameInfo = GameIds[i].dwGameInfo;
-                return ERROR_SUCCESS;
-            }
-        }
+        dwBuildUid = (dwBuildUid << 0x08) | (BYTE)szDataBegin[0];
+        szDataBegin++;
     }
 
-    // Unknown/unsupported game
-    assert(false);
-    return ERROR_BAD_FORMAT;
+    // Product-specific. See https://wowdev.wiki/TACT#Products
+    switch(dwBuildUid)
+    {
+        case 'd3':
+        case 'd3b':     // Diablo 3 Beta (2013) 
+        case 'd3cn':    // Diablo 3 China
+        case 'd3t':     // Diablo 3 Test
+            hs->szProductName = "Diablo 3";
+            hs->Product = Diablo3;
+            break;
+
+        case 'dst2':
+            hs->szProductName = "Destiny 2";
+            hs->Product = Destiny2;
+            break;
+
+        case 'bnt':     // Heroes of the Storm Alpha 
+        case 'hero':    // Heroes of the Storm Retail
+        case 'stor':    // Heroes of the Storm (deprecated)
+            hs->szProductName = "Heroes Of The Storm";
+            hs->Product = HeroesOfTheStorm;
+            break;
+
+        case 'pro':
+        case 'proc':
+        case 'prod':    // "prodev": Overwatch Dev
+        case 'proe':    // Not on public CDNs
+        case 'prot':    // Overwatch Test
+        case 'prov':    // Overwatch Vendor
+        case 'prom':    // "proms": Overwatch World Cup Viewer
+            hs->szProductName = "Overwatch";
+            hs->Product = Overwatch;
+            break;
+
+        case 's1':      // StarCraft 1
+        case 's1a':     // Starcraft 1 Alpha
+        case 's1t':     // StarCraft 1 Test
+            hs->szProductName = "Starcraft 1";
+            hs->Product = StarCraft1;
+            break;
+
+        case 's2':      // StarCraft 2
+        case 's2b':     // Starcraft 2 Beta
+        case 's2t':     // StarCraft 2 Test
+        case 'sc2':     // StarCraft 2 (deprecated)
+            hs->szProductName = "Starcraft 2";
+            hs->Product = StarCraft2;
+            break;
+
+        case 'vipe':    // "viper", "viperdev", "viperv1": Call of Duty Black Ops 4
+            hs->szProductName = "Call Of Duty Black Ops 4";
+            hs->Product = CallOfDutyBlackOps4;
+            break;
+
+        case 'w3':      // Warcraft III
+        case 'w3t':     // Warcraft III Public Test
+        case 'war3':    // Warcraft III (old)
+            hs->szProductName = "WarCraft 3";
+            hs->Product = WarCraft3;
+            break;
+
+        case 'wow':     // World of Warcraft
+        case 'wow_':    // "wow_beta", "wow_classic", "wow_classic_beta"
+        case 'wowd':    // "wowdev", "wowdemo"
+        case 'wowe':    // "wowe1", "wowe3", "wowe3", 
+        case 'wowt':    // World of Warcraft Test
+        case 'wowv':    // World of Warcraft Vendor
+        case 'wowz':    // World of Warcraft Submission (previously Vendor)
+            hs->szProductName = "World Of Warcraft";
+            hs->Product = WorldOfWarcraft;
+            break;
+
+        default:
+            hs->szProductName = "Unknown Product";
+            hs->Product = UnknownProduct;
+            assert(false);
+            break;
+    }
+    
+    return ERROR_SUCCESS;
 }
 
 // "B29049"
 // "WOW-18125patch6.0.1"
 // "30013_Win32_2_2_0_Ptr_ptr"
 // "prometheus-0_8_0_0-24919"
-static int LoadBuildName(TCascStorage * hs, const char * /* szVariableName */, const char * szDataBegin, const char * szDataEnd, void * /* pvParam */)
+static int LoadBuildNumber(TCascStorage * hs, const char * /* szVariableName */, const char * szDataBegin, const char * szDataEnd, void * /* pvParam */)
 {
-    DWORD dwBuildNumber = 1;
+    DWORD dwBuildNumber = 0;
+    DWORD dwMaxValue = 0;
 
-    // Skip all non-digit characters
+    // Parse the string and take the largest decimal numeric value
+    // "build-name = 1.21.5.4037-retail"
     while(szDataBegin < szDataEnd)
     {
         // There must be at least three digits (build 99 anyone?)
-        if(IsCharDigit(szDataBegin[0]) && IsCharDigit(szDataBegin[1]) && IsCharDigit(szDataBegin[2]))
+        if(IsCharDigit(szDataBegin[0]))
         {
-            // Convert the build number string to value
-            while(szDataBegin < szDataEnd && IsCharDigit(szDataBegin[0]))
-                dwBuildNumber = (dwBuildNumber * 10) + (*szDataBegin++ - '0');
-            break;
+            dwBuildNumber = (dwBuildNumber * 10) + (szDataBegin[0] - '0');
+            dwMaxValue = CASCLIB_MAX(dwBuildNumber, dwMaxValue);
+        }
+        else
+        {
+            // Reset build number when we find non-digit char
+            dwBuildNumber = 0;
         }
 
         // Move to the next
         szDataBegin++;
     }
 
-    hs->dwBuildNumber = dwBuildNumber;
-    return (dwBuildNumber != 0) ? ERROR_SUCCESS : ERROR_BAD_FORMAT;
+    // If not there, just take value from build file
+    if((hs->dwBuildNumber = dwMaxValue) == 0)
+        hs->dwBuildNumber = hs->CdnBuildKey.pbData[0] % 100;
+    return ERROR_BAD_FORMAT;
 }
 
 static int GetDefaultLocaleMask(TCascStorage * hs, PQUERY_KEY pTagsString)
@@ -766,9 +825,9 @@ static int ParseFile_CdnBuild(TCascStorage * hs, void * pvListFile)
     while(ListFile_GetNextLine(pvListFile, &szLineBegin, &szLineEnd) != 0)
     {
         // Product name and build name
-        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "build-product", LoadBuildProduct, NULL))
+        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "build-uid", LoadBuildProductId, NULL))
             continue;
-        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "build-name", LoadBuildName, NULL))
+        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "build-name", LoadBuildNumber, NULL))
             continue;
 
         // Content key of the ROOT file. Look this up in ENCODING to get the encoded key

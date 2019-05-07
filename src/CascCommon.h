@@ -183,13 +183,14 @@ typedef struct _TCascStorage
 {
     const char * szClassName;                       // "TCascStorage"
     const TCHAR * szIndexFormat;                    // Format of the index file name
+    const char * szProductName;                     // String representation of the product name
     TCHAR * szBuildFile;                            // Build file name (.build.info or .build.db)
     TCHAR * szDataPath;                             // This is the directory where data files are
     TCHAR * szIndexPath;                            // This is the directory where index files are
     TCHAR * szCdnList;                              // Multi-SZ list of CDN servers, including subfolders
+    CASC_PRODUCT Product;                           // Product enum value (see CASC_PRODUCT)
+    DWORD dwBuildNumber;                            // Product build number
     DWORD dwRefCount;                               // Number of references
-    DWORD dwGameInfo;                               // Game type
-    DWORD dwBuildNumber;                            // Game build number
     DWORD dwHeaderSpanSize;                         // Size of the header span. Usually 0x1E. Zero on older storages
     DWORD dwDefaultLocale;                          // Default locale, read from ".build.info"
     DWORD dwFeatures;                               // List of CASC features. See CASC_FEATURE_XXX

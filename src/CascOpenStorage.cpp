@@ -1347,6 +1347,23 @@ static int InitializeCascDirectories(TCascStorage * hs, const TCHAR * szPath)
     return nError;
 }
 
+
+static bool GetStorageProduct(TCascStorage * hs, void * pvStorageInfo, size_t cbStorageInfo, size_t * pcbLengthNeeded)
+{
+    PCASC_STORAGE_PRODUCT pProductInfo;
+
+    // Verify whether we have enough space in the buffer
+    pProductInfo = (PCASC_STORAGE_PRODUCT)ProbeOutputBuffer(pvStorageInfo, cbStorageInfo, sizeof(CASC_STORAGE_PRODUCT), pcbLengthNeeded);
+    if(pProductInfo != NULL)
+    {
+        pProductInfo->szProductName = hs->szProductName;
+        pProductInfo->dwBuildNumber = hs->dwBuildNumber;
+        pProductInfo->Product = hs->Product;
+    }
+
+    return (pProductInfo != NULL);
+}
+
 static bool GetStorageTags(TCascStorage * hs, void * pvStorageInfo, size_t cbStorageInfo, size_t * pcbLengthNeeded)
 {
     PCASC_STORAGE_TAGS pTags;
@@ -1579,17 +1596,12 @@ bool WINAPI CascGetStorageInfo(
             dwInfoValue = hs->dwFeatures | hs->pRootHandler->GetFeatures();
             break;
 
-        case CascStorageGameInfo:
-            dwInfoValue = hs->dwGameInfo;
-            break;
-
-        case CascStorageGameBuild:
-            dwInfoValue = hs->dwBuildNumber;
-            break;
-
         case CascStorageInstalledLocales:
             dwInfoValue = hs->dwDefaultLocale;
             break;
+
+        case CascStorageProduct:
+            return GetStorageProduct(hs, pvStorageInfo, cbStorageInfo, pcbLengthNeeded);
 
         case CascStorageTags:
             return GetStorageTags(hs, pvStorageInfo, cbStorageInfo, pcbLengthNeeded);

@@ -175,9 +175,8 @@ typedef enum _CASC_STORAGE_INFO_CLASS
 
     // Returns the CASC_STORAGE_FEATURES structure.
     CascStorageFeatures,
-    CascStorageGameInfo,
-    CascStorageGameBuild,
     CascStorageInstalledLocales,
+    CascStorageProduct,                         // Gives CASC_STORAGE_PRODUCT
     CascStorageTags,                            // Gives CASC_STORAGE_TAGS structure
     CascStorageInfoClassMax
 
@@ -190,6 +189,24 @@ typedef enum _CASC_FILE_INFO_CLASS
     CascFileFullInfo,                           // Gives CASC_FILE_FULL_INFO structure
     CascFileInfoClassMax
 } CASC_FILE_INFO_CLASS, *PCASC_FILE_INFO_CLASS;
+
+// See https://wowdev.wiki/TACT#Products
+typedef enum _CASC_PRODUCT
+{
+    UnknownProduct,
+    HeroesOfTheStorm,
+    Diablo3,
+    Overwatch,
+    StarCraft1,
+    StarCraft2,
+    WorldOfWarcraft,
+    WarCraft3,
+    Destiny2,
+    CallOfDutyBlackOps4,
+    Odin,
+    MaxProductValue
+
+} CASC_PRODUCT, *PCASC_PRODUCT;
 
 // Query key for a file. Contains CKey [+EKey]
 typedef struct _QUERY_KEY
@@ -272,6 +289,14 @@ typedef struct _CASC_STORAGE_TAGS
     CASC_STORAGE_TAG Tags[1];                   // Array of CASC tags
 
 } CASC_STORAGE_TAGS, *PCASC_STORAGE_TAGS; 
+
+typedef struct _CASC_STORAGE_PRODUCT
+{
+    const char * szProductName;
+    DWORD dwBuildNumber;
+    CASC_PRODUCT Product;
+
+} CASC_STORAGE_PRODUCT, *PCASC_STORAGE_PRODUCT;
 
 typedef struct _CASC_FILE_FULL_INFO
 {

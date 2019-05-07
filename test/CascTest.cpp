@@ -212,6 +212,21 @@ static int ForceCreatePath(TCHAR * szFullPath)
     return ERROR_SUCCESS;
 }
 
+static FILE * OpenOutputTextFile(HANDLE hStorage, const char * szFormat)
+{
+    CASC_STORAGE_PRODUCT ProductInfo;
+    FILE * fp = NULL;
+    char szOutFileName[MAX_PATH];
+
+    if(CascGetStorageInfo(hStorage, CascStorageProduct, &ProductInfo, sizeof(CASC_STORAGE_PRODUCT), NULL))
+    {
+        sprintf(szOutFileName, szFormat, ProductInfo.szProductName, ProductInfo.dwBuildNumber);
+        fp = fopen(szOutFileName, "wt");
+    }
+
+    return fp;
+}
+
 static void TestStorageGetTagInfo(HANDLE hStorage)
 {
     PCASC_STORAGE_TAGS pTags = NULL;
@@ -430,13 +445,7 @@ static int TestOpenStorage_EnumFiles(const char * szStorage, const TCHAR * szLis
     LogHelper.SetStartTime();
     if(CascOpenStorage(szFullPath, 0, &hStorage))
     {
-        FILE * fp;
-        char szOutFileName[MAX_PATH];
-
-        // Create listfile for dumping
-        sprintf(szOutFileName, "E:\\%s", szStorage);
-        strcpy(strrchr(szOutFileName, '\\'), "-002.txt");
-        fp = fopen(szOutFileName, "wt");
+        FILE * fp = OpenOutputTextFile(hStorage, "E:\\list-%s-%u-002.txt");
 
         // Dump the storage
 //      LogHelper.PrintProgress("Dumping storage ...");
@@ -642,15 +651,16 @@ int main(int argc, char * argv[])
     // Single tests
     //
 
-//  TestOpenStorage_EnumFiles("2015 - Diablo III\\30013", szListFile);
-    TestOpenStorage_EnumFiles("2014 - Heroes of the Storm\\50286", szListFile);
-//  TestOpenStorage_EnumFiles("2015 - Overwatch\\24919", szListFile);
-//  TestOpenStorage_EnumFiles("2017 - Starcraft1\\2457", szListFile);
-//  TestOpenStorage_EnumFiles("2016 - WoW\\18125", szListFile);
-//  TestOpenStorage_EnumFiles("2016 - WoW\\29981", szListFile);
-//  TestOpenStorage_EnumFiles("2016 - WoW\\30123", szListFile);
-//  TestOpenStorage_EnumFiles("2018 - New CASC\\00002", szListFile);
-//  TestOpenStorage_EnumFiles("2018 - Warcraft III\\11889", NULL);
+    TestOpenStorage_EnumFiles("2015 - Diablo III\\30013", szListFile);
+    TestOpenStorage_EnumFiles("2014 - Heroes of the Storm\\29049", szListFile);
+    TestOpenStorage_EnumFiles("2017 - Starcraft1\\4037", szListFile);
+    TestOpenStorage_EnumFiles("2015 - Overwatch\\24919", szListFile);
+    TestOpenStorage_EnumFiles("2017 - Starcraft1\\2457", szListFile);
+    TestOpenStorage_EnumFiles("2016 - WoW\\18125", szListFile);
+    TestOpenStorage_EnumFiles("2016 - WoW\\29981", szListFile);
+    TestOpenStorage_EnumFiles("2016 - WoW\\30123", szListFile);
+    TestOpenStorage_EnumFiles("2018 - New CASC\\00002", szListFile);
+    TestOpenStorage_EnumFiles("2018 - Warcraft III\\11889", NULL);
 
     //
     // Tests for OpenStorage + EnumAllFiles + ExtractAllFiles
