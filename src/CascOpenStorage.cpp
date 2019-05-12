@@ -191,10 +191,7 @@ static int CreateCKeyMaps(TCascStorage * hs, CASC_ENCODING_HEADER & EnHeader)
     // There are many items in index files which are not present in the ENCODING manifest.
     // Probably a bug, but we want to open the storage nontheless.
     // To prevent CKey map overflow, we make sure that the array is large enough
-    if(nEnEntries < 0x100 || nIxEntries < 0x100)
-        nEstimatedEntries = (nIxEntries + nEnEntries);
-    else
-        nEstimatedEntries = nEnEntries;
+    nEstimatedEntries = (nIxEntries + nEnEntries);
     nEstimatedEntries = CASCLIB_MAX(nEstimatedEntries, 0x1000);
 
     // Create the array of CKey items
