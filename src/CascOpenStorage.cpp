@@ -368,7 +368,7 @@ static int LoadEKeyItems(TCascStorage * hs, CASC_INDEX_HEADER & InHeader, LPBYTE
     while((pbEKeyEntry + EntryLength) <= pbEKeyEnd)
     {
         // Insert new entry to the array of CKey entries
-        pCKeyEntry = (PCASC_CKEY_ENTRY)hs->IndexArray.Insert(NULL, 1);
+        pCKeyEntry = (PCASC_CKEY_ENTRY)hs->IndexArray.Insert(1);
         if(pCKeyEntry == NULL)
             return ERROR_NOT_ENOUGH_MEMORY;
 
@@ -522,6 +522,7 @@ static int LoadIndexFile_V2(TCascStorage * hs, CASC_INDEX_HEADER & InHeader, LPB
         LPBYTE pbStartPage = pbFileData + 0x1000;
         LPBYTE pbEndPage = pbStartPage + FILE_INDEX_PAGE_SIZE;
         size_t AlignedLength = ALIGN_TO_SIZE(InHeader.EntryLength, 4);
+        BYTE PrevEKey[MD5_HASH_SIZE] = {0};
 
         // Parse the chunks with the EKey entries
         while(pbStartPage < pbFileEnd)
@@ -534,20 +535,28 @@ static int LoadIndexFile_V2(TCascStorage * hs, CASC_INDEX_HEADER & InHeader, LPB
                 if((pbEKeyEntry = CaptureGuardedBlock3(pbEKeyEntry, pbEndPage, InHeader.EntryLength)) == NULL)
                     break;
 
-                // Insert the EKey entry to the array
-                pCKeyEntry = (PCASC_CKEY_ENTRY)hs->IndexArray.Insert(NULL, 1);
-                if(pCKeyEntry == NULL)
-                    return ERROR_NOT_ENOUGH_MEMORY;
+                // Sometimes, there are multiple items with the same EKey in the index files
+                // Example: "2018 - New CASC\00001", EKey 37 89 16 5b 2d cc 71 c1 25 00 00 00 00 00 00 00
+                // Positions: 0x2D, 0x2E, 0x2F
+                if(memcmp(PrevEKey, pbEKeyEntry, InHeader.EKeyLength))
+                {
+                    // Remember the cirrent EKey
+                    memcpy(PrevEKey, pbEKeyEntry, InHeader.EKeyLength);
 
-//              if(pbEKeyEntry[0] == 0x37 && pbEKeyEntry[1] == 0x89 && pbEKeyEntry[2] == 0x16)
-//                  __debugbreak();
+                    // Insert the EKey entry to the array
+                    pCKeyEntry = (PCASC_CKEY_ENTRY)hs->IndexArray.Insert(1);
+                    if(pCKeyEntry == NULL)
+                        return ERROR_NOT_ENOUGH_MEMORY;
 
-                // Capture the EKey entry
-                if(!CaptureEKeyEntry(InHeader, pCKeyEntry, pbEKeyEntry))
-                    break;
+                    // Capture the EKey entry
+                    if(!CaptureEKeyEntry(InHeader, pCKeyEntry, pbEKeyEntry))
+                        break;
 
-                // Check whether the CKey entry is an encoding entry
-                CheckForEncodingManifestCKey(hs, pCKeyEntry);
+                    // Check whether the CKey entry is an encoding entry
+                    CheckForEncodingManifestCKey(hs, pCKeyEntry);
+                }
+
+                // Move to the next entry
                 pbEKeyEntry += AlignedLength;
             }
 
@@ -681,11 +690,9 @@ static int LoadCKeyPage(TCascStorage * hs, CASC_ENCODING_HEADER & EnHeader, LPBY
         // Overwatch build 24919, CKey: 0e 90 94 fa d2 cb 85 ac d0 7c ea 09 f9 c5 ba 00 
 //      if(pFileEntry->EKeyCount > 1)
 //          __debugbreak();
-//      if(pFileEntry->EKey[0] == 0x37 && pFileEntry->EKey[1] == 0x89 && pFileEntry->EKey[2] == 0x16)
-//          __debugbreak();
 
         // Insert the CKey entry into the array
-        pCKeyEntry = (PCASC_CKEY_ENTRY)hs->CKeyArray.Insert(NULL, 1);
+        pCKeyEntry = (PCASC_CKEY_ENTRY)hs->CKeyArray.Insert(1);
         if(pCKeyEntry != NULL)
         {
             // Supply both CKey and EKey. Rewrite EKey regardless, because ENCODING manifest contains a full one
@@ -738,7 +745,7 @@ static int CopyIndexItemsToCKeyArray(TCascStorage * hs)
             }
 
             // Insert a new entry to the array
-            pCKeyEntry2 = (PCASC_CKEY_ENTRY)hs->CKeyArray.Insert(NULL, 1);
+            pCKeyEntry2 = (PCASC_CKEY_ENTRY)hs->CKeyArray.Insert(1);
             if(pCKeyEntry2 == NULL)
                 break;
 
@@ -1011,7 +1018,7 @@ static int LoadDownloadManifest(TCascStorage * hs, CASC_DOWNLOAD_HEADER & DlHead
                     PCASC_TAG_ENTRY2 pTargetTag;
 
                     // Insert the tag to the array
-                    pTargetTag = (PCASC_TAG_ENTRY2)hs->TagsArray.Insert(NULL, 1);
+                    pTargetTag = (PCASC_TAG_ENTRY2)hs->TagsArray.Insert(1);
                     if(pTargetTag == NULL)
                     {
                         nError = ERROR_NOT_ENOUGH_MEMORY;

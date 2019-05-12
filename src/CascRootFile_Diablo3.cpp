@@ -195,7 +195,16 @@ struct TDiabloRoot : public TFileTreeRoot
         FreeLoadingStuff();
     }
 
-    char * AppendPathToTotalPath(PATH_BUFFER & PathBuffer, const char * szFileName, const char * szFileEnd, bool bIsDirectory)
+    void AppendBackslashToTotalPath(PATH_BUFFER & PathBuffer)
+    {
+        if(PathBuffer.szPtr < PathBuffer.szEnd)
+        {
+            PathBuffer.szPtr[0] = '\\';
+            PathBuffer.szPtr++;
+        }
+    }
+
+    void AppendPathToTotalPath(PATH_BUFFER & PathBuffer, const char * szFileName, const char * szFileEnd)
     {
         char * szPathPtr = PathBuffer.szPtr;
         size_t nLength = (szFileEnd - szFileName);
@@ -207,12 +216,10 @@ struct TDiabloRoot : public TFileTreeRoot
             szPathPtr += nLength;
         }
 
-        // Append backslash, if needed
-        if(bIsDirectory && (szPathPtr + 1) < PathBuffer.szEnd)
-            *szPathPtr++ = '\\';
+        // Append zero terminator
         if(szPathPtr < PathBuffer.szEnd)
             szPathPtr[0] = 0;
-        return szPathPtr;
+        PathBuffer.szPtr = szPathPtr;
     }
 
     PDIABLO3_ASSET_INFO GetAssetInfo(DWORD dwAssetIndex)
@@ -377,20 +384,16 @@ struct TDiabloRoot : public TFileTreeRoot
         return NULL;
     }
 
-    int LoadDirectoryFile(TCascStorage * hs, size_t nIndex, PCASC_CKEY_ENTRY pCKeyEntry)
+    int LoadDirectoryFile(TCascStorage * hs, DIABLO3_DIRECTORY & DirHeader, PCASC_CKEY_ENTRY pCKeyEntry)
     {
         LPBYTE pbData;
         DWORD cbData = 0;
-
-        // Do we still have space?
-        if(nIndex >= DIABLO3_MAX_ROOT_FOLDERS)
-            return ERROR_NOT_ENOUGH_MEMORY;
 
         // Load the n-th folder
         pbData = LoadInternalFileToMemory(hs, pCKeyEntry, &cbData);
         if(pbData && cbData)
         {
-            if(CaptureDirectoryData(RootFolders[nIndex], pbData, cbData) == NULL)
+            if(CaptureDirectoryData(DirHeader, pbData, cbData) == NULL)
             {
                 // Clear the directory
                 CASC_FREE(pbData);
@@ -513,7 +516,7 @@ struct TDiabloRoot : public TFileTreeRoot
                     {
                         // Insert the entry to the file tree
 //                      fprintf(fp, "%08u %s\n", pEntry->FileIndex, PathBuffer.szBegin);
-                        FileTree.Insert(pCKeyEntry, PathBuffer.szBegin);
+                        FileTree.InsertByName(pCKeyEntry, PathBuffer.szBegin);
                     }
                 }
             }
@@ -545,7 +548,7 @@ struct TDiabloRoot : public TFileTreeRoot
                     {
                         // Insert the entry to the file tree
 //                      fprintf(fp, "%08u %04u %s\n", pEntry->FileIndex, pEntry->SubIndex, PathBuffer.szBegin);
-                        FileTree.Insert(pCKeyEntry, PathBuffer.szBegin);
+                        FileTree.InsertByName(pCKeyEntry, PathBuffer.szBegin);
                     }
                 }
             }
@@ -584,21 +587,25 @@ struct TDiabloRoot : public TFileTreeRoot
                     return ERROR_BAD_FORMAT;
 
                 // Append the path fragment to the total path
-                PathBuffer.szPtr = AppendPathToTotalPath(PathBuffer, NamedEntry.szFileName, NamedEntry.szFileEnd, bIsRootDirectory);
+                AppendPathToTotalPath(PathBuffer, NamedEntry.szFileName, NamedEntry.szFileEnd);
 
                 // Check whether the file exists in the storage
                 pCKeyEntry = FindCKeyEntry_CKey(hs, NamedEntry.pCKey->Value);
                 if(pCKeyEntry != NULL)
                 {
                     // Create file node belonging to this folder
-                    pFileNode = FileTree.Insert(pCKeyEntry, PathBuffer.szBegin);
+                    pFileNode = FileTree.InsertByName(pCKeyEntry, PathBuffer.szBegin);
                     dwNodeIndex = (DWORD)FileTree.IndexOf(pFileNode);
 
                     // If we are parsing root folder, we also need to load the data of the sub-folder file
                     if(bIsRootDirectory)
                     {
+                        // Mark the node as directory
+                        AppendBackslashToTotalPath(PathBuffer);
+                        pFileNode->Flags |= CFN_FLAG_FOLDER;
+
                         // Load the sub-directory file
-                        nError = LoadDirectoryFile(hs, nFolderIndex, pCKeyEntry);
+                        nError = LoadDirectoryFile(hs, RootFolders[nFolderIndex], pCKeyEntry);
                         if(nError != ERROR_SUCCESS)
                             return nError;
 

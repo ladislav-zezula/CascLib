@@ -512,7 +512,7 @@ struct TRootHandler_OW : public TFileTreeRoot
                 if((pCKeyEntry = FindCKeyEntry_CKey(hs, CKey)) != NULL)
                 {
                     // Insert the file name and the CKey into the tree
-                    FileTree.Insert(pCKeyEntry, szFileName);
+                    FileTree.InsertByName(pCKeyEntry, szFileName);
 
                     // If the file name is actually an asset, we need to parse that asset and load files in it
 //                  if(IsApmFileName(szFileName))

@@ -501,7 +501,7 @@ bool WINAPI CascAddEncryptionKey(HANDLE hStorage, ULONGLONG KeyName, LPBYTE Key)
     }
 
     // Insert the key to the array
-    pEncKey = (PCASC_ENCRYPTION_KEY)hs->ExtraKeysList.Insert(NULL, 1);
+    pEncKey = (PCASC_ENCRYPTION_KEY)hs->ExtraKeysList.Insert(1);
     if (pEncKey == NULL)
     {
         SetLastError(ERROR_NOT_ENOUGH_MEMORY);

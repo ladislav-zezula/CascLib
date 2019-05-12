@@ -182,7 +182,7 @@ struct TRootHandler_WoW : public TFileTreeRoot
     {
         PFILE_ROOT_ENTRY pRootEntry = RootGroup.pRootEntries;
         PCASC_CKEY_ENTRY pCKeyEntry;
-        DWORD dwFileDataId = 0;
+        DWORD FileDataId = 0;
 
         // Sanity check
         assert(RootGroup.pRootEntries != NULL);
@@ -191,15 +191,26 @@ struct TRootHandler_WoW : public TFileTreeRoot
         for(DWORD i = 0; i < RootGroup.Header.NumberOfFiles; i++, pRootEntry++)
         {
             // Set the file data ID
-            dwFileDataId = dwFileDataId + RootGroup.FileDataIds[i];
+            FileDataId = FileDataId + RootGroup.FileDataIds[i];
+//          if(FileDataId == 2823765)
+//              __debugbreak();
 
             // Find the item in the central storage. Insert it to the tree
             if((pCKeyEntry = FindCKeyEntry_CKey(hs, pRootEntry->CKey.Value)) != NULL)
-                FileTree.Insert(pCKeyEntry, pRootEntry->FileNameHash, dwFileDataId, RootGroup.Header.LocaleFlags, RootGroup.Header.ContentFlags);
+            {
+                if(pRootEntry->FileNameHash != 0)
+                {
+                    FileTree.InsertByHash(pCKeyEntry, pRootEntry->FileNameHash, FileDataId, RootGroup.Header.LocaleFlags, RootGroup.Header.ContentFlags);
+                }
+                else
+                {
+                    FileTree.InsertById(pCKeyEntry, FileDataId, RootGroup.Header.LocaleFlags, RootGroup.Header.ContentFlags);
+                }
+            }
 
             // Update the file data ID
-            assert((dwFileDataId + 1) > dwFileDataId);
-            dwFileDataId++;
+            assert((FileDataId + 1) > FileDataId);
+            FileDataId++;
         }
 
         return ERROR_SUCCESS;
@@ -209,7 +220,7 @@ struct TRootHandler_WoW : public TFileTreeRoot
     {
         PCASC_CKEY_ENTRY pCKeyEntry;
         PCONTENT_KEY pCKey = RootGroup.pCKeyEntries;
-        DWORD dwFileDataId = 0;
+        DWORD FileDataId = 0;
 
         // Sanity check
         assert(RootGroup.pCKeyEntries != NULL);
@@ -217,22 +228,27 @@ struct TRootHandler_WoW : public TFileTreeRoot
         // WoW.exe (build 19116): Blocks with zero files are skipped
         for(DWORD i = 0; i < RootGroup.Header.NumberOfFiles; i++, pCKey++)
         {
-            ULONGLONG FileNameHash = 0;
-
             // Set the file data ID
-            dwFileDataId = dwFileDataId + RootGroup.FileDataIds[i];
-
-            // Is there a file name hash?
-            if(RootGroup.pHashes != NULL)
-                FileNameHash = RootGroup.pHashes[i];
+            FileDataId = FileDataId + RootGroup.FileDataIds[i];
 
             // Find the item in the central storage. Insert it to the tree
             if((pCKeyEntry = FindCKeyEntry_CKey(hs, pCKey->Value)) != NULL)
-                FileTree.Insert(pCKeyEntry, FileNameHash, dwFileDataId, RootGroup.Header.LocaleFlags, RootGroup.Header.ContentFlags);
+            {
+                // If we know the file name hash, we're gonna insert it by hash AND file data id.
+                // If we don't know the hash, we're gonna insert it just by file data id.
+                if(RootGroup.pHashes != NULL && RootGroup.pHashes[i] != 0)
+                {
+                    FileTree.InsertByHash(pCKeyEntry, RootGroup.pHashes[i], FileDataId, RootGroup.Header.LocaleFlags, RootGroup.Header.ContentFlags);
+                }
+                else
+                {
+                    FileTree.InsertById(pCKeyEntry, FileDataId, RootGroup.Header.LocaleFlags, RootGroup.Header.ContentFlags);
+                }
+            }
 
             // Update the file data ID
-            assert((dwFileDataId + 1) > dwFileDataId);
-            dwFileDataId++;
+            assert((FileDataId + 1) > FileDataId);
+            FileDataId++;
         }
 
         return ERROR_SUCCESS;
@@ -351,26 +367,47 @@ struct TRootHandler_WoW : public TFileTreeRoot
     // Search for files
     PCASC_CKEY_ENTRY Search(TCascSearch * pSearch, PCASC_FIND_DATA pFindData)
     {
-        PCASC_FILE_NODE pFileNode;
-
-        // Only if we have a listfile
-        if(pSearch->pCache != NULL)
+        // If we have a listfile, we'll feed the listfile entries to the file tree
+        if(pSearch->pCache != NULL && pSearch->bListFileUsed == false)
         {
+            PCASC_FILE_NODE pFileNode;
+            ULONGLONG FileNameHash;
             DWORD FileDataId = CASC_INVALID_ID;
+            char szFileName[MAX_PATH];
 
-            // Keep going through the listfile
-            while(ListFile_GetNext(pSearch->pCache, pSearch->szMask, pFindData->szFileName, MAX_PATH, &FileDataId))
+            if(RootFormat == RootFormatWoW82)
             {
-                // Retrieve the file item
-                pFileNode = FileTree.Find(pFindData->szFileName, FileDataId, pFindData);
-                if(pFileNode != NULL)
+                // Keep going through the listfile
+                while(ListFile_GetNext(pSearch->pCache, pSearch->szMask, szFileName, MAX_PATH, &FileDataId))
                 {
-                    return pFileNode->pCKeyEntry;
+                    // Try to find the file node by file data id
+                    pFileNode = FileTree.FindById(FileDataId);
+                    if(pFileNode != NULL && pFileNode->NameLength == 0)
+                    {
+                        FileTree.SetNodeFileName(pFileNode, szFileName);
+                    }
                 }
             }
+            else
+            {
+                // Keep going through the listfile
+                while(ListFile_GetNextLine(pSearch->pCache, szFileName, MAX_PATH))
+                {
+                    // Calculate the hash of the file name
+                    FileNameHash = CalcFileNameHash(szFileName);
+
+                    // Try to find the file node by file name hash
+                    pFileNode = FileTree.Find(FileNameHash);
+                    if(pFileNode != NULL && pFileNode->NameLength == 0)
+                    {
+                        FileTree.SetNodeFileName(pFileNode, szFileName);
+                    }
+                }
+            }
+            pSearch->bListFileUsed = true;
         }
 
-        // Try to find ANY items remaining
+        // Let the file tree root give us the file names
         return TFileTreeRoot::Search(pSearch, pFindData);
     }
 
@@ -392,7 +429,7 @@ int RootHandler_CreateWoW(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile
     DWORD FileCounterHashless = 0;
     int nError = ERROR_BAD_FORMAT;
 
-    // Check for the new format (World of Warcraft 8.2, build 30170
+    // Check for the new format (World of Warcraft 8.2, build 30170)
     pbRootPtr = TRootHandler_WoW::CaptureRootHeader(RootHeader, pbRootFile, pbRootEnd);
     if(pbRootPtr != NULL)
     {

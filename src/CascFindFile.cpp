@@ -225,10 +225,10 @@ static bool DoStorageSearch_CKey(TCascSearch * pSearch, PCASC_FIND_DATA pFindDat
     ResetFindData(pFindData);
 
     // Check for CKeys that haven't been found yet
-    while(pSearch->IndexLevel1 < nTotalItems)
+    while(pSearch->nFileIndex < nTotalItems)
     {
         // Locate the CKey entry
-        pCKeyEntry = (PCASC_CKEY_ENTRY)hs->CKeyArray.ItemAt(pSearch->IndexLevel1++);
+        pCKeyEntry = (PCASC_CKEY_ENTRY)hs->CKeyArray.ItemAt(pSearch->nFileIndex++);
         if((pCKeyEntry->Flags & CASC_CE_HAS_CKEY) == 0)
             continue;
 
@@ -251,7 +251,7 @@ static bool DoStorageSearch(TCascSearch * pSearch, PCASC_FIND_DATA pFindData)
             pSearch->pCache = ListFile_OpenExternal(pSearch->szListFile);
 
         // Move the search phase to the listfile searching
-        pSearch->IndexLevel1 = 0;
+        pSearch->nFileIndex = 0;
         pSearch->dwState++;
     }
 
@@ -262,7 +262,7 @@ static bool DoStorageSearch(TCascSearch * pSearch, PCASC_FIND_DATA pFindData)
             return true;
 
         // Move to the nameless search state
-        pSearch->IndexLevel1 = 0;
+        pSearch->nFileIndex = 0;
         pSearch->dwState++;
     }
 
@@ -273,7 +273,7 @@ static bool DoStorageSearch(TCascSearch * pSearch, PCASC_FIND_DATA pFindData)
             return true;
 
         // Move to the final search state
-        pSearch->IndexLevel1 = 0;
+        pSearch->nFileIndex = 0;
         pSearch->dwState++;
     }
 

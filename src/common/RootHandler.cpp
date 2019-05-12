@@ -37,7 +37,7 @@ int TFileTreeRoot::Insert(
 {
     PCASC_FILE_NODE pFileNode;
 
-    pFileNode = FileTree.Insert(pCKeyEntry, szFileName, FileTree.GetMaxFileDataId() + 1);
+    pFileNode = FileTree.InsertByName(pCKeyEntry, szFileName, FileTree.GetNextFileDataId());
     return (pFileNode != NULL) ? ERROR_SUCCESS : ERROR_CAN_NOT_COMPLETE;
 }
 
@@ -61,13 +61,16 @@ PCASC_CKEY_ENTRY TFileTreeRoot::GetFile(TCascStorage * /* hs */, DWORD FileDataI
 PCASC_CKEY_ENTRY TFileTreeRoot::Search(TCascSearch * pSearch, PCASC_FIND_DATA pFindData)
 {
     PCASC_FILE_NODE pFileNode;
-    size_t ItemCount = FileTree.GetCount();
+    size_t nMaxFileIndex = FileTree.GetMaxFileIndex();
 
     // Are we still inside the root directory range?
-    while(pSearch->IndexLevel1 < ItemCount)
+    while(pSearch->nFileIndex < nMaxFileIndex)
     {
+        //if(pSearch->nFileIndex >= 2823765)
+        //    __debugbreak();
+
         // Retrieve the file item
-        pFileNode = FileTree.PathAt(pFindData->szFileName, MAX_PATH, pSearch->IndexLevel1++);
+        pFileNode = FileTree.PathAt(pFindData->szFileName, MAX_PATH, pSearch->nFileIndex++);
         if(pFileNode != NULL)
         {
             // Ignore folders, include unnamed items in the search

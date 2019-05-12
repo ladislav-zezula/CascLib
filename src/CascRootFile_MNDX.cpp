@@ -2825,7 +2825,7 @@ struct TRootHandler_MNDX : public TRootHandler
                 return ERROR_NOT_ENOUGH_MEMORY;
 
             // Insert the found name to the top level directory list
-            pPackage = (PMNDX_PACKAGE)Packages.Insert(NULL, 1);
+            pPackage = (PMNDX_PACKAGE)Packages.Insert(1);
             if(pPackage == NULL)
                 return ERROR_NOT_ENOUGH_MEMORY;
 

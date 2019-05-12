@@ -496,7 +496,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                         {
                             // The file content size should already be there
                             assert(pCKeyEntry->ContentSize == dwSpanSize);
-                            FileTree.Insert(pCKeyEntry, PathBuffer.szBegin);
+                            FileTree.InsertByName(pCKeyEntry, PathBuffer.szBegin);
                         }
 
                         ParseDirectoryData(hs, SubHeader, PathBuffer);
@@ -516,7 +516,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                             // If the file content is not there, supply it now
                             if(pCKeyEntry->ContentSize == CASC_INVALID_SIZE)
                                 pCKeyEntry->ContentSize = dwSpanSize;
-                            FileTree.Insert(pCKeyEntry, PathBuffer.szBegin);
+                            FileTree.InsertByName(pCKeyEntry, PathBuffer.szBegin);
                         }
                     }
                 }
@@ -571,7 +571,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
 
     int Load(TCascStorage * hs, TVFS_DIRECTORY_HEADER & RootHeader)
     {
-        PCASC_CKEY_ENTRY pCKeyEntry;
+//      PCASC_CKEY_ENTRY pCKeyEntry;
         PATH_BUFFER PathBuffer;
         char szPathBuffer[MAX_PATH];
 
@@ -588,11 +588,11 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         InsertRootVfsEntry(hs, hs->VfsRoot.CKey, "vfs-root", 0);
 
         // Insert all VFS roots folders as files
-        for(size_t i = 0; i < hs->VfsRootList.ItemCount(); i++)
-        {
-            pCKeyEntry = (PCASC_CKEY_ENTRY)hs->VfsRootList.ItemAt(i);
-            InsertRootVfsEntry(hs, pCKeyEntry->CKey, "vfs-%u", i+1);
-        }
+        //for(size_t i = 0; i < hs->VfsRootList.ItemCount(); i++)
+        //{
+        //    pCKeyEntry = (PCASC_CKEY_ENTRY)hs->VfsRootList.ItemAt(i);
+        //    InsertRootVfsEntry(hs, pCKeyEntry->CKey, "vfs-%u", i+1);
+        //}
 
         // Parse the entire directory data
         return ParseDirectoryData(hs, RootHeader, PathBuffer);

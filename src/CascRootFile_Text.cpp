@@ -74,7 +74,7 @@ struct TRootHandler_SC1 : public TFileTreeRoot
 //                  assert(pItem1 == pItem2);
 
                     // Insert the FileName+CKey to the file tree
-                    FileTree.Insert(pCKeyEntry, szFileName);
+                    FileTree.InsertByName(pCKeyEntry, szFileName);
                 }
             }
         }

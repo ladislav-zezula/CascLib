@@ -47,8 +47,9 @@ class CASC_FILE_TREE
     void Free();
 
     // Inserts a new node to the tree; either with name or nameless
-    PCASC_FILE_NODE Insert(PCASC_CKEY_ENTRY pCKeyEntry, const char * szFullPath, DWORD FileDataId = CASC_INVALID_ID, DWORD LocaleFlags = CASC_INVALID_ID, DWORD ContentFlags = CASC_INVALID_ID);
-    PCASC_FILE_NODE Insert(PCASC_CKEY_ENTRY pCKeyEntry, ULONGLONG FileNameHash, DWORD FileDataId = CASC_INVALID_ID, DWORD LocaleFlags = CASC_INVALID_ID, DWORD ContentFlags = CASC_INVALID_ID);
+    PCASC_FILE_NODE InsertByName(PCASC_CKEY_ENTRY pCKeyEntry, const char * szFileName, DWORD FileDataId = CASC_INVALID_ID, DWORD LocaleFlags = CASC_INVALID_ID, DWORD ContentFlags = CASC_INVALID_ID);
+    PCASC_FILE_NODE InsertByHash(PCASC_CKEY_ENTRY pCKeyEntry, ULONGLONG FileNameHash, DWORD FileDataId, DWORD LocaleFlags = CASC_INVALID_ID, DWORD ContentFlags = CASC_INVALID_ID);
+    PCASC_FILE_NODE InsertById(PCASC_CKEY_ENTRY pCKeyEntry, DWORD FileDataId, DWORD LocaleFlags = CASC_INVALID_ID, DWORD ContentFlags = CASC_INVALID_ID);
 
     // Returns an item at the given index. The PathAt also builds the full path of the node
     PCASC_FILE_NODE ItemAt(size_t nItemIndex);
@@ -60,7 +61,11 @@ class CASC_FILE_TREE
     PCASC_FILE_NODE Find(ULONGLONG FileNameHash);
     PCASC_FILE_NODE FindById(DWORD FileDataId);
 
+    // Assigns a file name to the node
+    bool SetNodeFileName(PCASC_FILE_NODE pFileNode, const char * szFileName);
+
     // Returns the number of items in the tree
+    size_t GetMaxFileIndex();
     size_t GetCount();
 
     // Returns the index of an item in the tree
@@ -74,17 +79,21 @@ class CASC_FILE_TREE
     bool SetKeyLength(DWORD KeyLength);
 
     // Retrieve the maximum FileDataId ever inserted
-    DWORD GetMaxFileDataId();
+    DWORD GetNextFileDataId();
 
     protected:
 
-    PCASC_FILE_NODE InsertNew(PCASC_CKEY_ENTRY pCKeyEntry, ULONGLONG FileNameHash, const char * szNodeName, const char * szNodeNameEnd, DWORD FileDataId, DWORD Parent);
-    PCASC_FILE_NODE InsertNew(PCASC_FILE_NODE pFileNode, DWORD FileDataId);
+    PCASC_FILE_NODE InsertNew(PCASC_CKEY_ENTRY pCKeyEntry);
+    PCASC_FILE_NODE InsertNew();
+    bool InsertToHashTable(PCASC_FILE_NODE pFileNode);
+    bool InsertToIdTable(PCASC_FILE_NODE pFileNode);
+
+    bool SetNodePlainName(PCASC_FILE_NODE pFileNode, const char * szPlainName, const char * szPlainNameEnd);
 
     size_t MakePath(PCASC_FILE_NODE pFileNode, char * szBuffer, size_t cchBuffer);
     bool RebuildNameMaps();
 
-    CASC_ARRAY FileTable;                           // Dynamic array that holds all CASC_FILE_NODEs
+    CASC_ARRAY NodeTable;                           // Dynamic array that holds all CASC_FILE_NODEs
     CASC_ARRAY NameTable;                           // Dynamic array that holds all node names
 
     CASC_ARRAY FileDataIds;                         // Dynamic array that maps FileDataId -> CASC_FILE_NODE
@@ -93,8 +102,6 @@ class CASC_FILE_TREE
     size_t FileDataIdOffset;                        // If nonzero, this is the offset of the "FileDataId" field in the CASC_FILE_NODE
     size_t LocaleFlagsOffset;                       // If nonzero, this is the offset of the "LocaleFlags" field in the CASC_FILE_NODE
     size_t ContentFlagsOffset;                      // If nonzero, this is the offset of the "ContentFlags" field in the CASC_FILE_NODE
-    DWORD MinFileDataId;                            // The smallest value of FileDataId ever inserted
-    DWORD MaxFileDataId;                            // The largest value of FileDataId ever inserted
     DWORD KeyLength;                                // Actual length of the key supported by the root handler
 };
 
