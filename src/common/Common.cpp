@@ -529,7 +529,7 @@ bool IsFileCKeyEKeyName(const char * szFileName, LPBYTE PtrKeyBuffer)
     return false;
 }
 
-bool CheckWildCard(const char * szString, const char * szWildCard)
+bool CascCheckWildCard(const char * szString, const char * szWildCard)
 {
     const char * szWildCardPtr;
 
@@ -561,7 +561,7 @@ bool CheckWildCard(const char * szString, const char * szWildCard)
 
                 if(AsciiToUpperTable_BkSlash[szWildCardPtr[0]] == AsciiToUpperTable_BkSlash[szString[0]])
                 {
-                    if(CheckWildCard(szString, szWildCardPtr))
+                    if(CascCheckWildCard(szString, szWildCardPtr))
                         return true;
                 }
             }
@@ -588,7 +588,7 @@ bool CheckWildCard(const char * szString, const char * szWildCard)
 //-----------------------------------------------------------------------------
 // Hashing functions
 
-bool IsValidMD5(LPBYTE pbMd5)
+bool CascIsValidMD5(LPBYTE pbMd5)
 {
     PDWORD Int32Array = (LPDWORD)pbMd5;
 
@@ -596,13 +596,13 @@ bool IsValidMD5(LPBYTE pbMd5)
     return (Int32Array[0] | Int32Array[1] | Int32Array[2] | Int32Array[3]) ? true : false;
 }
 
-bool VerifyDataBlockHash(void * pvDataBlock, DWORD cbDataBlock, LPBYTE expected_md5)
+bool CascVerifyDataBlockHash(void * pvDataBlock, DWORD cbDataBlock, LPBYTE expected_md5)
 {
     hash_state md5_state;
     BYTE md5_digest[MD5_HASH_SIZE];
 
     // Don't verify the block if the MD5 is not valid.
-    if(!IsValidMD5(expected_md5))
+    if(!CascIsValidMD5(expected_md5))
         return true;
 
     // Calculate the MD5 of the data block
@@ -614,7 +614,7 @@ bool VerifyDataBlockHash(void * pvDataBlock, DWORD cbDataBlock, LPBYTE expected_
     return (memcmp(md5_digest, expected_md5, MD5_HASH_SIZE) == 0);
 }
 
-void CalculateDataBlockHash(void * pvDataBlock, DWORD cbDataBlock, LPBYTE md5_hash)
+void CascCalculateDataBlockHash(void * pvDataBlock, DWORD cbDataBlock, LPBYTE md5_hash)
 {
     hash_state md5_state;
 

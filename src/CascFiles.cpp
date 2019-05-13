@@ -252,7 +252,7 @@ static bool CheckConfigFileVariable(
         return false;
 
     // Verify whether this is the variable
-    if (!CheckWildCard(szVariableName, szVarName))
+    if (!CascCheckWildCard(szVariableName, szVarName))
         return false;
 
     // Skip the spaces and '='

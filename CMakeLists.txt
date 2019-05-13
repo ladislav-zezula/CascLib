@@ -4,6 +4,7 @@ project(CascLib)
 set(HEADER_FILES
     src/CascCommon.h
     src/CascLib.h
+	src/CascLib.def
     src/CascPort.h
     src/common/Array.h
     src/common/Common.h
@@ -22,7 +23,6 @@ set(SRC_FILES
     src/common/FileStream.cpp
     src/common/FileTree.cpp
     src/common/ListFile.cpp
-    src/common/Map.cpp
     src/common/RootHandler.cpp
     src/jenkins/lookup3.c
     src/CascCommon.cpp

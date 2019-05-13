@@ -2766,7 +2766,7 @@ struct TRootHandler_MNDX : public TRootHandler
         int nError;
 
         // Filter the file names by wildcard
-        if(!CheckWildCard(szFileName, szWildCard))
+        if(!CascCheckWildCard(szFileName, szWildCard))
             return NULL;
 
         // We need the normalized name here

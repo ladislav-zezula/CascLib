@@ -402,7 +402,7 @@ static int LoadEncodedFrame(TFileStream * pStream, PCASC_FILE_FRAME pFrame, LPBY
     {
         if (bVerifyIntegrity)
         {
-            if (!VerifyDataBlockHash(pbEncodedFrame, pFrame->EncodedSize, pFrame->FrameHash.Value))
+            if (!CascVerifyDataBlockHash(pbEncodedFrame, pFrame->EncodedSize, pFrame->FrameHash.Value))
                 nError = ERROR_FILE_CORRUPT;
         }
     }
