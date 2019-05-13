@@ -44,6 +44,7 @@
   #include <malloc.h>
   #include <windows.h>
   #include <wininet.h>
+  #include <intrin.h>       // Support for intrinsic functions
   #include <sys/types.h>
   #define PLATFORM_LITTLE_ENDIAN
 
@@ -56,6 +57,8 @@
   #define PATH_SEP_CHAR             '\\'
   #define PATH_SEP_STRING           "\\"
   #define CREATE_DIRECTORY(name)    CreateDirectory(name, NULL);
+
+  #pragma intrinsic(memcmp, memcpy)
 
   #define PLATFORM_WINDOWS
   #define PLATFORM_DEFINED                  // The platform is known now
@@ -223,16 +226,20 @@
   #define ERROR_DISK_FULL                ENOSPC
   #define ERROR_ALREADY_EXISTS           EEXIST
   #define ERROR_INSUFFICIENT_BUFFER      ENOBUFS
-  #define ERROR_BAD_FORMAT               1000        // No such error code under Linux
-  #define ERROR_NO_MORE_FILES            1001        // No such error code under Linux
-  #define ERROR_HANDLE_EOF               1002        // No such error code under Linux
-  #define ERROR_CAN_NOT_COMPLETE         1003        // No such error code under Linux
-  #define ERROR_FILE_CORRUPT             1004        // No such error code under Linux
-  #define ERROR_FILE_ENCRYPTED           1005        // Returned by encrypted stream when can't find file key
+  #define ERROR_BAD_FORMAT               1000       // No such error code under Linux
+  #define ERROR_NO_MORE_FILES            1001       // No such error code under Linux
+  #define ERROR_HANDLE_EOF               1002       // No such error code under Linux
+  #define ERROR_CAN_NOT_COMPLETE         1003       // No such error code under Linux
+  #define ERROR_FILE_CORRUPT             1004       // No such error code under Linux
+  #define ERROR_FILE_ENCRYPTED           1005       // Returned by encrypted stream when can't find file key
 #endif
 
 #ifndef ERROR_FILE_INCOMPLETE
-#define ERROR_FILE_INCOMPLETE            1006        // The required file part is missing
+#define ERROR_FILE_INCOMPLETE            1006       // The required file part is missing
+#endif
+
+#ifndef ERROR_FILE_OFFLINE
+#define ERROR_FILE_OFFLINE               1007       // The file is not available in the local storage
 #endif
 
 //-----------------------------------------------------------------------------

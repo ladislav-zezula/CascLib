@@ -588,9 +588,9 @@ static int TestOpenStorage_ExtractFiles(const char * szStorage, const char * szE
 static STORAGE_INFO StorageInfo[] = 
 {
     //- Name of the storage folder -------- Compound file name hash ----------- Compound file data hash ----------- Example file to extract -----------------------------------------------------------
-    //{"2014 - Heroes of the Storm/29049", "5af1b6b3c6b1444134f0ae43863f22cb", "754d713197f1ba27651483f01155027b", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_autoai1.dds"},
-    //{"2014 - Heroes of the Storm/30027", "48d8027d1f1f52c22a6c2999de039663", "ee00dd0f415aaae7b517964af9227871", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_claim1.dds"},
-    //{"2014 - Heroes of the Storm/30414", "a38b7ada09d58a0ef44f01f5c9238eeb", "fc68e89a4492e9959c1b17dd24a89fce", "mods\\heromods\\murky.stormmod\\base.stormdata\\gamedata\\buttondata.xml"},
+    {"2014 - Heroes of the Storm/29049", "5af1b6b3c6b1444134f0ae43863f22cb", "754d713197f1ba27651483f01155027b", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_autoai1.dds"},
+    {"2014 - Heroes of the Storm/30027", "48d8027d1f1f52c22a6c2999de039663", "ee00dd0f415aaae7b517964af9227871", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_claim1.dds"},
+    {"2014 - Heroes of the Storm/30414", "a38b7ada09d58a0ef44f01f5c9238eeb", "fc68e89a4492e9959c1b17dd24a89fce", "mods\\heromods\\murky.stormmod\\base.stormdata\\gamedata\\buttondata.xml"},
     {"2014 - Heroes of the Storm/31726", "62cedf27ba1cda971fe023169de91d6f", "ca66c0a0850f832434b2e7dd0773747c", "mods\\heroes.stormmod\\base.stormassets\\Assets\\modeltextures.db"},
     {"2014 - Heroes of the Storm/39445", "e1b332fba8b10c1e267f4a85000a57e9", "95b19b57fde5e44a0d21f5b63a8fb46e", "versions.osxarchive\\Versions\\Base39153\\Heroes.app\\Contents\\_CodeSignature\\CodeResources"},
     {"2014 - Heroes of the Storm/50286", "4a7df6bdc0e4ec4db53f58f495c44e40", "49d7b2a2efb4b08a43d65da01a931ab9", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
@@ -651,15 +651,17 @@ int main(int argc, char * argv[])
     // Single tests
     //
 
-//  TestOpenStorage_EnumFiles("2015 - Diablo III\\30013", szListFile);
 //  TestOpenStorage_EnumFiles("2014 - Heroes of the Storm\\29049", szListFile);
+//  TestOpenStorage_EnumFiles("2014 - Heroes of the Storm\\50286", szListFile);
+//  TestOpenStorage_EnumFiles("2015 - Diablo III\\30013", szListFile);
 //  TestOpenStorage_EnumFiles("2017 - Starcraft1\\4037", szListFile);
 //  TestOpenStorage_EnumFiles("2015 - Overwatch\\24919", szListFile);
 //  TestOpenStorage_EnumFiles("2017 - Starcraft1\\2457", szListFile);
-//  TestOpenStorage_EnumFiles("2016 - WoW\\18125", szListFile);
-    TestOpenStorage_EnumFiles("2016 - WoW\\29981", szListFile);
+    TestOpenStorage_EnumFiles("2016 - WoW\\18125", szListFile);
+//  TestOpenStorage_EnumFiles("2016 - WoW\\29981", szListFile);
 //  TestOpenStorage_EnumFiles("2016 - WoW\\30123", szListFile);
 //  TestOpenStorage_EnumFiles("2018 - New CASC\\00001", szListFile);
+//  TestOpenStorage_EnumFiles("2018 - New CASC\\00002", szListFile);
 //  TestOpenStorage_EnumFiles("2018 - Warcraft III\\11889", NULL);
 
     //
@@ -668,8 +670,8 @@ int main(int argc, char * argv[])
     for(size_t i = 0; StorageInfo[i].szPath != NULL; i++)
     {
         // Attempt to open the storage and extract single file
-        nError = TestOpenStorage_ExtractFiles(StorageInfo[i].szPath, StorageInfo[i].szNameHash, StorageInfo[i].szDataHash, szListFile);
-//      nError = TestOpenStorage_EnumFiles(StorageInfo[i].szPath, szListFile);
+//      nError = TestOpenStorage_ExtractFiles(StorageInfo[i].szPath, StorageInfo[i].szNameHash, StorageInfo[i].szDataHash, szListFile);
+//        nError = TestOpenStorage_EnumFiles(StorageInfo[i].szPath, szListFile);
         if(nError != ERROR_SUCCESS)
             break;
     }

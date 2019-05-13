@@ -71,13 +71,13 @@ PCASC_FILE_NODE CASC_FILE_TREE::InsertNew()
         pFileNode->NameLength = 0;
         pFileNode->Flags = 0;
 
+        // We need to supply a file data id for the new entry, otherwise the rebuilding function
+        // will use the uninitialized one
+        SetExtras(pFileNode, CASC_INVALID_ID, CASC_INVALID_ID, CASC_INVALID_ID);
+
         // If the array pointer changed or we are close to the size of the array, we need to rebuild the maps
         if(NodeTable.ItemArray() != SaveItemArray || (NodeTable.ItemCount() * 3 / 2) > NameMap.HashTableSize())
         {
-            // We need to supply a file data id for the new entry, otherwise the rebuilding function
-            // will use the uninitialized one
-            SetExtras(pFileNode, CASC_INVALID_ID, CASC_INVALID_ID, CASC_INVALID_ID);
-
             // Rebuild both maps. Note that rebuilding also inserts all items to the maps, so no need to insert them here
             if(!RebuildNameMaps())
             {
@@ -113,6 +113,9 @@ bool CASC_FILE_TREE::InsertToIdTable(PCASC_FILE_NODE pFileNode)
         GetExtras(pFileNode, &FileDataId, NULL, NULL);
         if(FileDataId != CASC_INVALID_ID)
         {
+            // Sanity check
+            assert(FileDataId < 0x10000000);
+
             // Insert the element to the array
             RefElement = (PCASC_FILE_NODE *)FileDataIds.InsertAt(FileDataId);
             if(RefElement != NULL)
@@ -347,7 +350,7 @@ PCASC_FILE_NODE CASC_FILE_TREE::InsertByName(PCASC_CKEY_ENTRY pCKeyEntry, const 
             // Insert the file node to the hash map
             InsertToHashTable(pFileNode);
 
-            // Set the file name of the new file node
+            // Set the file name of the new file node. This also increments the number of references
             SetNodeFileName(pFileNode, szFileName);
         }
     }
@@ -400,6 +403,9 @@ PCASC_FILE_NODE CASC_FILE_TREE::InsertById(PCASC_CKEY_ENTRY pCKeyEntry, DWORD Fi
 
             // Insert the file node to the FileDataId array
             InsertToIdTable(pFileNode);
+
+            // Increment the number of references
+            pCKeyEntry->RefCount++;
         }
     }
 
@@ -513,15 +519,13 @@ bool CASC_FILE_TREE::SetNodeFileName(PCASC_FILE_NODE pFileNode, const char * szF
     PCASC_FILE_NODE pFolderNode = NULL;
     const char * szNodeBegin = szFileName;
     char szPathBuffer[MAX_PATH+1];
+    size_t nFileNode = NodeTable.IndexOf(pFileNode);
     size_t i;
     DWORD Parent = 0;
 
     // Sanity checks
     assert(szFileName != NULL && szFileName[0] != 0);
     assert(pFileNode->pCKeyEntry != NULL);
-
-    // Mark the CKey entry as referenced by root handler
-    pFileNode->pCKeyEntry->RefCount++;
 
     // Traverse the entire path. For each subfolder, we insert an appropriate fake entry
     for(i = 0; szFileName[i] != 0; i++)
@@ -571,7 +575,11 @@ bool CASC_FILE_TREE::SetNodeFileName(PCASC_FILE_NODE pFileNode, const char * szF
     // If anything left, this is gonna be our node name
     if(szNodeBegin < szFileName + i)
     {
+        // We need to reset the file node pointer, as the file node table might have changed
+        pFileNode = (PCASC_FILE_NODE)NodeTable.ItemAt(nFileNode);
+        
         SetNodePlainName(pFileNode, szNodeBegin, szFileName + i);
+        pFileNode->pCKeyEntry->RefCount++;
         pFileNode->Parent = Parent;
     }
     return true;

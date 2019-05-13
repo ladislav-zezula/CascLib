@@ -19,7 +19,7 @@ TCascFile * IsValidCascFileHandle(HANDLE hFile)
 {
     TCascFile * hf = (TCascFile *)hFile;
 
-    return (hf != NULL && hf->hs != NULL && hf->szClassName != NULL && !strcmp(hf->szClassName, "TCascFile")) ? hf : NULL;
+    return (hf != NULL && hf->hs != NULL && hf->szClassName != NULL && hf->pCKeyEntry != NULL) ? hf : NULL;
 }
 
 PCASC_CKEY_ENTRY FindCKeyEntry_CKey(TCascStorage * hs, LPBYTE pbCKey, PDWORD PtrIndex)

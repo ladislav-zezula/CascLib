@@ -738,6 +738,13 @@ bool WINAPI CascReadFile(HANDLE hFile, void * pvBuffer, DWORD dwBytesToRead, PDW
         return false;
     }
 
+    // Do not bother if the file is offline
+    if((hf->pCKeyEntry->Flags & CASC_CE_FILE_IS_LOCAL) == 0)
+    {
+        SetLastError(ERROR_FILE_OFFLINE);
+        return false;
+    }
+
     // If the file frames are not loaded yet, do it now
     if(nError == ERROR_SUCCESS)
     {

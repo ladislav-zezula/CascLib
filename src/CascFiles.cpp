@@ -346,7 +346,7 @@ static int LoadQueryKey(TCascStorage * /* hs */, const char * /* szVariableName 
     return LoadMultipleHashes((PQUERY_KEY)pvParam, szDataBegin, szDataEnd);
 }
 
-static int LoadCKeyEntry(TCascStorage * /* hs */, const char * szVariableName, const char * szDataPtr, const char * szDataEnd, void * pvParam)
+static int LoadCKeyEntry(TCascStorage * hs, const char * szVariableName, const char * szDataPtr, const char * szDataEnd, void * pvParam)
 {
     PCASC_CKEY_ENTRY pCKeyEntry = (PCASC_CKEY_ENTRY)pvParam;
     size_t nLength = strlen(szVariableName);
@@ -391,6 +391,9 @@ static int LoadCKeyEntry(TCascStorage * /* hs */, const char * szVariableName, c
                 if(szDataPtr == NULL)
                     return ERROR_BAD_FORMAT;
                 pCKeyEntry->Flags |= CASC_CE_HAS_EKEY;
+
+                // Increment the number of EKey entries loaded from text build file
+                hs->EKeyEntries++;
             }
 
             return (HashCount == 1 || HashCount == 2) ? ERROR_SUCCESS : ERROR_BAD_FORMAT;
@@ -703,9 +706,10 @@ static int ParseFile_BuildInfo(TCascStorage * hs, void * pvListFile)
             {
                 QUERY_KEY TagString = { NULL, 0 };
 
-                if (Csv.GetData(TagString, Indices[0], false) == ERROR_SUCCESS && TagString.cbData != 0)
+                if (Csv.GetData(TagString, Indices[0], false) == ERROR_SUCCESS)
                 {
-                    GetDefaultLocaleMask(hs, &TagString);
+                    if(TagString.cbData != 0)
+                        GetDefaultLocaleMask(hs, &TagString);
                     FreeCascBlob(&TagString);
                 }
             }
