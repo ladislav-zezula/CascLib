@@ -17,7 +17,10 @@
 // Local defines
 
 #define MNDX_MAR_SIGNATURE 0x0052414d           // 'MAR\0'
-#define MAX_MAR_FILES               3           // Maximum of 3 MAR files are supported
+#define MAR_PACKAGE_NAMES           0           // MAR with package names only
+#define MAR_STRIPPED_NAMES          1           // MAR with names where packages were stripped
+#define MAR_FULL_NAMES              2           // MAR with full file names
+#define MAR_COUNT                   3           // Maximum of 3 MAR files are supported
 
 #define MNDX_SEARCH_INITIALIZING    0
 #define MNDX_SEARCH_SEARCHING       2
@@ -26,6 +29,8 @@
 #define MNDX_MAX_ENTRIES(type)  (0xFFFFFFFF / sizeof(type))
 
 #define MNDX_INVALID_SIZE_T        ((size_t)(-1))
+
+#define MNDX_LAST_CKEY_ENTRY       0x80000000
 
 //-----------------------------------------------------------------------------
 // Local structures
@@ -76,13 +81,13 @@ typedef struct _MNDX_PACKAGE
 
 // Root file entry for CASC storages with MNDX root file (Heroes of the Storm)
 // Corresponds to the in-file structure
-typedef struct _MNDX_ROOT_ENTRY
+typedef struct _MNDX_CKEY_ENTRY
 {
     DWORD Flags;                                    // High 8 bits: Flags, low 24 bits: package index
     BYTE  CKey[MD5_HASH_SIZE];                      // Content key for the file
     DWORD ContentSize;                              // Uncompressed file size, in bytes
 
-} MNDX_ROOT_ENTRY, *PMNDX_ROOT_ENTRY;
+} MNDX_CKEY_ENTRY, *PMNDX_CKEY_ENTRY;
 
 typedef struct _FILE_MAR_INFO
 {
@@ -1739,7 +1744,7 @@ class TFileNameDatabase
     }
 
     // HOTS: 1956DA0
-    int CreateDatabase(LPBYTE pbMarData, size_t cbMarData)
+    int Load(LPBYTE pbMarData, size_t cbMarData)
     {
         TByteStream ByteStream;
         DWORD dwSignature;
@@ -2544,7 +2549,7 @@ class TMndxMarFile
         if(pDatabase == NULL)
             return ERROR_NOT_ENOUGH_MEMORY;
 
-        return pDatabase->CreateDatabase(pbMarData, cbMarData);
+        return pDatabase->Load(pbMarData, cbMarData);
     }
 
     // HOTS: 1956C60
@@ -2597,7 +2602,6 @@ class TMndxMarFile
     }
 
 //  protected:
-
     TFileNameDatabase * pDatabase;
     LPBYTE pbMarData;
     size_t cbMarData;
@@ -2616,13 +2620,11 @@ typedef struct _FILE_MNDX_INFO
     DWORD MarInfoOffset;                            // Offset of the first MAR entry info
     DWORD MarInfoCount;                             // Number of the MAR info entries
     DWORD MarInfoSize;                              // Size of the MAR info entry
-    DWORD MndxEntriesOffset;
-    DWORD MndxEntriesTotal;                         // Total number of MNDX root entries
-    DWORD MndxEntriesValid;                         // Number of valid MNDX root entries
-    DWORD MndxEntrySize;                            // Size of one MNDX root entry
-    TMndxMarFile * MarFiles[MAX_MAR_FILES];         // File name list for the packages
-//  PMNDX_ROOT_ENTRY pMndxEntries;
-//  PMNDX_ROOT_ENTRY * ppValidEntries;
+    DWORD CKeyEntriesOffset;                        // Offset of the CKey entries, relative to begin of the root file
+    DWORD CKeyEntriesCount;                         // Number of CKeys (files) in the root file
+    DWORD FileNameCount;                            // Number of unique file names. More files with the same name in the different packages can exist
+    DWORD CKeyEntrySize;                            // Size of one CKey root entry
+    TMndxMarFile * MarFiles[MAR_COUNT];             // File name list for the packages
     bool bRootFileLoaded;                           // true if the root info file was properly loaded
 
 } FILE_MNDX_INFO, *PFILE_MNDX_INFO;
@@ -2648,12 +2650,12 @@ struct TRootHandler_MNDX : public TRootHandler
         PMNDX_PACKAGE pPackage;
         size_t i;
 
-        for(i = 0; i < MAX_MAR_FILES; i++)
+        for(i = 0; i < MAR_COUNT; i++)
             delete MndxInfo.MarFiles[i];
-        if(ppValidEntries != NULL)
-            CASC_FREE(ppValidEntries);
-        if(pMndxEntries != NULL)
-            CASC_FREE(pMndxEntries);
+        if(FileNameIndexToCKeyIndex != NULL)
+            CASC_FREE(FileNameIndexToCKeyIndex);
+        if(pCKeyEntries != NULL)
+            CASC_FREE(pCKeyEntries);
 
         for(i = 0; i < Packages.ItemCount(); i++)
         {
@@ -2719,9 +2721,9 @@ struct TRootHandler_MNDX : public TRootHandler
         return pMatching;
     }
 
-    int SearchMndxInfo(const char * szFileName, DWORD dwPackage, PMNDX_ROOT_ENTRY * ppRootEntry)
+    int SearchMndxInfo(const char * szFileName, DWORD dwPackage, PMNDX_CKEY_ENTRY * ppRootEntry)
     {
-        PMNDX_ROOT_ENTRY pRootEntry;
+        PMNDX_CKEY_ENTRY pRootEntry;
         TMndxSearch Search;
 
         // Search the database for the file name
@@ -2730,18 +2732,18 @@ struct TRootHandler_MNDX : public TRootHandler
             Search.SetSearchMask(szFileName, strlen(szFileName));
 
             // Search the file name in the second MAR info (the one with stripped package names)
-            if(MndxInfo.MarFiles[1]->SearchFile(&Search) != ERROR_SUCCESS)
+            if(MndxInfo.MarFiles[MAR_STRIPPED_NAMES]->SearchFile(&Search) != ERROR_SUCCESS)
                 return ERROR_FILE_NOT_FOUND;
 
-            // The found MNDX index must fall into range of valid MNDX entries
-            if(Search.FileNameIndex < MndxInfo.MndxEntriesValid)
+            // The found file name index fall into range of file names
+            if(Search.FileNameIndex < MndxInfo.FileNameCount)
             {
                 // HOTS: E945F4
-                pRootEntry = ppValidEntries[Search.FileNameIndex];
+                pRootEntry = FileNameIndexToCKeyIndex[Search.FileNameIndex];
                 while((pRootEntry->Flags & 0x00FFFFFF) != dwPackage)
                 {
                     // The highest bit serves as a terminator if set
-                    if(pRootEntry->Flags & 0x80000000)
+                    if(pRootEntry->Flags & MNDX_LAST_CKEY_ENTRY)
                         return ERROR_FILE_NOT_FOUND;
 
                     pRootEntry++;
@@ -2759,14 +2761,14 @@ struct TRootHandler_MNDX : public TRootHandler
 
     PCASC_CKEY_ENTRY CheckResultAndFillFindData(TCascStorage * hs, const char * szWildCard, const char * szFileName)
     {
-        PMNDX_ROOT_ENTRY pRootEntry = NULL;
+        PMNDX_CKEY_ENTRY pRootEntry = NULL;
         PMNDX_PACKAGE pPackage;
         const char * szStrippedName;
         char szNormalizedName[MAX_PATH];
         int nError;
 
         // Filter the file names by wildcard
-        if(!CheckWildCard(szFileName, szWildCard))
+        if(!CascCheckWildCard(szFileName, szWildCard))
             return NULL;
 
         // We need the normalized name here
@@ -2815,7 +2817,7 @@ struct TRootHandler_MNDX : public TRootHandler
             bool bFindResult = false;
 
             // Search the next file name
-            MndxInfo.MarFiles[0]->DoSearch(&Search, &bFindResult);
+            MndxInfo.MarFiles[MAR_PACKAGE_NAMES]->DoSearch(&Search, &bFindResult);
             if(bFindResult == false)
                 break;
 
@@ -2870,7 +2872,7 @@ struct TRootHandler_MNDX : public TRootHandler
             return ERROR_FILE_CORRUPT;
 
         // Verify the structure
-        if(MndxInfo.MarInfoCount > MAX_MAR_FILES || MndxInfo.MarInfoSize != sizeof(FILE_MAR_INFO))
+        if(MndxInfo.MarInfoCount > MAR_COUNT || MndxInfo.MarInfoSize != sizeof(FILE_MAR_INFO))
             return ERROR_FILE_CORRUPT;
 
         // Load all MAR infos
@@ -2902,27 +2904,28 @@ struct TRootHandler_MNDX : public TRootHandler
         // HOTS: 00E9503B
         if(nError == ERROR_SUCCESS)
         {
-            if(MndxInfo.MarFiles[0] == NULL || MndxInfo.MarFiles[1] == NULL || MndxInfo.MarFiles[2] == NULL)
+            if(MndxInfo.MarFiles[MAR_PACKAGE_NAMES] == NULL || MndxInfo.MarFiles[MAR_STRIPPED_NAMES] == NULL || MndxInfo.MarFiles[MAR_FULL_NAMES] == NULL)
                 nError = ERROR_BAD_FORMAT;
-            if(MndxInfo.MndxEntrySize != sizeof(MNDX_ROOT_ENTRY))
+            if(MndxInfo.CKeyEntrySize != sizeof(MNDX_CKEY_ENTRY))
                 nError = ERROR_BAD_FORMAT;
         }
 
-        // Load the complete array of MNDX entries
+        // Load the array of Ckey entries. All present files are in the array,
+        // the same names (differentiated by package ID) are groupped together
         if(nError == ERROR_SUCCESS)
         {
             size_t FileNameCount;
 
-            pMarFile = MndxInfo.MarFiles[1];
+            pMarFile = MndxInfo.MarFiles[MAR_STRIPPED_NAMES];
 
             nError = pMarFile->GetFileNameCount(&FileNameCount);
-            if(nError == ERROR_SUCCESS && FileNameCount == MndxInfo.MndxEntriesValid)
+            if(nError == ERROR_SUCCESS && FileNameCount == MndxInfo.FileNameCount)
             {
-                cbToAllocate = MndxInfo.MndxEntriesTotal * MndxInfo.MndxEntrySize;
-                pMndxEntries = (PMNDX_ROOT_ENTRY)CASC_ALLOC(BYTE, cbToAllocate);
-                if(pMndxEntries != NULL)
+                cbToAllocate = MndxInfo.CKeyEntriesCount * MndxInfo.CKeyEntrySize;
+                pCKeyEntries = CASC_ALLOC(MNDX_CKEY_ENTRY, MndxInfo.CKeyEntriesCount);
+                if(pCKeyEntries != NULL)
                 {
-                    if(!CaptureData(pbRootFile + MndxInfo.MndxEntriesOffset, pbRootEnd, pMndxEntries, cbToAllocate))
+                    if(!CaptureData(pbRootFile + MndxInfo.CKeyEntriesOffset, pbRootEnd, pCKeyEntries, cbToAllocate))
                         nError = ERROR_FILE_CORRUPT;
                 }
                 else
@@ -2932,42 +2935,40 @@ struct TRootHandler_MNDX : public TRootHandler
                 nError = ERROR_FILE_CORRUPT;
         }
 
-        // Pick the valid MNDX entries and put them to a separate array
+        // Pick the CKey entries that are the first with a given name
         if(nError == ERROR_SUCCESS)
         {
-            assert(MndxInfo.MndxEntriesValid <= MndxInfo.MndxEntriesTotal);
-            ppValidEntries = CASC_ALLOC(PMNDX_ROOT_ENTRY, MndxInfo.MndxEntriesValid + 1);
-            if(ppValidEntries != NULL)
+            assert(MndxInfo.FileNameCount <= MndxInfo.CKeyEntriesCount);
+            FileNameIndexToCKeyIndex = CASC_ALLOC(PMNDX_CKEY_ENTRY, MndxInfo.FileNameCount + 1);
+            if(FileNameIndexToCKeyIndex != NULL)
             {
-                PMNDX_ROOT_ENTRY pRootEntry = pMndxEntries;
-                DWORD ValidEntryCount = 1; // edx
-                DWORD nIndex1 = 0;
+                PMNDX_CKEY_ENTRY pRootEntry = pCKeyEntries;
+                DWORD nFileNameIndex = 0;
 
-                // The first entry is always valid
-                ppValidEntries[nIndex1++] = pRootEntry;
+                // The first entry is always beginning of a file name group
+                FileNameIndexToCKeyIndex[nFileNameIndex++] = pRootEntry;
 
-                // Put the remaining entries
-                for(i = 0; i < MndxInfo.MndxEntriesTotal; i++, pRootEntry++)
+                // Get the remaining file name groups
+                for(i = 0; i < MndxInfo.CKeyEntriesCount; i++, pRootEntry++)
                 {
-                    if (ValidEntryCount > MndxInfo.MndxEntriesValid)
+                    if (nFileNameIndex > MndxInfo.FileNameCount)
                         break;
 
-                    if (pRootEntry->Flags & 0x80000000)
+                    if (pRootEntry->Flags & MNDX_LAST_CKEY_ENTRY)
                     {
-                        ppValidEntries[nIndex1++] = pRootEntry + 1;
-                        ValidEntryCount++;
+                        FileNameIndexToCKeyIndex[nFileNameIndex++] = pRootEntry + 1;
                     }
                 }
 
-                // Verify the final number of valid entries
-                if ((ValidEntryCount - 1) != MndxInfo.MndxEntriesValid)
+                // Verify the final number of file names
+                if ((nFileNameIndex - 1) != MndxInfo.FileNameCount)
                     nError = ERROR_BAD_FORMAT;
             }
             else
                 nError = ERROR_NOT_ENOUGH_MEMORY;
         }
 
-        // Load the MNDX packages
+        // Load the package names from the 0-th MAR file
         if(nError == ERROR_SUCCESS)
         {
             nError = LoadPackageNames();
@@ -2990,7 +2991,7 @@ struct TRootHandler_MNDX : public TRootHandler
     PCASC_CKEY_ENTRY Search(TCascSearch * hs, PCASC_FIND_DATA pFindData)
     {
         PCASC_CKEY_ENTRY pCKeyEntry = NULL;
-        TMndxMarFile * pMarFile = MndxInfo.MarFiles[2];
+        TMndxMarFile * pMarFile = MndxInfo.MarFiles[MAR_FULL_NAMES];
         TMndxSearch * pSearch = NULL;
         bool bFindResult = false;
 
@@ -3049,8 +3050,8 @@ struct TRootHandler_MNDX : public TRootHandler
 
     FILE_MNDX_INFO MndxInfo;
 
-    PMNDX_ROOT_ENTRY * ppValidEntries;
-    PMNDX_ROOT_ENTRY pMndxEntries;
+    PMNDX_CKEY_ENTRY * FileNameIndexToCKeyIndex;
+    PMNDX_CKEY_ENTRY pCKeyEntries;
     CASC_ARRAY Packages;                        // Linear list of present packages
 };
 

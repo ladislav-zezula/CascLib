@@ -22,7 +22,6 @@ set(SRC_FILES
     src/common/FileStream.cpp
     src/common/FileTree.cpp
     src/common/ListFile.cpp
-    src/common/Map.cpp
     src/common/RootHandler.cpp
     src/jenkins/lookup3.c
     src/CascCommon.cpp

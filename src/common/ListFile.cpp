@@ -181,7 +181,7 @@ bool ListFile_VerifyMD5(void * pvListFile, LPBYTE pbHashMD5)
     assert(pCache->pPos == pCache->pBegin);
 
     // Verify the MD5 hash for the entire block
-    return VerifyDataBlockHash(pCache->pBegin, (DWORD)(pCache->pEnd - pCache->pBegin), pbHashMD5);
+    return CascVerifyDataBlockHash(pCache->pBegin, (DWORD)(pCache->pEnd - pCache->pBegin), pbHashMD5);
 }
 
 size_t ListFile_GetNextLine(void * pvListFile, const char ** pszLineBegin, const char ** pszLineEnd)
@@ -274,7 +274,7 @@ size_t ListFile_GetNext(void * pvListFile, const char * szMask, char * szBuffer,
         }
 
         // If some mask entered, check it
-        if(CheckWildCard(szBuffer, szMask))
+        if(CascCheckWildCard(szBuffer, szMask))
         {
             PtrFileDataId[0] = FileDataId;
             nError = ERROR_SUCCESS;

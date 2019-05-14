@@ -445,7 +445,7 @@ static int TestOpenStorage_EnumFiles(const char * szStorage, const TCHAR * szLis
     LogHelper.SetStartTime();
     if(CascOpenStorage(szFullPath, 0, &hStorage))
     {
-//      FILE * fp = OpenOutputTextFile(hStorage, "E:\\list-%s-%u-002.txt");
+        FILE * fp = OpenOutputTextFile(hStorage, "\\list-%s-%u-002.txt");
 
         // Dump the storage
 //      LogHelper.PrintProgress("Dumping storage ...");
@@ -467,7 +467,7 @@ static int TestOpenStorage_EnumFiles(const char * szStorage, const TCHAR * szLis
             {
                 // There should always be a name
                 assert(cf.szFileName[0] != 0);
-//              fprintf(fp, "%s\n", cf.szFileName);
+                fprintf(fp, "%s\n", cf.szFileName);
 
                 // Show the file name to the user
                 //if((dwFileCount % 5) == 0)
@@ -487,7 +487,7 @@ static int TestOpenStorage_EnumFiles(const char * szStorage, const TCHAR * szLis
         }
 
         CascCloseStorage(hStorage);
-//      fclose(fp);
+        fclose(fp);
 
         LogHelper.PrintTotalTime();
         LogHelper.PrintMessage("Work complete.");
@@ -651,13 +651,13 @@ int main(int argc, char * argv[])
     // Single tests
     //
 
-//  TestOpenStorage_EnumFiles("2014 - Heroes of the Storm\\29049", szListFile);
+    TestOpenStorage_EnumFiles("2014 - Heroes of the Storm\\29049", szListFile);
 //  TestOpenStorage_EnumFiles("2014 - Heroes of the Storm\\50286", szListFile);
 //  TestOpenStorage_EnumFiles("2015 - Diablo III\\30013", szListFile);
 //  TestOpenStorage_EnumFiles("2017 - Starcraft1\\4037", szListFile);
 //  TestOpenStorage_EnumFiles("2015 - Overwatch\\24919", szListFile);
 //  TestOpenStorage_EnumFiles("2017 - Starcraft1\\2457", szListFile);
-    TestOpenStorage_EnumFiles("2016 - WoW\\18125", szListFile);
+//  TestOpenStorage_EnumFiles("2016 - WoW\\18125", szListFile);
 //  TestOpenStorage_EnumFiles("2016 - WoW\\29981", szListFile);
 //  TestOpenStorage_EnumFiles("2016 - WoW\\30123", szListFile);
 //  TestOpenStorage_EnumFiles("2018 - New CASC\\00001", szListFile);

@@ -300,16 +300,16 @@ const XCHAR * GetFileExtension(const XCHAR * szFileName)
 bool IsFileDataIdName(const char * szFileName, DWORD & FileDataId);
 bool IsFileCKeyEKeyName(const char * szFileName, LPBYTE PtrKeyBuffer);
 
-bool CheckWildCard(const char * szString, const char * szWildCard);
+bool CascCheckWildCard(const char * szString, const char * szWildCard);
 
 //-----------------------------------------------------------------------------
 // Hashing functions
 
 ULONGLONG HashStringJenkins(const char * szFileName);
 
-bool IsValidMD5(LPBYTE pbMd5);
-void CalculateDataBlockHash(void * pvDataBlock, DWORD cbDataBlock, LPBYTE md5_hash);
-bool VerifyDataBlockHash(void * pvDataBlock, DWORD cbDataBlock, LPBYTE expected_md5);
+bool CascIsValidMD5(LPBYTE pbMd5);
+void CascCalculateDataBlockHash(void * pvDataBlock, DWORD cbDataBlock, LPBYTE md5_hash);
+bool CascVerifyDataBlockHash(void * pvDataBlock, DWORD cbDataBlock, LPBYTE expected_md5);
 
 //-----------------------------------------------------------------------------
 // Scanning a directory

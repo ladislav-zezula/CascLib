@@ -31,11 +31,9 @@ typedef struct _CASC_FILE_NODE
     USHORT NameLength;                              // Length of the node name (without the zero terminator)
     USHORT Flags;                                   // See CFE_FLAG_XXX
 
-    // Optional: DWORD FileDataId;                  // Only if FTREE_FLAG_USE_DATA_ID specified at create
-    // Optional: DWORD FileSize;                    // Only if FTREE_FLAG_USE_FILE_SIZE specified at create
-    // Optional: DWORD LocaleFlags;                 // Only if FTREE_FLAG_USE_LOCALE_FLAGS specified at create
-    // Optional: DWORD ContentFlags;                // Only if FTREE_FLAG_USE_CONTENT_FLAGS specified at create
-
+    DWORD ExtraValues[4];                           // FileDataId: Only if FTREE_FLAG_USE_DATA_ID specified at create
+                                                    // LocaleFlags: Only if FTREE_FLAG_USE_LOCALE_FLAGS specified at create
+                                                    // ContentFlags: Only if FTREE_FLAG_USE_CONTENT_FLAGS specified at create
 } CASC_FILE_NODE, *PCASC_FILE_NODE;
 
 class CASC_FILE_TREE

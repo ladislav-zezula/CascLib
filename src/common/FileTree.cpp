@@ -246,7 +246,7 @@ bool CASC_FILE_TREE::RebuildNameMaps()
 int CASC_FILE_TREE::Create(DWORD Flags)
 {
     PCASC_FILE_NODE pRootNode;
-    size_t FileNodeSize = sizeof(CASC_FILE_NODE);
+    size_t FileNodeSize = FIELD_OFFSET(CASC_FILE_NODE, ExtraValues);
     int nError;
 
     // Initialize the file tree
@@ -278,6 +278,9 @@ int CASC_FILE_TREE::Create(DWORD Flags)
         ContentFlagsOffset = FileNodeSize;
         FileNodeSize += sizeof(DWORD);
     }
+
+    // Align the file node size to 8 bytes
+    FileNodeSize = ALIGN_TO_SIZE(FileNodeSize, 8);
 
     // Initialize the dynamic array
     nError = NodeTable.Create(FileNodeSize, START_ITEM_COUNT);
