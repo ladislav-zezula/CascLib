@@ -143,6 +143,7 @@ class CASC_ARRAY
     // Invalidates the entire array, but keeps memory allocated
     void Reset()
     {
+        memset(m_pItemArray, 0, m_ItemCountMax * m_ItemSize);
         m_ItemCount = 0;
     }
 

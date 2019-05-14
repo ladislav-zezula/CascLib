@@ -30,9 +30,6 @@ static void FreeSearchHandle(TCascSearch * pSearch)
     // Close (dereference) the archive handle
     if(pSearch->hs != NULL)
     {
-        // Give root handler chance to free its search stuff
-        pSearch->hs->pRootHandler->EndSearch(pSearch);
-
         // Dereference the storage handle
         CascCloseStorage((HANDLE)pSearch->hs);
         pSearch->hs = NULL;

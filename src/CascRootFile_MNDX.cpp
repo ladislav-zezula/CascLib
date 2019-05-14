@@ -75,7 +75,7 @@ typedef struct _MNDX_PACKAGE
 {
     char * szFileName;                              // Pointer to file name
     size_t nLength;                                 // Length of the file name
-    DWORD nIndex;                                   // Package index
+    size_t nIndex;                                  // Package index
 
 } MNDX_PACKAGE, *PMNDX_PACKAGE;
 
@@ -1350,32 +1350,12 @@ class TMndxSearch
         cchSearchMask = 0;
         szFoundPath = NULL;
         cchFoundPath = 0;
-        FileNameIndex = 0;
-        pStruct40 = NULL;
+        nIndex = 0;
     }
 
     // HOTS: 01956F00
     ~TMndxSearch()
-    {
-        FreeStruct40();
-    }
-
-    // HOTS: 01956F30
-    int CreateStruct40()
-    {
-        if(pStruct40 != NULL)
-            return ERROR_INVALID_PARAMETER;
-
-        pStruct40 = new TStruct40();
-        return (pStruct40 != NULL) ? ERROR_SUCCESS : ERROR_NOT_ENOUGH_MEMORY;
-    }
-
-    void FreeStruct40()
-    {
-        if(pStruct40 != NULL)
-            delete pStruct40;
-        pStruct40 = NULL;
-    }
+    {}
 
     // HOTS: 01956E70
     int SetSearchMask(
@@ -1385,20 +1365,19 @@ class TMndxSearch
         if(szSearchMask == NULL && cchSearchMask != 0)
             return ERROR_INVALID_PARAMETER;
 
-        if(pStruct40 != NULL)
-            pStruct40->SearchPhase = MNDX_SEARCH_INITIALIZING;
+        Struct40.SearchPhase = MNDX_SEARCH_INITIALIZING;
 
         szSearchMask = szNewSearchMask;
         cchSearchMask = cchNewSearchMask;
         return ERROR_SUCCESS;
     }
 
+    TStruct40 Struct40;
     const char * szSearchMask;          // Search mask without wildcards
     size_t cchSearchMask;               // Length of the search mask
     const char * szFoundPath;           // Found path name
     size_t cchFoundPath;                // Length of the found path name
-    DWORD FileNameIndex;                // Index of the file name
-    TStruct40 * pStruct40;
+    DWORD nIndex;                       // Index of the file name
 };
 
 //-----------------------------------------------------------------------------
@@ -1421,7 +1400,7 @@ class TPathFragmentTable
     // HOTS: 195A180
     bool ComparePathFragment(TMndxSearch * pSearch, size_t nFragmentOffset)
     {
-        TStruct40 * pStruct40 = pSearch->pStruct40;
+        TStruct40 * pStruct40 = &pSearch->Struct40;
 
         // Do we have path fragment separators in an external structure?
         if(PathMarks.IsEmpty())
@@ -1464,7 +1443,7 @@ class TPathFragmentTable
     // HOTS: 195A3F0
     void CopyPathFragment(TMndxSearch * pSearch, size_t nFragmentOffset)
     {
-        TStruct40 * pStruct40 = pSearch->pStruct40;
+        TStruct40 * pStruct40 = &pSearch->Struct40;
 
         // Do we have path fragment separators in an external structure?
         if (PathMarks.IsEmpty())
@@ -1490,7 +1469,7 @@ class TPathFragmentTable
     // HOTS: 195A570
     bool CompareAndCopyPathFragment(TMndxSearch * pSearch, size_t nFragmentOffset)
     {
-        TStruct40 * pStruct40 = pSearch->pStruct40;
+        TStruct40 * pStruct40 = &pSearch->Struct40;
 
         // Do we have path fragment separators in an external structure?
         if(PathMarks.IsEmpty())
@@ -1787,7 +1766,7 @@ class TFileNameDatabase
     // HOTS: 1957970
     bool ComparePathFragment(TMndxSearch * pSearch)
     {
-        TStruct40 * pStruct40 = pSearch->pStruct40;
+        TStruct40 * pStruct40 = &pSearch->Struct40;
         PHASH_ENTRY pHashEntry;
         DWORD ColTableIndex;
         DWORD HiBitsIndex;
@@ -1884,7 +1863,7 @@ class TFileNameDatabase
     // HOTS: 1957B80
     bool ComparePathFragmentByIndex(TMndxSearch * pSearch, DWORD TableIndex)
     {
-        TStruct40 * pStruct40 = pSearch->pStruct40;
+        TStruct40 * pStruct40 = &pSearch->Struct40;
         PHASH_ENTRY pHashEntry;
         DWORD eax;
 
@@ -1976,7 +1955,7 @@ class TFileNameDatabase
     // HOTS: 1958D70
     void CopyPathFragmentByIndex(TMndxSearch * pSearch, DWORD TableIndex)
     {
-        TStruct40 * pStruct40 = pSearch->pStruct40;
+        TStruct40 * pStruct40 = &pSearch->Struct40;
         PHASH_ENTRY pHashEntry;
 
         // HOTS: 1958D84
@@ -2046,7 +2025,7 @@ class TFileNameDatabase
     // HOTS: 1958B00
     bool CompareAndCopyPathFragment(TMndxSearch * pSearch)
     {
-        TStruct40 * pStruct40 = pSearch->pStruct40;
+        TStruct40 * pStruct40 = &pSearch->Struct40;
         PHASH_ENTRY pHashEntry;
         DWORD HiBitsIndex;
         DWORD ColTableIndex;
@@ -2164,7 +2143,7 @@ class TFileNameDatabase
     // HOTS: 1959010
     bool CompareAndCopyPathFragmentByIndex(TMndxSearch * pSearch, DWORD TableIndex)
     {
-        TStruct40 * pStruct40 = pSearch->pStruct40;
+        TStruct40 * pStruct40 = &pSearch->Struct40;
         PHASH_ENTRY pHashEntry;
 
         // HOTS: 1959024
@@ -2253,7 +2232,7 @@ class TFileNameDatabase
     // HOTS: 1959460
     bool DoSearch(TMndxSearch * pSearch)
     {
-        TStruct40 * pStruct40 = pSearch->pStruct40;
+        TStruct40 * pStruct40 = &pSearch->Struct40;
         TPathStop * pPathStop;
         DWORD edi;
 
@@ -2284,7 +2263,7 @@ class TFileNameDatabase
                 {
                     pSearch->szFoundPath = &pStruct40->PathBuffer[0];
                     pSearch->cchFoundPath = pStruct40->PathBuffer.ItemCount;
-                    pSearch->FileNameIndex = FileNameIndexes.GetItemValueAt(pStruct40->NodeIndex);
+                    pSearch->nIndex = FileNameIndexes.GetItemValueAt(pStruct40->NodeIndex);
                     return true;
                 }
             }
@@ -2362,7 +2341,7 @@ class TFileNameDatabase
                             // HOTS: 1959755
                             pSearch->szFoundPath = &pStruct40->PathBuffer[0];
                             pSearch->cchFoundPath = pStruct40->PathBuffer.ItemCount;
-                            pSearch->FileNameIndex = pPathStop->field_10;
+                            pSearch->nIndex = pPathStop->field_10;
                             return true;
                         }
                     }
@@ -2397,7 +2376,7 @@ class TFileNameDatabase
     // HOTS: 1957EF0
     bool FindFileInDatabase(TMndxSearch * pSearch)
     {
-        TStruct40 * pStruct40 = pSearch->pStruct40;
+        TStruct40 * pStruct40 = &pSearch->Struct40;
 
         pStruct40->NodeIndex = 0;
         pStruct40->PathLength = 0;
@@ -2419,7 +2398,7 @@ class TFileNameDatabase
 
         pSearch->szFoundPath   = pSearch->szSearchMask;
         pSearch->cchFoundPath  = pSearch->cchSearchMask;
-        pSearch->FileNameIndex = FileNameIndexes.GetItemValueAt(pStruct40->NodeIndex);
+        pSearch->nIndex = FileNameIndexes.GetItemValueAt(pStruct40->NodeIndex);
         return true;
     }
 
@@ -2560,14 +2539,9 @@ class TMndxMarFile
         if(pDatabase == NULL)
             return ERROR_INVALID_PARAMETER;
 
-        nError = pSearch->CreateStruct40();
-        if(nError != ERROR_SUCCESS)
-            return nError;
-
         if(!pDatabase->FindFileInDatabase(pSearch))
             nError = ERROR_FILE_NOT_FOUND;
 
-        pSearch->FreeStruct40();
         return nError;
     }
 
@@ -2578,14 +2552,6 @@ class TMndxMarFile
 
         if(pDatabase == NULL)
             return ERROR_INVALID_PARAMETER;
-
-        // Create the pStruct40, if not initialized yet
-        if(pSearch->pStruct40 == NULL)
-        {
-            nError = pSearch->CreateStruct40();
-            if(nError != ERROR_SUCCESS)
-                return nError;
-        }
 
         *pbFindResult = pDatabase->DoSearch(pSearch);
         return nError;
@@ -2625,11 +2591,10 @@ typedef struct _FILE_MNDX_INFO
     DWORD FileNameCount;                            // Number of unique file names. More files with the same name in the different packages can exist
     DWORD CKeyEntrySize;                            // Size of one CKey root entry
     TMndxMarFile * MarFiles[MAR_COUNT];             // File name list for the packages
-    bool bRootFileLoaded;                           // true if the root info file was properly loaded
 
 } FILE_MNDX_INFO, *PFILE_MNDX_INFO;
 
-struct TRootHandler_MNDX : public TRootHandler
+struct TMndxHandler
 {
     public:
 
@@ -2637,15 +2602,12 @@ struct TRootHandler_MNDX : public TRootHandler
     //  Constructor and destructor
     //
 
-    TRootHandler_MNDX()
+    TMndxHandler()
     {
-        memset(&MndxInfo, 0, sizeof(TRootHandler_MNDX) - FIELD_OFFSET(TRootHandler_MNDX, MndxInfo));
-
-        // We have file names and return CKey as result of search
-        dwFeatures |= (CASC_FEATURE_FILE_NAMES | CASC_FEATURE_ROOT_CKEY);
+        memset(this, 0, sizeof(TMndxHandler));
     }
 
-    ~TRootHandler_MNDX()
+    ~TMndxHandler()
     {
         PMNDX_PACKAGE pPackage;
         size_t i;
@@ -2654,8 +2616,7 @@ struct TRootHandler_MNDX : public TRootHandler
             delete MndxInfo.MarFiles[i];
         if(FileNameIndexToCKeyIndex != NULL)
             CASC_FREE(FileNameIndexToCKeyIndex);
-        if(pCKeyEntries != NULL)
-            CASC_FREE(pCKeyEntries);
+        pCKeyEntries = NULL;
 
         for(i = 0; i < Packages.ItemCount(); i++)
         {
@@ -2673,202 +2634,89 @@ struct TRootHandler_MNDX : public TRootHandler
     {
         // Capture the root header
         pbRootPtr = CaptureData(pbRootPtr, pbRootEnd, &MndxHeader, sizeof(FILE_MNDX_HEADER));
-        if(pbRootPtr == NULL)
+        if (pbRootPtr == NULL)
             return NULL;
 
         // Check signature and version
-        if(MndxHeader.Signature != CASC_MNDX_ROOT_SIGNATURE || MndxHeader.FormatVersion > 2 || MndxHeader.FormatVersion < 1)
+        if (MndxHeader.Signature != CASC_MNDX_ROOT_SIGNATURE || MndxHeader.FormatVersion > 2 || MndxHeader.FormatVersion < 1)
             return NULL;
 
         // Passed
         return pbRootPtr + sizeof(FILE_MNDX_HEADER);
     }
 
-    PMNDX_PACKAGE FindMndxPackage(const char * szFileName)
-    {
-        PMNDX_PACKAGE pMatching = NULL;
-        size_t nMaxLength = 0;
-        size_t nLength = strlen(szFileName);
-
-        // Packages must be loaded
-        assert(Packages.ItemCount() != 0);
-
-        //FILE * fp = fopen("E:\\packages.txt", "wt");
-        //for(size_t i = 0; i < hs->pPackages->NameEntries; i++, pPackage++)
-        //{
-        //    if(pPackage->szFileName != NULL)
-        //        fprintf(fp, "%s\n", pPackage->szFileName);
-        //}
-        //fclose(fp);
-
-        // Find the longest matching name
-        for(size_t i = 0; i < Packages.ItemCount(); i++)
-        {
-            PMNDX_PACKAGE pPackage = (PMNDX_PACKAGE)Packages.ItemAt(i);
-
-            if(pPackage->nLength < nLength && pPackage->nLength > nMaxLength)
-            {
-                // Compare the package name
-                if(!strncmp(szFileName, pPackage->szFileName, pPackage->nLength))
-                {
-                    nMaxLength = pPackage->nLength;
-                    pMatching = pPackage;
-                }
-            }
-        }
-
-        // Give the package pointer or NULL if not found
-        return pMatching;
-    }
-
-    int SearchMndxInfo(const char * szFileName, DWORD dwPackage, PMNDX_CKEY_ENTRY * ppRootEntry)
-    {
-        PMNDX_CKEY_ENTRY pRootEntry;
-        TMndxSearch Search;
-
-        // Search the database for the file name
-        if(MndxInfo.bRootFileLoaded)
-        {
-            Search.SetSearchMask(szFileName, strlen(szFileName));
-
-            // Search the file name in the second MAR info (the one with stripped package names)
-            if(MndxInfo.MarFiles[MAR_STRIPPED_NAMES]->SearchFile(&Search) != ERROR_SUCCESS)
-                return ERROR_FILE_NOT_FOUND;
-
-            // The found file name index fall into range of file names
-            if(Search.FileNameIndex < MndxInfo.FileNameCount)
-            {
-                // HOTS: E945F4
-                pRootEntry = FileNameIndexToCKeyIndex[Search.FileNameIndex];
-                while((pRootEntry->Flags & 0x00FFFFFF) != dwPackage)
-                {
-                    // The highest bit serves as a terminator if set
-                    if(pRootEntry->Flags & MNDX_LAST_CKEY_ENTRY)
-                        return ERROR_FILE_NOT_FOUND;
-
-                    pRootEntry++;
-                }
-
-                // Give the root entry pointer to the caller
-                if(ppRootEntry != NULL)
-                    ppRootEntry[0] = pRootEntry;
-                return ERROR_SUCCESS;
-            }
-        }
-
-        return ERROR_FILE_NOT_FOUND;
-    }
-
-    PCASC_CKEY_ENTRY CheckResultAndFillFindData(TCascStorage * hs, const char * szWildCard, const char * szFileName)
-    {
-        PMNDX_CKEY_ENTRY pRootEntry = NULL;
-        PMNDX_PACKAGE pPackage;
-        const char * szStrippedName;
-        char szNormalizedName[MAX_PATH];
-        int nError;
-
-        // Filter the file names by wildcard
-        if(!CascCheckWildCard(szFileName, szWildCard))
-            return NULL;
-
-        // We need the normalized name here
-        NormalizeFileName_LowerSlash(szNormalizedName, szFileName, MAX_PATH);
-
-        // Fill the file size
-        pPackage = FindMndxPackage(szNormalizedName);
-        if(pPackage == NULL)
-            return NULL;
-
-        // Cut the package name off the full path
-        szStrippedName = szNormalizedName + pPackage->nLength;
-        while(szStrippedName[0] == '/')
-            szStrippedName++;
-
-        // Search the package
-        nError = SearchMndxInfo(szStrippedName, pPackage->nIndex, &pRootEntry);
-        if(nError != ERROR_SUCCESS)
-            return NULL;
-
-        // Now try to find the CKey entry
-        return FindCKeyEntry_CKey(hs, pRootEntry->CKey);
-    }
-
     int LoadPackageNames()
     {
+        TMndxMarFile * pMarFile = MndxInfo.MarFiles[MAR_PACKAGE_NAMES];
         TMndxSearch Search;
+        PMNDX_PACKAGE pPackage;
+        size_t nPackageCount = 0x40;
+        bool bFindResult = false;
         int nError;
 
         // Prepare the file name search in the top level directory
         Search.SetSearchMask("", 0);
 
-#ifdef _DEBUG
-//      Search.SetSearchMask("mods/heroes.stormmod/base.stormmaps/maps/heroes/builtin/startingexperience/practicemode01.stormmap/dede.stormdata", 113);
-#endif
         // Allocate initial name list structure
-        nError = Packages.Create<MNDX_PACKAGE>(0x40);
+        pMarFile->GetFileNameCount(&nPackageCount);
+        nError = Packages.Create<MNDX_PACKAGE>(nPackageCount);
         if(nError != ERROR_SUCCESS)
             return nError;
 
+        // Reset the package array
+        Packages.Reset();
+
         // Keep searching as long as we find something
-        for(;;)
+        while(pMarFile->DoSearch(&Search, &bFindResult) == ERROR_SUCCESS && bFindResult)
         {
-            PMNDX_PACKAGE pPackage;
-            char * szFileName;
-            bool bFindResult = false;
+            // Insert new package to the array
+            assert(Search.nIndex < nPackageCount);
+            pPackage = (PMNDX_PACKAGE)Packages.InsertAt(Search.nIndex);
+            if (pPackage != NULL)
+            {
+                // The package mut not be initialized yet
+                assert(pPackage->szFileName == NULL);
 
-            // Search the next file name
-            MndxInfo.MarFiles[MAR_PACKAGE_NAMES]->DoSearch(&Search, &bFindResult);
-            if(bFindResult == false)
-                break;
+                // Allocate space for the file name
+                pPackage->szFileName = CASC_ALLOC(char, Search.cchFoundPath + 1);
+                if (pPackage->szFileName == NULL)
+                    return ERROR_NOT_ENOUGH_MEMORY;
 
-            // Create file name
-            szFileName = CASC_ALLOC(char, Search.cchFoundPath + 1);
-            if(szFileName == NULL)
-                return ERROR_NOT_ENOUGH_MEMORY;
-
-            // Insert the found name to the top level directory list
-            pPackage = (PMNDX_PACKAGE)Packages.Insert(1);
-            if(pPackage == NULL)
-                return ERROR_NOT_ENOUGH_MEMORY;
-
-            // Fill the file name
-            memcpy(szFileName, Search.szFoundPath, Search.cchFoundPath);
-            szFileName[Search.cchFoundPath] = 0;
-
-            // Fill the package structure
-            pPackage->szFileName = szFileName;
-            pPackage->nLength = Search.cchFoundPath;
-            pPackage->nIndex = Search.FileNameIndex;
+                // Fill the package structure
+                memcpy(pPackage->szFileName, Search.szFoundPath, Search.cchFoundPath);
+                pPackage->szFileName[Search.cchFoundPath] = 0;
+                pPackage->nLength = Search.cchFoundPath;
+                pPackage->nIndex = Search.nIndex;
+            }
         }
 
         // Give the packages to the caller
         return ERROR_SUCCESS;
     }
 
-    int Load(FILE_MNDX_HEADER MndxHeader, LPBYTE pbRootFile, LPBYTE pbRootEnd)
+    int Load(const FILE_MNDX_HEADER & MndxHeader, LPBYTE pbRootFile, LPBYTE pbRootEnd)
     {
         TMndxMarFile * pMarFile;
         FILE_MAR_INFO MarInfo;
-        size_t cbToAllocate;
-        DWORD dwFilePointer = 0;
+        size_t nFilePointer = 0;
         DWORD i;
         int nError = ERROR_SUCCESS;
 
         // Copy the header into the MNDX info
         MndxInfo.HeaderVersion = MndxHeader.HeaderVersion;
         MndxInfo.FormatVersion = MndxHeader.FormatVersion;
-        dwFilePointer += sizeof(FILE_MNDX_HEADER);
+        nFilePointer += sizeof(FILE_MNDX_HEADER);
 
         // Header version 2 has 2 extra fields that we need to load
         if(MndxInfo.HeaderVersion == 2)
         {
-            if(!CaptureData(pbRootFile + dwFilePointer, pbRootEnd, &MndxInfo.field_1C, sizeof(DWORD) + sizeof(DWORD)))
+            if(!CaptureData(pbRootFile + nFilePointer, pbRootEnd, &MndxInfo.field_1C, sizeof(DWORD) + sizeof(DWORD)))
                 return ERROR_FILE_CORRUPT;
-            dwFilePointer += sizeof(DWORD) + sizeof(DWORD);
+            nFilePointer += sizeof(DWORD) + sizeof(DWORD);
         }
 
         // Load the rest of the file header
-        if(!CaptureData(pbRootFile + dwFilePointer, pbRootEnd, &MndxInfo.MarInfoOffset, 0x1C))
+        if(!CaptureData(pbRootFile + nFilePointer, pbRootEnd, &MndxInfo.MarInfoOffset, 0x1C))
             return ERROR_FILE_CORRUPT;
 
         // Verify the structure
@@ -2879,8 +2727,8 @@ struct TRootHandler_MNDX : public TRootHandler
         for(i = 0; i < MndxInfo.MarInfoCount; i++)
         {
             // Capture the n-th MAR info
-            dwFilePointer = MndxInfo.MarInfoOffset + (MndxInfo.MarInfoSize * i);
-            if(!CaptureData(pbRootFile + dwFilePointer, pbRootEnd, &MarInfo, sizeof(FILE_MAR_INFO)))
+            nFilePointer = MndxInfo.MarInfoOffset + (MndxInfo.MarInfoSize * i);
+            if(!CaptureData(pbRootFile + nFilePointer, pbRootEnd, &MarInfo, sizeof(FILE_MAR_INFO)))
                 return ERROR_FILE_CORRUPT;
 
             // Allocate MAR_FILE structure
@@ -2914,25 +2762,22 @@ struct TRootHandler_MNDX : public TRootHandler
         // the same names (differentiated by package ID) are groupped together
         if(nError == ERROR_SUCCESS)
         {
-            size_t FileNameCount;
+            size_t CKeyEntriesSize;
+            size_t FileNameCount = 0;
 
             pMarFile = MndxInfo.MarFiles[MAR_STRIPPED_NAMES];
+            nError = ERROR_FILE_CORRUPT;
 
-            nError = pMarFile->GetFileNameCount(&FileNameCount);
-            if(nError == ERROR_SUCCESS && FileNameCount == MndxInfo.FileNameCount)
+            // Capture the array of CKey entries
+            if(pMarFile->GetFileNameCount(&FileNameCount) == ERROR_SUCCESS && FileNameCount == MndxInfo.FileNameCount)
             {
-                cbToAllocate = MndxInfo.CKeyEntriesCount * MndxInfo.CKeyEntrySize;
-                pCKeyEntries = CASC_ALLOC(MNDX_CKEY_ENTRY, MndxInfo.CKeyEntriesCount);
-                if(pCKeyEntries != NULL)
+                CKeyEntriesSize = MndxInfo.CKeyEntriesCount * MndxInfo.CKeyEntrySize;
+                if ((pbRootFile + MndxInfo.CKeyEntriesOffset + CKeyEntriesSize) <= pbRootEnd)
                 {
-                    if(!CaptureData(pbRootFile + MndxInfo.CKeyEntriesOffset, pbRootEnd, pCKeyEntries, cbToAllocate))
-                        nError = ERROR_FILE_CORRUPT;
+                    pCKeyEntries = (PMNDX_CKEY_ENTRY)(pbRootFile + MndxInfo.CKeyEntriesOffset);
+                    nError = ERROR_SUCCESS;
                 }
-                else
-                    nError = ERROR_NOT_ENOUGH_MEMORY;
             }
-            else
-                nError = ERROR_FILE_CORRUPT;
         }
 
         // Pick the CKey entries that are the first with a given name
@@ -2972,78 +2817,103 @@ struct TRootHandler_MNDX : public TRootHandler
         if(nError == ERROR_SUCCESS)
         {
             nError = LoadPackageNames();
-            MndxInfo.bRootFileLoaded = (nError == ERROR_SUCCESS);
+        }
+
+        return nError;
+    }
+
+    int LoadFileNames(TCascStorage * hs, CASC_FILE_TREE & FileTree)
+    {
+        PCASC_CKEY_ENTRY pCKeyEntry;
+        PMNDX_CKEY_ENTRY pRootEntry;
+        PMNDX_CKEY_ENTRY pRootEnd = pCKeyEntries + MndxInfo.CKeyEntriesCount;
+        PMNDX_PACKAGE pPackage;
+        TMndxMarFile * pMarFile = MndxInfo.MarFiles[MAR_STRIPPED_NAMES];
+        TMndxSearch Search;
+        char szFileName[MAX_PATH];
+        bool bFindResult = false;
+        int nError;
+
+        // Setup the search mask
+        Search.SetSearchMask("", 0);
+
+        // Keep searching ad long as we found something
+        while ((nError = pMarFile->DoSearch(&Search, &bFindResult)) == ERROR_SUCCESS && bFindResult)
+        {
+            // Sanity check
+            assert(Search.cchFoundPath < MAX_PATH);
+
+            // The found file name index must fall into range of file names
+            if (Search.nIndex < MndxInfo.FileNameCount)
+            {
+                // Retrieve the first-in-group CKey entry of that name
+                pRootEntry = FileNameIndexToCKeyIndex[Search.nIndex];
+
+                // Now take all files of that name, prepend their package name and insert to file tree
+                while(pRootEntry < pRootEnd)
+                {
+                    // Find the appropriate CKey entry in the central storage
+                    pCKeyEntry = FindCKeyEntry_CKey(hs, pRootEntry->CKey);
+                    if (pCKeyEntry != NULL)
+                    {
+                        size_t nPackageIndex = pRootEntry->Flags & 0x00FFFFFF;
+
+                        // Retrieve the package for this entry
+                        pPackage = (PMNDX_PACKAGE)Packages.ItemAt(nPackageIndex);
+                        if (pPackage != NULL)
+                        {
+                            // Sanity check
+                            assert(pPackage->nIndex == nPackageIndex);
+
+                            // Merge the package name and file name
+                            MakeFileName(szFileName, _countof(szFileName), pPackage, &Search);
+
+                            // Insert the entry to the file tree
+                            FileTree.InsertByName(pCKeyEntry, szFileName);
+                        }
+                    }
+
+                    // Is this the last-in-group entry?
+                    if (pRootEntry->Flags & MNDX_LAST_CKEY_ENTRY)
+                        break;
+                    pRootEntry++;
+                }
+            }
         }
 
         return nError;
     }
 
     //
-    //  Virtual root functions
+    //  Helper functions
     //
 
-    // Searches the file by file name
-    PCASC_CKEY_ENTRY GetFile(TCascStorage * hs, const char * szFileName)
+    void MakeFileName(char * szBuffer, size_t cchBuffer, PMNDX_PACKAGE pPackage, TMndxSearch * pSearch)
     {
-        return CheckResultAndFillFindData(hs, NULL, szFileName);
-    }
+        char * szBufferEnd = szBuffer + cchBuffer - 1;
 
-    PCASC_CKEY_ENTRY Search(TCascSearch * hs, PCASC_FIND_DATA pFindData)
-    {
-        PCASC_CKEY_ENTRY pCKeyEntry = NULL;
-        TMndxMarFile * pMarFile = MndxInfo.MarFiles[MAR_FULL_NAMES];
-        TMndxSearch * pSearch = NULL;
-        bool bFindResult = false;
+        // Buffer length check
+        assert((pPackage->nLength + 1 + pSearch->cchFoundPath + 1) < cchBuffer);
 
-        // If the first time, allocate the structure for the search result
-        if(hs->pRootContext == NULL)
+        // Copy the package name
+        if ((szBuffer + pPackage->nLength) < szBufferEnd)
         {
-            // Create the new search structure
-            pSearch = new TMndxSearch;
-            if(pSearch == NULL)
-                return NULL;
-
-            // Setup the search mask
-            pSearch->SetSearchMask("", 0);
-            hs->pRootContext = pSearch;
+            memcpy(szBuffer, pPackage->szFileName, pPackage->nLength);
+            szBuffer += pPackage->nLength;
         }
 
-        // Make shortcut for the search structure
-        assert(hs->pRootContext != NULL);
-        pSearch = (TMndxSearch *)hs->pRootContext;
+        // Append slash
+        if ((szBuffer + 1) < szBufferEnd)
+            *szBuffer++ = '/';
 
-        // Keep searching
-        for(;;)
+        // Append file name
+        if ((szBuffer + pSearch->cchFoundPath) < szBufferEnd)
         {
-            // Search the next file name
-            pMarFile->DoSearch(pSearch, &bFindResult);
-            if (bFindResult == false)
-                return NULL;
-
-            // Sanity check
-            assert(pSearch->cchFoundPath < MAX_PATH);
-
-            // Fill the file name
-            memcpy(pFindData->szFileName, pSearch->szFoundPath, pSearch->cchFoundPath);
-            pFindData->szFileName[pSearch->cchFoundPath] = 0;
-
-            // Check what we found
-            pCKeyEntry = CheckResultAndFillFindData(hs->hs, hs->szMask, pFindData->szFileName);
-            if(pCKeyEntry != NULL)
-            {
-                pFindData->bCanOpenByName = true;
-                return pCKeyEntry;
-            }
+            memcpy(szBuffer, pSearch->szFoundPath, pSearch->cchFoundPath);
+            szBuffer += pSearch->cchFoundPath;
         }
-    }
 
-    void EndSearch(TCascSearch * pSearch)
-    {
-        if(pSearch != NULL)
-        {
-            delete (TMndxSearch *)pSearch->pRootContext;
-            pSearch->pRootContext = NULL;
-        }
+        szBuffer[0] = 0;
     }
 
     protected:
@@ -3053,6 +2923,36 @@ struct TRootHandler_MNDX : public TRootHandler
     PMNDX_CKEY_ENTRY * FileNameIndexToCKeyIndex;
     PMNDX_CKEY_ENTRY pCKeyEntries;
     CASC_ARRAY Packages;                        // Linear list of present packages
+};
+
+//-----------------------------------------------------------------------------
+// Handler definition for MNDX root file
+
+struct TRootHandler_MNDX : public TFileTreeRoot
+{
+    public:
+
+    TRootHandler_MNDX() : TFileTreeRoot(0)
+    {
+        // MNDX supports file names and CKeys
+        dwFeatures |= CASC_FEATURE_FILE_NAMES | CASC_FEATURE_ROOT_CKEY;
+    }
+
+    int Load(TCascStorage * hs, const FILE_MNDX_HEADER & MndxHeader, LPBYTE pbRootFile, LPBYTE pbRootEnd)
+    {
+        TMndxHandler Handler;
+        int nError;
+
+        // Load and parse the entire MNDX structure
+        nError = Handler.Load(MndxHeader, pbRootFile, pbRootEnd);
+        if (nError == ERROR_SUCCESS)
+        {
+            // Search all file names and insert them into the file tree
+            nError = Handler.LoadFileNames(hs, FileTree);
+        }
+
+        return nError;
+    }
 };
 
 //-----------------------------------------------------------------------------
@@ -3066,14 +2966,14 @@ int RootHandler_CreateMNDX(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFil
     int nError = ERROR_BAD_FORMAT;
 
     // Verify the header of the ROOT file
-    if(TRootHandler_MNDX::CaptureRootHeader(MndxHeader, pbRootFile, pbRootEnd) != NULL)
+    if(TMndxHandler::CaptureRootHeader(MndxHeader, pbRootFile, pbRootEnd) != NULL)
     {
         // Allocate the root handler object
         pRootHandler = new TRootHandler_MNDX();
         if(pRootHandler != NULL)
         {
             // Load the root directory. If load failed, we free the object
-            nError = pRootHandler->Load(MndxHeader, pbRootFile, pbRootEnd);
+            nError = pRootHandler->Load(hs, MndxHeader, pbRootFile, pbRootEnd);
             if(nError != ERROR_SUCCESS)
             {
                 delete pRootHandler;

@@ -265,7 +265,6 @@ typedef struct _TCascSearch
     char * szMask;                                  // Search mask
 
     // Provider-specific data
-    void * pRootContext;                            // Root-specific search context
     size_t nFileIndex;                              // Root-specific search context
     DWORD dwState;                                  // Pointer to the search state (0 = listfile, 1 = nameless, 2 = done)
     DWORD bListFileUsed:1;                          // TRUE: The listfile has already been loaded

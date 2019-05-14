@@ -70,11 +70,6 @@ struct TRootHandler
         return NULL;
     }
 
-    // Cleanup handler. Called when the search is complete.
-    // pSearch - Pointer to the initialized search structure
-    virtual void EndSearch(struct _TCascSearch *)
-    {}
-
     // Returns advanced info from the root file entry.
     // pCKeyEntry - CKey/EKey, depending on which type the root handler provides
     // pFileInfo - Pointer to CASC_FILE_FULL_INFO structure
