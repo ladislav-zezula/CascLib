@@ -453,7 +453,7 @@ static int TestOpenStorage_EnumFiles(const char * szStorage, const TCHAR * szLis
 //      CascDumpStorage(hStorage, NULL);
 
         // Retrieve the total number of files
-        CascGetStorageInfo(hStorage, CascStorageLocalFileCount, &dwTotalFileCount, sizeof(dwTotalFileCount), NULL);
+        CascGetStorageInfo(hStorage, CascStorageTotalFileCount, &dwTotalFileCount, sizeof(dwTotalFileCount), NULL);
 
         // Retrieve the tags
         TestStorageGetTagInfo(hStorage);
@@ -481,6 +481,9 @@ static int TestOpenStorage_EnumFiles(const char * szStorage, const TCHAR * szLis
                 bFileFound = CascFindNextFile(hFind, &cf);
                 dwFileCount++;
             }
+
+            // The file counts should match
+            assert(dwFileCount == dwTotalFileCount);
 
             // Close the search handle
             CascFindClose(hFind);
@@ -510,6 +513,7 @@ static int TestOpenStorage_ExtractFiles(const char * szStorage, const char * szE
     HANDLE hFind;
     TCHAR szFullPath[MAX_PATH];
     DWORD dwTotalFileCount = 0;
+    DWORD dwFileCount = 0;
     const char * szNameHash;
     const char * szDataHash;
     char szTotalBytes[0x20];
@@ -527,7 +531,7 @@ static int TestOpenStorage_ExtractFiles(const char * szStorage, const char * szE
 //      CascDumpStorage(hStorage, "E:\\storage-dump.txt");
 
         // Retrieve the total file count
-        CascGetStorageInfo(hStorage, CascStorageLocalFileCount, &dwTotalFileCount, sizeof(dwTotalFileCount), NULL);
+        CascGetStorageInfo(hStorage, CascStorageTotalFileCount, &dwTotalFileCount, sizeof(dwTotalFileCount), NULL);
         LogHelper.TotalFiles = dwTotalFileCount;
 
         // Init the hasher
@@ -552,7 +556,11 @@ static int TestOpenStorage_ExtractFiles(const char * szStorage, const char * szE
 
                 // Find the next file in CASC
                 bFileFound = CascFindNextFile(hFind, &cf);
+                dwFileCount++;
             }
+
+            // The file counts should match
+            assert(dwFileCount == dwTotalFileCount);
 
             // Close the search handle
             CascFindClose(hFind);
@@ -650,28 +658,25 @@ int main(int argc, char * argv[])
     //
     // Single tests
     //
-
+/*
+    TestOpenStorage_OpenFile("2014 - Heroes of the Storm/30027", "mods\\heroes.stormmod\\teen.stormassets\\assets\\units\\minions\\storm_minion_kingscrest_melee_death\\storm_minion_kingscrest_melee_death_00.m3");
     TestOpenStorage_EnumFiles("2014 - Heroes of the Storm\\29049", szListFile);
-//  TestOpenStorage_EnumFiles("2014 - Heroes of the Storm\\50286", szListFile);
-//  TestOpenStorage_EnumFiles("2015 - Diablo III\\30013", szListFile);
-//  TestOpenStorage_EnumFiles("2017 - Starcraft1\\4037", szListFile);
-//  TestOpenStorage_EnumFiles("2015 - Overwatch\\24919", szListFile);
-//  TestOpenStorage_EnumFiles("2017 - Starcraft1\\2457", szListFile);
-//  TestOpenStorage_EnumFiles("2016 - WoW\\18125", szListFile);
-//  TestOpenStorage_EnumFiles("2016 - WoW\\29981", szListFile);
-//  TestOpenStorage_EnumFiles("2016 - WoW\\30123", szListFile);
-//  TestOpenStorage_EnumFiles("2018 - New CASC\\00001", szListFile);
-//  TestOpenStorage_EnumFiles("2018 - New CASC\\00002", szListFile);
-//  TestOpenStorage_EnumFiles("2018 - Warcraft III\\11889", NULL);
+    TestOpenStorage_EnumFiles("2014 - Heroes of the Storm\\50286", szListFile);
+    TestOpenStorage_EnumFiles("2015 - Diablo III\\30013", szListFile);
+    TestOpenStorage_EnumFiles("2016 - WoW\\18125", szListFile);
+    TestOpenStorage_EnumFiles("2018 - New CASC\\00001", szListFile);
+    TestOpenStorage_EnumFiles("2018 - New CASC\\00002", szListFile);
+    TestOpenStorage_EnumFiles("2018 - Warcraft III\\11889", NULL);
+*/
 
     //
-    // Tests for OpenStorage + EnumAllFiles + ExtractAllFiles
+    // Run the tests for every storage in my collection
     //
     for(size_t i = 0; StorageInfo[i].szPath != NULL; i++)
     {
         // Attempt to open the storage and extract single file
-//      nError = TestOpenStorage_ExtractFiles(StorageInfo[i].szPath, StorageInfo[i].szNameHash, StorageInfo[i].szDataHash, szListFile);
-//        nError = TestOpenStorage_EnumFiles(StorageInfo[i].szPath, szListFile);
+        nError = TestOpenStorage_ExtractFiles(StorageInfo[i].szPath, StorageInfo[i].szNameHash, StorageInfo[i].szDataHash, szListFile);
+//      nError = TestOpenStorage_EnumFiles(StorageInfo[i].szPath, szListFile);
         if(nError != ERROR_SUCCESS)
             break;
     }

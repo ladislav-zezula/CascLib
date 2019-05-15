@@ -51,16 +51,13 @@ static void FreeSearchHandle(TCascSearch * pSearch)
 static TCascSearch * AllocateSearchHandle(TCascStorage * hs, const TCHAR * szListFile, const char * szMask)
 {
     TCascSearch * pSearch;
-    size_t cbToAllocate;
-    size_t CKeyCount = (hs->CKeyArray.ItemCount() + 31) / 32;
 
     // When using the MNDX info, do not allocate the extra bit array
-    cbToAllocate = sizeof(TCascSearch) + (CKeyCount * sizeof(DWORD));
-    pSearch = (TCascSearch *)CASC_ALLOC(BYTE, cbToAllocate);
+    pSearch = CASC_ALLOC(TCascSearch, 1);
     if(pSearch != NULL)
     {
         // Initialize the structure
-        memset(pSearch, 0, cbToAllocate);
+        memset(pSearch, 0, sizeof(TCascSearch));
         pSearch->szClassName = "TCascSearch";
 
         // Save the search handle
@@ -92,21 +89,6 @@ static TCascSearch * AllocateSearchHandle(TCascStorage * hs, const TCHAR * szLis
     }
 
     return pSearch;
-}
-
-static bool FileFoundBefore(TCascSearch * pSearch, PCASC_CKEY_ENTRY pCKeyEntry)
-{
-    size_t CKeyIndex = pSearch->hs->CKeyArray.IndexOf(pCKeyEntry);
-    DWORD IntIndex = (DWORD)(CKeyIndex / 0x20);
-    DWORD BitMask = 1 << (CKeyIndex & 0x1F);
-
-    // If the bit in the map is set, it means that the file was found before
-    if(pSearch->BitArray[IntIndex] & BitMask)
-        return true;
-
-    // Not found before
-    pSearch->BitArray[IntIndex] |= BitMask;
-    return false;
 }
 
 // Reset the search structure. Called before each search
@@ -201,11 +183,8 @@ static bool DoStorageSearch_RootFile(TCascSearch * pSearch, PCASC_FIND_DATA pFin
         if(pCKeyEntry == NULL)
             return false;
 
-        // Remember that this file was found before.
-        // DO NOT exclude files from search while searching by root.
-        // * Multiple file names may be mapped to the same CKey
-        // * Multiple file data ids may be mapped to the same CKey
-        FileFoundBefore(pSearch, pCKeyEntry);
+        // The entry is expected to be referenced by the root directory
+        assert(pCKeyEntry->RefCount != 0);
 
         // Copy the CKey entry to the find data and return it
         return CopyCKeyEntryToFindData(pFindData, pCKeyEntry);
@@ -224,14 +203,12 @@ static bool DoStorageSearch_CKey(TCascSearch * pSearch, PCASC_FIND_DATA pFindDat
     // Check for CKeys that haven't been found yet
     while(pSearch->nFileIndex < nTotalItems)
     {
-        // Locate the CKey entry
+        // Locate the n-th CKey entry. If this entry is not referenced by the root handler, we include it in the search result
         pCKeyEntry = (PCASC_CKEY_ENTRY)hs->CKeyArray.ItemAt(pSearch->nFileIndex++);
-        if((pCKeyEntry->Flags & CASC_CE_HAS_CKEY) == 0)
-            continue;
-
-        // Skip files that have been found before
-        if(!FileFoundBefore(pSearch, pCKeyEntry))
+        if((pCKeyEntry->Flags & CASC_CE_FOLDER_ENTRY) == 0 && pCKeyEntry->RefCount == 0)
+        {
             return CopyCKeyEntryToFindData(pFindData, pCKeyEntry);
+        }
     }
 
     // Nameless search ended
@@ -241,37 +218,37 @@ static bool DoStorageSearch_CKey(TCascSearch * pSearch, PCASC_FIND_DATA pFindDat
 static bool DoStorageSearch(TCascSearch * pSearch, PCASC_FIND_DATA pFindData)
 {
     // State 0: No search done yet
-    if(pSearch->dwState == 0)
+    if(pSearch->nSearchState == 0)
     {
         // Does the search specify listfile?
         if(pSearch->szListFile != NULL)
             pSearch->pCache = ListFile_OpenExternal(pSearch->szListFile);
 
         // Move the search phase to the listfile searching
+        pSearch->nSearchState = 1;
         pSearch->nFileIndex = 0;
-        pSearch->dwState++;
     }
 
     // State 1: Searching the list file
-    if(pSearch->dwState == 1)
+    if(pSearch->nSearchState == 1)
     {
         if(DoStorageSearch_RootFile(pSearch, pFindData))
             return true;
 
         // Move to the nameless search state
+        pSearch->nSearchState = 2;
         pSearch->nFileIndex = 0;
-        pSearch->dwState++;
     }
 
     // State 2: Searching the remaining entries by CKey
-    if(pSearch->dwState == 2 && (pSearch->szMask == NULL || !strcmp(pSearch->szMask, "*")))
+    if(pSearch->nSearchState == 2 && (pSearch->szMask == NULL || !strcmp(pSearch->szMask, "*")))
     {
         if(DoStorageSearch_CKey(pSearch, pFindData))
             return true;
 
         // Move to the final search state
+        pSearch->nSearchState++;
         pSearch->nFileIndex = 0;
-        pSearch->dwState++;
     }
 
     return false;

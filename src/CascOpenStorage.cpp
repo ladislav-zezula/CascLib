@@ -1374,6 +1374,9 @@ static int LoadBuildManifest(TCascStorage * hs, DWORD dwLocaleMask)
             InsertWellKnownFile(hs, "PATCH", hs->PatchFile);
             InsertWellKnownFile(hs, "ROOT", hs->RootFile);
             InsertWellKnownFile(hs, "SIZE", hs->SizeFile);
+
+            // Also reset the total file count. CascGetStorageInfo will update it on next call
+            hs->TotalFiles = 0;
         }
 
         // Free the root file
@@ -1437,6 +1440,30 @@ static int InitializeCascDirectories(TCascStorage * hs, const TCHAR * szPath)
     return nError;
 }
 
+static DWORD GetStorageTotalFileCount(TCascStorage * hs)
+{
+    PCASC_CKEY_ENTRY pCKeyEntry;
+    size_t nItemCount = hs->CKeyArray.ItemCount();
+    DWORD TotalFileCount = 0;
+
+    for(size_t i = 0; i < nItemCount; i++)
+    {
+        if((pCKeyEntry = (PCASC_CKEY_ENTRY)hs->CKeyArray.ItemAt(i)) != NULL)
+        {
+            if((pCKeyEntry->Flags & CASC_CE_FOLDER_ENTRY) == 0)
+            {
+                // If there is zero or one file name reference, we count the item as one file.
+                // If there is more than 1 name reference, we count the file as many times as number of references
+                DWORD RefCount = (pCKeyEntry->RefCount > 0) ? pCKeyEntry->RefCount : 1;
+
+                // Add the number of references to the total file count
+                TotalFileCount += RefCount;
+            }
+        }
+    }
+
+    return TotalFileCount;
+}
 
 static bool GetStorageProduct(TCascStorage * hs, void * pvStorageInfo, size_t cbStorageInfo, size_t * pcbLengthNeeded)
 {
@@ -1679,6 +1706,8 @@ bool WINAPI CascGetStorageInfo(
             break;
 
         case CascStorageTotalFileCount:
+            if(hs->TotalFiles == 0)
+                hs->TotalFiles = GetStorageTotalFileCount(hs);
             dwInfoValue = (DWORD)hs->TotalFiles;
             break;
 

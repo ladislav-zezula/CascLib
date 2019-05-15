@@ -71,32 +71,6 @@ inline DWORD CalcHashValue_String(const char * szString, const char * szStringEn
     return dwHash;
 }
 
-inline int MapCompareMemory08(const void * pvObjectKey, const void * pvKey, size_t /* nKeyLength */)
-{
-    PULONGLONG PtrKey1 = (PULONGLONG)pvObjectKey;
-    PULONGLONG PtrKey2 = (PULONGLONG)pvKey;
-
-    return (PtrKey1[0] == PtrKey2[0]) ? 0 : 1;
-}
-
-inline int MapCompareMemory09(const void * pvObjectKey, const void * pvKey, size_t /* nKeyLength */)
-{
-    PULONGLONG PtrKey1 = (PULONGLONG)pvObjectKey;
-    PULONGLONG PtrKey2 = (PULONGLONG)pvKey;
-    LPBYTE PtrKey1b = (LPBYTE)(PtrKey1 + 1);
-    LPBYTE PtrKey2b = (LPBYTE)(PtrKey2 + 1);
-
-    return (PtrKey1[0] == PtrKey2[0] && PtrKey1b[0] == PtrKey2b[0]) ? 0 : 1;
-}
-
-inline int MapCompareMemory10(const void * pvObjectKey, const void * pvKey, size_t /* nKeyLength */)
-{
-    PULONGLONG PtrKey1 = (PULONGLONG)pvObjectKey;
-    PULONGLONG PtrKey2 = (PULONGLONG)pvKey;
-
-    return (PtrKey1[0] == PtrKey2[0] && PtrKey1[1] == PtrKey2[1]) ? 0 : 1;
-}
-
 //-----------------------------------------------------------------------------
 // Map implementation
 
@@ -130,27 +104,6 @@ class CASC_MAP
                 assert(false);
                 return ERROR_NOT_SUPPORTED;
         }
-
-        // Setup the compare function. We are gonna use memcmp for blocks
-        // of 8, 9 and 16 bytes A LOT, so it will be worth it to make it as fast as possible
-        //switch (m_KeyLength)
-        //{
-        //    case 0x08:
-        //        PfnCompareObject = MapCompareMemory08;
-        //        break;
-
-        //    case 0x09:
-        //        PfnCompareObject = MapCompareMemory09;
-        //        break;
-
-        //    case 0x10:
-        //        PfnCompareObject = MapCompareMemory10;
-        //        break;
-
-        //    default:
-        //        PfnCompareObject = memcmp;
-        //        break;
-        //}
 
         // Calculate the hash table size. Take 133% of the item count and round it up to the next power of two
         // This will make the hash table indexes somewhat more resilient against count changes and will make
@@ -344,7 +297,6 @@ class CASC_MAP
     bool CompareObject_Key(void * pvObject, void * pvKey)
     {
         LPBYTE pbObjectKey = (LPBYTE)pvObject + m_KeyOffset;
-//      return (PfnCompareObject(pbObjectKey, pvKey, m_KeyLength) == 0);
         return (memcmp(pbObjectKey, pvKey, m_KeyLength) == 0);
     }
 
@@ -381,7 +333,6 @@ class CASC_MAP
         return 0;
     }
 
-//  PFNCOMPAREFUNC PfnCompareObject;
     PFNHASHFUNC PfnCalcHashValue;
     void ** m_HashTable;                        // Hash table
     size_t m_HashTableSize;                     // Size of the hash table, in entries. Always a power of two.

@@ -602,6 +602,7 @@ struct TDiabloRoot : public TFileTreeRoot
                     {
                         // Mark the node as directory
                         AppendBackslashToTotalPath(PathBuffer);
+                        pCKeyEntry->Flags |= CASC_CE_FOLDER_ENTRY;
                         pFileNode->Flags |= CFN_FLAG_FOLDER;
 
                         // Load the sub-directory file

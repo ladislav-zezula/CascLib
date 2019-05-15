@@ -36,6 +36,15 @@ typedef struct _CASC_FILE_NODE
                                                     // ContentFlags: Only if FTREE_FLAG_USE_CONTENT_FLAGS specified at create
 } CASC_FILE_NODE, *PCASC_FILE_NODE;
 
+// Common structure for comparing a file node
+typedef struct _CASC_COMPARE_CONTEXT
+{
+    ULONGLONG FileNameHash;
+    const char * szFileName;
+    void * pThis;
+} CASC_COMPARE_CONTEXT, *PCASC_COMPARE_CONTEXT;
+
+// Main structure for the file tree
 class CASC_FILE_TREE
 {
     public:
@@ -52,6 +61,7 @@ class CASC_FILE_TREE
     // Returns an item at the given index. The PathAt also builds the full path of the node
     PCASC_FILE_NODE ItemAt(size_t nItemIndex);
     PCASC_FILE_NODE PathAt(char * szBuffer, size_t cchBuffer, size_t nItemIndex);
+    size_t PathAt(char * szBuffer, size_t cchBuffer, PCASC_FILE_NODE pFileNode);
 
     // Finds a file using its full path, FileDataId or CKey/EKey
     PCASC_FILE_NODE Find(const char * szFullPath, DWORD FileDataId, struct _CASC_FIND_DATA * pFindData);
@@ -87,8 +97,6 @@ class CASC_FILE_TREE
     bool InsertToIdTable(PCASC_FILE_NODE pFileNode);
 
     bool SetNodePlainName(PCASC_FILE_NODE pFileNode, const char * szPlainName, const char * szPlainNameEnd);
-
-    size_t MakePath(PCASC_FILE_NODE pFileNode, char * szBuffer, size_t cchBuffer);
     bool RebuildNameMaps();
 
     CASC_ARRAY NodeTable;                           // Dynamic array that holds all CASC_FILE_NODEs
@@ -102,5 +110,7 @@ class CASC_FILE_TREE
     size_t ContentFlagsOffset;                      // If nonzero, this is the offset of the "ContentFlags" field in the CASC_FILE_NODE
     DWORD KeyLength;                                // Actual length of the key supported by the root handler
 };
+
+typedef CASC_FILE_TREE * PCASC_FILE_TREE;
 
 #endif // __FILETREE_H__

@@ -59,6 +59,7 @@ typedef struct _PATH_BUFFER
 #define CASC_CE_HAS_EKEY_PARTIAL  0x00000008        // The EKey is only partial, padded by zeros. Always used with CASC_CE_HAS_EKEY
 #define CASC_CE_IN_ENCODING       0x00000010        // Present in the ENCODING manifest
 #define CASC_CE_IN_DOWNLOAD       0x00000020        // Present in the DOWNLOAD manifest
+#define CASC_CE_FOLDER_ENTRY      0x00000040        // This CKey entry is a folder
 
 // In-memory representation of a single entry. 
 typedef struct _CASC_CKEY_ENTRY
@@ -70,9 +71,9 @@ typedef struct _CASC_CKEY_ENTRY
     DWORD EncodedSize;                              // Encoded size of the file. 0 if not supported
     DWORD ContentSize;                              // Content size of the file. 0 if not supported
     DWORD Flags;                                    // See CASC_CE_XXX
-    BYTE RefCount;                                  // This is the number of file names referencing this entry
+    USHORT RefCount;                                // This is the number of file names referencing this entry
     BYTE Priority;                                  // Download priority
-    BYTE Alignment[2];
+    BYTE Alignment;
 
 } CASC_CKEY_ENTRY, *PCASC_CKEY_ENTRY;
 

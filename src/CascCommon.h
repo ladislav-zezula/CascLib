@@ -266,10 +266,8 @@ typedef struct _TCascSearch
 
     // Provider-specific data
     size_t nFileIndex;                              // Root-specific search context
-    DWORD dwState;                                  // Pointer to the search state (0 = listfile, 1 = nameless, 2 = done)
+    DWORD nSearchState:8;                           // The current search state (0 = listfile, 1 = nameless, 2 = done)
     DWORD bListFileUsed:1;                          // TRUE: The listfile has already been loaded
-
-    DWORD BitArray[1];                              // Bit array of EKeys. Set for each entry that has already been reported
 
 } TCascSearch;
 
