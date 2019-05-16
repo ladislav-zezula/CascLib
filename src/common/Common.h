@@ -53,13 +53,13 @@ typedef struct _PATH_BUFFER
 // in the storage. Note that the file may be present under several file names.
 
 // Flags for CASC_CKEY_ENTRY::Flags
-#define CASC_CE_FILE_IS_LOCAL     0x00000001        // The file is available locally. Keep this flag to have value of 1
-#define CASC_CE_HAS_CKEY          0x00000002        // The CKey is present in the entry
-#define CASC_CE_HAS_EKEY          0x00000004        // The EKey is present, at least partial one
-#define CASC_CE_HAS_EKEY_PARTIAL  0x00000008        // The EKey is only partial, padded by zeros. Always used with CASC_CE_HAS_EKEY
-#define CASC_CE_IN_ENCODING       0x00000010        // Present in the ENCODING manifest
-#define CASC_CE_IN_DOWNLOAD       0x00000020        // Present in the DOWNLOAD manifest
-#define CASC_CE_FOLDER_ENTRY      0x00000040        // This CKey entry is a folder
+#define CASC_CE_FILE_IS_LOCAL      0x00000001       // The file is available locally. Keep this flag to have value of 1
+#define CASC_CE_HAS_CKEY           0x00000002       // The CKey is present in the entry
+#define CASC_CE_HAS_EKEY           0x00000004       // The EKey is present, at least partial one
+#define CASC_CE_HAS_EKEY_PARTIAL   0x00000008       // The EKey is only partial, padded by zeros. Always used with CASC_CE_HAS_EKEY
+#define CASC_CE_IN_ENCODING        0x00000010       // Present in the ENCODING manifest
+#define CASC_CE_IN_DOWNLOAD        0x00000020       // Present in the DOWNLOAD manifest
+#define CASC_CE_FOLDER_ENTRY       0x00000040       // This CKey entry is a folder
 
 // In-memory representation of a single entry. 
 typedef struct _CASC_CKEY_ENTRY

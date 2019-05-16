@@ -515,7 +515,6 @@ struct TDiabloRoot : public TFileTreeRoot
                     if(CreateAssetFileName(PathBuffer, pEntry->FileIndex, CASC_INVALID_INDEX))
                     {
                         // Insert the entry to the file tree
-//                      fprintf(fp, "%08u %s\n", pEntry->FileIndex, PathBuffer.szBegin);
                         FileTree.InsertByName(pCKeyEntry, PathBuffer.szBegin);
                     }
                 }
@@ -654,8 +653,6 @@ struct TDiabloRoot : public TFileTreeRoot
                     PathBuffer.szPtr = PathBuffer.szBegin + strlen(szPathBuffer);
                 }
 
-//              FILE * fp = fopen("E:\\FileIndex.txt", "wt");
-
                 // Array of DIABLO3_ASSET_ENTRY entries.
                 // These are for files belonging to an asset, without subitem number.
                 // Example: "SoundBank\SoundFile.smp"
@@ -665,8 +662,6 @@ struct TDiabloRoot : public TFileTreeRoot
                 // These are for files belonging to an asset, with a subitem number.
                 // Example: "SoundBank\SoundFile\0001.smp"
                 ParseAssetAndIdxEntries(hs, RootFolders[i], PathBuffer);
-
-//              fclose(fp);
             }
         }
 

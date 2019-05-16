@@ -95,6 +95,7 @@ static bool IsCharDigit(BYTE OneByte)
 static void InitCKeyEntry(PCASC_CKEY_ENTRY pCKeyEntry)
 {
     memset(pCKeyEntry, 0, sizeof(CASC_CKEY_ENTRY));
+    pCKeyEntry->StorageOffset = CASC_INVALID_OFFS64;
     pCKeyEntry->EncodedSize = CASC_INVALID_SIZE;
     pCKeyEntry->ContentSize = CASC_INVALID_SIZE;
 }

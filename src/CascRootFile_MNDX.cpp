@@ -892,14 +892,12 @@ class TSparseArray
         DWORD edx = index;
 
 #ifdef _DEBUG
-/*
-        if (TotalItemCount > 0x200)
-        {
-            FILE * fp = fopen("e:\\Ladik\\Appdir\\CascLib\\doc\\mndx-sparse-array.txt", "wt");
-            Dump(fp);
-            fclose(fp);
-        }
-*/
+        //if (TotalItemCount > 0x200)
+        //{
+        //    FILE * fp = fopen("e:\\Ladik\\Appdir\\CascLib\\doc\\mndx-sparse-array.txt", "wt");
+        //    Dump(fp);
+        //    fclose(fp);
+        //}
 #endif
 
         // If the index is at begin of the group, we just return the start value

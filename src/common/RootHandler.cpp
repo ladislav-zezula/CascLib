@@ -66,14 +66,13 @@ PCASC_CKEY_ENTRY TFileTreeRoot::Search(TCascSearch * pSearch, PCASC_FIND_DATA pF
     // Are we still inside the root directory range?
     while(pSearch->nFileIndex < nMaxFileIndex)
     {
-        //if(pSearch->nFileIndex >= 2823765)
-        //    __debugbreak();
+        //BREAKIF(pSearch->nFileIndex >= 2823765);
 
         // Retrieve the file item
         pFileNode = FileTree.PathAt(pFindData->szFileName, MAX_PATH, pSearch->nFileIndex++);
         if(pFileNode != NULL)
         {
-            // Ignore folders, include unnamed items in the search
+            // Ignore folders and mount points
             if(!(pFileNode->Flags & CFN_FLAG_FOLDER))
             {
                 // Check the wildcard

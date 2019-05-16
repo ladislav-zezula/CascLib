@@ -57,8 +57,12 @@
 
 #define CASC_PACKAGE_BUFFER     0x1000
 
-#ifndef _maxchars
-#define _maxchars(buff)  ((sizeof(buff) / sizeof(buff[0])) - 1)
+#ifdef _DEBUG
+#define BREAK_ON_XKEY3(CKey, v0, v1, v2) if(CKey[0] == v0 && CKey[1] == v1 && CKey[2] == v2) { __debugbreak(); }
+#define BREAKIF(condition)               if(condition)  { __debugbreak(); }
+#else
+#define BREAK_ON_XKEY3(CKey, v0, v1, v2) { /* NOTHING */ }
+#define BREAKIF(condition)               { /* NOTHING */ }
 #endif
 
 //-----------------------------------------------------------------------------
@@ -193,6 +197,7 @@ typedef struct _TCascStorage
     DWORD dwHeaderSpanSize;                         // Size of the header span. Usually 0x1E. Zero on older storages
     DWORD dwDefaultLocale;                          // Default locale, read from ".build.info"
     DWORD dwFeatures;                               // List of CASC features. See CASC_FEATURE_XXX
+    bool bAllowOrphans;                             // If TRUE, then orphaned items are allowed
 
     CBLD_TYPE BuildFileType;                        // Type of the build file
 

@@ -13,38 +13,6 @@
 #include "CascCommon.h"
 
 //-----------------------------------------------------------------------------
-// Local structures
-
-#define BLTE_HEADER_SIGNATURE   0x45544C42      // 'BLTE' header in the data files
-#define BLTE_HEADER_DELTA       0x1E            // Distance of BLTE header from begin of the header area
-#define MAX_ENCODED_HEADER      0x1000          // Starting size for the frame headers
-
-typedef struct _BLTE_ENCODED_HEADER
-{
-    // Header span. Sometimes, on old storages is not present
-    ENCODED_KEY EKey;                           // Encoded key of the data beginning with "BLTE" (byte-reversed)
-    DWORD EncodedSize;                          // Encoded size of the data data beginning with "BLTE" (little endian)
-    BYTE  field_14;                             // Seems to be 1 if the header span has no data
-    BYTE  field_15;                             // Hardcoded to zero (Agent.exe 2.15.0.6296: 01370000->0148E2AA)
-    BYTE  JenkinsHash[4];                       // Jenkins hash (hashlittle2) of the preceding fields (EKey + EncodedSize + field_14 + field_15) (little endian)
-    BYTE  Checksum[4];                          // Checksum of the previous part. See "VerifyHeaderSpan()" for more information.
-
-    // BLTE header. Always present.
-    BYTE  Signature[4];                         // Must be "BLTE"
-    BYTE  HeaderSize[4];                        // Header size in bytes (big endian)
-    BYTE  MustBe0F;                             // Must be 0x0F. Optional, only if HeaderSize != 0
-    BYTE  FrameCount[3];                        // Frame count (big endian). Optional, only if HeaderSize != 0
-} BLTE_ENCODED_HEADER, *PBLTE_ENCODED_HEADER;
-
-typedef struct _BLTE_FRAME
-{
-    BYTE EncodedSize[4];                        // Encoded frame size (big endian)
-    BYTE ContentSize[4];                        // Content frame size (big endian)
-    CONTENT_KEY FrameHash;                      // Hash of the encoded frame
-
-} BLTE_FRAME, *PBLTE_FRAME;
-
-//-----------------------------------------------------------------------------
 // Local functions
 
 static int EnsureDataStreamIsOpen(TCascFile * hf)

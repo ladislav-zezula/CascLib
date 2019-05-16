@@ -192,8 +192,7 @@ struct TRootHandler_WoW : public TFileTreeRoot
         {
             // Set the file data ID
             FileDataId = FileDataId + RootGroup.FileDataIds[i];
-//          if(FileDataId == 2823765)
-//              __debugbreak();
+//          BREAKIF(FileDataId == 2823765);
 
             // Find the item in the central storage. Insert it to the tree
             if((pCKeyEntry = FindCKeyEntry_CKey(hs, pRootEntry->CKey.Value)) != NULL)
