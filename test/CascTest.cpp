@@ -12,11 +12,11 @@
 #define _CRT_SECURE_NO_DEPRECATE
 #define __INCLUDE_CRYPTOGRAPHY__
 #define __CASCLIB_SELF__                    // Don't use CascLib.lib
-#include <io.h>
 #include <stdio.h>
 #include <time.h>
 
 #ifdef _MSC_VER
+#include <io.h>
 #include <crtdbg.h>
 #endif
 
@@ -41,7 +41,7 @@
 #endif
 
 #ifdef PLATFORM_LINUX
-#define CASC_PATH_ROOT "/home/ladik/MPQs"
+#define CASC_PATH_ROOT "/mnt/casc"
 #endif
 
 #ifdef PLATFORM_MAC
@@ -158,35 +158,36 @@ static void MakeShortName(const char * szFileName, DWORD dwOpenFlags, char * szS
     }
 }
 
+static TCHAR * CopyPath(TCHAR * szBuffer, TCHAR * szBufferEnd, const char * szSource)
+{
+    while(szBuffer < szBufferEnd && szSource[0] != 0)
+    {
+        if(szSource[0] == '\\' || szSource[0] == '/')
+            *szBuffer++ = PATH_SEP_CHAR;
+        else
+            *szBuffer++ = szSource[0];
+        
+        szSource++;
+    }
+    
+    szBuffer[0] = 0;
+    return szBuffer;
+}        
+
 static TCHAR * MakeFullPath(const char * szStorage, TCHAR * szBuffer, size_t ccBuffer)
 {
     TCHAR * szBufferEnd = szBuffer + ccBuffer - 1;
     const char * szPathRoot = CASC_PATH_ROOT;
 
-    // If we can access the file directly, use the path as-is
-    if(_access(szStorage, 0) != -1)
+    // If we can not access the folder directly, we copy the path root
+    if(_access(szStorage, 0) == -1)
     {
-        while(szStorage[0] != 0 && szBuffer < szBufferEnd)
-            *szBuffer++ = *szStorage++;
+        szBuffer = CopyPath(szBuffer, szBufferEnd, szPathRoot);
+        szBuffer = CopyPath(szBuffer, szBufferEnd, PATH_SEP_STRING);
     }
-    else
-    {
-        // Copy the path prefix
-        while(szBuffer < szBufferEnd && szPathRoot[0] != 0)
-            *szBuffer++ = *szPathRoot++;
-
-        // Append the separator
-        if(szBuffer < szBufferEnd)
-            *szBuffer++ = PATH_SEP_CHAR;
-
-        // Append the rest
-        while(szBuffer < szBufferEnd && szStorage[0] != 0)
-            *szBuffer++ = *szStorage++;
-    }
-
-    // Append zero and exit
-    szBuffer[0] = 0;
-    return szBuffer;
+    
+    // Copy the rest of the path
+    return CopyPath(szBuffer, szBufferEnd, szStorage);
 }
 
 static int ForceCreatePath(TCHAR * szFullPath)

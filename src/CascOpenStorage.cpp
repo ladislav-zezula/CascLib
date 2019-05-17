@@ -567,7 +567,7 @@ static int LoadIndexFile_V2(TCascStorage * hs, CASC_INDEX_HEADER & InHeader, LPB
     return nError;
 }
 
-static int LoadIndexFile(TCascStorage * hs, LPBYTE pbFileData, ULONG cbFileData, DWORD BucketIndex)
+static int LoadIndexFile(TCascStorage * hs, LPBYTE pbFileData, DWORD cbFileData, DWORD BucketIndex)
 {
     CASC_INDEX_HEADER InHeader;
 
@@ -587,7 +587,7 @@ static int LoadIndexFile(TCascStorage * hs, LPBYTE pbFileData, ULONG cbFileData,
 static int LoadIndexFile(TCascStorage * hs, const TCHAR * szFileName, DWORD BucketIndex)
 {
     LPBYTE pbFileData;
-    ULONG cbFileData;
+    DWORD cbFileData;
     int nError = ERROR_SUCCESS;
 
     // WoW6 actually reads THE ENTIRE file to memory. Verified on Mac build (x64).

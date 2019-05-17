@@ -196,6 +196,7 @@
   #define _stprintf sprintf
   #define _tremove  remove
   #define _tmkdir   mkdir
+  #define _access   access
 
   #define _stricmp  strcasecmp
   #define _strnicmp strncasecmp
@@ -242,6 +243,10 @@
 #define ERROR_FILE_OFFLINE               1007       // The file is not available in the local storage
 #endif
 
+#ifndef _countof
+#define _countof(x)   (sizeof(x) / sizeof(x[0]))  
+#endif
+  
 //-----------------------------------------------------------------------------
 // Swapping functions
 

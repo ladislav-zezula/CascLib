@@ -461,71 +461,71 @@ static int LoadBuildProductId(TCascStorage * hs, const char * /* szVariableName 
     // Product-specific. See https://wowdev.wiki/TACT#Products
     switch(dwBuildUid)
     {
-        case 'd3':
-        case 'd3b':     // Diablo 3 Beta (2013) 
-        case 'd3cn':    // Diablo 3 China
-        case 'd3t':     // Diablo 3 Test
+        case 0x00006433:    // 'd3'
+        case 0x00643364:    // 'd3b': Diablo 3 Beta (2013) 
+        case 0x6433636e:    // 'd3cn': Diablo 3 China
+        case 0x00643374:    // 'd3t': Diablo 3 Test
             hs->szProductName = "Diablo 3";
             hs->Product = Diablo3;
             break;
 
-        case 'dst2':
+        case 0x64737432:     // 'dst2':
             hs->szProductName = "Destiny 2";
             hs->Product = Destiny2;
             break;
 
-        case 'bnt':     // Heroes of the Storm Alpha 
-        case 'hero':    // Heroes of the Storm Retail
-        case 'stor':    // Heroes of the Storm (deprecated)
+        case 0x00626e74:    // 'bnt': Heroes of the Storm Alpha 
+        case 0x6865726f:    // 'hero': Heroes of the Storm Retail
+        case 0x73746f72:    // 'stor': Heroes of the Storm (deprecated)
             hs->szProductName = "Heroes Of The Storm";
             hs->Product = HeroesOfTheStorm;
             break;
 
-        case 'pro':
-        case 'proc':
-        case 'prod':    // "prodev": Overwatch Dev
-        case 'proe':    // Not on public CDNs
-        case 'prot':    // Overwatch Test
-        case 'prov':    // Overwatch Vendor
-        case 'prom':    // "proms": Overwatch World Cup Viewer
+        case 0x0070726f:    // 'pro':
+        case 0x70726f63:    // 'proc':
+        case 0x70726f64:    // 'prod': "prodev": Overwatch Dev
+        case 0x70726f65:    // 'proe': Not on public CDNs
+        case 0x70726f74:    // 'prot': Overwatch Test
+        case 0x70726f76:    // 'prov': Overwatch Vendor
+        case 0x70726f6d:    // 'prom': "proms": Overwatch World Cup Viewer
             hs->szProductName = "Overwatch";
             hs->Product = Overwatch;
             break;
 
-        case 's1':      // StarCraft 1
-        case 's1a':     // Starcraft 1 Alpha
-        case 's1t':     // StarCraft 1 Test
+        case 0x00007331:    // 's1': StarCraft 1
+        case 0x00733161:    // 's1a': Starcraft 1 Alpha
+        case 0x00733174:    // 's1t': StarCraft 1 Test
             hs->szProductName = "Starcraft 1";
             hs->Product = StarCraft1;
             break;
 
-        case 's2':      // StarCraft 2
-        case 's2b':     // Starcraft 2 Beta
-        case 's2t':     // StarCraft 2 Test
-        case 'sc2':     // StarCraft 2 (deprecated)
+        case 0x00007332:    // 's2': StarCraft 2
+        case 0x00733262:    // 's2b': Starcraft 2 Beta
+        case 0x00733274:    // 's2t': StarCraft 2 Test
+        case 0x00736332:    // 'sc2': StarCraft 2 (deprecated)
             hs->szProductName = "Starcraft 2";
             hs->Product = StarCraft2;
             break;
 
-        case 'vipe':    // "viper", "viperdev", "viperv1": Call of Duty Black Ops 4
+        case 0x76697065:    // "viper", "viperdev", "viperv1": Call of Duty Black Ops 4
             hs->szProductName = "Call Of Duty Black Ops 4";
             hs->Product = CallOfDutyBlackOps4;
             break;
 
-        case 'w3':      // Warcraft III
-        case 'w3t':     // Warcraft III Public Test
-        case 'war3':    // Warcraft III (old)
+        case 0x00007733:    // 'w3': Warcraft III
+        case 0x00773374:    // 'w3t': Warcraft III Public Test
+        case 0x77617233:    // 'war3': Warcraft III (old)
             hs->szProductName = "WarCraft 3";
             hs->Product = WarCraft3;
             break;
 
-        case 'wow':     // World of Warcraft
-        case 'wow_':    // "wow_beta", "wow_classic", "wow_classic_beta"
-        case 'wowd':    // "wowdev", "wowdemo"
-        case 'wowe':    // "wowe1", "wowe3", "wowe3", 
-        case 'wowt':    // World of Warcraft Test
-        case 'wowv':    // World of Warcraft Vendor
-        case 'wowz':    // World of Warcraft Submission (previously Vendor)
+        case 0x00776f77:    // 'wow': World of Warcraft
+        case 0x776f775f:    // "wow_beta", "wow_classic", "wow_classic_beta"
+        case 0x776f7764:    // "wowdev", "wowdemo"
+        case 0x776f7765:    // "wowe1", "wowe3", "wowe3"
+        case 0x776f7774:    // 'wowt': World of Warcraft Test
+        case 0x776f7776:    // 'wowv': World of Warcraft Vendor
+        case 0x776f777a:    // 'wowz': World of Warcraft Submission (previously Vendor)
             hs->szProductName = "World Of Warcraft";
             hs->Product = WorldOfWarcraft;
             break;

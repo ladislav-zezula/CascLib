@@ -110,7 +110,7 @@ LPBYTE LoadExternalFileToMemory(const TCHAR * szFileName, DWORD * pcbFileData)
                 {
                     CASC_FREE(pbFileData);
                     pbFileData = NULL;
-                    cbFileData = NULL;
+                    cbFileData = 0;
                 }
             }
             else

@@ -215,7 +215,7 @@ class TLogHelper
 
     void PrintTotalTime()
     {
-        ULONG TotalTime = SetEndTime();
+        DWORD TotalTime = SetEndTime();
 
         if(TotalTime != 0)
         {
@@ -265,10 +265,10 @@ class TLogHelper
         StartTime = GetCurrentThreadTime();
     }
 
-    ULONG SetEndTime()
+    DWORD SetEndTime()
     {
         EndTime = GetCurrentThreadTime();
-        return (ULONG)(EndTime - StartTime);
+        return (DWORD)(EndTime - StartTime);
     }
 
     void FormatTotalBytes(char * szBuffer, size_t ccBuffer)
@@ -283,12 +283,12 @@ class TLogHelper
             // Are we already dividing?
             if(bDividingOn)
             {
-                szBuffer += sprintf(szBuffer, " %03u", (ULONG)(Bytes / Divider));
+                szBuffer += sprintf(szBuffer, " %03u", (DWORD)(Bytes / Divider));
                 Bytes = Bytes % Divider;
             }
             else if(Bytes > Divider)
             {
-                szBuffer += sprintf(szBuffer, "%u", (ULONG)(Bytes / Divider));
+                szBuffer += sprintf(szBuffer, "%u", (DWORD)(Bytes / Divider));
                 Bytes = Bytes % Divider;
                 bDividingOn = true;
             }

@@ -44,19 +44,6 @@
 //-----------------------------------------------------------------------------
 // CascLib private defines
 
-#define CASC_GAME_HOTS       0x00010000         // Heroes of the Storm
-#define CASC_GAME_WOW6       0x00020000         // World of Warcraft - Warlords of Draenor
-#define CASC_GAME_DIABLO3    0x00030000         // Diablo 3 since PTR 2.2.0
-#define CASC_GAME_OVERWATCH  0x00040000         // Overwatch since PTR 24919
-#define CASC_GAME_STARCRAFT2 0x00050000         // Starcraft II - Legacy of the Void, since build 38996
-#define CASC_GAME_STARCRAFT1 0x00060000         // Starcraft 1 (remastered)
-#define CASC_GAME_WARCRAFT3  0x00070000         // Warcraft III, since version 1.30, build 9655
-#define CASC_GAME_MASK       0xFFFF0000         // Mask for getting game ID
-
-#define CASC_EXTRA_FILES          0x20          // Number of extra entries to be reserved for additionally inserted files
-
-#define CASC_PACKAGE_BUFFER     0x1000
-
 #ifdef _DEBUG
 #define BREAK_ON_XKEY3(CKey, v0, v1, v2) if(CKey[0] == v0 && CKey[1] == v1 && CKey[2] == v2) { __debugbreak(); }
 #define BREAKIF(condition)               if(condition)  { __debugbreak(); }
