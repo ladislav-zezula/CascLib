@@ -74,7 +74,8 @@ typedef struct _STORAGE_INFO
 //-----------------------------------------------------------------------------
 // Local variables
 
-    const TCHAR * szListFile = _T("\\Ladik\\Appdir\\CascLib\\listfile\\listfile.txt");
+static const TCHAR * szListFile1 = _T("\\Ladik\\Appdir\\CascLib\\listfile\\listfile6x.txt");
+static const TCHAR * szListFile2 = _T("\\Ladik\\Appdir\\CascLib\\listfile\\listfile8x.csv");
 
 //-----------------------------------------------------------------------------
 // Local functions
@@ -215,6 +216,25 @@ static int ForceCreatePath(TCHAR * szFullPath)
     }
 
     return ERROR_SUCCESS;
+}
+
+static const TCHAR * GetTheProperListfile(HANDLE hStorage, const TCHAR * szListFile)
+{
+    DWORD dwFeatures = 0;
+
+    // If the caller gave a concrete listfile, use that one
+    if(szListFile != NULL)
+        return szListFile;
+
+    // Check the storage format. If WoW 8.2+, we need the CSV listfile
+    CascGetStorageInfo(hStorage, CascStorageFeatures, &dwFeatures, sizeof(dwFeatures), NULL);
+    if(dwFeatures & CASC_FEATURE_FNAME_HASHES_OPTIONAL)
+        return szListFile2;
+
+    if(dwFeatures & CASC_FEATURE_FNAME_HASHES)
+        return szListFile1;
+
+    return NULL;
 }
 
 static FILE * OpenOutputTextFile(HANDLE hStorage, const char * szFormat)
@@ -434,6 +454,9 @@ static int TestOpenStorage_EnumFiles(const char * szStorage, const TCHAR * szLis
 //      CascDumpStorage(hStorage, "E:\\storage-dump.txt");
 //      CascDumpStorage(hStorage, NULL);
 
+        // Retrieve the listfile needed for enumerating files
+        szListFile = GetTheProperListfile(hStorage, szListFile);
+
         // Retrieve the total number of files
         CascGetStorageInfo(hStorage, CascStorageTotalFileCount, &dwTotalFileCount, sizeof(dwTotalFileCount), NULL);
 
@@ -489,7 +512,7 @@ static int TestOpenStorage_EnumFiles(const char * szStorage, const TCHAR * szLis
     return nError;
 }
 
-static int TestOpenStorage_ExtractFiles(const char * szStorage, const char * szExpectedNameHash, const char * szExpectedDataHash, const TCHAR * szListFile)
+static int TestOpenStorage_ExtractFiles(const char * szStorage, const char * szExpectedNameHash, const char * szExpectedDataHash, const TCHAR * szListFile = NULL)
 {
     CASC_FIND_DATA cf;
     TLogHelper LogHelper(szStorage);
@@ -514,6 +537,9 @@ static int TestOpenStorage_ExtractFiles(const char * szStorage, const char * szE
         // Dump the storage
 //      LogHelper.PrintProgress("Dumping storage ...");
 //      CascDumpStorage(hStorage, "E:\\storage-dump.txt");
+
+        // Retrieve the listfile needed for enumerating files
+        szListFile = GetTheProperListfile(hStorage, szListFile);
 
         // Retrieve the total file count
         CascGetStorageInfo(hStorage, CascStorageTotalFileCount, &dwTotalFileCount, sizeof(dwTotalFileCount), NULL);
@@ -584,36 +610,38 @@ static int TestOpenStorage_ExtractFiles(const char * szStorage, const char * szE
 
 static STORAGE_INFO StorageInfo[] = 
 {
+
     //- Name of the storage folder -------- Compound file name hash ----------- Compound file data hash ----------- Example file to extract -----------------------------------------------------------
     {"2014 - Heroes of the Storm/29049", "98396c1a521e5dee511d835b9e8086c7", "8febac8275e204800e5a4da0259e91c9", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_autoai1.dds"},
-//  {"2014 - Heroes of the Storm/30027", "48d8027d1f1f52c22a6c2999de039663", "ee00dd0f415aaae7b517964af9227871", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_claim1.dds"},
-//  {"2014 - Heroes of the Storm/30414", "a38b7ada09d58a0ef44f01f5c9238eeb", "fc68e89a4492e9959c1b17dd24a89fce", "mods\\heromods\\murky.stormmod\\base.stormdata\\gamedata\\buttondata.xml"},
-//  {"2014 - Heroes of the Storm/31726", "62cedf27ba1cda971fe023169de91d6f", "ca66c0a0850f832434b2e7dd0773747c", "mods\\heroes.stormmod\\base.stormassets\\Assets\\modeltextures.db"},
+    {"2014 - Heroes of the Storm/30027", "6bcbe7c889cc465e4993f92d6ae1ee75", "54ed1440368de80723eddd89931fe191", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_claim1.dds"},
+    {"2014 - Heroes of the Storm/30414", "4b5d1f21de95c2a448684f98cc157f10", "ff32ed33bfcb40e01bf75c8df381eca5", "mods\\heromods\\murky.stormmod\\base.stormdata\\gamedata\\buttondata.xml"},
+    {"2014 - Heroes of the Storm/31726", "8b7633e519b78c96c85a1faa1c9f151f", "a0fd31d04f1bd6c5b3532c72592abf19", "mods\\heroes.stormmod\\base.stormassets\\Assets\\modeltextures.db"},
     {"2014 - Heroes of the Storm/39445", "c672b26f8f14ab2e68a9f9d7d6ca6062", "5ab7d596b5d6025072d7f331b3d7167a", "versions.osxarchive\\Versions\\Base39153\\Heroes.app\\Contents\\_CodeSignature\\CodeResources"},
     {"2014 - Heroes of the Storm/50286", "d1d57e83cbd72cbecd76916c22f6c4b6", "572598a728ac46dd18278636394c4fbc", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
-//  {"2014 - Heroes of the Storm/65943", "9dd64ac0f43d1e67bcbc3ade27e6faa6", "fa9ec8110527fe0855ad68951d35f4de", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
+    {"2014 - Heroes of the Storm/65943", "c5d75f4e12dbc05d4560fe61c4b88773", "981b882e090bdc027910ba70744c0e2c", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
 
     {"2015 - Diablo III/30013",          "468e6a5aa8d786ac038ed2cfe5119b54", "b642f0dd232c591f05e6bdd65e28da82", "ENCODING"},
-//  {"2015 - Diablo III/50649",          "ff896a9f3c52f23326e9d88f133443d0", "d628554699d6b0764757ec421645caab", "ENCODING"},
+    {"2015 - Diablo III/50649",          "0889067a005b92186fc0df0553845106", "84f4d3c1815afd69fc7edd8fb403815d", "ENCODING"},
 
-//  {"2015 - Overwatch/24919/data/casc", "96cada34b1e98552ff16224774a8e20a", "348a299aaba1f3d77d7592c55ee5c22a", "ROOT"},
-//  {"2015 - Overwatch/47161",           "fee1d8dc4e763eaa49dcabeebc3875fc", "e6f94b43188a791c05e3a9468e8f3417", "TactManifest\\Win_SPWin_RCN_LesMX_EExt.apm"},
+    {"2015 - Overwatch/24919/data/casc", "53afa15570c29bd40bba4707b607657e", "117073f6e207e8cdcf43b705b80bf120", "ROOT"},
+    {"2015 - Overwatch/47161",           "53db1f3da005211204997a6b50aa71e1", "434d7ff16fe0d283a2dacfc1390cb16e", "TactManifest\\Win_SPWin_RCN_LesMX_EExt.apm"},
 
-//  {"2016 - Starcraft II/45364/\\/",    "9bd5b4588ad6b2976a63258b58c52ac3", "c07ffe613e73a4966ab2fc137130f86e", "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
+    {"2016 - Starcraft II/45364/\\/",    "28f8b15b5bbd87c16796246eac3f800c", "4f5d1cd5453557ef7e10d35975df2b12", "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
 
     {"2016 - WoW/18125",                 "b31531af094f78f58592249c4d216a8e", "5606e21ce4b493ad1c6ce189818245ae", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-//  {"2016 - WoW/18379",                 "501f23575a042e96a640fc0b27e38f2e", "5a47a7d5a943493e2751560df2073379", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-//  {"2016 - WoW/18865",                 "3ca3739c5941dbe07d19d9eef6c4caf1", "798903b59dee4f50f0668b08d7ad3443", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-//  {"2016 - WoW/18888",                 "e9e74cdc739a2a3b7f75adc5889c3982", "d276fb39b7ece7a51bd38e0940c038db", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-//  {"2016 - WoW/19116",                 "df3233caa9f450ac8bd4896dedf458fe", "7f17f5b9334bea3f12f33782a23879a5", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-//  {"2016 - WoW/19342",                 "08435dd4aa28f3026c4dd353515e6131", "4174b8c855c0c466f2f270f5bd6b1318", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-//  {"2016 - WoW/21742",                 "a4e10c21d460426c8a0d0558fdc1cceb", "e031c7f8cd732f5aa048d88277a00d3f", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-//  {"2016 - WoW/22267",                 "7bce9384681232aa7a6a1075b560a22b", "b774baa36e794253c3975c51ff3aa778", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-//  {"2016 - WoW/23420",                 "3aef7cd675ab850005cc693386d09901", "8d9e79eb7913434f5629b193b1eb0fa4", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-//  {"2016 - WoW/29981",                 "125ff65f0bffd8ff502cb7f1fb383247", "081d525b3235de6697897d5dc8cba835", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-//  {"2016 - WoW/30123",                 NULL, "1d84d8682149533d90fdbc46be2fcfc3", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/18379",                 "6beec00c8a16f873b4297a2262e60a82", "1a86f24bfb1076bcbec9a4c9a32b4aeb", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/18865",                 "2f97a490a7c321dda7947f8c6cd7aa78", "d705c852dbbbc1a7e7ebfd43a1a041f1", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/18888",                 "44586978f5ee214ccfef03971435e164", "b24db02e56fc65ee07646658de5698c4", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/19116",                 "a3be9cfd4a15ba184e21eed9ec90417b", "0b68a11d1eae6645f18a453d39aba23a", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/19342",                 "66f0de0cff477e1d8e982683771f1ada", "8e5f45f6892fc6e7a6c90a8544a9383b", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/21742",                 "a357c3cbed98e83ac5cd394ceabc01e8", "b5917c7b388d8d9c0f65f97c1738cb84", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+
+    {"2016 - WoW/22267",                 "7bce9384681232aa7a6a1075b560a22b", "b774baa36e794253c3975c51ff3aa778", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/23420",                 "3aef7cd675ab850005cc693386d09901", "8d9e79eb7913434f5629b193b1eb0fa4", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/29981",                 "125ff65f0bffd8ff502cb7f1fb383247", "081d525b3235de6697897d5dc8cba835", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/30123",                 NULL, "1d84d8682149533d90fdbc46be2fcfc3", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
   
-//  {"2017 - Starcraft1/2457",           NULL, "7a953a1e8713feeebf3a6d29e85731fb", "music\\radiofreezerg.ogg"},
+    {"2017 - Starcraft1/2457",           NULL, "7a953a1e8713feeebf3a6d29e85731fb", "music\\radiofreezerg.ogg"},
     {"2017 - Starcraft1/4037",           "bb2b76d657a841953fe093b75c2bdaf6", "5bf1dc985f0957d3ba92ed9c5431b31b", "music\\radiofreezerg.ogg"},
     {"2017 - Starcraft1/4261",           "59ea96addacccb73938fdf688d7aa29b", "4bade608b78b186a90339aa557ad3332", "music\\radiofreezerg.ogg"},
 
@@ -629,14 +657,10 @@ static STORAGE_INFO StorageInfo[] =
 //-----------------------------------------------------------------------------
 // Main
 
-int main(int argc, char * argv[])
+int main(void)
 {
     int nError = ERROR_SUCCESS;
 
-    // Keep compiler happy
-    szListFile = szListFile;
-    argc = argc;
-    argv = argv;
     printf("\n");
 
 #if defined(_MSC_VER) && defined(_DEBUG)
@@ -647,14 +671,15 @@ int main(int argc, char * argv[])
     // Single tests
     //
 
-    //TestOpenStorage_EnumFiles("2014 - Heroes of the Storm\\29049", szListFile);
-    //TestOpenStorage_EnumFiles("2014 - Heroes of the Storm\\39445", szListFile);
-    //TestOpenStorage_EnumFiles("2014 - Heroes of the Storm\\50286", szListFile);
-    //TestOpenStorage_EnumFiles("2015 - Diablo III\\30013", szListFile);
-    //TestOpenStorage_EnumFiles("2016 - WoW\\18125", szListFile);
-    //TestOpenStorage_EnumFiles("2018 - New CASC\\00001", szListFile);
-    //TestOpenStorage_EnumFiles("2018 - New CASC\\00002", szListFile);
-    //TestOpenStorage_EnumFiles("2018 - Warcraft III\\11889", NULL);
+    //TestOpenStorage_EnumFiles("2014 - Heroes of the Storm\\29049");
+    //TestOpenStorage_EnumFiles("2014 - Heroes of the Storm\\39445");
+    //TestOpenStorage_EnumFiles("2014 - Heroes of the Storm\\50286");
+    //TestOpenStorage_EnumFiles("2015 - Diablo III\\30013");
+    //TestOpenStorage_EnumFiles("2016 - WoW\\18125");
+    //TestOpenStorage_OpenFile("2016 - WoW\\30123", "world/expansion07/doodads/gnome/8gn_gnome_antigravitybackpack_fx.m2");
+    //TestOpenStorage_EnumFiles("2018 - New CASC\\00001");
+    //TestOpenStorage_EnumFiles("2018 - New CASC\\00002");
+    //TestOpenStorage_EnumFiles("2018 - Warcraft III\\11889");
 
     //
     // Run the tests for every storage in my collection
@@ -662,13 +687,13 @@ int main(int argc, char * argv[])
     for(size_t i = 0; StorageInfo[i].szPath != NULL; i++)
     {
         // Attempt to open the storage and extract single file
-        nError = TestOpenStorage_ExtractFiles(StorageInfo[i].szPath, StorageInfo[i].szNameHash, StorageInfo[i].szDataHash, szListFile);
-//      nError = TestOpenStorage_EnumFiles(StorageInfo[i].szPath, szListFile);
+        nError = TestOpenStorage_ExtractFiles(StorageInfo[i].szPath, StorageInfo[i].szNameHash, StorageInfo[i].szDataHash, NULL);
+//      nError = TestOpenStorage_EnumFiles(StorageInfo[i].szPath);
         if(nError != ERROR_SUCCESS)
             break;
     }
 
-#ifdef _MSC_VER                                                          
+#ifdef _MSC_VER
     _CrtDumpMemoryLeaks();
 #endif  // _MSC_VER
 

@@ -21,7 +21,7 @@ static const TCHAR * szAllowedHexChars = _T("0123456789aAbBcCdDeEfF");
 static const TCHAR * szIndexFormat_V1 = _T("data.i%x%x");
 static const TCHAR * szIndexFormat_V2 = _T("%02x%08x.idx");
 
-// Limit for "ohphaned" items - those that are in index files, but are not in ENCODING manifest
+// Limit for "orphaned" items - those that are in index files, but are not in ENCODING manifest
 #define CASC_MAX_ORPHANED_ITEMS 0x100
 
 #ifdef _DEBUG

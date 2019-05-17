@@ -506,8 +506,8 @@ void CascDumpStorage(HANDLE hStorage, const char * szDumpFile)
         fprintf(fp, "=== Basic Storage Info ======================================================\n");
         fprintf(fp, "DataPath:  %s\n", StringFromLPTSTR(hs->szDataPath, szStringBuff, sizeof(szStringBuff)));
         fprintf(fp, "IndexPath: %s\n", StringFromLPTSTR(hs->szIndexPath, szStringBuff, sizeof(szStringBuff)));
-        fprintf(fp, "CDN List:  %s\n", StringFromLPTSTR(hs->szCdnList, szStringBuff, sizeof(szStringBuff)));
         fprintf(fp, "BuildFile: %s\n", StringFromLPTSTR(hs->szBuildFile, szStringBuff, sizeof(szStringBuff)));
+        fprintf(fp, "CDN List:  %s\n", StringFromLPTSTR(hs->szCdnList, szStringBuff, sizeof(szStringBuff)));
         DumpKey(fp, "CDN Config Key: %s\n", hs->CdnConfigKey.pbData, hs->CdnConfigKey.cbData);
         DumpKey(fp, "CDN Build Key:  %s\n", hs->CdnBuildKey.pbData, hs->CdnBuildKey.cbData);
         DumpKey(fp, "Archives Key:   %s\n", hs->ArchivesKey.pbData, hs->ArchivesKey.cbData);

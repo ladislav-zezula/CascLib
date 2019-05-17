@@ -377,7 +377,7 @@ struct TRootHandler_WoW : public TFileTreeRoot
             if(RootFormat == RootFormatWoW82)
             {
                 // Keep going through the listfile
-                while(ListFile_GetNext(pSearch->pCache, pSearch->szMask, szFileName, MAX_PATH, &FileDataId))
+                while(ListFile_GetNext(pSearch->pCache, szFileName, _countof(szFileName), &FileDataId))
                 {
                     // Try to find the file node by file data id
                     pFileNode = FileTree.FindById(FileDataId);

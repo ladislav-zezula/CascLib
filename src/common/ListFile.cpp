@@ -243,7 +243,7 @@ size_t ListFile_GetNextLine(void * pvListFile, char * szBuffer, size_t nMaxChars
     return nLength;
 }
 
-size_t ListFile_GetNext(void * pvListFile, const char * szMask, char * szBuffer, size_t nMaxChars, PDWORD PtrFileDataId)
+size_t ListFile_GetNext(void * pvListFile, char * szBuffer, size_t nMaxChars, PDWORD PtrFileDataId)
 {
     PLISTFILE_CACHE pCache = (PLISTFILE_CACHE)pvListFile;
     size_t nLength = 0;
@@ -273,13 +273,9 @@ size_t ListFile_GetNext(void * pvListFile, const char * szMask, char * szBuffer,
             break;
         }
 
-        // If some mask entered, check it
-        if(CascCheckWildCard(szBuffer, szMask))
-        {
-            PtrFileDataId[0] = FileDataId;
-            nError = ERROR_SUCCESS;
-            break;
-        }
+        // Give the file data id and return true
+        PtrFileDataId[0] = FileDataId;
+        return nLength;
     }
 
     if(nError != ERROR_SUCCESS)

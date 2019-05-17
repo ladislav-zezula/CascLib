@@ -536,7 +536,7 @@ static int LoadBuildProductId(TCascStorage * hs, const char * /* szVariableName 
             assert(false);
             break;
     }
-    
+
     return ERROR_SUCCESS;
 }
 
@@ -715,6 +715,19 @@ static int ParseFile_BuildInfo(TCascStorage * hs, void * pvListFile)
                 }
             }
 
+            // If we found version, extract a build number
+            if (Csv.GetColumnIndices(Indices, "Version!STRING:0", NULL))
+            {
+                QUERY_KEY TagString = { NULL, 0 };
+
+                if (Csv.GetData(TagString, Indices[0], false) == ERROR_SUCCESS)
+                {
+                    if(TagString.cbData != 0)
+                        LoadBuildNumber(hs, NULL, (const char *)TagString.pbData, (const char *)(TagString.pbData + TagString.cbData), NULL);
+                    FreeCascBlob(&TagString);
+                }
+            }
+
             // Build and Config keys are the ones we do really need
             return (hs->CdnConfigKey.cbData == MD5_HASH_SIZE && hs->CdnBuildKey.cbData == MD5_HASH_SIZE) ? ERROR_SUCCESS : ERROR_BAD_FORMAT;
         }
@@ -869,6 +882,21 @@ static int ParseFile_CdnBuild(TCascStorage * hs, void * pvListFile)
         // Load a directory entry to the VFS
         if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "vfs-*", LoadVfsRootEntry, &hs->VfsRootList))
             continue;
+    }
+
+    // Special case: Some builds of WoW (22267) don't have the variable in the build file
+    if(hs->szProductName == NULL || hs->Product == UnknownProduct)
+    {
+        if(hs->szCdnList != NULL)
+        {
+            TCHAR * szPlainName = (TCHAR *)GetPlainFileName(hs->szCdnList);
+
+            if(szPlainName[0] == 'w' && szPlainName[1] == 'o' && szPlainName[2] == 'w')
+            {
+                hs->szProductName = "World Of Warcraft";
+                hs->Product = WorldOfWarcraft;
+            }
+        }
     }
 
     // Both CKey and EKey of ENCODING file is required
