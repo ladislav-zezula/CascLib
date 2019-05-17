@@ -91,7 +91,7 @@ typedef struct _FILE_EKEY_ENTRY
 // https://wowdev.wiki/TACT#Encoding_table
 //
 
-#define FILE_MAGIC_ENCODING 'NE'
+#define FILE_MAGIC_ENCODING 0x4E45                  // 'EN'
 
 // File header of the ENCODING manifest
 typedef struct _FILE_ENCODING_HEADER
@@ -141,7 +141,7 @@ typedef struct _FILE_ESPEC_ENTRY
 // See https://wowdev.wiki/TACT#Download_manifest
 //
 
-#define FILE_MAGIC_DOWNLOAD 'LD'
+#define FILE_MAGIC_DOWNLOAD 0x4C44                  // 'DL'
 
 // File header of the DOWNLOAD manifest
 typedef struct _FILE_DOWNLOAD_HEADER

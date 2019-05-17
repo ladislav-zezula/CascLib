@@ -88,7 +88,7 @@ static int ListFile_GetFileDataId(PLISTFILE_CACHE pCache, PDWORD PtrFileDataId)
     DWORD dwInt32 = 0;
 
     // Set the limit for loading the number
-    szLineEnd = min((szLineBegin + 20), pCache->pEnd);
+    szLineEnd = CASCLIB_MIN((szLineBegin + 20), pCache->pEnd);
 
     // Extract decimal digits from the string
     while(szLineBegin < szLineEnd && '0' <= szLineBegin[0] && szLineBegin[0] <= '9')
