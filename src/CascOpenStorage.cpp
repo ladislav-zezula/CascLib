@@ -1511,7 +1511,8 @@ static bool GetStorageTags(TCascStorage * hs, void * pvStorageInfo, size_t cbSto
             pTags->Tags[i].TagValue = pTag->TagValue;
 
             // Copy the tag name
-            strcpy(szNameBuffer, pTag->szTagName);
+            memcpy(szNameBuffer, pTag->szTagName, pTag->NameLength);
+            szNameBuffer[pTag->NameLength] = 0;
             szNameBuffer = szNameBuffer + pTag->NameLength + 1;
         }
     }
