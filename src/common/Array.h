@@ -19,6 +19,19 @@ class CASC_ARRAY
 {
     public:
 
+    CASC_ARRAY()
+    {
+        m_pItemArray = NULL;
+        m_ItemCountMax = 0;
+        m_ItemCount = 0;
+        m_ItemSize = 0;
+    }
+
+    ~CASC_ARRAY()
+    {
+        Free();
+    }
+
     // Creates an array with a custom element type
     template<typename TYPE>
     int Create(size_t ItemCountMax)
@@ -150,10 +163,8 @@ class CASC_ARRAY
     // Frees the array
     void Free()
     {
-        if (m_pItemArray != NULL)
-            CASC_FREE(m_pItemArray);
-        m_pItemArray = NULL;
-        m_ItemCountMax = m_ItemCount = 0;
+        CASC_FREE(m_pItemArray);
+        m_ItemCountMax = m_ItemCount = m_ItemSize = 0;
     }
 
     protected:

@@ -20,7 +20,6 @@ bool   ListFile_VerifyMD5(void * pvListFile, LPBYTE pbHashMD5);
 size_t ListFile_GetNextLine(void * pvListFile, const char ** pszLineBegin, const char ** pszLineEnd);
 size_t ListFile_GetNextLine(void * pvListFile, char * szBuffer, size_t nMaxChars);
 size_t ListFile_GetNext(void * pvListFile, char * szBuffer, size_t nMaxChars, PDWORD PtrFileDataId);
-void ListFile_Reset(void * pvListFile);
-void ListFile_Free(void * pvListFile);
+LPBYTE ListFile_GetData(void * pvListFile, PDWORD PtrDataSize);
 
 #endif // __LISTFILE_H__

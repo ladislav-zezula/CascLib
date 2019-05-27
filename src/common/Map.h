@@ -78,6 +78,22 @@ class CASC_MAP
 {
     public:
 
+    CASC_MAP()
+    {
+        PfnCalcHashValue = NULL;
+        m_HashTable = NULL;
+        m_HashTableSize = 0;
+        m_ItemCount = 0;
+        m_KeyOffset = 0;
+        m_KeyLength = 0;
+        m_bKeyIsHash = false;
+    }
+
+    ~CASC_MAP()
+    {
+        Free();
+    }
+
     int Create(size_t MaxItems, size_t KeyLength, size_t KeyOffset, KEY_TYPE KeyType = KeyIsHash)
     {
         // Set the class variables
@@ -282,9 +298,9 @@ class CASC_MAP
 
     void Free()
     {
-        if(m_HashTable != NULL)
-            CASC_FREE(m_HashTable);
-        m_HashTable = NULL;
+        PfnCalcHashValue = NULL;
+        CASC_FREE(m_HashTable);
+        m_HashTableSize = 0;
     }
 
     protected:

@@ -15,82 +15,6 @@
 //-----------------------------------------------------------------------------
 // Local functions
 
-static TCascSearch * IsValidSearchHandle(HANDLE hFind)
-{
-    TCascSearch * pSearch = (TCascSearch *)hFind;
-
-    return (pSearch != NULL && pSearch->szClassName != NULL && !strcmp(pSearch->szClassName, "TCascSearch") && pSearch->szMask != NULL) ? pSearch : NULL;
-}
-
-static void FreeSearchHandle(TCascSearch * pSearch)
-{
-    // Only if the storage handle is valid
-    assert(pSearch != NULL);
-
-    // Close (dereference) the archive handle
-    if(pSearch->hs != NULL)
-    {
-        // Dereference the storage handle
-        CascCloseStorage((HANDLE)pSearch->hs);
-        pSearch->hs = NULL;
-    }
-
-    // Free the file cache and frame array
-    if(pSearch->szMask != NULL)
-        CASC_FREE(pSearch->szMask);
-    if(pSearch->szListFile != NULL)
-        CASC_FREE(pSearch->szListFile);
-    if(pSearch->pCache != NULL)
-        ListFile_Free(pSearch->pCache);
-
-    // Free the structure itself
-    pSearch->szClassName = NULL;
-    CASC_FREE(pSearch);
-}
-
-static TCascSearch * AllocateSearchHandle(TCascStorage * hs, const TCHAR * szListFile, const char * szMask)
-{
-    TCascSearch * pSearch;
-
-    // When using the MNDX info, do not allocate the extra bit array
-    pSearch = CASC_ALLOC(TCascSearch, 1);
-    if(pSearch != NULL)
-    {
-        // Initialize the structure
-        memset(pSearch, 0, sizeof(TCascSearch));
-        pSearch->szClassName = "TCascSearch";
-
-        // Save the search handle
-        pSearch->hs = hs;
-        hs->dwRefCount++;
-
-        // If the mask was not given, use default
-        if(szMask == NULL)
-            szMask = "*";
-
-        // Save the other variables
-        if(szListFile != NULL)
-        {
-            pSearch->szListFile = CascNewStr(szListFile, 0);
-            if(pSearch->szListFile == NULL)
-            {
-                FreeSearchHandle(pSearch);
-                return NULL;
-            }
-        }
-
-        // Allocate the search mask
-        pSearch->szMask = CascNewStr(szMask, 0);
-        if(pSearch->szMask == NULL)
-        {
-            FreeSearchHandle(pSearch);
-            return NULL;
-        }
-    }
-
-    return pSearch;
-}
-
 // Reset the search structure. Called before each search
 static void ResetFindData(PCASC_FIND_DATA pFindData)
 {
@@ -117,7 +41,7 @@ static void SupplyFakeFileName(PCASC_FIND_DATA pFindData)
     // If the file can be open by file data id, create fake file name
     if(pFindData->bCanOpenByDataId)
     {
-        sprintf(pFindData->szFileName, "FILE%08X.dat", pFindData->dwFileDataId);
+        CascStrPrintf(pFindData->szFileName, _countof(pFindData->szFileName), "FILE%08X.dat", pFindData->dwFileDataId);
         pFindData->NameType = CascNameDataId;
         return;
     }
@@ -259,16 +183,16 @@ static bool DoStorageSearch(TCascSearch * pSearch, PCASC_FIND_DATA pFindData)
 
 HANDLE WINAPI CascFindFirstFile(
     HANDLE hStorage,
-    const char * szMask,
+    LPCSTR szMask,
     PCASC_FIND_DATA pFindData,
-    const TCHAR * szListFile)
+    LPCTSTR szListFile)
 {
     TCascStorage * hs;
     TCascSearch * pSearch = NULL;
     int nError = ERROR_SUCCESS;
 
     // Check parameters
-    if((hs = IsValidCascStorageHandle(hStorage)) == NULL)
+    if((hs = TCascStorage::IsValid(hStorage)) == NULL)
         nError = ERROR_INVALID_HANDLE;
     if(szMask == NULL || pFindData == NULL)
         nError = ERROR_INVALID_PARAMETER;
@@ -277,7 +201,7 @@ HANDLE WINAPI CascFindFirstFile(
     if(nError == ERROR_SUCCESS)
     {
         // Allocate the search handle
-        pSearch = AllocateSearchHandle(hs, szListFile, szMask);
+        pSearch = new TCascSearch(hs, szListFile, szMask);
         if(pSearch == NULL)
             nError = ERROR_NOT_ENOUGH_MEMORY;
     }
@@ -291,8 +215,7 @@ HANDLE WINAPI CascFindFirstFile(
 
     if(nError != ERROR_SUCCESS)
     {
-        if(pSearch != NULL)
-            FreeSearchHandle(pSearch);
+        delete pSearch;
         pSearch = (TCascSearch *)INVALID_HANDLE_VALUE;
     }
 
@@ -305,7 +228,7 @@ bool WINAPI CascFindNextFile(
 {
     TCascSearch * pSearch;
 
-    pSearch = IsValidSearchHandle(hFind);
+    pSearch = TCascSearch::IsValid(hFind);
     if(pSearch == NULL || pFindData == NULL)
     {
         SetLastError(ERROR_INVALID_PARAMETER);
@@ -320,13 +243,13 @@ bool WINAPI CascFindClose(HANDLE hFind)
 {
     TCascSearch * pSearch;
 
-    pSearch = IsValidSearchHandle(hFind);
+    pSearch = TCascSearch::IsValid(hFind);
     if(pSearch == NULL)
     {
         SetLastError(ERROR_INVALID_PARAMETER);
         return false;
     }
 
-    FreeSearchHandle(pSearch);
+    delete pSearch;
     return true;
 }

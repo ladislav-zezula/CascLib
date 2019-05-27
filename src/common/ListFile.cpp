@@ -146,8 +146,7 @@ void * ListFile_OpenExternal(const TCHAR * szListFile)
                 }
                 else
                 {
-                    ListFile_Free(pCache);
-                    pCache = NULL;
+                    CASC_FREE(pCache);
                 }
             }
         }
@@ -283,21 +282,22 @@ size_t ListFile_GetNext(void * pvListFile, char * szBuffer, size_t nMaxChars, PD
     return nLength;
 }
 
-// Resets the listfile to the begin
-void ListFile_Reset(void * pvListFile)
+LPBYTE ListFile_GetData(void * pvListFile, PDWORD PtrDataSize)
 {
     PLISTFILE_CACHE pCache = (PLISTFILE_CACHE)pvListFile;
+    LPBYTE pbData = NULL;
+    DWORD cbData = 0;
 
-    if(pCache != NULL)
+    // Get data from the list file cache
+    if (pvListFile != NULL)
     {
-        pCache->pPos = pCache->pBegin;
+        pbData = (LPBYTE)pCache->pBegin;
+        cbData = (DWORD)(pCache->pEnd - pCache->pBegin);
     }
+
+    // Give the data to the caller
+    if (PtrDataSize != NULL)
+        PtrDataSize[0] = cbData;
+    return pbData;
 }
 
-void ListFile_Free(void * pvListFile)
-{
-    if(pvListFile != NULL)
-    {
-        CASC_FREE(pvListFile);
-    }
-}

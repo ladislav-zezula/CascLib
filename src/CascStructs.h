@@ -82,6 +82,25 @@ typedef struct _FILE_EKEY_ENTRY
 } FILE_EKEY_ENTRY, *PFILE_EKEY_ENTRY;
 
 //-----------------------------------------------------------------------------
+// The archive index (md5.index) files structures
+// https://wowdev.wiki/TACT#CDN_File_Organization
+
+template <int CHKSUM_LENGTH>
+struct FILE_INDEX_FOOTER
+{
+    BYTE TocHash[MD5_HASH_SIZE];                    // Client tries to read with 0x10, then backs off in size when smaller
+    BYTE Version;                                   // Version of the index header
+    BYTE Reserved[2];                               // Length, in bytes, of the file offset field
+    BYTE PageSizeKB;                                // Length, in kilobytes, of the index page
+    BYTE OffsetBytes;                               // Normally 4 for archive indices, 6 for group indices, and 0 for loose file indices
+    BYTE SizeBytes;                                 // Normally 4
+    BYTE EKeySizeBytes;                             // Normally 16
+    BYTE FooterHashBytes;                           // Normally 8, <= 0x10
+    BYTE ElementCount[4];                           // BigEndian in _old_ versions (e.g. 18179)
+    BYTE FooterHash[CHKSUM_LENGTH];
+};
+
+//-----------------------------------------------------------------------------
 // The ENCODING manifest structures
 //
 // The ENCODING file is in the form of:
@@ -179,7 +198,7 @@ typedef struct _FILE_DOWNLOAD_ENTRY
 // See https://wowdev.wiki/TACT#Install_manifest
 //
 
-#define FILE_MAGIC_INSTALL 'NI'
+#define FILE_MAGIC_INSTALL 0x4E49                   // 'IN'
 
 // File header of the INSTALL manifest
 typedef struct _FILE_INSTALL_HEADER
@@ -195,32 +214,40 @@ typedef struct _FILE_INSTALL_HEADER
 //-----------------------------------------------------------------------------
 // Data file structures
 
-#define BLTE_HEADER_SIGNATURE   0x45544C42      // 'BLTE' header in the data files
-#define BLTE_HEADER_DELTA       0x1E            // Distance of BLTE header from begin of the header area
-#define MAX_ENCODED_HEADER      0x1000          // Starting size for the frame headers
+#define BLTE_HEADER_SIGNATURE   0x45544C42          // 'BLTE' header in the data files
+#define BLTE_HEADER_DELTA       0x1E                // Distance of BLTE header from begin of the header area
+#define MAX_ENCODED_HEADER      0x1000              // Starting size for the frame headers
+
+typedef struct _BLTE_HEADER
+{
+    BYTE  Signature[4];                             // Must be "BLTE"
+    BYTE  HeaderSize[4];                            // Header size in bytes (big endian)
+    BYTE  MustBe0F;                                 // Must be 0x0F. Optional, only if HeaderSize != 0
+    BYTE  FrameCount[3];                            // Frame count (big endian). Optional, only if HeaderSize != 0
+} BLTE_HEADER, *PBLTE_HEADER;
 
 typedef struct _BLTE_ENCODED_HEADER
 {
-    // Header span. Sometimes, on old storages is not present
-    ENCODED_KEY EKey;                           // Encoded key of the data beginning with "BLTE" (byte-reversed)
-    DWORD EncodedSize;                          // Encoded size of the data data beginning with "BLTE" (little endian)
-    BYTE  field_14;                             // Seems to be 1 if the header span has no data
-    BYTE  field_15;                             // Hardcoded to zero (Agent.exe 2.15.0.6296: 01370000->0148E2AA)
-    BYTE  JenkinsHash[4];                       // Jenkins hash (hashlittle2) of the preceding fields (EKey + EncodedSize + field_14 + field_15) (little endian)
-    BYTE  Checksum[4];                          // Checksum of the previous part. See "VerifyHeaderSpan()" for more information.
+    // Header span.
+    ENCODED_KEY EKey;                               // Encoded key of the data beginning with "BLTE" (byte-reversed)
+    DWORD EncodedSize;                              // Encoded size of the data data beginning with "BLTE" (little endian)
+    BYTE  field_14;                                 // Seems to be 1 if the header span has no data
+    BYTE  field_15;                                 // Hardcoded to zero (Agent.exe 2.15.0.6296: 01370000->0148E2AA)
+    BYTE  JenkinsHash[4];                           // Jenkins hash (hashlittle2) of the preceding fields (EKey + EncodedSize + field_14 + field_15) (little endian)
+    BYTE  Checksum[4];                              // Checksum of the previous part. See "VerifyHeaderSpan()" for more information.
 
     // BLTE header. Always present.
-    BYTE  Signature[4];                         // Must be "BLTE"
-    BYTE  HeaderSize[4];                        // Header size in bytes (big endian)
-    BYTE  MustBe0F;                             // Must be 0x0F. Optional, only if HeaderSize != 0
-    BYTE  FrameCount[3];                        // Frame count (big endian). Optional, only if HeaderSize != 0
+    BYTE  Signature[4];                             // Must be "BLTE"
+    BYTE  HeaderSize[4];                            // Header size in bytes (big endian)
+    BYTE  MustBe0F;                                 // Must be 0x0F. Optional, only if HeaderSize != 0
+    BYTE  FrameCount[3];                            // Frame count (big endian). Optional, only if HeaderSize != 0
 } BLTE_ENCODED_HEADER, *PBLTE_ENCODED_HEADER;
 
 typedef struct _BLTE_FRAME
 {
-    BYTE EncodedSize[4];                        // Encoded frame size (big endian)
-    BYTE ContentSize[4];                        // Content frame size (big endian)
-    CONTENT_KEY FrameHash;                      // Hash of the encoded frame
+    BYTE EncodedSize[4];                            // Encoded frame size (big endian)
+    BYTE ContentSize[4];                            // Content frame size (big endian)
+    CONTENT_KEY FrameHash;                          // Hash of the encoded frame
 
 } BLTE_FRAME, *PBLTE_FRAME;
 

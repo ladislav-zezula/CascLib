@@ -79,6 +79,35 @@ void SetLastError(DWORD dwErrCode)
 #endif
 
 //-----------------------------------------------------------------------------
+// Overloaded "new" and "delete" operators
+
+void * operator new(size_t size)
+{
+    return CASC_ALLOC(BYTE, size);
+}
+
+void * operator new[](size_t size)
+{
+    return CASC_ALLOC(BYTE, size);
+}
+
+void operator delete(void * ptr)
+{
+    CASC_FREE(ptr);
+}
+
+void operator delete[](void * ptr)
+{
+    CASC_FREE(ptr);
+}
+
+// For some reason, VS2015 needs this
+void operator delete(void * ptr, size_t)
+{
+    CASC_FREE(ptr);
+}
+
+//-----------------------------------------------------------------------------
 // Linear data stream manipulation
 
 LPBYTE CaptureInteger32(LPBYTE pbDataPtr, LPBYTE pbDataEnd, PDWORD PtrValue)
@@ -149,25 +178,116 @@ LPBYTE CaptureArray_(LPBYTE pbDataPtr, LPBYTE pbDataEnd, LPBYTE * PtrArray, size
 }
 
 //-----------------------------------------------------------------------------
-// String manipulation
+// String copying and conversion
 
-void CopyString(char * szTarget, const char * szSource, size_t cchLength)
+void CascStrCopy(char * szTarget, size_t cchTarget, const char * szSource, size_t cchSource)
 {
-    memcpy(szTarget, szSource, cchLength);
-    szTarget[cchLength] = 0;
+    size_t cchToCopy;
+
+    if (cchTarget > 0)
+    {
+        // Make sure we know the length
+        if (cchSource == -1)
+            cchSource = strlen(szSource);
+        cchToCopy = CASCLIB_MIN((cchTarget - 1), cchSource);
+
+        // Copy the string
+        memcpy(szTarget, szSource, cchToCopy);
+        szTarget[cchToCopy] = 0;
+    }
 }
 
-void CopyString(wchar_t * szTarget, const char * szSource, size_t cchLength)
+void CascStrCopy(char * szTarget, size_t cchTarget, const wchar_t * szSource, size_t cchSource)
 {
-    mbstowcs(szTarget, szSource, cchLength);
-    szTarget[cchLength] = 0;
+    size_t cchToCopy;
+
+    if (cchTarget > 0)
+    {
+        // Make sure we know the length
+        if (cchSource == -1)
+            cchSource = wcslen(szSource);
+        cchToCopy = CASCLIB_MIN((cchTarget - 1), cchSource);
+
+        wcstombs(szTarget, szSource, cchToCopy);
+        szTarget[cchToCopy] = 0;
+    }
 }
 
-void CopyString(char * szTarget, const wchar_t * szSource, size_t cchLength)
+void CascStrCopy(wchar_t * szTarget, size_t cchTarget, const char * szSource, size_t cchSource)
 {
-    wcstombs(szTarget, szSource, cchLength);
-    szTarget[cchLength] = 0;
+    size_t cchToCopy;
+
+    if (cchTarget > 0)
+    {
+        // Make sure we know the length
+        if (cchSource == -1)
+            cchSource = strlen(szSource);
+        cchToCopy = CASCLIB_MIN((cchTarget - 1), cchSource);
+
+        mbstowcs(szTarget, szSource, cchToCopy);
+        szTarget[cchToCopy] = 0;
+    }
 }
+
+void CascStrCopy(wchar_t * szTarget, size_t cchTarget, const wchar_t * szSource, size_t cchSource)
+{
+    size_t cchToCopy;
+
+    if (cchTarget > 0)
+    {
+        // Make sure we know the length
+        if (cchSource == -1)
+            cchSource = wcslen(szSource);
+        cchToCopy = CASCLIB_MIN((cchTarget - 1), cchSource);
+
+        memcpy(szTarget, szSource, cchToCopy * sizeof(wchar_t));
+        szTarget[cchToCopy] = 0;
+    }
+}
+
+//-----------------------------------------------------------------------------
+// Safe version of s(w)printf
+
+size_t CascStrPrintf(char * buffer, size_t nCount, const char * format, ...)
+{
+    char * buffend;
+    va_list argList;
+
+    // Start the argument list
+    va_start(argList, format);
+    
+#ifdef PLATFORM_WINDOWS
+    StringCchVPrintfExA(buffer, nCount, &buffend, NULL, 0, format, argList);
+#else
+    buffend = buffer + vsnprintf(buffer, nCount, format, argList);
+#endif
+    
+    // End the argument list
+    va_end(argList);
+    return (buffend - buffer);
+}
+
+size_t CascStrPrintf(wchar_t * buffer, size_t nCount, const wchar_t * format, ...)
+{
+    wchar_t * buffend;
+    va_list argList;
+
+    // Start the argument list
+    va_start(argList, format);
+
+#ifdef PLATFORM_WINDOWS
+    StringCchVPrintfExW(buffer, nCount, &buffend, NULL, 0, format, argList);
+#else
+    buffend = buffer + vswprintf(buffer, nCount, format, argList);
+#endif
+
+    // End the argument list
+    va_end(argList);
+    return (buffend - buffer);
+}
+
+//-----------------------------------------------------------------------------
+// String allocation
 
 char * CascNewStr(const char * szString, size_t nCharsToReserve)
 {
@@ -207,114 +327,142 @@ wchar_t * CascNewStr(const wchar_t * szString, size_t nCharsToReserve)
     return szNewString;
 }
 
+template <typename XCHAR>
+TCHAR * AppendPathFragment(TCHAR * szBuffer, TCHAR * szBufferEnd, const XCHAR * szPath, char chSeparator, bool bFirstFragment = false)
+{
+    // The "Path" must not be empty
+    if(szPath && szPath[0])
+    {
+        // Append the path separator after the first fragment
+        if(szBuffer < szBufferEnd && bFirstFragment == false)
+        {
+            if(szBuffer[-1] != chSeparator)
+            {
+                *szBuffer++ = chSeparator;
+            }
+        }
+
+        // Copy the sub path
+        while(szBuffer < szBufferEnd && szPath[0] != 0)
+        {
+            // If there is a path separator, we skip it (all of them) and put single separator there
+            if(szPath[0] == '\\' || szPath[0] == '/')
+            {
+                while(szPath[0] == '\\' || szPath[0] == '/')
+                    szPath++;
+                *szBuffer++ = chSeparator;
+            }
+            else
+            {
+                *szBuffer++ = *szPath++;
+            }
+        }
+
+        // Append end of string
+        szBuffer[0] = 0;
+    }
+
+    return szBuffer;
+}
+
+TCHAR * GetLastPathPart(TCHAR * szWorkPath)
+{
+    size_t nLength = _tcslen(szWorkPath);
+
+    // Go one character back
+    if(nLength > 0)
+        nLength--;
+
+    // Cut ending (back)slashes, if any
+    while(nLength > 0 && (szWorkPath[nLength] == _T('\\') || szWorkPath[nLength] == _T('/')))
+        nLength--;
+
+    // Cut the last path part
+    while(nLength > 0)
+    {
+        // End of path?
+        if(szWorkPath[nLength] == _T('\\') || szWorkPath[nLength] == _T('/'))
+        {
+            return szWorkPath + nLength;
+        }
+
+        // Go one character back
+        nLength--;
+    }
+
+    return NULL;
+}
+
+bool CutLastPathPart(TCHAR * szWorkPath)
+{
+    // Get the last part of the path
+    szWorkPath = GetLastPathPart(szWorkPath);
+    if(szWorkPath == NULL)
+        return false;
+
+    szWorkPath[0] = 0;
+    return true;
+}
+
 TCHAR * CombinePath(const TCHAR * szDirectory, const TCHAR * szSubDir)
 {
+    TCHAR * szFullPathEnd;
     TCHAR * szFullPath = NULL;
     TCHAR * szPathPtr;
-    size_t nLength1 = 0;
-    size_t nLength2 = 0;
+    size_t nLength1 = (szDirectory != NULL) ? _tcslen(szDirectory) : 0;
+    size_t nLength2 = (szSubDir != NULL) ? _tcslen(szSubDir) : 0;
 
-    // Calculate lengths of each part
-    if(szDirectory != NULL)
-    {
-        // Get the length of the directory
-        nLength1 = _tcslen(szDirectory);
-
-        // Cut all ending backslashes
-        while(nLength1 > 0 && (szDirectory[nLength1 - 1] == _T('\\') || szDirectory[nLength1 - 1] == _T('/')))
-            nLength1--;
-    }
-
-    if(szSubDir != NULL)
-    {
-        // Cut all leading backslashes
-        while(szSubDir[0] == _T(PATH_SEP_CHAR))
-            szSubDir++;
-
-        // Get the length of the subdir
-        nLength2 = _tcslen(szSubDir);
-
-        // Cut all ending backslashes
-        while(nLength2 > 0 && szSubDir[nLength2 - 1] == _T(PATH_SEP_CHAR))
-            nLength2--;
-    }
-
-    // Allocate space for the full path
+    // Allocate the entire buffer
     szFullPath = szPathPtr = CASC_ALLOC(TCHAR, nLength1 + nLength2 + 2);
+    szFullPathEnd = szFullPath + nLength1 + nLength2 + 1;
     if(szFullPath != NULL)
     {
-        // Copy the directory
-        if(szDirectory != NULL && nLength1 != 0)
-        {
-            memcpy(szPathPtr, szDirectory, (nLength1 * sizeof(TCHAR)));
-            szPathPtr += nLength1;
-        }
-
-        // Copy the sub-directory
-        if(szSubDir != NULL && nLength2 != 0)
-        {
-            // Append backslash to the previous one
-            if(szPathPtr > szFullPath)
-                *szPathPtr++ = _T(PATH_SEP_CHAR);
-
-            // Copy the string
-            memcpy(szPathPtr, szSubDir, (nLength2 * sizeof(TCHAR)));
-            szPathPtr += nLength2;
-        }
-
-        // Terminate the string
-        szPathPtr[0] = 0;
+        szPathPtr = AppendPathFragment(szPathPtr, szFullPathEnd, szDirectory, PATH_SEP_CHAR, true);
+        szPathPtr = AppendPathFragment(szPathPtr, szFullPathEnd, szSubDir, PATH_SEP_CHAR);
     }
 
     return szFullPath;
 }
 
-TCHAR * CombinePathAndString(const TCHAR * szPath, const char * szString, size_t nLength)
+size_t CombineFilePath(TCHAR * szBuffer, size_t nMaxChars, const TCHAR * szPath, const TCHAR * szSubPath1, const TCHAR * szSubPath2)
 {
-    TCHAR * szFullPath = NULL;
-    TCHAR * szSubDir;
-
-    // Create the subdir string
-    szSubDir = CASC_ALLOC(TCHAR, nLength + 1);
-    if(szSubDir != NULL)
-    {
-        CopyString(szSubDir, szString, nLength);
-        szFullPath = CombinePath(szPath, szSubDir);
-        CASC_FREE(szSubDir);
-    }
-
-    return szFullPath;
-}
-
-size_t CombineUrlPath(TCHAR * szBuffer, size_t nMaxChars, const char * szHost, const char * szPath)
-{
+    TCHAR * szSaveBuffer = szBuffer;
     TCHAR * szBufferEnd = szBuffer + nMaxChars - 1;
-    TCHAR * szBufferPtr = szBuffer;
-    char chLastChar = 0;
 
-    // Copy the host, up to '?'
-    while (szBufferPtr < szBufferEnd && szHost[0] != 0 && szHost[0] != '?')
-        *szBufferPtr++ = chLastChar = *szHost++;
+    // Append all three parts and return length
+    szBuffer = AppendPathFragment(szBuffer, szBufferEnd, szPath, PATH_SEP_CHAR, true);
+    szBuffer = AppendPathFragment(szBuffer, szBufferEnd, szSubPath1, PATH_SEP_CHAR);
+    szBuffer = AppendPathFragment(szBuffer, szBufferEnd, szSubPath2, PATH_SEP_CHAR);
+    return (szBuffer - szSaveBuffer);
+}
 
-    // Append the slash, if needed
-    if (szBufferPtr < szBufferEnd && chLastChar != '/' && szPath[0] != '/')
-        *szBufferPtr++ = '/';
+size_t CombineUrlPath(TCHAR * szBuffer, size_t nMaxChars, const TCHAR * szHost, const TCHAR * szSubPath1, const TCHAR * szSubPath2)
+{
+    TCHAR * szSaveBuffer = szBuffer;
+    TCHAR * szBufferEnd = szBuffer + nMaxChars - 1;
 
-    // Skip the slashes
-    while (szPath[0] == '/')
-        szPath++;
+    // Append all three parts and return length
+    szBuffer = AppendPathFragment(szBuffer, szBufferEnd, szHost, '/', true);
+    szBuffer = AppendPathFragment(szBuffer, szBufferEnd, szSubPath1, '/');
+    szBuffer = AppendPathFragment(szBuffer, szBufferEnd, szSubPath2, '/');
+    return (szBuffer - szSaveBuffer);
+}
 
-    // Append the subdirectory
-    while (szBufferPtr < szBufferEnd && szPath[0] != 0)
-        *szBufferPtr++ = *szPath++;
+size_t CreateCascSubdirectoryName(TCHAR * szBuffer, size_t nMaxChars, const TCHAR * szSubDir, const TCHAR * szExtension, LPBYTE pbEKey)
+{
+    TCHAR * szSaveBuffer = szBuffer;
+    TCHAR * szBufferEnd = szBuffer + nMaxChars - 1;
+    char szHashSubPath[0x80];
+    char szHashText[MD5_STRING_SIZE+1];
 
-    // Copy the rest of the host (the parameters beginning with '?')
-    while (szBufferPtr < szBufferEnd && szHost[0] != 0)
-        *szBufferPtr++ = *szHost++;
+    // Prepare the subpath
+    StringFromBinary(pbEKey, MD5_HASH_SIZE, szHashText);
+    CascStrPrintf(szHashSubPath, _countof(szHashSubPath), "%02x/%02x/%s", pbEKey[0], pbEKey[1], szHashText);
 
-    if (szBufferPtr < szBufferEnd)
-        szBufferPtr[0] = 0;
-    return (szBufferPtr < szBufferEnd) ? (szBufferPtr - szBuffer) : 0;
+    szBuffer = AppendPathFragment(szBuffer, szBufferEnd, szSubDir, '/', true);
+    szBuffer = AppendPathFragment(szBuffer, szBufferEnd, szHashSubPath, '/');
+    szBuffer = AppendPathFragment(szBuffer, szBufferEnd, szExtension, '/', true);
+    return (szBuffer - szSaveBuffer);
 }
 
 size_t NormalizeFileName(const unsigned char * NormTable, char * szNormName, const char * szFileName, size_t cchMaxChars)
@@ -590,7 +738,7 @@ bool CascCheckWildCard(const char * szString, const char * szWildCard)
 
 bool CascIsValidMD5(LPBYTE pbMd5)
 {
-    PDWORD Int32Array = (LPDWORD)pbMd5;
+    PDWORD Int32Array = (PDWORD)pbMd5;
 
     // The MD5 is considered invalid if it is zeroed
     return (Int32Array[0] | Int32Array[1] | Int32Array[2] | Int32Array[3]) ? true : false;
@@ -598,7 +746,7 @@ bool CascIsValidMD5(LPBYTE pbMd5)
 
 bool CascVerifyDataBlockHash(void * pvDataBlock, DWORD cbDataBlock, LPBYTE expected_md5)
 {
-    hash_state md5_state;
+    MD5_CTX md5_ctx;
     BYTE md5_digest[MD5_HASH_SIZE];
 
     // Don't verify the block if the MD5 is not valid.
@@ -606,9 +754,9 @@ bool CascVerifyDataBlockHash(void * pvDataBlock, DWORD cbDataBlock, LPBYTE expec
         return true;
 
     // Calculate the MD5 of the data block
-    md5_init(&md5_state);
-    md5_process(&md5_state, (unsigned char *)pvDataBlock, cbDataBlock);
-    md5_done(&md5_state, md5_digest);
+    MD5_Init(&md5_ctx);
+    MD5_Update(&md5_ctx, pvDataBlock, cbDataBlock);
+    MD5_Final(md5_digest, &md5_ctx);
 
     // Does the MD5's match?
     return (memcmp(md5_digest, expected_md5, MD5_HASH_SIZE) == 0);
@@ -616,9 +764,9 @@ bool CascVerifyDataBlockHash(void * pvDataBlock, DWORD cbDataBlock, LPBYTE expec
 
 void CascCalculateDataBlockHash(void * pvDataBlock, DWORD cbDataBlock, LPBYTE md5_hash)
 {
-    hash_state md5_state;
+    MD5_CTX md5_ctx;
 
-    md5_init(&md5_state);
-    md5_process(&md5_state, (unsigned char *)pvDataBlock, cbDataBlock);
-    md5_done(&md5_state, md5_hash);
+    MD5_Init(&md5_ctx);
+    MD5_Update(&md5_ctx, pvDataBlock, cbDataBlock);
+    MD5_Final(md5_hash, &md5_ctx);
 }

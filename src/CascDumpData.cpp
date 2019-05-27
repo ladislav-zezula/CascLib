@@ -65,7 +65,7 @@ static void DumpKey(FILE * fp, const char * szInFormat, LPBYTE pbData, size_t cb
     char szKey[MD5_STRING_SIZE + 1];
 
     // First line: Copy the line with the complete format
-    strcpy(szFormat, szInFormat);
+    CascStrCopy(szFormat, _countof(szFormat), szInFormat);
     szFormatSpec = strstr(szFormat, "%s");
 
     // Dump all keys, every one on a new line
@@ -147,9 +147,9 @@ void CascDumpNameFragTable(const char * szFileName, void * pMarFile)
             {
                 // Prepare the entry
                 if(IS_SINGLE_CHAR_MATCH(pDB->NameFragTable, i))
-                    sprintf(szMatchType, "SINGLE_CHAR (\'%c\')", (pNameTable->FragOffs & 0xFF));
+                    CascStrPrintf(szMatchType, _countof(szMatchType), "SINGLE_CHAR (\'%c\')", (pNameTable->FragOffs & 0xFF));
                 else
-                    sprintf(szMatchType, "NAME_FRAGMT (\"%s\")", szNames + pNameTable->FragOffs);
+                    CascStrPrintf(szMatchType, _countof(szMatchType), "NAME_FRAGMT (\"%s\")", szNames + pNameTable->FragOffs);
             }
 
             // Dump the entry
@@ -379,8 +379,8 @@ static void DumpDownloadEntries(FILE * fp, CASC_DOWNLOAD_HEADER & DlHeader, LPBY
 
         // Dump the entry
         StringFromBinary(DlEntry.EKey, DlHeader.EKeyLength, szEKey);
-        sprintf(szChksum, (DlHeader.EntryHasChecksum ? "%08X" : "<none>  "), DlEntry.Checksum);
-        sprintf(szFlags,  (DlHeader.FlagByteSize ? "%08X" : "<none>  "), DlEntry.Flags);
+        CascStrPrintf(szChksum, _countof(szChksum), (DlHeader.EntryHasChecksum ? "%08X" : "<none>  "), DlEntry.Checksum);
+        CascStrPrintf(szFlags,  _countof(szFlags), (DlHeader.FlagByteSize ? "%08X" : "<none>  "), DlEntry.Flags);
         fprintf(fp, "[%06X] %-16s %010I64X %s %s %04X\n", i, szEKey, DlEntry.FileSize, szChksum, szFlags, DlEntry.Priority);
 
         // Move to the next entry
@@ -494,7 +494,7 @@ void CascDumpStorage(HANDLE hStorage, const char * szDumpFile)
     char szStringBuff[0x800];
 
     // Verify the storage handle
-    hs = IsValidCascStorageHandle(hStorage);
+    hs = TCascStorage::IsValid(hStorage);
     if(hs == NULL)
         return;
 
@@ -507,7 +507,8 @@ void CascDumpStorage(HANDLE hStorage, const char * szDumpFile)
         fprintf(fp, "DataPath:  %s\n", StringFromLPTSTR(hs->szDataPath, szStringBuff, sizeof(szStringBuff)));
         fprintf(fp, "IndexPath: %s\n", StringFromLPTSTR(hs->szIndexPath, szStringBuff, sizeof(szStringBuff)));
         fprintf(fp, "BuildFile: %s\n", StringFromLPTSTR(hs->szBuildFile, szStringBuff, sizeof(szStringBuff)));
-        fprintf(fp, "CDN List:  %s\n", StringFromLPTSTR(hs->szCdnList, szStringBuff, sizeof(szStringBuff)));
+        fprintf(fp, "CDN Server: %s\n", StringFromLPTSTR(hs->szCdnServers, szStringBuff, sizeof(szStringBuff)));
+        fprintf(fp, "CDN Path: %s\n", StringFromLPTSTR(hs->szCdnPath, szStringBuff, sizeof(szStringBuff)));
         DumpKey(fp, "CDN Config Key: %s\n", hs->CdnConfigKey.pbData, hs->CdnConfigKey.cbData);
         DumpKey(fp, "CDN Build Key:  %s\n", hs->CdnBuildKey.pbData, hs->CdnBuildKey.cbData);
         DumpKey(fp, "Archives Key:   %s\n", hs->ArchivesKey.pbData, hs->ArchivesKey.cbData);
@@ -515,7 +516,7 @@ void CascDumpStorage(HANDLE hStorage, const char * szDumpFile)
         DumpKey(fp, "PATCH file:     %s\n", hs->PatchFile.CKey, CASC_CKEY_SIZE);
         DumpKey(fp, "ENCODING file:  %s\n", hs->EncodingCKey.CKey, CASC_CKEY_SIZE);
         DumpKey(fp, "DOWNLOAD file:  %s\n", hs->DownloadCKey.CKey, CASC_CKEY_SIZE);
-        DumpKey(fp, "INSTALL file:   %s\n", hs->InstallFile.CKey, CASC_CKEY_SIZE);
+        DumpKey(fp, "INSTALL file:   %s\n", hs->InstallCKey.CKey, CASC_CKEY_SIZE);
         fprintf(fp, "\n");
 
         // Dump the complete ENCODING manifest

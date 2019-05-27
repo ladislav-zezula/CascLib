@@ -428,7 +428,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         // The CKey entry must exist
         if((pCKeyEntry = FindCKeyEntry_CKey(hs, pbCKey)) != NULL)
         {
-            sprintf(szFileName, szFormat, nIndex);
+            CascStrPrintf(szFileName, _countof(szFileName), szFormat, nIndex);
             Insert(szFileName, pCKeyEntry);
         }
     }

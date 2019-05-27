@@ -235,7 +235,7 @@ struct TDiabloRoot : public TFileTreeRoot
         size_t nLength;
 
         // Construct the name without extension and find it in the map
-        nLength = sprintf(szFileName, "%s\\%s", szAssetName, szPlainName);
+        nLength = CascStrPrintf(szFileName, _countof(szFileName), "%s\\%s", szAssetName, szPlainName);
         return (char *)PackagesMap.FindString(szFileName, szFileName + nLength);
     }
 
@@ -413,6 +413,7 @@ struct TDiabloRoot : public TFileTreeRoot
         const char * szPackageName = NULL;
         const char * szPlainName;
         const char * szFormat;
+        char * szPathEnd = PathBuffer.szEnd;
         char * szPathPtr = PathBuffer.szPtr;
         size_t nLength = 0;
 
@@ -426,7 +427,7 @@ struct TDiabloRoot : public TFileTreeRoot
             // Either use the asset info for getting the folder name or supply "Asset##"
             if(pAssetInfo != NULL)
             {
-                strcpy(szPathPtr, pAssetInfo->szDirectoryName);
+                CascStrCopy(szPathPtr, (szPathEnd - szPathPtr), pAssetInfo->szDirectoryName);
                 szPathPtr += strlen(szPathPtr);
             }
             else
@@ -448,7 +449,7 @@ struct TDiabloRoot : public TFileTreeRoot
             // Construct the file name, up to the extension. Don't include the '.'
             szPlainName = (const char *)(pbCoreTocData + pTocEntry->NameOffset);
             szFormat = (SubIndex != CASC_INVALID_INDEX) ? "%s\\%04u" : "%s";
-            nLength = sprintf(szPathPtr, szFormat, szPlainName, SubIndex);
+            nLength = CascStrPrintf(szPathPtr, (szPathEnd - szPathPtr), szFormat, szPlainName, SubIndex);
 
             // Try to fixup the file extension from the package name.
             // File extensions are not predictable because for subitems,
@@ -471,21 +472,21 @@ struct TDiabloRoot : public TFileTreeRoot
                 szPackageName = FindPackageName(pAssetInfo->szDirectoryName, szPathPtr);
                 if(szPackageName != NULL)
                 {
-                    strcpy(PathBuffer.szPtr, szPackageName);
+                    CascStrCopy(PathBuffer.szPtr, (PathBuffer.szEnd - PathBuffer.szPtr), szPackageName);
                     return true;
                 }
             }
 
-            // Just use the extension from the AssetInfo
+            // Use the extension from the AssetInfo, if we have any
             if(pAssetInfo != NULL && pAssetInfo->szExtension != NULL)
             {
                 szPathPtr[nLength++] = '.';
-                strcpy(szPathPtr + nLength, pAssetInfo->szExtension);
+                CascStrCopy(szPathPtr + nLength, (szPathEnd - (szPathPtr + nLength)), pAssetInfo->szExtension);
                 return true;
             }
 
             // Otherwise, supply "a##"
-            sprintf(szPathPtr + nLength, "a%02u", pTocEntry->AssetIndex);
+            CascStrPrintf(szPathPtr + nLength, (szPathEnd - (szPathPtr + nLength)), ".a%02u", pTocEntry->AssetIndex);
             return true;
         }
 
@@ -824,29 +825,19 @@ struct TDiabloRoot : public TFileTreeRoot
     {
         // Free the captured root sub-directories
         for(size_t i = 0; i < DIABLO3_MAX_SUBDIRS; i++)
-        {
-            if(RootFolders[i].pbDirectoryData)
-                CASC_FREE(RootFolders[i].pbDirectoryData);
-            RootFolders[i].pbDirectoryData = NULL;
-        }
+            CASC_FREE(RootFolders[i].pbDirectoryData);
 
         // Free the package map
         PackagesMap.Free();
 
         // Free the array of file indices
-        if(pFileIndices != NULL)
-            CASC_FREE(pFileIndices);
-        pFileIndices = NULL;
+        CASC_FREE(pFileIndices);
 
         // Free the loaded CoreTOC.dat file
-        if(pbCoreTocFile != NULL)
-            CASC_FREE(pbCoreTocFile);
-        pbCoreTocFile = NULL;
+        CASC_FREE(pbCoreTocFile);
 
         // Free the loaded Packages.dat file
-        if(pbPackagesDat != NULL)
-            CASC_FREE(pbPackagesDat);
-        pbPackagesDat = NULL;
+        CASC_FREE(pbPackagesDat);
     }
 
     // Array of root directory subdirectories

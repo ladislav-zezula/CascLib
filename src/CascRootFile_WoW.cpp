@@ -258,7 +258,7 @@ struct TRootHandler_WoW : public TFileTreeRoot
         LPBYTE pbRootPtr,
         LPBYTE pbRootEnd,
         DWORD dwLocaleMask,
-        BYTE bOverrideArchive,
+        BYTE bOverrideLowViolence,
         BYTE bAudioLocale)
     {
         FILE_ROOT_GROUP RootBlock;
@@ -272,14 +272,14 @@ struct TRootHandler_WoW : public TFileTreeRoot
             // Validate the file locale block
             pbRootPtr = CaptureRootGroup(RootBlock, pbRootPtr, pbRootEnd);
             if(pbRootPtr == NULL)
-                break;
+                return ERROR_BAD_FORMAT;
 
             // WoW.exe (build 19116): Entries with flag 0x100 set are skipped
-            if(RootBlock.Header.ContentFlags & 0x100)
+            if(RootBlock.Header.ContentFlags & CASC_CFLAG_DONT_LOAD)
                 continue;
 
             // WoW.exe (build 19116): Entries with flag 0x80 set are skipped if overrideArchive CVAR is set to FALSE (which is by default in non-chinese clients)
-            if((RootBlock.Header.ContentFlags & 0x80) && bOverrideArchive == 0)
+            if((RootBlock.Header.ContentFlags & CASC_CFLAG_LOW_VIOLENCE) && bOverrideLowViolence == 0)
                 continue;
 
             // WoW.exe (build 19116): Entries with (flags >> 0x1F) not equal to bAudioLocale are skipped
@@ -310,6 +310,22 @@ struct TRootHandler_WoW : public TFileTreeRoot
     }
 
     /*
+    #define CASC_LOCALE_BIT_ENUS            0x01
+    #define CASC_LOCALE_BIT_KOKR            0x02
+    #define CASC_LOCALE_BIT_RESERVED        0x03
+    #define CASC_LOCALE_BIT_FRFR            0x04
+    #define CASC_LOCALE_BIT_DEDE            0x05
+    #define CASC_LOCALE_BIT_ZHCN            0x06
+    #define CASC_LOCALE_BIT_ESES            0x07
+    #define CASC_LOCALE_BIT_ZHTW            0x08
+    #define CASC_LOCALE_BIT_ENGB            0x09
+    #define CASC_LOCALE_BIT_ENCN            0x0A
+    #define CASC_LOCALE_BIT_ENTW            0x0B
+    #define CASC_LOCALE_BIT_ESMX            0x0C
+    #define CASC_LOCALE_BIT_RURU            0x0D
+    #define CASC_LOCALE_BIT_PTBR            0x0E
+    #define CASC_LOCALE_BIT_ITIT            0x0F
+    #define CASC_LOCALE_BIT_PTPT            0x10
 
         // dwLocale is obtained from a WOW_LOCALE_* to CASC_LOCALE_BIT_* mapping (sub_6615D0 in 7.0.3.22210 x86 win)
         // because (ENUS, ENGB) and (PTBR, PTPT) pairs share the same value on WOW_LOCALE_* enum
@@ -342,8 +358,12 @@ struct TRootHandler_WoW : public TFileTreeRoot
         DWORD dwLocaleMask,
         BYTE bAudioLocale)
     {
+        int nError;
+
         // Load the locale as-is
-        ParseWowRootFile_Level2(hs, pbRootPtr, pbRootEnd, dwLocaleMask, false, bAudioLocale);
+        nError = ParseWowRootFile_Level2(hs, pbRootPtr, pbRootEnd, dwLocaleMask, false, bAudioLocale);
+        if (nError != ERROR_SUCCESS)
+            return nError;
 
         // If we wanted enGB, we also load enUS for the missing files
         if(dwLocaleMask == CASC_LOCALE_ENGB)
@@ -358,9 +378,13 @@ struct TRootHandler_WoW : public TFileTreeRoot
     // WoW.exe: 004146C7 (BuildManifest::Load)
     int Load(TCascStorage * hs, LPBYTE pbRootPtr, LPBYTE pbRootEnd, DWORD dwLocaleMask)
     {
-        ParseWowRootFile_Level1(hs, pbRootPtr, pbRootEnd, dwLocaleMask, 0);
-        ParseWowRootFile_Level1(hs, pbRootPtr, pbRootEnd, dwLocaleMask, 1);
-        return ERROR_SUCCESS;
+        int nError;
+
+        nError = ParseWowRootFile_Level1(hs, pbRootPtr, pbRootEnd, dwLocaleMask, 0);
+        if (nError == ERROR_SUCCESS)
+            nError = ParseWowRootFile_Level1(hs, pbRootPtr, pbRootEnd, dwLocaleMask, 1);
+
+        return nError;
     }
 
     // Search for files

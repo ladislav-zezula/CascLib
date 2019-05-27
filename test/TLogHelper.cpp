@@ -42,7 +42,7 @@ class TLogHelper
             char szTitle[101];
             size_t nLength;
 
-            nLength = sprintf(szTitle, "-- \"%s\" --", szNewMainTitle);
+            nLength = CascStrPrintf(szTitle, _countof(szTitle), "-- \"%s\" --", szNewMainTitle);
             while(nLength < 90)
                 szTitle[nLength++] = '-';
             if(nLength < sizeof(szTitle))
@@ -132,7 +132,7 @@ class TLogHelper
                 // 64-bit integer argument
                 if(IsFormatSpecifier(szFormat, "%llu"))
                 {
-                    szBufferPtr += sprintf(szBufferPtr, fmt_I64u, va_arg(argList, ULONGLONG));
+                    szBufferPtr += CascStrPrintf(szBufferPtr, (szBufferEnd - szBufferPtr), fmt_I64u, va_arg(argList, ULONGLONG));
                     szFormat += 4;
                     continue;
                 }
@@ -140,7 +140,7 @@ class TLogHelper
                 // 32-bit integer argument
                 if(IsFormatSpecifier(szFormat, "%u"))
                 {
-                    szBufferPtr += sprintf(szBufferPtr, "%u", va_arg(argList, DWORD));
+                    szBufferPtr += CascStrPrintf(szBufferPtr, (szBufferEnd - szBufferPtr), "%u", va_arg(argList, DWORD));
                     szFormat += 2;
                     continue;
                 }
@@ -148,7 +148,7 @@ class TLogHelper
                 // 32-bit integer argument
                 if (IsFormatSpecifier(szFormat, "%08X"))
                 {
-                    szBufferPtr += sprintf(szBufferPtr, "%08X", va_arg(argList, DWORD));
+                    szBufferPtr += CascStrPrintf(szBufferPtr, (szBufferEnd - szBufferPtr), "%08X", va_arg(argList, DWORD));
                     szFormat += 4;
                     continue;
                 }
@@ -165,7 +165,7 @@ class TLogHelper
         // Append the last error
         if(bPrintLastError)
         {
-            nLength = sprintf(szBufferPtr, " (error code: %u)", nError);
+            nLength = CascStrPrintf(szBufferPtr, (szBufferEnd - szBufferPtr), " (error code: %u)", nError);
             szBufferPtr += nLength;
         }
 
@@ -283,12 +283,12 @@ class TLogHelper
             // Are we already dividing?
             if(bDividingOn)
             {
-                szBuffer += sprintf(szBuffer, " %03u", (DWORD)(Bytes / Divider));
+                szBuffer += CascStrPrintf(szBuffer, ccBuffer, " %03u", (DWORD)(Bytes / Divider));
                 Bytes = Bytes % Divider;
             }
             else if(Bytes > Divider)
             {
-                szBuffer += sprintf(szBuffer, "%u", (DWORD)(Bytes / Divider));
+                szBuffer += CascStrPrintf(szBuffer, ccBuffer, "%u", (DWORD)(Bytes / Divider));
                 Bytes = Bytes % Divider;
                 bDividingOn = true;
             }
@@ -302,8 +302,8 @@ class TLogHelper
 
     void InitHashers()
     {
-        md5_init(&MD5State_Name);
-        md5_init(&MD5State_Data);
+        MD5_Init(&MD5State_Name);
+        MD5_Init(&MD5State_Data);
         HasherReady = true;
     }
 
@@ -311,7 +311,7 @@ class TLogHelper
     {
         if(HasherReady)
         {
-            md5_process(&MD5State_Name, (const unsigned char *)name, (unsigned long)(strlen(name) + 1));
+            MD5_Update(&MD5State_Name, name, (unsigned long)(strlen(name) + 1));
         }
     }
 
@@ -319,7 +319,7 @@ class TLogHelper
     {
         if(HasherReady)
         {
-            md5_process(&MD5State_Data, data, (unsigned long)length);
+            MD5_Update(&MD5State_Data, data, (unsigned long)length);
         }
     }
 
@@ -330,7 +330,7 @@ class TLogHelper
         {
             unsigned char md5_binary[MD5_HASH_SIZE];
 
-            md5_done(&MD5State_Name, md5_binary);
+            MD5_Final(md5_binary, &MD5State_Name);
             StringFromBinary(md5_binary, MD5_HASH_SIZE, szHashString_Name);
         }
 
@@ -345,7 +345,7 @@ class TLogHelper
         {
             unsigned char md5_binary[MD5_HASH_SIZE];
 
-            md5_done(&MD5State_Data, md5_binary);
+            MD5_Final(md5_binary, &MD5State_Data);
             StringFromBinary(md5_binary, MD5_HASH_SIZE, szHashString_Data);
         }
 
@@ -355,10 +355,10 @@ class TLogHelper
 
     ULONGLONG TotalBytes;                           // For user's convenience: Total number of bytes
     ULONGLONG ByteCount;                            // For user's convenience: Current number of bytes
-    hash_state MD5State_Name;                       // For user's convenience: Md5 state of the file name hasher
-    hash_state MD5State_Data;                       // For user's convenience: Md5 state of the file data hasher
     ULONGLONG StartTime;                            // Start time of an operation, in milliseconds
     ULONGLONG EndTime;                              // End time of an operation, in milliseconds
+    MD5_CTX MD5State_Name;                          // For user's convenience: Md5 state of the file name hasher
+    MD5_CTX MD5State_Data;                          // For user's convenience: Md5 state of the file data hasher
     DWORD TotalFiles;                               // For user's convenience: Total number of files
     DWORD FileCount;                                // For user's convenience: Curernt number of files
     char  szHashString_Name[MD5_STRING_SIZE+1];     // Final hash of the file names

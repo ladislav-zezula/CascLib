@@ -486,7 +486,7 @@ bool WINAPI CascAddEncryptionKey(HANDLE hStorage, ULONGLONG KeyName, LPBYTE Key)
     TCascStorage * hs;
 
     // Validate the storage handle
-    hs = IsValidCascStorageHandle(hStorage);
+    hs = TCascStorage::IsValid(hStorage);
     if (hs == NULL)
     {
         SetLastError(ERROR_INVALID_HANDLE);

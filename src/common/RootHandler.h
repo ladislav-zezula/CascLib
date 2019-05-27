@@ -49,7 +49,7 @@ struct TRootHandler
     // Searches the file by file name
     // hs         - Pointer to the storage structure
     // szFileName - Pointer to the file name
-    virtual PCASC_CKEY_ENTRY GetFile(struct _TCascStorage * /* hs */, const char * /* szFileName */)
+    virtual PCASC_CKEY_ENTRY GetFile(struct TCascStorage * /* hs */, const char * /* szFileName */)
     {
         return NULL;
     }
@@ -57,7 +57,7 @@ struct TRootHandler
     // Searches the file by file data id
     // hs         - Pointer to the storage structure
     // FileDataId - File data id
-    virtual PCASC_CKEY_ENTRY GetFile(struct _TCascStorage * /* hs */, DWORD /* FileDataId */)
+    virtual PCASC_CKEY_ENTRY GetFile(struct TCascStorage * /* hs */, DWORD /* FileDataId */)
     {
         return NULL;
     }
@@ -65,7 +65,7 @@ struct TRootHandler
     // Performs find-next-file operation
     // pSearch   - Pointer to the initialized search structure
     // pFindData - Pointer to output structure that will contain the information
-    virtual PCASC_CKEY_ENTRY Search(struct _TCascSearch * /* pSearch */, struct _CASC_FIND_DATA * /* pFindData */)
+    virtual PCASC_CKEY_ENTRY Search(struct TCascSearch * /* pSearch */, struct _CASC_FIND_DATA * /* pFindData */)
     {
         return NULL;
     }
@@ -98,9 +98,9 @@ struct TFileTreeRoot : public TRootHandler
 
     int Insert(const char * szFileName, PCASC_CKEY_ENTRY pCKeyEntry);
 
-    PCASC_CKEY_ENTRY GetFile(struct _TCascStorage * hs, const char * szFileName);
-    PCASC_CKEY_ENTRY GetFile(struct _TCascStorage * hs, DWORD FileDataId);
-    PCASC_CKEY_ENTRY Search(struct _TCascSearch * pSearch, struct _CASC_FIND_DATA * pFindData);
+    PCASC_CKEY_ENTRY GetFile(struct TCascStorage * hs, const char * szFileName);
+    PCASC_CKEY_ENTRY GetFile(struct TCascStorage * hs, DWORD FileDataId);
+    PCASC_CKEY_ENTRY Search(struct TCascSearch * pSearch, struct _CASC_FIND_DATA * pFindData);
     bool GetInfo(PCASC_CKEY_ENTRY pCKeyEntry, struct _CASC_FILE_FULL_INFO * pFileInfo);
 
     protected:

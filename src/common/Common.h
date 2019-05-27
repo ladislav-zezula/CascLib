@@ -62,8 +62,21 @@ typedef struct _PATH_BUFFER
 #define CASC_CE_FOLDER_ENTRY       0x00000040       // This CKey entry is a folder
 
 // In-memory representation of a single entry. 
-typedef struct _CASC_CKEY_ENTRY
+struct CASC_CKEY_ENTRY
 {
+    CASC_CKEY_ENTRY()
+    {
+        Init();
+    }
+
+    void Init(void)
+    {
+        memset(this, 0, sizeof(CASC_CKEY_ENTRY));
+        StorageOffset = CASC_INVALID_OFFS64;
+        EncodedSize = CASC_INVALID_SIZE;
+        ContentSize = CASC_INVALID_SIZE;
+    }
+
     BYTE CKey[MD5_HASH_SIZE];                       // Content key of the full length
     BYTE EKey[MD5_HASH_SIZE];                       // Encoded key of the full length
     ULONGLONG StorageOffset;                        // Linear offset over the entire storage. 0 if not present
@@ -75,7 +88,8 @@ typedef struct _CASC_CKEY_ENTRY
     BYTE Priority;                                  // Download priority
     BYTE Alignment;
 
-} CASC_CKEY_ENTRY, *PCASC_CKEY_ENTRY;
+};
+typedef CASC_CKEY_ENTRY *PCASC_CKEY_ENTRY;
 
 //-----------------------------------------------------------------------------
 // Conversion tables
@@ -94,12 +108,28 @@ extern unsigned char IntToHexChar[];
 //    (i.e not to throw exception)
 //  - The allocating function does not need to fill the allocated buffer with zeros
 //  - The reallocating function must support NULL as the previous block
-//  - Memory freeing function doesn't have to test the pointer to NULL
+//  - Memory freeing function must check for NULL pointer and do nothing if so
 //
 
 #define CASC_REALLOC(type, ptr, count) (type *)realloc(ptr, (count) * sizeof(type))
 #define CASC_ALLOC(type, count)        (type *)malloc((count) * sizeof(type))
-#define CASC_FREE(ptr)                 free(ptr)
+
+template <typename T>
+void CASC_FREE(T *& ptr)
+{
+    if (ptr != NULL)
+        free(ptr);
+    ptr = NULL;
+}
+
+//-----------------------------------------------------------------------------
+// Overloaded "new" and "delete" operators
+
+void * operator new(size_t size);
+void * operator new[](size_t size);
+void operator delete(void * ptr);
+void operator delete[](void * ptr);
+void operator delete(void * ptr, size_t);  // For some reason, VS2015 needs this
 
 //-----------------------------------------------------------------------------
 // Big endian number manipulation
@@ -231,19 +261,32 @@ LPBYTE CaptureArray_(LPBYTE pbDataPtr, LPBYTE pbDataEnd, LPBYTE * PtrArray, size
 #define CaptureArray(pbDataPtr, pbDataEnd, PtrArray, type, count) CaptureArray_(pbDataPtr, pbDataEnd, PtrArray, sizeof(type), count) 
 
 //-----------------------------------------------------------------------------
-// String manipulation
+// String copying and conversion
 
-void CopyString(char * szTarget, const char * szSource, size_t cchLength);
-void CopyString(wchar_t * szTarget, const char * szSource, size_t cchLength);
-void CopyString(char * szTarget, const wchar_t * szSource, size_t cchLength);
+void CascStrCopy(char * szTarget, size_t cchTarget, const char * szSource, size_t cchSource = -1);
+void CascStrCopy(char * szTarget, size_t cchTarget, const wchar_t * szSource, size_t cchSource = -1);
+void CascStrCopy(wchar_t * szTarget, size_t cchTarget, const char * szSource, size_t cchSource = -1);
+void CascStrCopy(wchar_t * szTarget, size_t cchTarget, const wchar_t * szSource, size_t cchSource = -1);
 
-char * CascNewStr(const char * szString, size_t nCharsToReserve);
-wchar_t * CascNewStr(const wchar_t * szString, size_t nCharsToReserve);
+//-----------------------------------------------------------------------------
+// Safe version of s(w)printf
+
+size_t CascStrPrintf(char * buffer, size_t nCount, const char * format, ...);
+size_t CascStrPrintf(wchar_t * buffer, size_t nCount, const wchar_t * format, ...);
+
+//-----------------------------------------------------------------------------
+// String allocation
+
+char * CascNewStr(const char * szString, size_t nCharsToReserve = 0);
+wchar_t * CascNewStr(const wchar_t * szString, size_t nCharsToReserve = 0);
 
 TCHAR * CombinePath(const TCHAR * szPath, const TCHAR * szSubDir);
-TCHAR * CombinePathAndString(const TCHAR * szPath, const char * szString, size_t nLength);
-size_t CombineUrlPath(TCHAR * szBuffer, size_t nMaxChars, const char * szHost, const char * szPath);
+size_t CombineFilePath(TCHAR * szBuffer, size_t nMaxChars, const TCHAR * szPath, const TCHAR * szSubPath1, const TCHAR * szSubPath2 = NULL);
+size_t CombineUrlPath(TCHAR * szBuffer, size_t nMaxChars, const TCHAR * szHost, const TCHAR * szSubPath1, const TCHAR * szSubPath2 = NULL);
+TCHAR * GetLastPathPart(TCHAR * szWorkPath);
+bool CutLastPathPart(TCHAR * szWorkPath);
 
+size_t CreateCascSubdirectoryName(TCHAR * szBuffer, size_t nMaxChars, const TCHAR * szSubDir, const TCHAR * szExtension, LPBYTE pbEKey);
 size_t NormalizeFileName_UpperBkSlash(char * szNormName, const char * szFileName, size_t cchMaxChars);
 size_t NormalizeFileName_LowerSlash(char * szNormName, const char * szFileName, size_t cchMaxChars);
 
@@ -256,6 +299,28 @@ int ConvertStringToInt32(const TCHAR * szString, size_t nMaxDigits, PDWORD PtrVa
 int ConvertStringToBinary(const char * szString, size_t nMaxDigits, LPBYTE pbBinary);
 char * StringFromBinary(LPBYTE pbBinary, size_t cbBinary, char * szBuffer);
 char * StringFromMD5(LPBYTE md5, char * szBuffer);
+
+//-----------------------------------------------------------------------------
+// Structure query key
+
+struct QUERY_KEY
+{
+    QUERY_KEY()
+    {
+        pbData = NULL;
+        cbData = 0;
+    }
+
+    ~QUERY_KEY()
+    {
+        CASC_FREE(pbData);
+        cbData = 0;
+    }
+
+    LPBYTE pbData;
+    size_t cbData;
+};
+typedef QUERY_KEY *PQUERY_KEY;
 
 //-----------------------------------------------------------------------------
 // File name utilities

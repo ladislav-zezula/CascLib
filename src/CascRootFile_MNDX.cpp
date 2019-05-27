@@ -458,10 +458,7 @@ class TGenericArray
 
     ~TGenericArray()
     {
-        if(ItemArray != NULL)
-        {
-            CASC_FREE(ItemArray);
-        }
+        CASC_FREE(ItemArray);
     }
 
     T & operator[] (size_t index)
@@ -1248,7 +1245,7 @@ class TSparseArray
 
                 if (ArrayNormal[i] == MNDX_INVALID_SIZE_T && ArrayInvert[i] == MNDX_INVALID_SIZE_T)
                     break;
-                fprintf(fp, "[%08zX]: %8s  %8s\n", i, DumpValue(InvertValue, ArrayInvert[i]), DumpValue(NormalValue, ArrayNormal[i]));
+                fprintf(fp, "[%08zX]: %8s  %8s\n", i, DumpValue(InvertValue, _countof(InvertValue), ArrayInvert[i]), DumpValue(NormalValue, _countof(NormalValue), ArrayNormal[i]));
             }
             fprintf(fp, "\n");
         }
@@ -1273,9 +1270,9 @@ class TSparseArray
         fprintf(fp, "\n");
     }
 
-    char * DumpValue(char * szBuffer, size_t value)
+    char * DumpValue(char * szBuffer, size_t cchBuffer, size_t value)
     {
-        sprintf(szBuffer, (value != MNDX_INVALID_SIZE_T) ? "%08zX" : "   -    ", value);
+        CascStrPrintf(szBuffer, cchBuffer, (value != MNDX_INVALID_SIZE_T) ? "%08zX" : "   -    ", value);
         return szBuffer;
     }
 #endif
@@ -2504,8 +2501,7 @@ class TMndxMarFile
     {
         if(pDatabase != NULL)
             delete pDatabase;
-        if(pbMarData != NULL)
-            CASC_FREE(pbMarData);
+        CASC_FREE(pbMarData);
     }
 
     // HOTS: 00E94180
@@ -2612,8 +2608,7 @@ struct TMndxHandler
 
         for(i = 0; i < MAR_COUNT; i++)
             delete MndxInfo.MarFiles[i];
-        if(FileNameIndexToCKeyIndex != NULL)
-            CASC_FREE(FileNameIndexToCKeyIndex);
+        CASC_FREE(FileNameIndexToCKeyIndex);
         pCKeyEntries = NULL;
 
         for(i = 0; i < Packages.ItemCount(); i++)

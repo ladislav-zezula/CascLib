@@ -37,14 +37,20 @@
     #define WIN32_LEAN_AND_MEAN
   #endif
 
+//#pragma warning(disable:4995)     // warning C4995: 'sprintf': name was marked as #pragma deprecated
+
   #include <tchar.h>
   #include <assert.h>
+  #include <intrin.h>       // Support for intrinsic functions
   #include <ctype.h>
+  #include <io.h>
   #include <stdio.h>
+  #include <stdlib.h>
+  #include <direct.h>
   #include <malloc.h>
   #include <windows.h>
   #include <wininet.h>
-  #include <intrin.h>       // Support for intrinsic functions
+  #include <strsafe.h>
   #include <sys/types.h>
   #define PLATFORM_LITTLE_ENDIAN
 
@@ -56,8 +62,7 @@
 
   #define PATH_SEP_CHAR             '\\'
   #define PATH_SEP_STRING           "\\"
-  #define CREATE_DIRECTORY(name)    CreateDirectory(name, NULL);
-
+  
   #pragma intrinsic(memcmp, memcpy)
 
   #define PLATFORM_WINDOWS
@@ -99,8 +104,7 @@
 
   #define PATH_SEP_CHAR             '/'
   #define PATH_SEP_STRING           "/"
-  #define CREATE_DIRECTORY(name)    mkdir(name, 0755)
-
+  
   #define PLATFORM_MAC
   #define PLATFORM_DEFINED                  // The platform is known now
 
@@ -124,13 +128,13 @@
   #include <stdarg.h>
   #include <string.h>
   #include <ctype.h>
+  #include <wchar.h>
   #include <assert.h>
   #include <errno.h>
 
   #define PATH_SEP_CHAR             '/'
   #define PATH_SEP_STRING           "/"
-  #define CREATE_DIRECTORY(name)    mkdir(name, 0755)
-
+  
   #define PLATFORM_LITTLE_ENDIAN
   #define PLATFORM_LINUX
   #define PLATFORM_DEFINED
@@ -157,14 +161,15 @@
   typedef unsigned long long ULONGLONG;
   typedef unsigned long long *PULONGLONG;
   typedef void         * HANDLE;
-  typedef void         * LPOVERLAPPED; // Unsupported on Linux and Mac
   typedef char           TCHAR;
   typedef unsigned int   LCID;
   typedef LONG         * PLONG;
   typedef DWORD        * PDWORD;
-  typedef DWORD        * LPDWORD;
   typedef BYTE         * LPBYTE;
   typedef char         * LPSTR;
+  typedef const char   * LPCSTR;
+  typedef TCHAR        * LPTSTR;
+  typedef const TCHAR  * LPCTSTR;
 
   #ifdef PLATFORM_32BIT
     #define _LZMA_UINT32_IS_ULONG
@@ -185,7 +190,6 @@
 
   #define _T(x)     x
   #define _tcslen   strlen
-  #define _tcscpy   strcpy
   #define _tcscat   strcat
   #define _tcschr   strchr
   #define _tcsrchr  strrchr
@@ -193,9 +197,8 @@
   #define _tcsspn   strspn
   #define _tcsncmp  strncmp
   #define _tprintf  printf
-  #define _stprintf sprintf
   #define _tremove  remove
-  #define _tmkdir   mkdir
+  #define _taccess  access
   #define _access   access
 
   #define _stricmp  strcasecmp
@@ -219,6 +222,7 @@
 #if defined(PLATFORM_MAC) || defined(PLATFORM_LINUX)
   #define ERROR_SUCCESS                  0
   #define ERROR_FILE_NOT_FOUND           ENOENT
+  #define ERROR_PATH_NOT_FOUND           ENOENT
   #define ERROR_ACCESS_DENIED            EPERM
   #define ERROR_INVALID_HANDLE           EBADF
   #define ERROR_NOT_ENOUGH_MEMORY        ENOMEM
@@ -243,6 +247,10 @@
 #define ERROR_FILE_OFFLINE               1007       // The file is not available in the local storage
 #endif
 
+#ifndef ERROR_BUFFER_OVERFLOW
+#define ERROR_BUFFER_OVERFLOW            1008
+#endif
+  
 #ifndef _countof
 #define _countof(x)   (sizeof(x) / sizeof(x[0]))  
 #endif
@@ -286,6 +294,15 @@
     #define    BSWAP_ARRAY16_UNSIGNED(a,b)      ConvertUInt16Buffer((a),(b))
     #define    BSWAP_ARRAY32_UNSIGNED(a,b)      ConvertUInt32Buffer((a),(b))
     #define    BSWAP_ARRAY64_UNSIGNED(a,b)      ConvertUInt64Buffer((a),(b))
+#endif
+
+//-----------------------------------------------------------------------------
+// Forbidden functions, do not use
+
+#ifdef __CASCLIB_SELF__
+#define strcpy  UNSAFE_DO_NOT_USE_STRCPY
+#define strcat  UNSAFE_DO_NOT_USE_STRCAT
+#define sprintf UNSAFE_DO_NOT_USE_SPRINTF
 #endif
 
 #endif // __CASCPORT_H__

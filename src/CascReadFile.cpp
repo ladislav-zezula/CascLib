@@ -19,46 +19,65 @@ static int EnsureDataStreamIsOpen(TCascFile * hf)
 {
     TCascStorage * hs = hf->hs;
     TFileStream * pStream = NULL;
+    ULONGLONG EncodedSize = 0;
     TCHAR * szDataFile;
-    TCHAR szPlainName[0x40];
+    TCHAR szCachePath[MAX_PATH];
+    TCHAR szPlainName[0x80];
+    int nError;
 
-    // If the file is not open yet, do it
-    if(hs->DataFiles[hf->ArchiveIndex] == NULL)
+    // If the file is available locally, we rely on data files.
+    // If not, we download the file and open the stream
+    if(hf->pCKeyEntry->Flags & CASC_CE_FILE_IS_LOCAL)
     {
-        // Prepare the name of the data file
-        _stprintf(szPlainName, _T("data.%03u"), hf->ArchiveIndex);
-        szDataFile = CombinePath(hs->szIndexPath, szPlainName);
-
-        // Open the data file
-        if(szDataFile != NULL)
+        // If the file is not open yet, do it
+        if(hs->DataFiles[hf->ArchiveIndex] == NULL)
         {
-            // Open the stream. Make sure that the encoded handlers will fill eventual
-            // missing data with zeros. Observed in Overwatch build 24919
-            // Open the data stream with write access and sharing for read+write
-            // to prevent Battle.net Agent detecting a corruption and redownloading the entire package
-//          pStream = FileStream_OpenFile(szDataFile, STREAM_FLAG_READ_ONLY | STREAM_PROVIDER_FLAT | STREAM_FLAG_FILL_MISSING | BASE_PROVIDER_FILE);
-            pStream = FileStream_OpenFile(szDataFile, STREAM_FLAG_READ_ONLY | STREAM_FLAG_WRITE_SHARE | STREAM_PROVIDER_FLAT | STREAM_FLAG_FILL_MISSING | BASE_PROVIDER_FILE);
-            hs->DataFiles[hf->ArchiveIndex] = pStream;
-            CASC_FREE(szDataFile);
+            // Prepare the name of the data file
+            CascStrPrintf(szPlainName, _countof(szPlainName), _T("data.%03u"), hf->ArchiveIndex);
+            szDataFile = CombinePath(hs->szIndexPath, szPlainName);
+
+            // Open the data file
+            if(szDataFile != NULL)
+            {
+                // Open the data stream with read+write sharing to prevent Battle.net agent
+                // detecting a corruption and redownloading the entire package
+                pStream = FileStream_OpenFile(szDataFile, STREAM_FLAG_READ_ONLY | STREAM_FLAG_WRITE_SHARE | STREAM_PROVIDER_FLAT | STREAM_FLAG_FILL_MISSING | BASE_PROVIDER_FILE);
+                hs->DataFiles[hf->ArchiveIndex] = pStream;
+                CASC_FREE(szDataFile);
+            }
         }
+
+        // Return error or success
+        hf->pStream = hs->DataFiles[hf->ArchiveIndex];
+        return (hf->pStream != NULL) ? ERROR_SUCCESS : ERROR_FILE_NOT_FOUND;
     }
+    else
+    {
+        if(hf->bDownloadFileIf)
+        {
+            // Create the local folder path and download the file from CDN
+            nError = DownloadFileFromCDN(hf->hs, _T("data"), hf->pCKeyEntry->EKey, NULL, szCachePath, _countof(szCachePath));
+            if(nError == ERROR_SUCCESS)
+            {
+                hf->pStream = FileStream_OpenFile(szCachePath, BASE_PROVIDER_FILE | STREAM_PROVIDER_FLAT);
+                if(hf->pStream != NULL)
+                {
+                    // Supply the file size, if unknown yet
+                    if(hf->EncodedSize == CASC_INVALID_SIZE)
+                    {
+                        FileStream_GetSize(hf->pStream, &EncodedSize);
+                        hf->pCKeyEntry->EncodedSize = (DWORD)EncodedSize;
+                        hf->EncodedSize = (DWORD)EncodedSize;
+                    }
 
-    // Return error or success
-    hf->pStream = hs->DataFiles[hf->ArchiveIndex];
-    return (hf->pStream != NULL) ? ERROR_SUCCESS : ERROR_FILE_NOT_FOUND;
-}
+                    hf->bLocalFileStream = true;
+                    return ERROR_SUCCESS;
+                }
+            }
+        }
 
-static DWORD GetHeaderSpanSize(TFileStream * pStream, DWORD HeaderOffset)
-{
-    ULONGLONG FileOffset = HeaderOffset;
-    DWORD FourBytes = 0;
-
-    // Read four bytes from the position. If it contains 'BLTE',
-    // then we need to move back
-    if(!FileStream_Read(pStream, &FileOffset, &FourBytes, sizeof(DWORD)))
-        return CASC_INVALID_POS;
-
-    return (FourBytes == BLTE_HEADER_SIGNATURE) ? BLTE_HEADER_DELTA : 0;
+        return ERROR_FILE_OFFLINE;
+    }
 }
 
 #ifdef _DEBUG
@@ -108,26 +127,38 @@ static void VerifyHeaderSpan(PBLTE_ENCODED_HEADER pBlteHeader, ULONGLONG HeaderO
 
 static int ParseBlteHeader(TCascFile * hf, ULONGLONG HeaderOffset, LPBYTE pbEncodedBuffer, size_t cbEncodedBuffer, size_t * pcbHeaderSize)
 {
-    PBLTE_ENCODED_HEADER pBlteHeader = (PBLTE_ENCODED_HEADER)pbEncodedBuffer;
+    PBLTE_ENCODED_HEADER pEncodedHeader = (PBLTE_ENCODED_HEADER)pbEncodedBuffer;
+    PBLTE_HEADER pBlteHeader = (PBLTE_HEADER)pbEncodedBuffer;
     DWORD ExpectedHeaderSize;
+    DWORD ExHeaderSize = 0;
     DWORD HeaderSize;
     DWORD FrameCount = 0;
 
     CASCLIB_UNUSED(HeaderOffset);
 
-    // There must be at least some bytes
-    if (cbEncodedBuffer < FIELD_OFFSET(BLTE_ENCODED_HEADER, MustBe0F))
-        return ERROR_BAD_FORMAT;
+    // On files within storage segments ("data.###"), there is BLTE_ENCODED_HEADER
+    // On local files, there is just PBLTE_HEADER
+    if(ConvertBytesToInteger_4_LE(pBlteHeader->Signature) != BLTE_HEADER_SIGNATURE)
+    {
+        // There must be at least some bytes
+        if (cbEncodedBuffer < FIELD_OFFSET(BLTE_ENCODED_HEADER, MustBe0F))
+            return ERROR_BAD_FORMAT;
+        if (pEncodedHeader->EncodedSize != hf->EncodedSize)
+            return ERROR_BAD_FORMAT;
+
+#ifdef _DEBUG
+        // Not really needed, it's here just for explanation of what the values mean
+        //assert(memcmp(hf->pCKeyEntry->EKey, pEncodedHeader->EKey.Value, MD5_HASH_SIZE) == 0);
+        VerifyHeaderSpan(pEncodedHeader, HeaderOffset);
+#endif
+        // Capture the EKey
+        ExHeaderSize = FIELD_OFFSET(BLTE_ENCODED_HEADER, Signature);
+        pBlteHeader = (PBLTE_HEADER)(pbEncodedBuffer + ExHeaderSize);
+    }
+
+    // Verify the signature
     if(ConvertBytesToInteger_4_LE(pBlteHeader->Signature) != BLTE_HEADER_SIGNATURE)
         return ERROR_BAD_FORMAT;
-    if (pBlteHeader->EncodedSize != hf->EncodedSize)
-        return ERROR_BAD_FORMAT;
-
-    // We can verify the BLTE header here. Not really needed,
-    // it's here just for explanation of what the values mean
-#ifdef _DEBUG
-    VerifyHeaderSpan(pBlteHeader, HeaderOffset);
-#endif
 
     // Capture the header size. If this is non-zero, then array
     // of chunk headers follow. Otherwise, the file is just one chunk
@@ -144,15 +175,12 @@ static int ParseBlteHeader(TCascFile * hf, ULONGLONG HeaderOffset, LPBYTE pbEnco
             return ERROR_BAD_FORMAT;
 
         // Give the values
-        pcbHeaderSize[0] = FIELD_OFFSET(BLTE_ENCODED_HEADER, MustBe0F) + sizeof(DWORD);
+        pcbHeaderSize[0] = ExHeaderSize + FIELD_OFFSET(BLTE_HEADER, MustBe0F) + sizeof(DWORD);
     }
     else
     {
-        pcbHeaderSize[0] = FIELD_OFFSET(BLTE_ENCODED_HEADER, MustBe0F);
+        pcbHeaderSize[0] = ExHeaderSize + FIELD_OFFSET(BLTE_HEADER, MustBe0F);
     }
-
-    // Capture the EKey
-//  hf->EKey = pBlteHeader->EKey;
 
     // Give the frame count
     hf->FrameCount = FrameCount;
@@ -180,7 +208,7 @@ static LPBYTE ReadMissingHeaderData(TCascFile * hf, ULONGLONG DataFileOffset, LP
     return NULL;
 }
 
-static int LoadFileFrames(TCascFile * hf, ULONGLONG DataFileOffset, LPBYTE pbFramePtr, LPBYTE pbFrameEnd)
+static int LoadFileFrames(TCascFile * hf, ULONGLONG DataFileOffset, LPBYTE pbFramePtr, LPBYTE pbFrameEnd, size_t cbHeaderSize)
 {
     PBLTE_FRAME pFileFrame;
     DWORD ContentSize = 0;
@@ -248,7 +276,7 @@ static int LoadFileFrames(TCascFile * hf, ULONGLONG DataFileOffset, LPBYTE pbFra
             memset(&hf->pFrames->FrameHash, 0, sizeof(CONTENT_KEY));
             hf->pFrames->DataFileOffset = (DWORD)DataFileOffset;
             hf->pFrames->FileOffset = CASC_INVALID_POS;
-            hf->pFrames->EncodedSize = hf->EncodedSize - FIELD_OFFSET(BLTE_ENCODED_HEADER, MustBe0F);
+            hf->pFrames->EncodedSize = (DWORD)(hf->EncodedSize - cbHeaderSize);
             hf->pFrames->ContentSize = hf->ContentSize;
         }
     }
@@ -260,7 +288,6 @@ static int LoadFileFrames(TCascFile * hf, ULONGLONG DataFileOffset, LPBYTE pbFra
 
 static int LoadEncodedHeaderAndFileFrames(TCascFile * hf)
 {
-    TCascStorage * hs = hf->hs;
     LPBYTE pbEncodedBuffer;
     size_t cbEncodedBuffer = MAX_ENCODED_HEADER;
     int nError = ERROR_SUCCESS;
@@ -273,15 +300,12 @@ static int LoadEncodedHeaderAndFileFrames(TCascFile * hf)
     pbEncodedBuffer = CASC_ALLOC(BYTE, MAX_ENCODED_HEADER);
     if (pbEncodedBuffer != NULL)
     {
-        ULONGLONG ReadOffset = hf->ArchiveOffset - hs->dwHeaderSpanSize;
+        ULONGLONG ReadOffset = hf->ArchiveOffset;
         size_t cbTotalHeaderSize;
         size_t cbHeaderSize = 0;
 
-        // Storage: "2017 - Starcraft1/2457"
-        // File1: "locales\\itIT\\Assets\\SD\\campaign\\Starcraft\\SWAR\\staredit\\scenario.chk"
-        // File2: "locales\\esES\\Assets\\campaign\\EXPProtoss\\Protoss03\\staredit\\wav\\nullsound.ogg"
-        // EncodedSize = 0x27
-        assert(hf->EncodedSize > FIELD_OFFSET(BLTE_ENCODED_HEADER, MustBe0F));
+        // At this point, we expect encoded size to be known
+        assert(hf->EncodedSize != CASC_INVALID_SIZE);
 
         // Do not read more than encoded size
         cbEncodedBuffer = CASCLIB_MIN(cbEncodedBuffer, hf->EncodedSize);
@@ -309,7 +333,7 @@ static int LoadEncodedHeaderAndFileFrames(TCascFile * hf)
                 // Load the array of frame headers
                 if (nError == ERROR_SUCCESS)
                 {
-                    nError = LoadFileFrames(hf, ReadOffset + cbHeaderSize, pbEncodedBuffer + cbHeaderSize, pbEncodedBuffer + cbEncodedBuffer);
+                    nError = LoadFileFrames(hf, ReadOffset + cbHeaderSize, pbEncodedBuffer + cbHeaderSize, pbEncodedBuffer + cbEncodedBuffer, cbHeaderSize);
                 }
             }
         }
@@ -331,33 +355,21 @@ static int LoadEncodedHeaderAndFileFrames(TCascFile * hf)
 
 static int EnsureFileFramesLoaded(TCascFile * hf)
 {
+    int nError = ERROR_SUCCESS;
+
     // If the encoded frames are not loaded, do it now
     if(hf->pFrames == NULL)
     {
-        TCascStorage * hs = hf->hs;
-        int nError;
-
         // We need the data file to be open
         nError = EnsureDataStreamIsOpen(hf);
         if(nError != ERROR_SUCCESS)
             return nError;
 
-        // Make sure that we already know the header delta value.
-        // - Heroes of the Storm (older builds)'s CASC_EKEY_ENTRY::ArchiveAndOffset point to the BLTE signature in the encoded header.
-        // - Heroes of the Storm (newer builds)'s CASC_EKEY_ENTRY::ArchiveAndOffset point to the encoded file header itself.
-        // Solve this once for the entire storage
-        if(hs->dwHeaderSpanSize == CASC_INVALID_SIZE)
-        {
-            hs->dwHeaderSpanSize = GetHeaderSpanSize(hf->pStream, hf->ArchiveOffset);
-            if(hs->dwHeaderSpanSize == CASC_INVALID_SIZE)
-                return ERROR_FILE_CORRUPT;
-        }
-
         // Make sure we have header area loaded
-        return LoadEncodedHeaderAndFileFrames(hf);
+        nError = LoadEncodedHeaderAndFileFrames(hf);
     }
 
-    return ERROR_SUCCESS;
+    return nError;
 }
 
 static int LoadEncodedFrame(TFileStream * pStream, PCASC_FILE_FRAME pFrame, LPBYTE pbEncodedFrame, bool bVerifyIntegrity)
@@ -464,8 +476,7 @@ static int ProcessFileFrame(
     }
 
     // Free the temporary buffer
-    if(pbWorkBuffer != NULL)
-        CASC_FREE(pbWorkBuffer);
+    CASC_FREE(pbWorkBuffer);
     return nError;
 }
 
@@ -487,7 +498,7 @@ static bool GetFileFullInfo(TCascFile * hf, void * pvFileInfo, size_t cbFileInfo
         pFileInfo->ContentFlags = CASC_INVALID_ID;
 
         // Supply information not depending on root
-        sprintf(pFileInfo->DataFileName, "data.%03u", hf->ArchiveIndex);
+        CascStrPrintf(pFileInfo->DataFileName, _countof(pFileInfo->DataFileName), "data.%03u", hf->ArchiveIndex);
         pFileInfo->StorageOffset = pCKeyEntry->StorageOffset;
         pFileInfo->SegmentOffset = hf->ArchiveOffset;
         pFileInfo->FileNameHash = 0;
@@ -514,7 +525,7 @@ bool WINAPI CascGetFileInfo(HANDLE hFile, CASC_FILE_INFO_CLASS InfoClass, void *
     size_t cbInfoValue = 0;
 
     // Validate the file handle
-    if((hf = IsValidCascFileHandle(hFile)) == NULL)
+    if((hf = TCascFile::IsValid(hFile)) == NULL)
     {
         SetLastError(ERROR_INVALID_HANDLE);
         return false;
@@ -595,7 +606,7 @@ DWORD WINAPI CascGetFileSize(HANDLE hFile, PDWORD pdwFileSizeHigh)
     CASCLIB_UNUSED(pdwFileSizeHigh);
 
     // Validate the file handle
-    if((hf = IsValidCascFileHandle(hFile)) == NULL)
+    if((hf = TCascFile::IsValid(hFile)) == NULL)
     {
         SetLastError(ERROR_INVALID_HANDLE);
         return CASC_INVALID_SIZE;
@@ -631,7 +642,7 @@ DWORD WINAPI CascSetFilePointer(HANDLE hFile, LONG lFilePos, LONG * plFilePosHig
     DWORD dwFilePosHi;
 
     // If the hFile is not a valid file handle, return an error.
-    hf = IsValidCascFileHandle(hFile);
+    hf = TCascFile::IsValid(hFile);
     if(hf == NULL)
     {
         SetLastError(ERROR_INVALID_HANDLE);
@@ -700,16 +711,9 @@ bool WINAPI CascReadFile(HANDLE hFile, void * pvBuffer, DWORD dwBytesToRead, PDW
     }
 
     // Validate the file handle
-    if((hf = IsValidCascFileHandle(hFile)) == NULL)
+    if((hf = TCascFile::IsValid(hFile)) == NULL)
     {
         SetLastError(ERROR_INVALID_HANDLE);
-        return false;
-    }
-
-    // Do not bother if the file is offline
-    if((hf->pCKeyEntry->Flags & CASC_CE_FILE_IS_LOCAL) == 0)
-    {
-        SetLastError(ERROR_FILE_OFFLINE);
         return false;
     }
 

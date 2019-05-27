@@ -68,9 +68,7 @@ LPBYTE LoadInternalFileToMemory(TCascStorage * hs, PCASC_CKEY_ENTRY pCKeyEntry, 
     if(nError != ERROR_SUCCESS)
     {
         // Free the file data
-        if(pbFileData != NULL)
-            CASC_FREE(pbFileData);
-        pbFileData = NULL;
+        CASC_FREE(pbFileData);
         cbFileData = 0;
 
         // Set the last error
@@ -83,7 +81,7 @@ LPBYTE LoadInternalFileToMemory(TCascStorage * hs, PCASC_CKEY_ENTRY pCKeyEntry, 
     return pbFileData;
 }
 
-LPBYTE LoadExternalFileToMemory(const TCHAR * szFileName, DWORD * pcbFileData)
+LPBYTE LoadFileToMemory(const TCHAR * szFileName, DWORD * pcbFileData)
 {
     TFileStream * pStream;
     ULONGLONG FileSize = 0;
@@ -102,14 +100,14 @@ LPBYTE LoadExternalFileToMemory(const TCHAR * szFileName, DWORD * pcbFileData)
         // Do not load zero files or too larget files
         if(0 < FileSize && FileSize <= 0x2000000)
         {
-            // Allocate file data buffer
-            pbFileData = CASC_ALLOC(BYTE, (DWORD)FileSize);
+            // Allocate file data buffer. Make it 1 byte longer
+            // so string functions can put '\0' there
+            pbFileData = CASC_ALLOC(BYTE, cbFileData + 1);
             if(pbFileData != NULL)
             {
                 if(!FileStream_Read(pStream, NULL, pbFileData, cbFileData))
                 {
                     CASC_FREE(pbFileData);
-                    pbFileData = NULL;
                     cbFileData = 0;
                 }
             }
@@ -140,10 +138,7 @@ void FreeCascBlob(PQUERY_KEY pBlob)
 {
     if(pBlob != NULL)
     {
-        if(pBlob->pbData != NULL)
-            CASC_FREE(pBlob->pbData);
-
-        pBlob->pbData = NULL;
+        CASC_FREE(pBlob->pbData);
         pBlob->cbData = 0;
     }
 }

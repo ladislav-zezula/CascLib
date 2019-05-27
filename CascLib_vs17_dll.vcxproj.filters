@@ -10,20 +10,14 @@
     <Filter Include="Source Files\jenkins">
       <UniqueIdentifier>{5ebc9177-f685-43f1-bcc6-ecd8ac9798fe}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\libtomcrypt">
-      <UniqueIdentifier>{c69169d4-f986-4e6a-80f6-f4ed8dcff1ed}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\libtomcrypt\hashes">
-      <UniqueIdentifier>{d730212c-1f65-4276-93be-7cc13cd8bc73}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\libtomcrypt\misc">
-      <UniqueIdentifier>{538a8541-cb2e-45c9-9354-0aa8adbd267e}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\zlib">
       <UniqueIdentifier>{0e806296-938d-4872-afed-291e27a246e8}</UniqueIdentifier>
     </Filter>
     <Filter Include="Header Files">
       <UniqueIdentifier>{ced3408f-6c90-4d4a-abf2-2704bd636c7b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\md5">
+      <UniqueIdentifier>{c800c12f-4e09-44b6-899a-c58c7ca15b97}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -87,24 +81,6 @@
     <ClCompile Include="src\jenkins\lookup3.c">
       <Filter>Source Files\jenkins</Filter>
     </ClCompile>
-    <ClCompile Include="src\libtomcrypt\src\hashes\hash_memory.c">
-      <Filter>Source Files\libtomcrypt\hashes</Filter>
-    </ClCompile>
-    <ClCompile Include="src\libtomcrypt\src\hashes\md5.c">
-      <Filter>Source Files\libtomcrypt\hashes</Filter>
-    </ClCompile>
-    <ClCompile Include="src\libtomcrypt\src\misc\crypt_argchk.c">
-      <Filter>Source Files\libtomcrypt\misc</Filter>
-    </ClCompile>
-    <ClCompile Include="src\libtomcrypt\src\misc\crypt_hash_descriptor.c">
-      <Filter>Source Files\libtomcrypt\misc</Filter>
-    </ClCompile>
-    <ClCompile Include="src\libtomcrypt\src\misc\crypt_hash_is_valid.c">
-      <Filter>Source Files\libtomcrypt\misc</Filter>
-    </ClCompile>
-    <ClCompile Include="src\libtomcrypt\src\misc\crypt_libc.c">
-      <Filter>Source Files\libtomcrypt\misc</Filter>
-    </ClCompile>
     <ClCompile Include="src\zlib\adler32.c">
       <Filter>Source Files\zlib</Filter>
     </ClCompile>
@@ -134,6 +110,15 @@
     </ClCompile>
     <ClCompile Include="src\CascRootFile_TVFS.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\CascRootFile_Install.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\CascIndexFiles.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\md5\md5.cpp">
+      <Filter>Source Files\md5</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -175,6 +160,9 @@
     </ClInclude>
     <ClInclude Include="src\common\FileTree.h">
       <Filter>Source Files\common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\md5\md5.h">
+      <Filter>Source Files\md5</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

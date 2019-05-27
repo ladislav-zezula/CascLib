@@ -72,11 +72,8 @@ extern "C" {
 //-----------------------------------------------------------------------------
 // Defines
 
-#define CASCLIB_VERSION                 0x0114  // Current version of CascLib (1.20)
-#define CASCLIB_VERSION_STRING          "1.20"  // String version of CascLib version
-
-// Values for CascOpenStorage
-#define CASC_STOR_XXXXX             0x00000001  // Not used
+#define CASCLIB_VERSION                 0x0132  // Current version of CascLib (1.50)
+#define CASCLIB_VERSION_STRING          "1.50"  // String version of CascLib version
 
 // Values for CascOpenFile
 #define CASC_OPEN_BY_NAME           0x00000000  // Open the file by name. This is the default value
@@ -107,25 +104,14 @@ extern "C" {
 #define CASC_LOCALE_ITIT            0x00008000
 #define CASC_LOCALE_PTPT            0x00010000
 
-#define CASC_LOCALE_BIT_ENUS        0x01
-#define CASC_LOCALE_BIT_KOKR        0x02
-#define CASC_LOCALE_BIT_RESERVED    0x03
-#define CASC_LOCALE_BIT_FRFR        0x04
-#define CASC_LOCALE_BIT_DEDE        0x05
-#define CASC_LOCALE_BIT_ZHCN        0x06
-#define CASC_LOCALE_BIT_ESES        0x07
-#define CASC_LOCALE_BIT_ZHTW        0x08
-#define CASC_LOCALE_BIT_ENGB        0x09
-#define CASC_LOCALE_BIT_ENCN        0x0A
-#define CASC_LOCALE_BIT_ENTW        0x0B
-#define CASC_LOCALE_BIT_ESMX        0x0C
-#define CASC_LOCALE_BIT_RURU        0x0D
-#define CASC_LOCALE_BIT_PTBR        0x0E
-#define CASC_LOCALE_BIT_ITIT        0x0F
-#define CASC_LOCALE_BIT_PTPT        0x10
-
-
-#define MAX_CASC_KEY_LENGTH               0x10  // Maximum length of the key (equal to MD5 hash)
+// Content flags on WoW
+#define CASC_CFLAG_LOAD_ON_WINDOWS        0x08
+#define CASC_CFLAG_LOAD_ON_MAC            0x10
+#define CASC_CFLAG_LOW_VIOLENCE           0x80
+#define CASC_CFLAG_DONT_LOAD             0x100
+#define CASC_CFLAG_NO_NAME_HASH     0x10000000
+#define CASC_CFLAG_BUNDLE           0x40000000
+#define CASC_CFLAG_NO_COMPRESSION   0x80000000
 
 #ifndef MD5_HASH_SIZE
 #define MD5_HASH_SIZE                     0x10
@@ -134,10 +120,6 @@ extern "C" {
 
 #ifndef SHA1_DIGEST_SIZE
 #define SHA1_DIGEST_SIZE                  0x14  // 160 bits
-#endif
-
-#ifndef LANG_NEUTRAL
-#define LANG_NEUTRAL                      0x00  // Neutral locale
 #endif
 
 // Return value for CascGetFileSize and CascSetFilePointer
@@ -156,10 +138,11 @@ extern "C" {
 #define CASC_FEATURE_FILE_DATA_IDS  0x00000010  // The storage indexes files by FileDataId
 #define CASC_FEATURE_LOCALE_FLAGS   0x00000020  // Locale flags are supported
 #define CASC_FEATURE_CONTENT_FLAGS  0x00000040  // Content flags are supported
+#define CASC_FEATURE_ONLINE         0x00000080  // The storage is an online storage
 
 // Macro to convert FileDataId to the argument of CascOpenFile
-#define CASC_FILE_DATA_ID(FileDataId) ((const char *)FileDataId)
-#define CASC_FILE_DATA_ID_FROM_STRING(szFileName)  ((DWORD)(ULONGLONG)szFileName)
+#define CASC_FILE_DATA_ID(FileDataId) ((LPCSTR)(size_t)FileDataId)
+#define CASC_FILE_DATA_ID_FROM_STRING(szFileName)  ((DWORD)(size_t)szFileName)
 
 //-----------------------------------------------------------------------------
 // Structures
@@ -208,20 +191,6 @@ typedef enum _CASC_PRODUCT
     MaxProductValue
 
 } CASC_PRODUCT, *PCASC_PRODUCT;
-
-// Query key for a file. Contains CKey [+EKey]
-typedef struct _QUERY_KEY
-{
-    LPBYTE pbData;
-    size_t cbData;
-} QUERY_KEY, *PQUERY_KEY;
-
-// Query size for a file. Contains CSize + ESize
-typedef struct _QUERY_SIZE
-{
-    DWORD ContentSize;
-    DWORD EncodedSize;
-} QUERY_SIZE, *PQUERY_SIZE;
 
 // CascLib may provide a fake name, constructed from file data id, CKey or EKey.
 // This enum helps to see what name was actually returned
@@ -277,7 +246,7 @@ typedef struct _CASC_FIND_DATA
 
 typedef struct _CASC_STORAGE_TAG
 {
-    const char * szTagName;                     // Tag name (zero terminated, ANSI)
+    LPCSTR szTagName;                           // Tag name (zero terminated, ANSI)
     DWORD TagNameLength;                        // Length of the tag name
     DWORD TagValue;                             // Tag value
 } CASC_STORAGE_TAG, *PCASC_STORAGE_TAG;
@@ -293,7 +262,7 @@ typedef struct _CASC_STORAGE_TAGS
 
 typedef struct _CASC_STORAGE_PRODUCT
 {
-    const char * szProductName;
+    LPCSTR szProductName;
     DWORD dwBuildNumber;
     CASC_PRODUCT Product;
 
@@ -326,7 +295,8 @@ typedef void (WINAPI * STREAM_DOWNLOAD_CALLBACK)(void * pvUserData, ULONGLONG By
 //-----------------------------------------------------------------------------
 // Functions for storage manipulation
 
-bool  WINAPI CascOpenStorage(const TCHAR * szDataPath, DWORD dwLocaleMask, HANDLE * phStorage);
+bool  WINAPI CascOpenStorage(LPCTSTR szDataPath, DWORD dwLocaleMask, HANDLE * phStorage);
+bool  WINAPI CascOpenOnlineStorage(LPCTSTR szLocalCache, LPCSTR szCodeName, LPCSTR szRegion, DWORD dwLocaleMask, HANDLE * phStorage);
 bool  WINAPI CascGetStorageInfo(HANDLE hStorage, CASC_STORAGE_INFO_CLASS InfoClass, void * pvStorageInfo, size_t cbStorageInfo, size_t * pcbLengthNeeded);
 bool  WINAPI CascAddEncryptionKey(HANDLE hStorage, ULONGLONG KeyName, LPBYTE Key);
 bool  WINAPI CascCloseStorage(HANDLE hStorage);
@@ -338,7 +308,7 @@ DWORD WINAPI CascSetFilePointer(HANDLE hFile, LONG lFilePos, LONG * plFilePosHig
 bool  WINAPI CascReadFile(HANDLE hFile, void * lpBuffer, DWORD dwToRead, PDWORD pdwRead);
 bool  WINAPI CascCloseFile(HANDLE hFile);
 
-HANDLE WINAPI CascFindFirstFile(HANDLE hStorage, const char * szMask, PCASC_FIND_DATA pFindData, const TCHAR * szListFile);
+HANDLE WINAPI CascFindFirstFile(HANDLE hStorage, LPCSTR szMask, PCASC_FIND_DATA pFindData, LPCTSTR szListFile);
 bool  WINAPI CascFindNextFile(HANDLE hFind, PCASC_FIND_DATA pFindData);
 bool  WINAPI CascFindClose(HANDLE hFind);
 

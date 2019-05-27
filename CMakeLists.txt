@@ -30,10 +30,12 @@ set(SRC_FILES
     src/CascDumpData.cpp
     src/CascFiles.cpp
     src/CascFindFile.cpp
+    src/CascIndexFiles.cpp
     src/CascOpenFile.cpp
     src/CascOpenStorage.cpp
     src/CascReadFile.cpp
     src/CascRootFile_Diablo3.cpp
+    src/CascRootFile_Install.cpp
     src/CascRootFile_MNDX.cpp
     src/CascRootFile_Text.cpp
     src/CascRootFile_TVFS.cpp
@@ -41,13 +43,8 @@ set(SRC_FILES
     src/CascRootFile_WoW.cpp
 )
 
-set(TOMCRYPT_FILES
-    src/libtomcrypt/src/hashes/hash_memory.c
-    src/libtomcrypt/src/hashes/md5.c
-    src/libtomcrypt/src/misc/crypt_argchk.c
-    src/libtomcrypt/src/misc/crypt_hash_descriptor.c
-    src/libtomcrypt/src/misc/crypt_hash_is_valid.c
-    src/libtomcrypt/src/misc/crypt_libc.c
+set(MD5_FILES
+    src/md5/md5.cpp
 )
 
 set(ZLIB_FILES
@@ -74,7 +71,7 @@ if(WIN32)
     else()
         message(STATUS "Using mingw")	 
     endif()
-    set(SRC_ADDITIONAL_FILES ${ZLIB_FILES} ${TOMCRYPT_FILES})
+    set(SRC_ADDITIONAL_FILES ${ZLIB_FILES} ${MD5_FILES})
     set(LINK_LIBS wininet)
     if(CASC_UNICODE)
 	message(STATUS "Build UNICODE version")
@@ -87,18 +84,12 @@ endif()
 if(APPLE)
     message(STATUS "Using Mac OS X port")
     set(LINK_LIBS z bz2)
-    set(SRC_ADDITIONAL_FILES ${TOMCRYPT_FILES})
+    set(SRC_ADDITIONAL_FILES ${MD5_FILES})
 endif()
 
 if (${CMAKE_SYSTEM_NAME} STREQUAL Linux)
     message(STATUS "Using Linux port")
-    option(WITH_LIBTOMCRYPT "Use system LibTomCrypt library" OFF)
-    if(WITH_LIBTOMCRYPT)
-        set(LINK_LIBS tomcrypt)
-    else()
-        set(LINK_LIBS)
-        set(SRC_ADDITIONAL_FILES ${ZLIB_FILES} ${TOMCRYPT_FILES})
-    endif()
+    set(SRC_ADDITIONAL_FILES ${MD5_FILES} ${ZLIB_FILES})
 endif()
 
 option(CASC_BUILD_SHARED_LIB "Compile dynamically linked library" ON)

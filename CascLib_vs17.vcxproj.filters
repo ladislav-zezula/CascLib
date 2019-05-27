@@ -16,17 +16,11 @@
     <Filter Include="Source Files\jenkins">
       <UniqueIdentifier>{7b4a98a2-e979-44cb-a09f-d05ea7b8ae3c}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\libtomcrypt">
-      <UniqueIdentifier>{ff104a8e-85bc-460c-9714-dc5da3d9753d}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\libtomcrypt\hashes">
-      <UniqueIdentifier>{5d2631f1-5988-4503-a775-4fa1303e1650}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\libtomcrypt\misc">
-      <UniqueIdentifier>{ecc14352-ecff-47ca-871c-720e0d7ff5bc}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\zlib">
       <UniqueIdentifier>{f75a501d-96b6-4cdc-a97a-b30b8f2cb9a5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\md5">
+      <UniqueIdentifier>{a87904e6-a75a-43dd-912a-7c6c40523dbb}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -73,6 +67,9 @@
     </ClInclude>
     <ClInclude Include="src\CascStructs.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\md5\md5.h">
+      <Filter>Source Files\md5</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -130,24 +127,6 @@
     <ClCompile Include="src\jenkins\lookup3.c">
       <Filter>Source Files\jenkins</Filter>
     </ClCompile>
-    <ClCompile Include="src\libtomcrypt\src\hashes\hash_memory.c">
-      <Filter>Source Files\libtomcrypt\hashes</Filter>
-    </ClCompile>
-    <ClCompile Include="src\libtomcrypt\src\hashes\md5.c">
-      <Filter>Source Files\libtomcrypt\hashes</Filter>
-    </ClCompile>
-    <ClCompile Include="src\libtomcrypt\src\misc\crypt_argchk.c">
-      <Filter>Source Files\libtomcrypt\misc</Filter>
-    </ClCompile>
-    <ClCompile Include="src\libtomcrypt\src\misc\crypt_hash_descriptor.c">
-      <Filter>Source Files\libtomcrypt\misc</Filter>
-    </ClCompile>
-    <ClCompile Include="src\libtomcrypt\src\misc\crypt_hash_is_valid.c">
-      <Filter>Source Files\libtomcrypt\misc</Filter>
-    </ClCompile>
-    <ClCompile Include="src\libtomcrypt\src\misc\crypt_libc.c">
-      <Filter>Source Files\libtomcrypt\misc</Filter>
-    </ClCompile>
     <ClCompile Include="src\zlib\adler32.c">
       <Filter>Source Files\zlib</Filter>
     </ClCompile>
@@ -180,6 +159,15 @@
     </ClCompile>
     <ClCompile Include="src\CascRootFile_OW.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\CascRootFile_Install.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\CascIndexFiles.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\md5\md5.cpp">
+      <Filter>Source Files\md5</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

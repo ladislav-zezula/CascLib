@@ -182,10 +182,12 @@
     <ClCompile Include="src\CascDumpData.cpp" />
     <ClCompile Include="src\CascFiles.cpp" />
     <ClCompile Include="src\CascFindFile.cpp" />
+    <ClCompile Include="src\CascIndexFiles.cpp" />
     <ClCompile Include="src\CascOpenFile.cpp" />
     <ClCompile Include="src\CascOpenStorage.cpp" />
     <ClCompile Include="src\CascReadFile.cpp" />
     <ClCompile Include="src\CascRootFile_Diablo3.cpp" />
+    <ClCompile Include="src\CascRootFile_Install.cpp" />
     <ClCompile Include="src\CascRootFile_MNDX.cpp" />
     <ClCompile Include="src\CascRootFile_OW.cpp" />
     <ClCompile Include="src\CascRootFile_Text.cpp" />
@@ -200,12 +202,7 @@
     <ClCompile Include="src\common\RootHandler.cpp" />
     <ClCompile Include="src\DllMain.c" />
     <ClCompile Include="src\jenkins\lookup3.c" />
-    <ClCompile Include="src\libtomcrypt\src\hashes\hash_memory.c" />
-    <ClCompile Include="src\libtomcrypt\src\hashes\md5.c" />
-    <ClCompile Include="src\libtomcrypt\src\misc\crypt_argchk.c" />
-    <ClCompile Include="src\libtomcrypt\src\misc\crypt_hash_descriptor.c" />
-    <ClCompile Include="src\libtomcrypt\src\misc\crypt_hash_is_valid.c" />
-    <ClCompile Include="src\libtomcrypt\src\misc\crypt_libc.c" />
+    <ClCompile Include="src\md5\md5.cpp" />
     <ClCompile Include="src\zlib\adler32.c" />
     <ClCompile Include="src\zlib\crc32.c" />
     <ClCompile Include="src\zlib\inffast.c" />
@@ -227,6 +224,7 @@
     <ClInclude Include="src\common\Map.h" />
     <ClInclude Include="src\common\RootHandler.h" />
     <ClInclude Include="src\FileStream.h" />
+    <ClInclude Include="src\md5\md5.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

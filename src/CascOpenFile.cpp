@@ -15,13 +15,6 @@
 //-----------------------------------------------------------------------------
 // Local functions
 
-TCascFile * IsValidCascFileHandle(HANDLE hFile)
-{
-    TCascFile * hf = (TCascFile *)hFile;
-
-    return (hf != NULL && hf->hs != NULL && hf->szClassName != NULL && hf->pCKeyEntry != NULL) ? hf : NULL;
-}
-
 PCASC_CKEY_ENTRY FindCKeyEntry_CKey(TCascStorage * hs, LPBYTE pbCKey, PDWORD PtrIndex)
 {
     return (PCASC_CKEY_ENTRY)hs->CKeyMap.FindObject(pbCKey, PtrIndex);
@@ -30,40 +23,6 @@ PCASC_CKEY_ENTRY FindCKeyEntry_CKey(TCascStorage * hs, LPBYTE pbCKey, PDWORD Ptr
 PCASC_CKEY_ENTRY FindCKeyEntry_EKey(TCascStorage * hs, LPBYTE pbEKey, PDWORD PtrIndex)
 {
     return (PCASC_CKEY_ENTRY)hs->EKeyMap.FindObject(pbEKey, PtrIndex);
-}
-
-static TCascFile * CreateFileHandle(TCascStorage * hs, PCASC_CKEY_ENTRY pCKeyEntry)
-{
-    ULONGLONG StorageOffset = pCKeyEntry->StorageOffset;
-    ULONGLONG FileOffsMask = ((ULONGLONG)1 << hs->FileOffsetBits) - 1;
-    TCascFile * hf;
-
-    // Allocate the CASC file structure
-    hf = (TCascFile *)CASC_ALLOC(TCascFile, 1);
-    if(hf != NULL)
-    {
-        // Initialize the structure
-        hf->ArchiveIndex = (DWORD)(StorageOffset >> hs->FileOffsetBits);
-        hf->ArchiveOffset = (DWORD)(StorageOffset & FileOffsMask);
-        hf->szClassName = "TCascFile";
-        hf->pCKeyEntry = pCKeyEntry;
-        hf->pbFileCache = NULL;
-        hf->cbFileCache = 0;
-        hf->FilePointer = 0;
-        hf->pStream = NULL;
-        hf->pFrames = NULL;
-        hf->FrameCount = 0;
-
-        // Supply the sizes
-        hf->EncodedSize = pCKeyEntry->EncodedSize;
-        hf->ContentSize = pCKeyEntry->ContentSize;
-
-        // Increment the number of references to the archive
-        hs->dwRefCount++;
-        hf->hs = hs;
-    }
-
-    return hf;
 }
 
 bool OpenFileByCKeyEntry(TCascStorage * hs, PCASC_CKEY_ENTRY pCKeyEntry, DWORD dwOpenFlags, HANDLE * PtrFileHandle)
@@ -75,9 +34,10 @@ bool OpenFileByCKeyEntry(TCascStorage * hs, PCASC_CKEY_ENTRY pCKeyEntry, DWORD d
     if(pCKeyEntry != NULL)
     {
         // Create the file handle structure
-        if((hf = CreateFileHandle(hs, pCKeyEntry)) != NULL)
+        if((hf = new TCascFile(hs, pCKeyEntry)) != NULL)
         {
             hf->bVerifyIntegrity = (dwOpenFlags & CASC_STRICT_DATA_CHECK) ? true : false;
+            hf->bDownloadFileIf = (hs->dwFeatures & CASC_FEATURE_ONLINE) ? true : false;
             nError = ERROR_SUCCESS;
         }
         else
@@ -93,23 +53,6 @@ bool OpenFileByCKeyEntry(TCascStorage * hs, PCASC_CKEY_ENTRY pCKeyEntry, DWORD d
     if(nError != ERROR_SUCCESS)
         SetLastError(nError);
     return (nError == ERROR_SUCCESS);
-}
-
-bool OpenFileInternal(TCascStorage * hs, LPBYTE pbQueryKey, DWORD dwOpenFlags, HANDLE * PtrFileHandle)
-{
-    // Either open by CKey or EKey
-    switch(dwOpenFlags & CASC_OPEN_TYPE_MASK)
-    {
-        case CASC_OPEN_BY_CKEY:
-            return OpenFileByCKeyEntry(hs, FindCKeyEntry_CKey(hs, pbQueryKey), dwOpenFlags, PtrFileHandle);
-
-        case CASC_OPEN_BY_EKEY:
-            return OpenFileByCKeyEntry(hs, FindCKeyEntry_EKey(hs, pbQueryKey), dwOpenFlags, PtrFileHandle);
-
-        default:
-            SetLastError(ERROR_INVALID_PARAMETER);
-            return false;
-    }
 }
 
 //-----------------------------------------------------------------------------
@@ -128,7 +71,7 @@ bool WINAPI CascOpenFile(HANDLE hStorage, const void * pvFileName, DWORD dwLocal
     CASCLIB_UNUSED(dwLocaleFlags);
 
     // Validate the storage handle
-    hs = IsValidCascStorageHandle(hStorage);
+    hs = TCascStorage::IsValid(hStorage);
     if(hs == NULL)
     {
         SetLastError(ERROR_INVALID_HANDLE);
@@ -230,23 +173,10 @@ bool WINAPI CascCloseFile(HANDLE hFile)
 {
     TCascFile * hf;
 
-    hf = IsValidCascFileHandle(hFile);
-    if(hf != NULL)
+    hf = TCascFile::IsValid(hFile);
+    if (hf != NULL)
     {
-        // Close (dereference) the archive handle
-        if(hf->hs != NULL)
-            CascCloseStorage((HANDLE)hf->hs);
-        hf->hs = NULL;
-
-        // Free the file cache and frame array
-        if(hf->pbFileCache != NULL)
-            CASC_FREE(hf->pbFileCache);
-        if(hf->pFrames != NULL)
-            CASC_FREE(hf->pFrames);
-
-        // Free the structure itself
-        hf->szClassName = NULL;
-        CASC_FREE(hf);
+        delete hf;
         return true;
     }
 

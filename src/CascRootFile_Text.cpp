@@ -25,61 +25,61 @@ struct TRootHandler_SC1 : public TFileTreeRoot
         dwFeatures |= (CASC_FEATURE_FILE_NAMES | CASC_FEATURE_ROOT_CKEY);
     }
 
-    static bool IsRootFile(void * pvTextFile)
+    static bool IsRootFile(LPBYTE pbRootFile, DWORD cbRootFile)
     {
-        CASC_CSV Csv;
+        CASC_CSV Csv(1, false);
         size_t nColumns;
-        char szFileName[MAX_PATH];
-        BYTE CKey[MD5_HASH_SIZE];
         bool bResult = false;
 
         // Get the first line from the listfile
-        if(Csv.LoadNextLine(pvTextFile))
+        if(Csv.Load(pbRootFile, cbRootFile) == ERROR_SUCCESS)
         {
             // There must be 2 or 3 elements
-            nColumns = Csv.GetColumnCount();
+            nColumns = Csv[CSV_ZERO].GetColumnCount();
             if (nColumns == 2 || nColumns == 3)
             {
-                if (Csv.GetString(szFileName, MAX_PATH, 0) == ERROR_SUCCESS && Csv.GetBinary(CKey, MD5_HASH_SIZE, 1) == ERROR_SUCCESS)
-                {
-                    bResult = true;
-                }
+                const CASC_CSV_COLUMN & FileName = Csv[CSV_ZERO][CSV_ZERO];
+                const CASC_CSV_COLUMN & CKeyStr = Csv[CSV_ZERO][1];
+
+                bResult = (FileName.szValue && CKeyStr.szValue && CKeyStr.nLength == MD5_STRING_SIZE);
             }
         }
 
         // We need to reset the listfile to the begin position
-        ListFile_Reset(pvTextFile);
         return bResult;
     }
 
-    int Load(TCascStorage * hs, void * pvTextFile)
+    int Load(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile)
     {
         PCASC_CKEY_ENTRY pCKeyEntry;
-        CASC_CSV Csv;
-        char szFileName[MAX_PATH];
+        CASC_CSV Csv(0, false);
         BYTE CKey[MD5_HASH_SIZE];
+        int nError;
 
-        // Parse all lines
-        while(Csv.LoadNextLine(pvTextFile) != 0)
+        // Parse the ROOT file first in order to see whether we have the correct format
+        nError = Csv.Load(pbRootFile, cbRootFile);
+        if(nError == ERROR_SUCCESS)
         {
-            // Retrieve the file name and the content key
-            if(Csv.GetString(szFileName, MAX_PATH, 0) == ERROR_SUCCESS && Csv.GetBinary(CKey, MD5_HASH_SIZE, 1) == ERROR_SUCCESS)
+            // Parse all lines
+            while(Csv.LoadNextLine())
             {
-                // Verify whether it is a known entry
-                if((pCKeyEntry = FindCKeyEntry_CKey(hs, CKey)) != NULL)
-                {
-                    // Insert the FileName+CKey to the file tree
-//                  void * pItem1 = FileTree_Insert(&pRootHandler->FileTree, &CKey, szFileName);
-//                  void * pItem2 = FileTree_Find(&pRootHandler->FileTree, szFileName);
-//                  assert(pItem1 == pItem2);
+                const CASC_CSV_COLUMN & FileName = Csv[CSV_ZERO][CSV_ZERO];
+                const CASC_CSV_COLUMN & CKeyStr = Csv[CSV_ZERO][1];
 
-                    // Insert the FileName+CKey to the file tree
-                    FileTree.InsertByName(pCKeyEntry, szFileName);
+                // Convert the CKey to binary
+                if(ConvertStringToBinary(CKeyStr.szValue, MD5_STRING_SIZE, CKey) == ERROR_SUCCESS)
+                {
+                    // Verify whether it is a known entry
+                    if((pCKeyEntry = FindCKeyEntry_CKey(hs, CKey)) != NULL)
+                    {
+                        // Insert the FileName+CKey to the file tree
+                        FileTree.InsertByName(pCKeyEntry, FileName.szValue);
+                    }
                 }
             }
         }
 
-        return ERROR_SUCCESS;
+        return nError;
     }
 };
 
@@ -96,32 +96,23 @@ struct TRootHandler_SC1 : public TFileTreeRoot
 int RootHandler_CreateStarcraft1(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile)
 {
     TRootHandler_SC1 * pRootHandler = NULL;
-    void * pvTextFile;
     int nError = ERROR_BAD_FORMAT;
 
-    // Parse the ROOT file first in order to see whether we have the correct format
-    pvTextFile = ListFile_FromBuffer(pbRootFile, cbRootFile);
-    if(pvTextFile != NULL)
+    // Verify whether this looks like a Starcraft I root file
+    if(TRootHandler_SC1::IsRootFile(pbRootFile, cbRootFile))
     {
-        // Verify whether this looks like a Starcraft I root file
-        if(TRootHandler_SC1::IsRootFile(pvTextFile))
+        // Allocate the root handler object
+        pRootHandler = new TRootHandler_SC1();
+        if(pRootHandler != NULL)
         {
-            // Allocate the root handler object
-            pRootHandler = new TRootHandler_SC1();
-            if(pRootHandler != NULL)
+            // Load the root directory. If load failed, we free the object
+            nError = pRootHandler->Load(hs, pbRootFile, cbRootFile);
+            if(nError != ERROR_SUCCESS)
             {
-                // Load the root directory. If load failed, we free the object
-                nError = pRootHandler->Load(hs, pvTextFile);
-                if(nError != ERROR_SUCCESS)
-                {
-                    delete pRootHandler;
-                    pRootHandler = NULL;
-                }
+                delete pRootHandler;
+                pRootHandler = NULL;
             }
         }
-
-        // Free the listfile object
-        ListFile_Free(pvTextFile);
     }
 
     // Assign the root directory (or NULL) and return error
