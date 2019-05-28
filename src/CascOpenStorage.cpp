@@ -21,6 +21,12 @@
 #define CASC_MAX_ORPHANED_ITEMS 0x100
 
 //-----------------------------------------------------------------------------
+// Local variables
+
+static PFNPROGRESSCALLBACK PfnProgressCallback = NULL;
+static void * PtrProgressParam = NULL;
+
+//-----------------------------------------------------------------------------
 // TCascStorage service functions
 
 TCascStorage::TCascStorage()
@@ -32,7 +38,7 @@ TCascStorage::TCascStorage()
     dwRefCount = 1;
 
     szRootPath = szDataPath = szIndexPath = szBuildFile = szCdnServers = szCdnPath = szCodeName = NULL;
-    szProductName = szErrorMsg = NULL;
+    szProductName = NULL;
     szIndexFormat = NULL;
     szRegion = NULL;
     
@@ -44,6 +50,12 @@ TCascStorage::TCascStorage()
     BuildFileType = CascBuildNone;
 
     LocalFiles = TotalFiles = EKeyEntries = OrphanItems = SkippedItems = EKeyLength = FileOffsetBits = 0;
+
+    // Take the callback param and data. Zero the global pointers
+    PfnCallback = PfnProgressCallback;
+    PtrCallbackParam = PtrProgressParam;
+    PfnProgressCallback = NULL;
+    PtrProgressParam = NULL;
 }
 
 TCascStorage::~TCascStorage()
@@ -401,6 +413,10 @@ static int LoadEncodingManifest(TCascStorage * hs)
     DWORD cbEncodingFile = 0;
     int nError = ERROR_SUCCESS;
 
+    // Inform the user about what we are doing
+    if(hs->PfnCallback && hs->PfnCallback(hs->PtrCallbackParam, "Loading ENCODING manifest", NULL, 0, 0))
+        return ERROR_CANCELLED;
+
     // Load the entire encoding file to memory
     pbEncodingFile = LoadInternalFileToMemory(hs, &hs->EncodingCKey, &cbEncodingFile);
     if(pbEncodingFile != NULL && cbEncodingFile != 0)
@@ -728,6 +744,10 @@ static int LoadDownloadManifest(TCascStorage * hs)
     DWORD cbDownloadFile = 0;
     int nError = ERROR_SUCCESS;
 
+    // Inform the user about what we are doing
+    if(hs->PfnCallback && hs->PfnCallback(hs->PtrCallbackParam, "Loading DOWNLOAD manifest", NULL, 0, 0))
+        return ERROR_CANCELLED;
+
     // Load the entire DOWNLOAD file to memory
     pbDownloadFile = LoadInternalFileToMemory(hs, pCKeyEntry, &cbDownloadFile);
     if(pbDownloadFile != NULL && cbDownloadFile != 0)
@@ -760,6 +780,10 @@ static int LoadInstallManifest(TCascStorage * hs)
     LPBYTE pbInstallFile = NULL;
     DWORD cbInstallFile = 0;
     int nError = ERROR_SUCCESS;
+
+    // Inform the user about what we are doing
+    if(hs->PfnCallback && hs->PfnCallback(hs->PtrCallbackParam, "Loading INSTALL manifest", NULL, 0, 0))
+        return ERROR_CANCELLED;
 
     // Load the entire DOWNLOAD file to memory
     pbInstallFile = LoadInternalFileToMemory(hs, pCKeyEntry, &cbInstallFile);
@@ -818,7 +842,11 @@ static int LoadBuildManifest(TCascStorage * hs, DWORD dwLocaleMask)
     pCKeyEntry = (hs->VfsRoot.ContentSize != CASC_INVALID_SIZE) ? &hs->VfsRoot : &hs->RootFile;
     pCKeyEntry = FindCKeyEntry_CKey(hs, pCKeyEntry->CKey);
 
-    // Load the entire ROOT file to memory. Ignore 
+    // Inform the user about what we are doing
+    if(hs->PfnCallback && hs->PfnCallback(hs->PtrCallbackParam, "Loading ROOT manifest", NULL, 0, 0))
+        return ERROR_CANCELLED;
+
+    // Load the entire ROOT file to memory
     pbRootFile = LoadInternalFileToMemory(hs, pCKeyEntry, &cbRootFile);
     if(pbRootFile != NULL)
     {
@@ -1133,6 +1161,12 @@ static int LoadCascStorage(TCascStorage * hs, DWORD dwLocaleMask)
 
 //-----------------------------------------------------------------------------
 // Public functions
+
+void WINAPI CascSetProgressCallback(PFNPROGRESSCALLBACK PtrUserCallback, void * PtrUserParam)
+{
+    PfnProgressCallback = PtrUserCallback;
+    PtrProgressParam = PtrUserParam;
+}
 
 bool WINAPI CascOpenStorage(LPCTSTR szPath, DWORD dwLocaleMask, HANDLE * phStorage)
 {

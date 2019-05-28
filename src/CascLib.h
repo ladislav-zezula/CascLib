@@ -287,10 +287,22 @@ typedef struct _CASC_FILE_FULL_INFO
 } CASC_FILE_FULL_INFO, *PCASC_FILE_FULL_INFO;
 
 //-----------------------------------------------------------------------------
-// Callback functions
+// Some operations (e.g. opening an online storage) may take long time.
+// This callback allows an application to be notified about loading progress.
+// This callback only works for a single CascOpen(Online)Storage call.
 
-typedef struct TFileStream TFileStream;
-typedef void (WINAPI * STREAM_DOWNLOAD_CALLBACK)(void * pvUserData, ULONGLONG ByteOffset, DWORD dwTotalBytes);
+typedef bool (WINAPI * PFNPROGRESSCALLBACK)(    // Return 'true' to cancel the loading process
+    void * PtrUserParam,                        // User-specific parameter passed to the callback
+    LPCSTR szWork,                              // Text for the current activity (example: "Loading "ENCODING" file")
+    LPCSTR szObject,                            // (optional) name of the object tied to the activity (example: index file name)
+    DWORD nCurrent,                             // (optional) current object being processed
+    DWORD nTotal                                // (optional) If non-zero, this is the total number of objects to process
+    );
+
+void WINAPI CascSetProgressCallback(
+    PFNPROGRESSCALLBACK PtrUserCallback,        // Pointer to the callback function that will be called during opening the storage
+    void * PtrUserParam                         // Arbitrary user parameter that will be passed to the callback
+    );
 
 //-----------------------------------------------------------------------------
 // Functions for storage manipulation

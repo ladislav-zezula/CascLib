@@ -250,7 +250,11 @@
 #ifndef ERROR_BUFFER_OVERFLOW
 #define ERROR_BUFFER_OVERFLOW            1008
 #endif
-  
+
+#ifndef ERROR_CANCELLED
+#define ERROR_CANCELLED                  1009
+#endif
+
 #ifndef _countof
 #define _countof(x)   (sizeof(x) / sizeof(x[0]))  
 #endif

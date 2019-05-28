@@ -206,10 +206,12 @@ struct TCascStorage
 
     static TCascStorage * IsValid(HANDLE hStorage);
 
+    PFNPROGRESSCALLBACK PfnCallback;                // Callback to be called during CascOpen(Online)Storage
+    void * PtrCallbackParam;
+
     const TCHAR * szIndexFormat;                    // Format of the index file name
     const char * szClassName;                       // "TCascStorage"
     const char * szProductName;                     // String representation of the product name
-    const char * szErrorMsg;                        // If not NULL, contains the error message string
     TCHAR * szRootPath;                             // Path where the build file is
     TCHAR * szDataPath;                             // This is the directory where data files are
     TCHAR * szIndexPath;                            // This is the directory where index files are

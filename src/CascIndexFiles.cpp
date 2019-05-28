@@ -1,13 +1,11 @@
 /*****************************************************************************/
-/* CascOpenStorage.cpp                    Copyright (c) Ladislav Zezula 2014 */
+/* CascIndexFiles.cpp                     Copyright (c) Ladislav Zezula 2019 */
 /*---------------------------------------------------------------------------*/
-/* Storage functions for CASC                                                */
-/* Note: WoW6 offsets refer to WoW.exe 6.0.3.19116 (32-bit)                  */
-/* SHA1: c10e9ffb7d040a37a356b96042657e1a0c95c0dd                            */
+/* Index file support                                                        */
 /*---------------------------------------------------------------------------*/
 /*   Date    Ver   Who  Comment                                              */
 /* --------  ----  ---  -------                                              */
-/* 29.04.14  1.00  Lad  The first version of CascOpenStorage.cpp             */
+/* 23.05.19  1.00  Lad  Created                                              */
 /*****************************************************************************/
 
 #define __CASCLIB_SELF__
@@ -523,6 +521,14 @@ static int LoadLocalIndexFiles(TCascStorage * hs)
                 // Create the name of the index file
                 if((szFileName = CreateIndexFileName(hs, i, IndexArray[i])) != NULL)
                 {
+                    // Inform the user about what we are doing
+                    if(hs->PfnCallback && hs->PfnCallback(hs->PtrCallbackParam, "Loading index files", NULL, i, CASC_INDEX_COUNT))
+                    {
+                        nError = ERROR_CANCELLED;
+                        break;
+                    }
+
+                    // Load the index file
                     if((nError = LoadIndexFile(hs, szFileName, i)) != ERROR_SUCCESS)
                         break;
                     CASC_FREE(szFileName);
@@ -707,6 +713,7 @@ static int LoadArchiveIndexFiles(TCascStorage * hs)
     LPBYTE pbFileData;
     TCHAR szLocalPath[MAX_PATH];
     DWORD cbFileData = 0;
+    size_t nArchiveCount = (hs->ArchivesKey.cbData / MD5_HASH_SIZE);
     int nError = ERROR_SUCCESS;
 
     // Create the array object for the indices
@@ -715,9 +722,16 @@ static int LoadArchiveIndexFiles(TCascStorage * hs)
         return nError;
 
     // Load all the indices
-    for (size_t i = 0; i < hs->ArchivesKey.cbData; i += MD5_HASH_SIZE)
+    for (size_t i = 0; i < nArchiveCount; i++)
     {
-        LPBYTE pbIndexHash = hs->ArchivesKey.pbData + i;
+        LPBYTE pbIndexHash = hs->ArchivesKey.pbData + (i * MD5_HASH_SIZE);
+
+        // Inform the user about what we are doing
+        if(hs->PfnCallback && hs->PfnCallback(hs->PtrCallbackParam, "Downloading archive indexes", NULL, (DWORD)(i), (DWORD)(nArchiveCount)))
+        {
+            nError = ERROR_CANCELLED;
+            break;
+        }
 
         // Make sure that we have local copy of the file
         nError = DownloadFileFromCDN(hs, _T("data"), pbIndexHash, _T(".index"), szLocalPath, _countof(szLocalPath));

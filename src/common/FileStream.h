@@ -103,6 +103,12 @@ typedef void (*BLOCK_SAVEMAP)(
     struct TFileStream * pStream        // Pointer to a block-oriented stream
     );
 
+typedef void (WINAPI * STREAM_DOWNLOAD_CALLBACK)(
+    void * pvUserData,
+    ULONGLONG ByteOffset,
+    DWORD dwTotalBytes
+    );
+
 //-----------------------------------------------------------------------------
 // Local structures - partial file structure and bitmap footer
 

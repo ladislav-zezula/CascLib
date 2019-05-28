@@ -1209,11 +1209,14 @@ int LoadBuildInfo(TCascStorage * hs)
     // If the storage is online storage, we need to download "versions"
     if(hs->dwFeatures & CASC_FEATURE_ONLINE)
     {
+        // Inform the user about loading the build.info/build.db/versions
+        if(hs->PfnCallback && hs->PfnCallback(hs->PtrCallbackParam, "Downloading the \"versions\" file", NULL, 0, 0))
+            return ERROR_CANCELLED;
+
         // Attempt to download the "versions" file
         nError = DownloadFile(hs, _T("us.patch.battle.net"), hs->szCodeName, _T("versions"), NULL, NULL, 0, NULL, 0, STREAM_FLAG_USE_PORT_1119, true, false);
         if(nError != ERROR_SUCCESS)
         {
-            hs->szErrorMsg = "Error downloading \"versions\"";
             return nError;
         }
     }
@@ -1248,7 +1251,11 @@ int LoadCdnsInfo(TCascStorage * hs)
 
     // Sanity checks
     assert(hs->dwFeatures & CASC_FEATURE_ONLINE);
-    
+
+    // Inform the user about what we are doing
+    if(hs->PfnCallback && hs->PfnCallback(hs->PtrCallbackParam, "Downloading the \"cdns\" file", NULL, 0, 0))
+        return ERROR_CANCELLED;
+
     // Download file and parse it
     nError = DownloadFile(hs, _T("us.patch.battle.net"), hs->szCodeName, _T("cdns"), NULL, NULL, 0, szLocalPath, _countof(szLocalPath), STREAM_FLAG_USE_PORT_1119, false, true);
     if(nError == ERROR_SUCCESS)
@@ -1264,16 +1271,22 @@ int LoadCdnConfigFile(TCascStorage * hs)
     // The CKey for the CDN config should have been loaded already
     assert(hs->CdnConfigKey.pbData != NULL && hs->CdnConfigKey.cbData == MD5_HASH_SIZE);
 
-    // Load the CDN config file. Note that we don't
-    // need it for anything, really, so we don't care if it fails
-    FetchAndLoadConfigFile(hs, &hs->CdnConfigKey, ParseFile_CdnConfig);
-    return ERROR_SUCCESS;
+    // Inform the user about what we are doing
+    if(hs->PfnCallback && hs->PfnCallback(hs->PtrCallbackParam, "Downloading CDN config file", NULL, 0, 0))
+        return ERROR_CANCELLED;
+
+    // Load the CDN config file
+    return FetchAndLoadConfigFile(hs, &hs->CdnConfigKey, ParseFile_CdnConfig);
 }
 
 int LoadCdnBuildFile(TCascStorage * hs)
 {
     // The CKey for the CDN config should have been loaded already
     assert(hs->CdnBuildKey.pbData != NULL && hs->CdnBuildKey.cbData == MD5_HASH_SIZE);
+
+    // Inform the user about what we are doing
+    if(hs->PfnCallback && hs->PfnCallback(hs->PtrCallbackParam, "Downloading CDN build file", NULL, 0, 0))
+        return ERROR_CANCELLED;
 
     // Load the CDN config file. Note that we don't
     // need it for anything, really, so we don't care if it fails
