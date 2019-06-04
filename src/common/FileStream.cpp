@@ -630,7 +630,7 @@ static bool BaseHttp_Open(TFileStream * pStream, const TCHAR * szFileName, DWORD
     // Initiate the connection to the internet
     if(nError == ERROR_SUCCESS)
     {
-        pStream->Base.Http.hInternet = InternetOpen(_T("CascLib HTTP archive reader"),
+        pStream->Base.Http.hInternet = InternetOpen(_T("agent/2.17.2.6700"),
                                                     INTERNET_OPEN_TYPE_PRECONFIG,
                                                     NULL,
                                                     NULL,
