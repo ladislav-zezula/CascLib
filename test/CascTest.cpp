@@ -698,13 +698,13 @@ int main(void)
     // Single tests
     //
 
-    //TestOpenStorage_EnumFiles("2014 - Heroes of the Storm\\29049");
-    //TestOpenStorage_EnumFiles("2015 - Diablo III\\30013");
-    //TestOpenStorage_EnumFiles("2016 - WoW\\18125");
-    //TestOpenStorage_EnumFiles("2018 - New CASC\\00001");
-    //TestOpenStorage_EnumFiles("2018 - New CASC\\00002");
-    //TestOpenStorage_EnumFiles("2018 - Warcraft III\\11889");
-    //TestOpenStorage_EnumFiles("2019 - WoW Classic/30406");
+    TestOpenStorage_EnumFiles("2014 - Heroes of the Storm\\29049");
+    TestOpenStorage_EnumFiles("2015 - Diablo III\\30013");
+    TestOpenStorage_EnumFiles("2016 - WoW\\18125");
+    TestOpenStorage_EnumFiles("2018 - New CASC\\00001");
+    TestOpenStorage_EnumFiles("2018 - New CASC\\00002");
+    TestOpenStorage_EnumFiles("2018 - Warcraft III\\11889");
+    TestOpenStorage_EnumFiles("2019 - WoW Classic/30406");
     //TestOnlineStorage_EnumFiles("agent", NULL, NULL);
 
     //
