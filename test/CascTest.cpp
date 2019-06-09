@@ -213,6 +213,21 @@ static FILE * OpenOutputTextFile(HANDLE hStorage, LPCSTR szFormat)
     return fp;
 }
 
+static FILE * OpenExtractedFile(HANDLE /* hStorage */, LPCSTR szFormat, LPCSTR szFileName, bool bIsFileDataId)
+{
+    char szOutFileName[MAX_PATH];
+    char szPlainName[MAX_PATH];
+
+    if(bIsFileDataId)
+    {
+        CascStrPrintf(szPlainName, _countof(szPlainName), "FILE_%08u.dat", CASC_FILE_DATA_ID_FROM_STRING(szFileName));
+        szFileName = szPlainName;
+    }
+
+    CascStrPrintf(szOutFileName, _countof(szOutFileName), szFormat, GetPlainFileName(szFileName));
+    return fopen(szOutFileName, "wt");
+}
+
 static void TestStorageGetTagInfo(HANDLE hStorage)
 {
     PCASC_STORAGE_TAGS pTags = NULL;
@@ -255,6 +270,7 @@ static int ExtractFile(
     TLogHelper & LogHelper,
     HANDLE hStorage,
     CASC_FIND_DATA & cf,
+    DWORD dwOpenFlags = 0,
     FILE * fp = NULL)
 {
     MD5_CTX md5_ctx;
@@ -272,7 +288,7 @@ static int ExtractFile(
     MakeShortName(szShortName, sizeof(szShortName), cf);
 
     // Open the CASC file
-    if(CascOpenFile(hStorage, cf, CASC_STRICT_DATA_CHECK, &hFile))
+    if(CascOpenFile(hStorage, cf, dwOpenFlags | CASC_STRICT_DATA_CHECK, &hFile))
     {
         // Retrieve the file size
         dwFileSize = CascGetFileSize(hFile, NULL);
@@ -289,8 +305,8 @@ static int ExtractFile(
             MD5_Init(&md5_ctx);
 
         // Write the file name to a local file
-        if (fp != NULL)
-            fprintf(fp, "%s\n", cf.szFileName);
+//      if (fp != NULL)
+//          fprintf(fp, "%s\n", cf.szFileName);
 
         // Show the progress, if open succeeded
         if((LogHelper.FileCount % 5) == 0)
@@ -317,6 +333,10 @@ static int ExtractFile(
                 }
                 break;
             }
+
+            // write the file data
+            if(fp != NULL)
+                fwrite(Buffer, 1, dwBytesRead, fp);
 
             // Per-file hashing
             if(bHashFileContent && cf.bCanOpenByCKey)
@@ -437,11 +457,12 @@ static int TestStorage_EnumFiles(TLogHelper & LogHelper, HANDLE hStorage, LPCTST
     return ERROR_SUCCESS;
 }
 
-static int TestOpenStorage_OpenFile(LPCSTR szStorage, LPCSTR szFileName)
+static int TestOpenStorage_OpenFile(LPCSTR szStorage, LPCSTR szFileName, DWORD dwOpenFlags = 0, bool bIsFileDataId = false)
 {
     CASC_FIND_DATA cf = {0};
     TLogHelper LogHelper(szStorage);
     HANDLE hStorage;
+    FILE * fp = NULL;
     TCHAR szFullPath[MAX_PATH];
     int nError = ERROR_SUCCESS;
 
@@ -453,13 +474,22 @@ static int TestOpenStorage_OpenFile(LPCSTR szStorage, LPCSTR szFileName)
     LogHelper.PrintProgress("Opening storage ...");
     if(CascOpenStorage(szFullPath, CASC_LOCALE_ENGB, &hStorage))
     {
-        // Dump the storage
-//      CascDumpStorage(hStorage, "E:\\storage-dump.txt");
+        // Create the local file to be extracted to
+        fp = OpenExtractedFile(hStorage, "\\%s", szFileName, bIsFileDataId);
+
+        if(bIsFileDataId)
+        {
+            cf.dwFileDataId = CASC_FILE_DATA_ID_FROM_STRING(szFileName);
+            cf.bCanOpenByDataId = true;
+        }
+        else
+        {
+            CascStrCopy(cf.szFileName, _countof(cf.szFileName), szFileName);
+            cf.bCanOpenByName = true;
+        }
 
         // Extract the entire file
-        CascStrCopy(cf.szFileName, _countof(cf.szFileName), szFileName);
-        cf.bCanOpenByName = true;
-        ExtractFile(LogHelper, hStorage, cf);
+        ExtractFile(LogHelper, hStorage, cf, dwOpenFlags, fp);
 
         // Close the storage
         CascCloseStorage(hStorage);
@@ -472,6 +502,8 @@ static int TestOpenStorage_OpenFile(LPCSTR szStorage, LPCSTR szFileName)
         nError = GetLastError();
     }
 
+    if(fp != NULL)
+        fclose(fp);
     return nError;
 }
 
@@ -552,7 +584,7 @@ static int TestOpenStorage_ExtractFiles(LPCSTR szStorage, LPCSTR szExpectedNameH
                 // Extract the file if available locally
                 if(cf.bFileAvailable)
                 {
-                    ExtractFile(LogHelper, hStorage, cf, fp);
+                    ExtractFile(LogHelper, hStorage, cf, 0, fp);
                 }
 
                 // Find the next file in CASC
@@ -698,14 +730,19 @@ int main(void)
     // Single tests
     //
 
-    TestOpenStorage_EnumFiles("2014 - Heroes of the Storm\\29049");
-    TestOpenStorage_EnumFiles("2015 - Diablo III\\30013");
-    TestOpenStorage_EnumFiles("2016 - WoW\\18125");
-    TestOpenStorage_EnumFiles("2018 - New CASC\\00001");
-    TestOpenStorage_EnumFiles("2018 - New CASC\\00002");
-    TestOpenStorage_EnumFiles("2018 - Warcraft III\\11889");
-    TestOpenStorage_EnumFiles("2019 - WoW Classic/30406");
-    //TestOnlineStorage_EnumFiles("agent", NULL, NULL);
+//  TestOpenStorage_EnumFiles("2014 - Heroes of the Storm\\29049");
+//  TestOpenStorage_EnumFiles("2015 - Diablo III\\30013");
+//  TestOpenStorage_EnumFiles("2016 - WoW\\18125");
+//  TestOpenStorage_EnumFiles("2018 - New CASC\\00001");
+//  TestOpenStorage_EnumFiles("2018 - New CASC\\00002");
+//  TestOpenStorage_EnumFiles("2018 - Warcraft III\\11889");
+//  TestOpenStorage_EnumFiles("2019 - WoW Classic/30406");
+
+    // "dbfilesclient\\battlepetspeciesstate.db2"
+    TestOpenStorage_OpenFile("d:\\Hry\\World of Warcraft Public Test\\Data", CASC_FILE_DATA_ID(801581), CASC_OVERCOME_ENCRYPTED, true);
+//  TestOnlineStorage_EnumFiles("agent", NULL, NULL);                                   
+
+
 
     //
     // Run the tests for every local storage in my collection
@@ -725,7 +762,7 @@ int main(void)
     for (size_t i = 0; StorageInfo2[i].szCodeName != NULL; i++)
     {
         // Attempt to open the storage and extract single file
-        nError = TestOnlineStorage_EnumFiles(StorageInfo2[i].szCodeName, StorageInfo2[i].szRegion, StorageInfo2[i].szFile);
+//      nError = TestOnlineStorage_EnumFiles(StorageInfo2[i].szCodeName, StorageInfo2[i].szRegion, StorageInfo2[i].szFile);
         if (nError != ERROR_SUCCESS)
             break;
     }

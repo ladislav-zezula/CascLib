@@ -83,6 +83,7 @@ extern "C" {
 #define CASC_OPEN_TYPE_MASK         0x0000000F  // The mask which gets open type from the dwFlags
 #define CASC_OPEN_FLAGS_MASK        0xFFFFFFF0  // The mask which gets open type from the dwFlags
 #define CASC_STRICT_DATA_CHECK      0x00000010  // Verify all data read from a file
+#define CASC_OVERCOME_ENCRYPTED     0x00000020  // When CascReadFile encounters a block encrypted with a key that is missing, the block is filled with zeros and returned as success
 
 #define CASC_LOCALE_ALL             0xFFFFFFFF
 #define CASC_LOCALE_NONE            0x00000000
