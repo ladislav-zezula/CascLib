@@ -92,6 +92,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
+				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName)"
 			/>
 		</Configuration>
 		<Configuration
@@ -168,6 +169,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
+				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName)"
 			/>
 		</Configuration>
 		<Configuration
@@ -243,6 +245,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
+				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName)"
 			/>
 		</Configuration>
 		<Configuration
@@ -319,6 +322,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
+				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName)"
 			/>
 		</Configuration>
 	</Configurations>
@@ -398,6 +402,10 @@
 			</File>
 			<File
 				RelativePath=".\src\DllMain.c"
+				>
+			</File>
+			<File
+				RelativePath=".\src\DllMain.rc"
 				>
 			</File>
 			<Filter
@@ -537,6 +545,10 @@
 				>
 			</File>
 		</Filter>
+		<File
+			RelativePath=".\src\resource.h"
+			>
+		</File>
 	</Files>
 	<Globals>
 	</Globals>
