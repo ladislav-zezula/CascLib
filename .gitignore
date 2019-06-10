@@ -7,13 +7,11 @@
 # Compiled Dynamic libraries
 *.so
 *.dylib
-*.dll
 
 # Compiled Static libraries
 *.lai
 *.la
 *.a
-*.lib
 
 # Executables
 *.exe
@@ -45,6 +43,3 @@
 
 # Intermediate directory
 /casc.dir/
-/Win32/
-/Debug/
-bin/
