@@ -168,6 +168,12 @@ static LPTSTR MakeFullPath(LPTSTR szBuffer, size_t ccBuffer, LPCSTR szStorage)
     LPTSTR szBufferEnd = szBuffer + ccBuffer - 1;
     LPCSTR szPathRoot = CASC_PATH_ROOT;
 
+    // Does it look like a DOS path?
+    if(isalpha(szStorage[0]) && szStorage[1] == ':' && szStorage[2] == '\\')
+    {
+        return CopyPath(szBuffer, szBufferEnd, szStorage);
+    }
+
     // If we can not access the folder directly, we copy the path root
     if(_access(szStorage, 0) == -1)
     {
@@ -213,18 +219,25 @@ static FILE * OpenOutputTextFile(HANDLE hStorage, LPCSTR szFormat)
     return fp;
 }
 
-static FILE * OpenExtractedFile(HANDLE /* hStorage */, LPCSTR szFormat, LPCSTR szFileName, bool bIsFileDataId)
+static FILE * OpenExtractedFile(HANDLE /* hStorage */, LPCSTR szFormat, CASC_FIND_DATA & cf)
 {
     char szOutFileName[MAX_PATH];
     char szPlainName[MAX_PATH];
 
-    if(bIsFileDataId)
+    if(cf.bCanOpenByName)
     {
-        CascStrPrintf(szPlainName, _countof(szPlainName), "FILE_%08u.dat", CASC_FILE_DATA_ID_FROM_STRING(szFileName));
-        szFileName = szPlainName;
+        CascStrPrintf(szOutFileName, _countof(szOutFileName), szFormat, GetPlainFileName(cf.szFileName));
+    }
+    else if(cf.bCanOpenByDataId)
+    {
+        CascStrPrintf(szPlainName, _countof(szPlainName), "FILE_%08u.dat", cf.dwFileDataId);
+        CascStrPrintf(szOutFileName, _countof(szOutFileName), szFormat, szPlainName);
+    }
+    else
+    {
+        assert(false);
     }
 
-    CascStrPrintf(szOutFileName, _countof(szOutFileName), szFormat, GetPlainFileName(szFileName));
     return fopen(szOutFileName, "wt");
 }
 
@@ -398,7 +411,7 @@ static int TestStorage_EnumFiles(TLogHelper & LogHelper, HANDLE hStorage, LPCTST
 
     if(hStorage != NULL)
     {
-        fp = OpenOutputTextFile(hStorage, "\\list-%s-%u-002.txt");
+//      fp = OpenOutputTextFile(hStorage, "\\list-%s-%u-002.txt");
 
         // Dump the storage
 //      LogHelper.PrintProgress("Dumping storage ...");
@@ -457,9 +470,8 @@ static int TestStorage_EnumFiles(TLogHelper & LogHelper, HANDLE hStorage, LPCTST
     return ERROR_SUCCESS;
 }
 
-static int TestOpenStorage_OpenFile(LPCSTR szStorage, LPCSTR szFileName, DWORD dwOpenFlags = 0, bool bIsFileDataId = false)
+static int TestOpenStorage_OpenFile(LPCSTR szStorage, CASC_FIND_DATA & cf, DWORD dwOpenFlags = 0)
 {
-    CASC_FIND_DATA cf = {0};
     TLogHelper LogHelper(szStorage);
     HANDLE hStorage;
     FILE * fp = NULL;
@@ -475,18 +487,7 @@ static int TestOpenStorage_OpenFile(LPCSTR szStorage, LPCSTR szFileName, DWORD d
     if(CascOpenStorage(szFullPath, CASC_LOCALE_ENGB, &hStorage))
     {
         // Create the local file to be extracted to
-        fp = OpenExtractedFile(hStorage, "\\%s", szFileName, bIsFileDataId);
-
-        if(bIsFileDataId)
-        {
-            cf.dwFileDataId = CASC_FILE_DATA_ID_FROM_STRING(szFileName);
-            cf.bCanOpenByDataId = true;
-        }
-        else
-        {
-            CascStrCopy(cf.szFileName, _countof(cf.szFileName), szFileName);
-            cf.bCanOpenByName = true;
-        }
+        fp = OpenExtractedFile(hStorage, "\\%s", cf);
 
         // Extract the entire file
         ExtractFile(LogHelper, hStorage, cf, dwOpenFlags, fp);
@@ -532,7 +533,7 @@ static int TestOpenStorage_EnumFiles(LPCSTR szStorage, LPCTSTR szListFile = NULL
     return nError;
 }
 
-static int TestOpenStorage_ExtractFiles(LPCSTR szStorage, LPCSTR szExpectedNameHash, LPCSTR szExpectedDataHash, LPCTSTR szListFile = NULL)
+static int TestOpenStorage_ExtractFiles(LPCSTR szStorage, LPCSTR szExpectedNameHash = NULL, LPCSTR szExpectedDataHash = NULL, LPCTSTR szListFile = NULL)
 {
     CASC_FIND_DATA cf;
     TLogHelper LogHelper(szStorage);
@@ -718,6 +719,7 @@ static STORAGE_INFO2 StorageInfo2[] =
 
 int main(void)
 {
+//  CASC_FIND_DATA cf = {0};
     int nError = ERROR_SUCCESS;
 
     printf("\n");
@@ -738,8 +740,10 @@ int main(void)
 //  TestOpenStorage_EnumFiles("2018 - Warcraft III\\11889");
 //  TestOpenStorage_EnumFiles("2019 - WoW Classic/30406");
 
-    // "dbfilesclient\\battlepetspeciesstate.db2"
-    TestOpenStorage_OpenFile("d:\\Hry\\World of Warcraft Public Test\\Data", CASC_FILE_DATA_ID(801581), CASC_OVERCOME_ENCRYPTED, true);
+    // 
+//  cf.dwFileDataId = 801581;   // "dbfilesclient\\battlepetspeciesstate.db2"
+//  cf.bCanOpenByDataId = true;
+    TestOpenStorage_ExtractFiles("z:\\Hry\\World of Warcraft\\Data");
 //  TestOnlineStorage_EnumFiles("agent", NULL, NULL);                                   
 
 
