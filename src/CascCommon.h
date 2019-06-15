@@ -218,7 +218,7 @@ struct TCascStorage
     TCHAR * szBuildFile;                            // Build file name (.build.info or .build.db)
     TCHAR * szCdnServers;                           // Multi-SZ list of CDN servers
     TCHAR * szCdnPath;                              // Remote CDN sub path for the product
-    TCHAR * szCodeName;                             // Product code name. Only for online storages
+    TCHAR * szCodeName;                             // Product code name. Only for online storages and optionally for local World of Warcraft storages
     char * szRegion;                                // Product region. Only when "versions" is used as storage root file
     CASC_PRODUCT Product;                           // Product enum value (see CASC_PRODUCT)
     DWORD dwBuildNumber;                            // Product build number

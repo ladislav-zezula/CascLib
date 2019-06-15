@@ -600,6 +600,10 @@ static int ParseFile_BuildInfo(TCascStorage * hs, CASC_CSV & Csv)
 {
     size_t nLineCount = Csv.GetLineCount();
     int nError;
+    char szCodeNameC[0x40];
+
+    if (hs->szCodeName != NULL)
+        CascStrCopy(szCodeNameC, _countof(szCodeNameC), hs->szCodeName);
 
     // Find the active config
     for(size_t i = 0; i < nLineCount; i++)
@@ -607,6 +611,15 @@ static int ParseFile_BuildInfo(TCascStorage * hs, CASC_CSV & Csv)
         // Is that build config active?
         if (!strcmp(Csv[i]["Active!DEC:1"].szValue, "1"))
         {
+            if (hs->szCodeName != NULL)
+            {
+                // World of Warcraft can have multiple different products share the same install directory
+                // If user requested a specific product, choose only that
+                const CASC_CSV_COLUMN& ProductColumn = Csv[i]["Product!STRING:0"];
+                if (ProductColumn.szValue && ProductColumn.nLength && strcmp(ProductColumn.szValue, szCodeNameC) != 0)
+                    continue;
+            }
+
             // Extract the CDN build key
             nError = LoadQueryKey(Csv[i]["Build Key!HEX:16"], hs->CdnBuildKey);
             if (nError != ERROR_SUCCESS)

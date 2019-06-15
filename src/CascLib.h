@@ -269,6 +269,12 @@ typedef struct _CASC_STORAGE_PRODUCT
 
 } CASC_STORAGE_PRODUCT, *PCASC_STORAGE_PRODUCT;
 
+typedef struct _CASC_OPEN_STORAGE_ARGS
+{
+    size_t Size;
+    LPCSTR szCodeName;
+} CASC_OPEN_STORAGE_ARGS, *PCASC_OPEN_STORAGE_ARGS;
+
 typedef struct _CASC_FILE_FULL_INFO
 {
     BYTE CKey[MD5_HASH_SIZE];                   // CKey
@@ -309,6 +315,7 @@ void WINAPI CascSetProgressCallback(
 // Functions for storage manipulation
 
 bool  WINAPI CascOpenStorage(LPCTSTR szDataPath, DWORD dwLocaleMask, HANDLE * phStorage);
+bool  WINAPI CascOpenStorageEx(LPCTSTR szDataPath, DWORD dwLocaleMask, PCASC_OPEN_STORAGE_ARGS pArgs, HANDLE * phStorage);
 bool  WINAPI CascOpenOnlineStorage(LPCTSTR szLocalCache, LPCSTR szCodeName, LPCSTR szRegion, DWORD dwLocaleMask, HANDLE * phStorage);
 bool  WINAPI CascGetStorageInfo(HANDLE hStorage, CASC_STORAGE_INFO_CLASS InfoClass, void * pvStorageInfo, size_t cbStorageInfo, size_t * pcbLengthNeeded);
 bool  WINAPI CascAddEncryptionKey(HANDLE hStorage, ULONGLONG KeyName, LPBYTE Key);
