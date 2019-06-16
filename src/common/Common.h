@@ -383,4 +383,21 @@ int ScanIndexDirectory(
     void * pvContext
     );
 
+//-----------------------------------------------------------------------------
+// Argument structure versioning
+// Safely retrieves field value from a structure
+// intended for cases where users upgrade CascLib by simply dropping in a new .dll without recompiling their app
+template <typename ARG, typename ARG_HOLDER>
+bool ExtractVersionedArgument(const ARG_HOLDER * pHolder, size_t ArgOffset, ARG * pArg)
+{
+    if (pHolder == NULL)
+        return false;
+
+    // Check input structure size
+    if (ArgOffset + sizeof(ARG) > pHolder->Size)
+        return false;
+
+    *pArg = *((ARG *)(((char*)pHolder) + ArgOffset));
+}
+
 #endif // __COMMON_H__

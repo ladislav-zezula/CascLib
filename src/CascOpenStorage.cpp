@@ -904,10 +904,11 @@ static int LoadBuildManifest(TCascStorage * hs, DWORD dwLocaleMask)
     return nError;
 }
 
-static int InitializeLocalDirectories(TCascStorage * hs, const TCHAR * szPath)
+static int InitializeLocalDirectories(TCascStorage * hs, const TCHAR * szPath, LPCSTR szCodeName)
 {
     TCHAR * szWorkPath;
     int nError = ERROR_NOT_ENOUGH_MEMORY;
+    TCHAR szCodeNameT[0x40];
 
     // Find the root directory of the storage. The root directory
     // is the one with ".build.info" or ".build.db".
@@ -946,6 +947,12 @@ static int InitializeLocalDirectories(TCascStorage * hs, const TCHAR * szPath)
 
             else
                 nError = ERROR_FILE_NOT_FOUND;
+        }
+
+        if (szCodeName != NULL)
+        {
+            CascStrCopy(szCodeNameT, _countof(szCodeNameT), szCodeName);
+            hs->szCodeName = CascNewStr(szCodeNameT);
         }
 
         // Free the work path buffer
@@ -1170,14 +1177,23 @@ void WINAPI CascSetProgressCallback(PFNPROGRESSCALLBACK PtrUserCallback, void * 
 
 bool WINAPI CascOpenStorage(LPCTSTR szPath, DWORD dwLocaleMask, HANDLE * phStorage)
 {
+    return CascOpenStorageEx(szPath, dwLocaleMask, NULL, phStorage);
+}
+
+bool WINAPI CascOpenStorageEx(LPCTSTR szDataPath, DWORD dwLocaleMask, PCASC_OPEN_STORAGE_ARGS pArgs, HANDLE* phStorage)
+{
     TCascStorage * hs;
     int nError = ERROR_NOT_ENOUGH_MEMORY;
+    LPCSTR szCodeName;
 
     // Allocate the storage structure
     if((hs = new TCascStorage()) != NULL)
     {
+        if(!ExtractVersionedArgument(pArgs, offsetof(CASC_OPEN_STORAGE_ARGS, szCodeName), &szCodeName))
+            szCodeName = NULL;
+
         // Setup the directories
-        nError = InitializeLocalDirectories(hs, szPath);
+        nError = InitializeLocalDirectories(hs, szDataPath, szCodeName);
         if(nError == ERROR_SUCCESS)
         {
             nError = LoadCascStorage(hs, dwLocaleMask);
