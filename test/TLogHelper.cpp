@@ -36,6 +36,10 @@ class TLogHelper
         // Fill the variables
         memset(this, 0, sizeof(TLogHelper));
 
+        // Remember the startup time
+        StartTime = GetCurrentThreadTime();
+        TotalFiles = 1;
+
         // Print the initial information
         if(szNewMainTitle != NULL)
         {
@@ -86,7 +90,7 @@ class TLogHelper
     //
 
     template <typename XCHAR>
-    int PrintWithClreol(const XCHAR * szFormat, va_list argList, bool bPrintPrefix, bool bPrintLastError, bool bPrintEndOfLine)
+    DWORD PrintWithClreol(const XCHAR * szFormat, va_list argList, bool bPrintPrefix, bool bPrintLastError, bool bPrintEndOfLine)
     {
         char * szBufferPtr;
         char * szBufferEnd;
@@ -94,7 +98,7 @@ class TLogHelper
         size_t nRemainingWidth;
         size_t nConsoleWidth = GetConsoleWidth();
         size_t nLength = 0;
-        int nError = GetLastError();
+        DWORD dwErrCode = ERROR_SUCCESS;
 
         // Always start the buffer with '\r'
         szBufferEnd = szMessage + sizeof(szMessage);
@@ -165,7 +169,7 @@ class TLogHelper
         // Append the last error
         if(bPrintLastError)
         {
-            nLength = CascStrPrintf(szBufferPtr, (szBufferEnd - szBufferPtr), " (error code: %u)", nError);
+            nLength = CascStrPrintf(szBufferPtr, (szBufferEnd - szBufferPtr), " (error code: %u)", dwErrCode);
             szBufferPtr += nLength;
         }
 
@@ -190,7 +194,7 @@ class TLogHelper
         // Spit out the text in one single printf
         printf("%s", szMessage);
         nMessageCounter++;
-        return nError;
+        return dwErrCode;
     }
 
     template <typename XCHAR>
@@ -218,9 +222,8 @@ class TLogHelper
         DWORD TotalTime = SetEndTime();
 
         if(TotalTime != 0)
-        {
             PrintMessage("TotalTime: %u.%u second(s)", (TotalTime / 1000), (TotalTime % 1000));
-        }
+        PrintMessage("Work complete.");
     }
 
     template <typename XCHAR>
@@ -260,9 +263,18 @@ class TLogHelper
 #endif
     }
 
-    void SetStartTime()
+    bool ProgressCooldown()
     {
-        StartTime = GetCurrentThreadTime();
+        DWORD dwTickCount = GetTickCount();
+        bool bResult = true;
+
+        if(dwTickCount > (dwPrevTickCount + 100))
+        {
+            dwPrevTickCount = dwTickCount;
+            bResult = false;
+        }
+
+        return bResult;
     }
 
     DWORD SetEndTime()
@@ -332,10 +344,12 @@ class TLogHelper
 
             MD5_Final(md5_binary, &MD5State_Name);
             StringFromBinary(md5_binary, MD5_HASH_SIZE, szHashString_Name);
+            return szHashString_Name;
         }
-
-        // Return the hash as string
-        return szHashString_Name;
+        else
+        {
+            return NULL;
+        }
     }
 
     const char * GetDataHash()
@@ -347,10 +361,12 @@ class TLogHelper
 
             MD5_Final(md5_binary, &MD5State_Data);
             StringFromBinary(md5_binary, MD5_HASH_SIZE, szHashString_Data);
+            return szHashString_Data;
         }
-
-        // Return the hash as string
-        return szHashString_Data;
+        else
+        {
+            return NULL;
+        }
     }
 
     ULONGLONG TotalBytes;                           // For user's convenience: Total number of bytes
@@ -411,5 +427,6 @@ class TLogHelper
     size_t nSaveConsoleWidth;                       // Saved width of the console window, in chars
     size_t nMessageCounter;
     size_t nTextLength;                             // Length of the previous progress message
+    DWORD dwPrevTickCount;
     bool bMessagePrinted;
 };

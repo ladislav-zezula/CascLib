@@ -163,6 +163,7 @@ typedef enum _CASC_STORAGE_INFO_CLASS
     CascStorageInstalledLocales,
     CascStorageProduct,                         // Gives CASC_STORAGE_PRODUCT
     CascStorageTags,                            // Gives CASC_STORAGE_TAGS structure
+    CascStoragePathProduct,                     // Gives Path:Product into a LPTSTR buffer
     CascStorageInfoClassMax
 
 } CASC_STORAGE_INFO_CLASS, *PCASC_STORAGE_INFO_CLASS;
@@ -269,12 +270,6 @@ typedef struct _CASC_STORAGE_PRODUCT
 
 } CASC_STORAGE_PRODUCT, *PCASC_STORAGE_PRODUCT;
 
-typedef struct _CASC_OPEN_STORAGE_ARGS
-{
-    size_t Size;
-    LPCSTR szCodeName;
-} CASC_OPEN_STORAGE_ARGS, *PCASC_OPEN_STORAGE_ARGS;
-
 typedef struct _CASC_FILE_FULL_INFO
 {
     BYTE CKey[MD5_HASH_SIZE];                   // CKey
@@ -294,29 +289,63 @@ typedef struct _CASC_FILE_FULL_INFO
 } CASC_FILE_FULL_INFO, *PCASC_FILE_FULL_INFO;
 
 //-----------------------------------------------------------------------------
-// Some operations (e.g. opening an online storage) may take long time.
-// This callback allows an application to be notified about loading progress.
-// This callback only works for a single CascOpen(Online)Storage call.
+// Extended version of CascOpenStorage
 
+// Some operations (e.g. opening an online storage) may take long time.
+// This callback allows an application to be notified about loading progress
+// and even cancel the storage loading process
 typedef bool (WINAPI * PFNPROGRESSCALLBACK)(    // Return 'true' to cancel the loading process
     void * PtrUserParam,                        // User-specific parameter passed to the callback
     LPCSTR szWork,                              // Text for the current activity (example: "Loading "ENCODING" file")
     LPCSTR szObject,                            // (optional) name of the object tied to the activity (example: index file name)
-    DWORD nCurrent,                             // (optional) current object being processed
-    DWORD nTotal                                // (optional) If non-zero, this is the total number of objects to process
+    DWORD CurrentValue,                         // (optional) current object being processed
+    DWORD TotalValue                            // (optional) If non-zero, this is the total number of objects to process
     );
 
-void WINAPI CascSetProgressCallback(
-    PFNPROGRESSCALLBACK PtrUserCallback,        // Pointer to the callback function that will be called during opening the storage
-    void * PtrUserParam                         // Arbitrary user parameter that will be passed to the callback
+// Some storages support multi-product installation (e.g. World of Warcraft).
+// With this callback, the calling application can specify which storage to open
+typedef bool (WINAPI * PFNPRODUCTCALLBACK)(     // Return 'true' to cancel the loading process
+    void * PtrUserParam,                        // User-specific parameter passed to the callback
+    LPCSTR * ProductList,                       // Array of product codenames found in the storage
+    size_t ProductCount,                        // Number of products in the ProductList array
+    size_t * PtrSelectedProduct                 // [out] This is the selected product to open. On input, set to 0 (aka the first product)
     );
+
+typedef struct _CASC_OPEN_STORAGE_ARGS
+{
+    size_t Size;                                // Length of this structure. Initialize to sizeof(CASC_OPEN_STORAGE_ARGS)
+
+    LPCTSTR szLocalPath;                        // Local:  Path to the storage directory (where ".build.info: is) or any of the sub-path
+                                                // Online: Path to the local storage cache
+
+    LPCTSTR szCodeName;                         // If non-null, this will specify a product in a multi-product local storage
+                                                // Has higher priority than PfnProductCallback (if both specified)
+    LPCTSTR szRegion;                           // If non-null, this will specify a product region.
+
+    PFNPROGRESSCALLBACK PfnProgressCallback;    // Progress callback. If non-NULL, this can inform the caller about state of the opening storage
+    void * PtrProgressParam;                    // Pointer-sized parameter that will be passed to PfnProgressCallback
+    PFNPRODUCTCALLBACK PfnProductCallback;      // Progress callback. If non-NULL, will be called on multi-product storage to select one of the products
+    void * PtrProductParam;                     // Pointer-sized parameter that will be passed to PfnProgressCallback
+
+    DWORD dwLocaleMask;                         // Locale mask to open
+    DWORD dwFlags;                              // Reserved. Set to zero.
+
+    //
+    // Any additional member from here on must be checked for availability using the ExtractVersionedArgument function.
+    // Example:
+    //
+    // DWORD dwMyExtraMember = 0;
+    // ExtractVersionedArgument(pArgs, offsetof(CASC_OPEN_STORAGE_ARGS, dwMyExtraMember), &dwMyExtraMember);
+    //
+
+} CASC_OPEN_STORAGE_ARGS, *PCASC_OPEN_STORAGE_ARGS;
 
 //-----------------------------------------------------------------------------
 // Functions for storage manipulation
 
-bool  WINAPI CascOpenStorage(LPCTSTR szDataPath, DWORD dwLocaleMask, HANDLE * phStorage);
-bool  WINAPI CascOpenStorageEx(LPCTSTR szDataPath, DWORD dwLocaleMask, PCASC_OPEN_STORAGE_ARGS pArgs, HANDLE * phStorage);
-bool  WINAPI CascOpenOnlineStorage(LPCTSTR szLocalCache, LPCSTR szCodeName, LPCSTR szRegion, DWORD dwLocaleMask, HANDLE * phStorage);
+bool  WINAPI CascOpenStorageEx(PCASC_OPEN_STORAGE_ARGS pArgs, bool bOnlineStorage, HANDLE * phStorage);
+bool  WINAPI CascOpenStorage(LPCTSTR szParams, DWORD dwLocaleMask, HANDLE * phStorage);
+bool  WINAPI CascOpenOnlineStorage(LPCTSTR szParams, DWORD dwLocaleMask, HANDLE * phStorage);
 bool  WINAPI CascGetStorageInfo(HANDLE hStorage, CASC_STORAGE_INFO_CLASS InfoClass, void * pvStorageInfo, size_t cbStorageInfo, size_t * pcbLengthNeeded);
 bool  WINAPI CascAddEncryptionKey(HANDLE hStorage, ULONGLONG KeyName, LPBYTE Key);
 LPBYTE WINAPI CascFindEncryptionKey(HANDLE hStorage, ULONGLONG KeyName);

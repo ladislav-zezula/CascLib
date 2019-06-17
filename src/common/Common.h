@@ -271,10 +271,10 @@ size_t CascStrPrintf(wchar_t * buffer, size_t nCount, const wchar_t * format, ..
 char * CascNewStr(const char * szString, size_t nCharsToReserve = 0);
 wchar_t * CascNewStr(const wchar_t * szString, size_t nCharsToReserve = 0);
 
-TCHAR * CombinePath(const TCHAR * szPath, const TCHAR * szSubDir);
-size_t CombineFilePath(TCHAR * szBuffer, size_t nMaxChars, const TCHAR * szPath, const TCHAR * szSubPath1, const TCHAR * szSubPath2 = NULL);
-size_t CombineUrlPath(TCHAR * szBuffer, size_t nMaxChars, const TCHAR * szHost, const TCHAR * szSubPath1, const TCHAR * szSubPath2 = NULL);
-TCHAR * GetLastPathPart(TCHAR * szWorkPath);
+size_t CombinePath(LPTSTR szBuffer, size_t nMaxChars, char chSeparator, va_list argList);
+size_t CombinePath(LPTSTR szBuffer, size_t nMaxChars, char chSeparator, ...);
+LPTSTR CombinePath(LPCTSTR szPath, LPCTSTR szSubDir);
+LPTSTR GetLastPathPart(LPTSTR szWorkPath);
 bool CutLastPathPart(TCHAR * szWorkPath);
 
 size_t CreateCascSubdirectoryName(TCHAR * szBuffer, size_t nMaxChars, const TCHAR * szSubDir, const TCHAR * szExtension, LPBYTE pbEKey);
@@ -387,6 +387,7 @@ int ScanIndexDirectory(
 // Argument structure versioning
 // Safely retrieves field value from a structure
 // intended for cases where users upgrade CascLib by simply dropping in a new .dll without recompiling their app
+
 template <typename ARG, typename ARG_HOLDER>
 bool ExtractVersionedArgument(const ARG_HOLDER * pHolder, size_t ArgOffset, ARG * pArg)
 {
@@ -398,6 +399,7 @@ bool ExtractVersionedArgument(const ARG_HOLDER * pHolder, size_t ArgOffset, ARG 
         return false;
 
     *pArg = *((ARG *)(((char*)pHolder) + ArgOffset));
+    return true;
 }
 
 #endif // __COMMON_H__
