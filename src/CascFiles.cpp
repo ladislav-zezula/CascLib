@@ -629,6 +629,7 @@ static DWORD ParseFile_BuildInfo(TCascStorage * hs, CASC_CSV & Csv)
         LPCSTR ProductsList[0x40] = {NULL};
         size_t nProductCount = 0;
         size_t nChoiceIndex = CASC_INVALID_INDEX;
+        size_t nDefault = CASC_INVALID_INDEX;
 
         // Load all products to the array
         for(size_t i = 0; i < nLineCount; i++)
@@ -638,15 +639,29 @@ static DWORD ParseFile_BuildInfo(TCascStorage * hs, CASC_CSV & Csv)
             {
                 ProductsList[nProductCount] = Csv[i]["Product!STRING:0"].szValue;
                 nProductCount++;
+                nDefault = i;
             }
         }
         
-        // Ask the callback to choose the product
-        if(!PfnProductCallback(PtrProductParam, ProductsList, nProductCount, &nChoiceIndex) || (nChoiceIndex >= nProductCount))
-            return ERROR_CANCELLED;
+        // Only if there is more than one active products
+        if(nProductCount > 1)
+        {
+            // Ask the callback to choose the product
+            if(!PfnProductCallback(PtrProductParam, ProductsList, nProductCount, &nChoiceIndex) || (nChoiceIndex >= nProductCount))
+                return ERROR_CANCELLED;
 
-        // We now have preferred product to open
-        SetProductCodeName(hs, ProductsList[nChoiceIndex]);
+            // We now have preferred product to open
+            SetProductCodeName(hs, ProductsList[nChoiceIndex]);
+        }
+        else if(nProductCount == 1)
+        {
+            // We now have preferred product to open
+            SetProductCodeName(hs, ProductsList[nDefault]);
+        }
+        else
+        {
+            return ERROR_FILE_NOT_FOUND;
+        }
     }
 
     // If the product is specified by hs->szCodeName and the ".build.info" contains "Product!STRING:0", we watch for that product.
