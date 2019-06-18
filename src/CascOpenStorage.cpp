@@ -1209,20 +1209,88 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
     return dwErrCode;
 }
 
+static LPTSTR ParseOpenParams(LPCTSTR szParams, PCASC_OPEN_STORAGE_ARGS pArgs)
+{
+    LPTSTR szParamsCopy;
+
+    // The 'szParams' must not be empty
+    if(szParams == NULL || pArgs == NULL || szParams[0] == 0)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return NULL;
+    }
+
+    // The 'pArgs' must be valid but must not contain 'szLocalPath', 'szCodeName' or 'szRegion'
+    if(pArgs->szLocalPath != NULL || pArgs->szCodeName != NULL || pArgs->szRegion != NULL)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return NULL;
+    }
+
+    // Make a copy of the parameters so we can temper with them
+    if((szParamsCopy = CascNewStr(szParams)) != NULL)
+    {
+        LPTSTR szPlainName = (LPTSTR)GetPlainFileName(szParamsCopy);
+        LPTSTR szSeparator;
+
+        // The local path is always set
+        pArgs->szLocalPath = szParamsCopy;
+        pArgs->szCodeName = NULL;
+        pArgs->szRegion = NULL;
+
+        // Find the first ":". This will indicate the end of local path and also begin of product code
+        if((szSeparator = _tcschr(szPlainName, _T(':'))) != NULL)
+        {
+            // The found string is a product code name
+            pArgs->szCodeName = szSeparator + 1;
+            szSeparator[0] = 0;
+
+            // Try again. If found, it is a product region
+            if((szSeparator = _tcschr(szSeparator + 1, _T(':'))) != NULL)
+            {
+                pArgs->szRegion = szSeparator + 1;
+                szSeparator[0] = 0;
+            }
+        }
+    }
+    else
+    {
+        SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+    }
+
+    return szParamsCopy;
+}
+
 //-----------------------------------------------------------------------------
 // Public functions
 
-bool WINAPI CascOpenStorageEx(PCASC_OPEN_STORAGE_ARGS pArgs, bool bOnlineStorage, HANDLE * phStorage)
+bool WINAPI CascOpenStorageEx(LPCTSTR szParams, PCASC_OPEN_STORAGE_ARGS pArgs, bool bOnlineStorage, HANDLE * phStorage)
 {
+    CASC_OPEN_STORAGE_ARGS LocalArgs = {sizeof(CASC_OPEN_STORAGE_ARGS)};
     DWORD (*PfnInitDirs)(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs);
     TCascStorage * hs;
+    LPTSTR szParamsCopy = NULL;
     DWORD dwErrCode = ERROR_NOT_ENOUGH_MEMORY;
 
-    // The arguments and the local path must be entered
-    if(pArgs == NULL || pArgs->szLocalPath == NULL || pArgs->szLocalPath[0] == 0)
+    // The storage path[+product[+region]] must either be passed in szParams or in pArgs. Not both.
+    // It is allowed to pass NULL as pArgs if the szParams is not NULL
+    if(szParams != NULL)
     {
-        SetLastError(ERROR_INVALID_PARAMETER);
-        return false;
+        if(pArgs == NULL)
+            pArgs = &LocalArgs;
+
+        szParamsCopy = ParseOpenParams(szParams, pArgs);
+        if(szParamsCopy == NULL)
+            return false;
+    }
+    else
+    {
+        // The arguments and the local path must be entered
+        if(pArgs == NULL || pArgs->szLocalPath == NULL || pArgs->szLocalPath[0] == 0)
+        {
+            SetLastError(ERROR_INVALID_PARAMETER);
+            return false;
+        }
     }
 
     // Allocate the storage structure
@@ -1235,65 +1303,23 @@ bool WINAPI CascOpenStorageEx(PCASC_OPEN_STORAGE_ARGS pArgs, bool bOnlineStorage
         {
             // Perform the entire storage loading
             dwErrCode = LoadCascStorage(hs, pArgs);
-            if(dwErrCode == ERROR_SUCCESS)
-            {
-                *phStorage = (HANDLE)hs;
-                return true;
-            }
         }
 
-        // Delete the so-far-allocated storage
-        hs = hs->Release();
-    }
-
-    // Failed
-    SetLastError(dwErrCode);
-    *phStorage = NULL;
-    return false;
-}
-
-bool WINAPI CascOpenStorage2(LPCTSTR szParams, DWORD dwLocaleMask, bool bOnlineStorage, HANDLE * phStorage)
-{
-    CASC_OPEN_STORAGE_ARGS OpenArgs = {sizeof(CASC_OPEN_STORAGE_ARGS)};
-    LPTSTR szStorageParams;
-    bool bResult = false;
-
-    // Make a copy of the parameters so we can temper with them
-    if((szStorageParams = CascNewStr(szParams)) != NULL)
-    {
-        LPTSTR szPlainName = (LPTSTR)GetPlainFileName(szStorageParams);
-        LPTSTR szSeparator;
-
-        // The local path is always set
-        OpenArgs.szLocalPath = szStorageParams;
-        OpenArgs.szCodeName = NULL;
-        OpenArgs.szRegion = NULL;
-        OpenArgs.dwLocaleMask = dwLocaleMask;
-
-        // Find the first ":". This will indicate the end of local path and also begin of product code
-        if((szSeparator = _tcschr(szPlainName, _T(':'))) != NULL)
+        // Free the storage structure on fail
+        if(dwErrCode != ERROR_SUCCESS)
         {
-            // The found string is a product code name
-            OpenArgs.szCodeName = szSeparator + 1;
-            szSeparator[0] = 0;
-
-            // Try again. If found, it is a product region
-            if((szSeparator = _tcschr(szSeparator + 1, _T(':'))) != NULL)
-            {
-                OpenArgs.szRegion = szSeparator + 1;
-                szSeparator[0] = 0;
-            }
+            hs = hs->Release();
         }
+    }
 
-        bResult = CascOpenStorageEx(&OpenArgs, bOnlineStorage, phStorage);
-        delete [] szStorageParams;
-        return bResult;
-    }
-    else
-    {
-        SetLastError(ERROR_NOT_ENOUGH_MEMORY);
-        return false;
-    }
+    // Give the output parameter to the caller
+    CASC_FREE(szParamsCopy);
+    *phStorage = (HANDLE)hs;
+
+    // Return the result
+    if(dwErrCode != ERROR_SUCCESS)
+        SetLastError(dwErrCode);
+    return (dwErrCode == ERROR_SUCCESS);
 }
 
 // szParams: "LocalPath:CodeName", e.g. "C:\\Games\\World of Warcraft:wowt"
@@ -1301,7 +1327,10 @@ bool WINAPI CascOpenStorage2(LPCTSTR szParams, DWORD dwLocaleMask, bool bOnlineS
 // * CodeName: Product code name, e.g. "agent" for Battle.net Agent. More info: https://wowdev.wiki/TACT#Products
 bool WINAPI CascOpenStorage(LPCTSTR szParams, DWORD dwLocaleMask, HANDLE * phStorage)
 {
-    return CascOpenStorage2(szParams, dwLocaleMask, false, phStorage);
+    CASC_OPEN_STORAGE_ARGS OpenArgs = {sizeof(CASC_OPEN_STORAGE_ARGS)};
+
+    OpenArgs.dwLocaleMask = dwLocaleMask;
+    return CascOpenStorageEx(szParams, &OpenArgs, false, phStorage);
 }
 
 // Allows to browse an online CDN storage
@@ -1311,7 +1340,10 @@ bool WINAPI CascOpenStorage(LPCTSTR szParams, DWORD dwLocaleMask, HANDLE * phSto
 // * Region: The region (or subvariant) of the product. Corresponds to the first column of the "versions" file.
 bool WINAPI CascOpenOnlineStorage(LPCTSTR szParams, DWORD dwLocaleMask, HANDLE * phStorage)
 {
-    return CascOpenStorage2(szParams, dwLocaleMask, true, phStorage);
+    CASC_OPEN_STORAGE_ARGS OpenArgs = {sizeof(CASC_OPEN_STORAGE_ARGS)};
+
+    OpenArgs.dwLocaleMask = dwLocaleMask;
+    return CascOpenStorageEx(szParams, &OpenArgs, true, phStorage);
 }
 
 bool WINAPI CascGetStorageInfo(
