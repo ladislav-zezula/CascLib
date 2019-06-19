@@ -413,7 +413,7 @@ void FreeCascBlob(PQUERY_KEY pQueryKey);
 //-----------------------------------------------------------------------------
 // Text file parsing (CascFiles.cpp)
 
-bool  InvokeProductCallback(TCascStorage * hs, LPCSTR szMessage, LPCSTR szObject, DWORD CurrentValue, DWORD TotalValue);
+bool  InvokeProgressCallback(TCascStorage * hs, LPCSTR szMessage, LPCSTR szObject, DWORD CurrentValue, DWORD TotalValue);
 DWORD DownloadFileFromCDN(TCascStorage * hs, const TCHAR * szSubDir, LPBYTE pbEKey, const TCHAR * szExtension, TCHAR * szOutLocalPath, size_t cchOutLocalPath);
 DWORD CheckGameDirectory(TCascStorage * hs, TCHAR * szDirectory);
 DWORD LoadCdnsInfo(TCascStorage * hs);

@@ -1202,7 +1202,7 @@ static int FetchAndLoadConfigFile(TCascStorage * hs, PQUERY_KEY pFileKey, PARSET
 //-----------------------------------------------------------------------------
 // Public functions
 
-bool InvokeProductCallback(TCascStorage * hs, LPCSTR szMessage, LPCSTR szObject, DWORD CurrentValue, DWORD TotalValue)
+bool InvokeProgressCallback(TCascStorage * hs, LPCSTR szMessage, LPCSTR szObject, DWORD CurrentValue, DWORD TotalValue)
 {
     PCASC_OPEN_STORAGE_ARGS pArgs = hs->pArgs;
     bool bResult = false;
@@ -1315,7 +1315,7 @@ DWORD LoadBuildInfo(TCascStorage * hs)
     if(hs->dwFeatures & CASC_FEATURE_ONLINE)
     {
         // Inform the user about loading the build.info/build.db/versions
-        if(InvokeProductCallback(hs, "Downloading the \"versions\" file", NULL, 0, 0))
+        if(InvokeProgressCallback(hs, "Downloading the \"versions\" file", NULL, 0, 0))
             return ERROR_CANCELLED;
 
         // Attempt to download the "versions" file
@@ -1358,7 +1358,7 @@ DWORD LoadCdnsInfo(TCascStorage * hs)
     assert(hs->dwFeatures & CASC_FEATURE_ONLINE);
 
     // Inform the user about what we are doing
-    if(InvokeProductCallback(hs, "Downloading the \"cdns\" file", NULL, 0, 0))
+    if(InvokeProgressCallback(hs, "Downloading the \"cdns\" file", NULL, 0, 0))
         return ERROR_CANCELLED;
 
     // Download file and parse it
@@ -1377,7 +1377,7 @@ DWORD LoadCdnConfigFile(TCascStorage * hs)
     assert(hs->CdnConfigKey.pbData != NULL && hs->CdnConfigKey.cbData == MD5_HASH_SIZE);
 
     // Inform the user about what we are doing
-    if(InvokeProductCallback(hs, "Downloading CDN config file", NULL, 0, 0))
+    if(InvokeProgressCallback(hs, "Downloading CDN config file", NULL, 0, 0))
         return ERROR_CANCELLED;
 
     // Load the CDN config file
@@ -1390,7 +1390,7 @@ DWORD LoadCdnBuildFile(TCascStorage * hs)
     assert(hs->CdnBuildKey.pbData != NULL && hs->CdnBuildKey.cbData == MD5_HASH_SIZE);
 
     // Inform the user about what we are doing
-    if(InvokeProductCallback(hs, "Downloading CDN build file", NULL, 0, 0))
+    if(InvokeProgressCallback(hs, "Downloading CDN build file", NULL, 0, 0))
         return ERROR_CANCELLED;
 
     // Load the CDN config file. Note that we don't

@@ -402,7 +402,7 @@ static int LoadEncodingManifest(TCascStorage * hs)
     int nError = ERROR_SUCCESS;
 
     // Inform the user about what we are doing
-    if(InvokeProductCallback(hs, "Loading ENCODING manifest", NULL, 0, 0))
+    if(InvokeProgressCallback(hs, "Loading ENCODING manifest", NULL, 0, 0))
         return ERROR_CANCELLED;
 
     // Load the entire encoding file to memory
@@ -733,7 +733,7 @@ static int LoadDownloadManifest(TCascStorage * hs)
     int nError = ERROR_SUCCESS;
 
     // Inform the user about what we are doing
-    if(InvokeProductCallback(hs, "Loading DOWNLOAD manifest", NULL, 0, 0))
+    if(InvokeProgressCallback(hs, "Loading DOWNLOAD manifest", NULL, 0, 0))
         return ERROR_CANCELLED;
 
     // Load the entire DOWNLOAD file to memory
@@ -770,7 +770,7 @@ static int LoadInstallManifest(TCascStorage * hs)
     int nError = ERROR_SUCCESS;
 
     // Inform the user about what we are doing
-    if(InvokeProductCallback(hs, "Loading INSTALL manifest", NULL, 0, 0))
+    if(InvokeProgressCallback(hs, "Loading INSTALL manifest", NULL, 0, 0))
         return ERROR_CANCELLED;
 
     // Load the entire DOWNLOAD file to memory
@@ -831,7 +831,7 @@ static int LoadBuildManifest(TCascStorage * hs, DWORD dwLocaleMask)
     pCKeyEntry = FindCKeyEntry_CKey(hs, pCKeyEntry->CKey);
 
     // Inform the user about what we are doing
-    if(InvokeProductCallback(hs, "Loading ROOT manifest", NULL, 0, 0))
+    if(InvokeProgressCallback(hs, "Loading ROOT manifest", NULL, 0, 0))
         return ERROR_CANCELLED;
 
     // Load the entire ROOT file to memory

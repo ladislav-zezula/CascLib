@@ -133,13 +133,13 @@ extern "C" {
 // Flags for CASC_STORAGE_FEATURES::dwFeatures
 #define CASC_FEATURE_FILE_NAMES     0x00000001  // File names are supported by the storage
 #define CASC_FEATURE_ROOT_CKEY      0x00000002  // Present if the storage's ROOT returns CKey
-#define CASC_FEATURE_TAGS           0x00000002  // Tags are supported by the storage
-#define CASC_FEATURE_FNAME_HASHES   0x00000004  // The storage contains file name hashes on ALL files
-#define CASC_FEATURE_FNAME_HASHES_OPTIONAL 0x00000008  // The storage contains file name hashes for SOME files
-#define CASC_FEATURE_FILE_DATA_IDS  0x00000010  // The storage indexes files by FileDataId
-#define CASC_FEATURE_LOCALE_FLAGS   0x00000020  // Locale flags are supported
-#define CASC_FEATURE_CONTENT_FLAGS  0x00000040  // Content flags are supported
-#define CASC_FEATURE_ONLINE         0x00000080  // The storage is an online storage
+#define CASC_FEATURE_TAGS           0x00000004  // Tags are supported by the storage
+#define CASC_FEATURE_FNAME_HASHES   0x00000008  // The storage contains file name hashes on ALL files
+#define CASC_FEATURE_FNAME_HASHES_OPTIONAL 0x00000010  // The storage contains file name hashes for SOME files
+#define CASC_FEATURE_FILE_DATA_IDS  0x00000020  // The storage indexes files by FileDataId
+#define CASC_FEATURE_LOCALE_FLAGS   0x00000040  // Locale flags are supported
+#define CASC_FEATURE_CONTENT_FLAGS  0x00000080  // Content flags are supported
+#define CASC_FEATURE_ONLINE         0x00000100  // The storage is an online storage
 
 // Macro to convert FileDataId to the argument of CascOpenFile
 #define CASC_FILE_DATA_ID(FileDataId) ((LPCSTR)(size_t)FileDataId)
@@ -158,8 +158,8 @@ typedef enum _CASC_STORAGE_INFO_CLASS
     // Returns the total file count, including the offline files
     CascStorageTotalFileCount,
 
-    // Returns the CASC_STORAGE_FEATURES structure.
-    CascStorageFeatures,
+    
+    CascStorageFeatures,                        // Returns the features flag
     CascStorageInstalledLocales,
     CascStorageProduct,                         // Gives CASC_STORAGE_PRODUCT
     CascStorageTags,                            // Gives CASC_STORAGE_TAGS structure
