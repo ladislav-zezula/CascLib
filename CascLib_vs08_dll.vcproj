@@ -545,10 +545,6 @@
 				>
 			</File>
 		</Filter>
-		<File
-			RelativePath=".\src\resource.h"
-			>
-		</File>
 	</Files>
 	<Globals>
 	</Globals>
