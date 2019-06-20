@@ -718,8 +718,8 @@ int main(void)
 //  LocalStorage_Test(Storage_EnumFiles, "2016 - WoW\\18125");
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - New CASC\\00001");
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - New CASC\\00002");
-    LocalStorage_Test(Storage_EnumFiles, "2018 - Warcraft III\\11889");
-//  LocalStorage_Test(Storage_EnumFiles, "d:\\Hry\\Call of Duty Black Ops 4");
+//  LocalStorage_Test(Storage_EnumFiles, "2018 - Warcraft III\\11889");
+    LocalStorage_Test(Storage_EnumFiles, "d:\\Hry\\Call of Duty Black Ops 4");
     //OnlineStorage_Test(Storage_ExtractFiles, "agent");
 
     // "dbfilesclient\\battlepetspeciesstate.db2"
