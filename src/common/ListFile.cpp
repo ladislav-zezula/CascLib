@@ -36,7 +36,7 @@ static PLISTFILE_CACHE ListFile_CreateCache(DWORD dwFileSize)
     PLISTFILE_CACHE pCache;
 
     // Allocate cache for one file block
-    pCache = (PLISTFILE_CACHE)CASC_ALLOC(BYTE, sizeof(LISTFILE_CACHE) + dwFileSize);
+    pCache = (PLISTFILE_CACHE)CASC_ALLOC<BYTE>(sizeof(LISTFILE_CACHE) + dwFileSize);
     if(pCache != NULL)
     {
         // Set the initial pointers

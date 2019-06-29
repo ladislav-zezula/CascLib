@@ -268,7 +268,7 @@ char * CascNewStr(const char * szString, size_t nCharsToReserve)
     if(szString != NULL)
     {
         nLength = strlen(szString);
-        szNewString = CASC_ALLOC(char, nLength + nCharsToReserve + 1);
+        szNewString = CASC_ALLOC<char>(nLength + nCharsToReserve + 1);
         if(szNewString != NULL)
         {
             memcpy(szNewString, szString, nLength);
@@ -287,7 +287,7 @@ wchar_t * CascNewStr(const wchar_t * szString, size_t nCharsToReserve)
     if(szString != NULL)
     {
         nLength = wcslen(szString);
-        szNewString = CASC_ALLOC(wchar_t, nLength + nCharsToReserve + 1);
+        szNewString = CASC_ALLOC<wchar_t>(nLength + nCharsToReserve + 1);
         if(szNewString != NULL)
         {
             memcpy(szNewString, szString, nLength * sizeof(wchar_t));
@@ -416,7 +416,7 @@ LPTSTR CombinePath(LPCTSTR szDirectory, LPCTSTR szSubDir)
         nLength += (_tcslen(szSubDir) + 1);
 
     // Allocate buffer
-    if((szFullPath = CASC_ALLOC(TCHAR, nLength)) != NULL)
+    if((szFullPath = CASC_ALLOC<TCHAR>(nLength)) != NULL)
     {
         CombinePath(szFullPath, nLength, PATH_SEP_CHAR, szDirectory, szSubDir, NULL);
     }

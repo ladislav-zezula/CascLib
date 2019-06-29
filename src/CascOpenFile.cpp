@@ -13,6 +13,99 @@
 #include "CascCommon.h"
 
 //-----------------------------------------------------------------------------
+// TCascFile class functions
+
+TCascFile::TCascFile(TCascStorage * ahs, PCASC_CKEY_ENTRY apCKeyEntry)
+{
+    // Reference the storage handle
+    ClassName = CASC_MAGIC_FILE;
+    hs = ahs->AddRef();
+
+    FilePointer = 0;
+    pCKeyEntry = apCKeyEntry;
+    SpanCount = (pCKeyEntry->SpanCount != 0) ? pCKeyEntry->SpanCount : 1;
+    bVerifyIntegrity = false;
+    bDownloadFileIf = false;
+    bLocalFileStream = false;
+
+    // Allocate the array of file spans
+    if((pSpans = CASC_ALLOC_ZERO<CASC_FILE_SPAN>(SpanCount)) != NULL)
+    {
+        InitFileSpans(pSpans, pCKeyEntry, SpanCount);
+        InitCacheStrategy();
+    }
+}
+
+TCascFile::~TCascFile()
+{
+    // Close (dereference) the archive handle
+    hs = hs->Release();
+    ClassName = 0;
+
+    // Free the file cache and frame array
+    CASC_FREE(pbFileCache);
+
+    // If we are supposed to close the file stream, do it
+    if (bLocalFileStream)
+    {
+        for(DWORD i = 0; i < SpanCount; i++)
+        {
+            FileStream_Close(pSpans[i].pStream);
+            CASC_FREE(pSpans[i].pFrames);
+            pSpans[i].pStream = NULL;
+        }
+    }
+}
+
+void TCascFile::InitFileSpans(PCASC_FILE_SPAN pSpans, PCASC_CKEY_ENTRY pCKeyEntry, DWORD dwSpanCount)
+{
+    ULONGLONG FileOffsetMask = ((ULONGLONG)1 << hs->FileOffsetBits) - 1;
+    ULONGLONG FileOffsetBits = hs->FileOffsetBits;
+    ULONGLONG StartOffset = 0;
+
+    // Reset the sizes
+    ContentSize = 0;
+    EncodedSize = 0;
+
+    // Add all span sizes
+    for(DWORD i = 0; i < dwSpanCount; i++, pSpans++, pCKeyEntry++)
+    {
+        pSpans->StartOffset = StartOffset;
+        pSpans->EndOffset = StartOffset + pCKeyEntry->ContentSize;
+        pSpans->ArchiveIndex = (DWORD)(pCKeyEntry->StorageOffset >> FileOffsetBits);
+        pSpans->ArchiveOffs = (DWORD)(pCKeyEntry->StorageOffset & FileOffsetMask);
+
+        ContentSize = ContentSize + pCKeyEntry->ContentSize;
+        EncodedSize = EncodedSize + pCKeyEntry->EncodedSize;
+        StartOffset = pSpans->EndOffset;
+    }
+}
+
+void TCascFile::InitCacheStrategy()
+{
+    // Initialize the cache
+    FileCacheStart = FileCacheEnd = 0;
+    pbFileCache = NULL;
+
+    // On files greater than 100 MB, we only cache one file frame for cases when someone reads the file byte-by-byte
+    if(ContentSize > 100 * 1024 * 1024)
+    {
+        CacheStrategy = CascCachePartial;
+        return;
+    }
+
+    // On files greater than 10 MB, we cache the entire file, but do not preload it
+    if(ContentSize > 10 * 1024 * 1024)
+    {
+        CacheStrategy = CascCacheWholeFile;
+        return;
+    }
+
+    // On all other files, we preload the entire file on the first read
+    CacheStrategy = CascCacheWholeFilePreload;
+}
+
+//-----------------------------------------------------------------------------
 // Local functions
 
 PCASC_CKEY_ENTRY FindCKeyEntry_CKey(TCascStorage * hs, LPBYTE pbCKey, PDWORD PtrIndex)
@@ -54,6 +147,26 @@ bool OpenFileByCKeyEntry(TCascStorage * hs, PCASC_CKEY_ENTRY pCKeyEntry, DWORD d
     if(nError != ERROR_SUCCESS)
         SetLastError(nError);
     return (nError == ERROR_SUCCESS);
+}
+
+bool SetCacheStrategy(HANDLE hFile, CSTRTG CacheStrategy)
+{
+    TCascFile * hf;
+
+    // Validate the file handle
+    if((hf = TCascFile::IsValid(hFile)) != NULL)
+    {
+        // The cache must not be initialized yet
+        if(hf->pbFileCache == NULL)
+        {
+            hf->CacheStrategy = CacheStrategy;
+            return true;
+        }
+    }
+
+    // Failed. This should never happen
+    assert(false);
+    return false;
 }
 
 //-----------------------------------------------------------------------------

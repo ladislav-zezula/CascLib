@@ -43,7 +43,7 @@ class CASC_ARRAY
     int Create(size_t ItemSize, size_t ItemCountMax)
     {
         // Create the array
-        if ((m_pItemArray = CASC_ALLOC(BYTE, ItemSize * ItemCountMax)) == NULL)
+        if ((m_pItemArray = CASC_ALLOC<BYTE>(ItemSize * ItemCountMax)) == NULL)
             return ERROR_NOT_ENOUGH_MEMORY;
 
         m_ItemCountMax = ItemCountMax;
