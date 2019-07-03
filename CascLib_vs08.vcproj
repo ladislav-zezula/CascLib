@@ -1067,10 +1067,6 @@
 			Name="Source Files"
 			>
 			<File
-				RelativePath=".\src\CascCommon.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\src\CascDecompress.cpp"
 				>
 			</File>

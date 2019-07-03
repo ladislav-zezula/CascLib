@@ -220,6 +220,7 @@ static DWORD LoadSpanFrames(PCASC_FILE_SPAN pFileSpan, PCASC_CKEY_ENTRY pCKeyEnt
 {
     PCASC_FILE_FRAME pFrames = NULL;
     DWORD ContentSize = 0;
+    DWORD dwErrCode = ERROR_SUCCESS;
 
     assert(pFileSpan != NULL);
     assert(pFileSpan->pStream != NULL);
@@ -242,7 +243,10 @@ static DWORD LoadSpanFrames(PCASC_FILE_SPAN pFileSpan, PCASC_CKEY_ENTRY pCKeyEnt
                 // Capture the single BLTE frame
                 pbFramePtr = CaptureBlteFileFrame(Frame, pbFramePtr, pbFrameEnd);
                 if(pbFramePtr == NULL)
-                    return ERROR_BAD_FORMAT;
+                {
+                    dwErrCode = ERROR_BAD_FORMAT;
+                    break;
+                }
 
                 // Fill-in the file range of the frame
                 Frame.StartOffset = pFileSpan->StartOffset + ContentSize;
@@ -260,6 +264,10 @@ static DWORD LoadSpanFrames(PCASC_FILE_SPAN pFileSpan, PCASC_CKEY_ENTRY pCKeyEnt
             {
                 pCKeyEntry->ContentSize = ContentSize;
             }
+        }
+        else
+        {
+            dwErrCode = ERROR_NOT_ENOUGH_MEMORY;
         }
     }
     else
@@ -279,10 +287,21 @@ static DWORD LoadSpanFrames(PCASC_FILE_SPAN pFileSpan, PCASC_CKEY_ENTRY pCKeyEnt
             // Save the number of file frames
             pFileSpan->FrameCount = 1;
         }
+        else
+        {
+            dwErrCode = ERROR_NOT_ENOUGH_MEMORY;
+        }
     }
 
-    // If we didn't load any frames, return error
-    return ((pFileSpan->pFrames = pFrames) != NULL) ? ERROR_SUCCESS : ERROR_NOT_ENOUGH_MEMORY;
+    // Free the frame array on error
+    if(dwErrCode != ERROR_SUCCESS)
+    {
+        pFileSpan->FrameCount = 0;
+        CASC_FREE(pFrames);
+    }
+
+    pFileSpan->pFrames = pFrames;
+    return dwErrCode;
 }
 
 static DWORD LoadEncodedHeaderAndSpanFrames(PCASC_FILE_SPAN pFileSpan, PCASC_CKEY_ENTRY pCKeyEntry)

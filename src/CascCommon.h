@@ -310,7 +310,7 @@ struct TCascFile
     TCascFile(TCascStorage * hs, PCASC_CKEY_ENTRY pCKeyEntry);
     ~TCascFile();
 
-    void InitFileSpans(PCASC_FILE_SPAN pSpans, PCASC_CKEY_ENTRY pCKeyEntry, DWORD dwSpanCount);
+    void InitFileSpans(PCASC_FILE_SPAN pSpans, DWORD dwSpanCount);
     void InitCacheStrategy();
 
     static TCascFile * IsValid(HANDLE hFile)

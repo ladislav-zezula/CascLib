@@ -446,10 +446,8 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         DWORD dwSpanCount;
         DWORD dwErrCode;
 
-        // Initialize the array of span entries
-        dwErrCode = SpanArray.Create(sizeof(CASC_CKEY_ENTRY), 0x100);
-        if(dwErrCode != ERROR_SUCCESS)
-            return dwErrCode;
+        // Sanity check
+        assert(SpanArray.IsInitialized());
 
         // Parse the file table
         while(pbPathTablePtr < pbPathTableEnd)
@@ -530,7 +528,6 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                     else
                     {
                         PCASC_CKEY_ENTRY pSpanEntries;
-                        PCASC_CKEY_ENTRY pCKeyEntry;
                         PCASC_FILE_NODE pFileNode;
 
                         //
@@ -630,6 +627,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
     {
 //      PCASC_CKEY_ENTRY pCKeyEntry;
         PATH_BUFFER PathBuffer;
+        DWORD dwErrCode;
         char szPathBuffer[MAX_PATH] = {0};
 
         // Initialize the path buffer
@@ -639,6 +637,11 @@ struct TRootHandler_TVFS : public TFileTreeRoot
 
         // Save the length of the key
         FileTree.SetKeyLength(RootHeader.EKeySize);
+
+        // Initialize the array of span entries
+        dwErrCode = SpanArray.Create(sizeof(CASC_CKEY_ENTRY), 0x100);
+        if(dwErrCode != ERROR_SUCCESS)
+            return dwErrCode;
 
         // Insert the main VFS root file as named entry
         InsertRootVfsEntry(hs, hs->VfsRoot.CKey, "vfs-root", 0);

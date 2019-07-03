@@ -31,33 +31,41 @@ TCascFile::TCascFile(TCascStorage * ahs, PCASC_CKEY_ENTRY apCKeyEntry)
     // Allocate the array of file spans
     if((pFileSpan = CASC_ALLOC_ZERO<CASC_FILE_SPAN>(SpanCount)) != NULL)
     {
-        InitFileSpans(pFileSpan, pCKeyEntry, SpanCount);
+        InitFileSpans(pFileSpan, SpanCount);
         InitCacheStrategy();
     }
 }
 
 TCascFile::~TCascFile()
 {
+    // Free all stuff related to file spans
+    if (pFileSpan != NULL)
+    {
+        PCASC_FILE_SPAN pSpanPtr = pFileSpan;
+
+        for(DWORD i = 0; i < SpanCount; i++, pSpanPtr++)
+        {
+            // Close the span file stream if this is a local file
+            if(bLocalFileStream)
+                FileStream_Close(pSpanPtr->pStream);
+            pSpanPtr->pStream = NULL;
+
+            // Free the span frames
+            CASC_FREE(pSpanPtr->pFrames);
+        }
+
+        CASC_FREE(pFileSpan);
+    }
+
+    // Free the file cache
+    CASC_FREE(pbFileCache);
+
     // Close (dereference) the archive handle
     hs = hs->Release();
     ClassName = 0;
-
-    // Free the file cache and frame array
-    CASC_FREE(pbFileCache);
-
-    // If we are supposed to close the file stream, do it
-    if (bLocalFileStream)
-    {
-        for(DWORD i = 0; i < SpanCount; i++)
-        {
-            FileStream_Close(pFileSpan[i].pStream);
-            CASC_FREE(pFileSpan[i].pFrames);
-            pFileSpan[i].pStream = NULL;
-        }
-    }
 }
 
-void TCascFile::InitFileSpans(PCASC_FILE_SPAN pSpans, PCASC_CKEY_ENTRY pCKeyEntry, DWORD dwSpanCount)
+void TCascFile::InitFileSpans(PCASC_FILE_SPAN pSpans, DWORD dwSpanCount)
 {
     ULONGLONG FileOffsetMask = ((ULONGLONG)1 << hs->FileOffsetBits) - 1;
     ULONGLONG FileOffsetBits = hs->FileOffsetBits;
@@ -69,22 +77,22 @@ void TCascFile::InitFileSpans(PCASC_FILE_SPAN pSpans, PCASC_CKEY_ENTRY pCKeyEntr
     EncodedSize = 0;
 
     // Add all span sizes
-    for(DWORD i = 0; i < dwSpanCount; i++, pSpans++, pCKeyEntry++)
+    for(DWORD i = 0; i < dwSpanCount; i++, pSpans++)
     {
         // If the content size is not known, we can't calculate the ranges
-        if(pCKeyEntry->ContentSize == CASC_INVALID_SIZE)
+        if(pCKeyEntry[i].ContentSize == CASC_INVALID_SIZE)
         {
             bContentSizeInvalid = true;
             break;
         }
 
         pSpans->StartOffset = StartOffset;
-        pSpans->EndOffset = StartOffset + pCKeyEntry->ContentSize;
-        pSpans->ArchiveIndex = (DWORD)(pCKeyEntry->StorageOffset >> FileOffsetBits);
-        pSpans->ArchiveOffs = (DWORD)(pCKeyEntry->StorageOffset & FileOffsetMask);
+        pSpans->EndOffset = StartOffset + pCKeyEntry[i].ContentSize;
+        pSpans->ArchiveIndex = (DWORD)(pCKeyEntry[i].StorageOffset >> FileOffsetBits);
+        pSpans->ArchiveOffs = (DWORD)(pCKeyEntry[i].StorageOffset & FileOffsetMask);
 
-        ContentSize = ContentSize + pCKeyEntry->ContentSize;
-        EncodedSize = EncodedSize + pCKeyEntry->EncodedSize;
+        ContentSize = ContentSize + pCKeyEntry[i].ContentSize;
+        EncodedSize = EncodedSize + pCKeyEntry[i].EncodedSize;
         StartOffset = pSpans->EndOffset;
     }
 
