@@ -1434,9 +1434,10 @@ LPBYTE LoadInternalFileToMemory(TCascStorage * hs, PCASC_CKEY_ENTRY pCKeyEntry, 
 {
     LPBYTE pbFileData = NULL;
     HANDLE hFile = NULL;
-    DWORD cbFileData = pcbFileData[0];
+    DWORD dwFileSizeHi = 0;
+    DWORD cbFileData = 0;
     DWORD dwBytesRead = 0;
-    int nError = ERROR_SUCCESS;
+    DWORD dwErrCode = ERROR_SUCCESS;
 
     // Open the file either by CKey or by EKey
     if(OpenFileByCKeyEntry(hs, pCKeyEntry, CASC_STRICT_DATA_CHECK, &hFile))
@@ -1448,15 +1449,19 @@ LPBYTE LoadInternalFileToMemory(TCascStorage * hs, PCASC_CKEY_ENTRY pCKeyEntry, 
         // Retrieve the size of the file. Note that the caller might specify
         // the real size of the file, in case the file size is not retrievable
         // or if the size is wrong. Example: ENCODING file has size specified in BUILD
-        if(cbFileData == 0 || cbFileData == CASC_INVALID_SIZE)
+        if(pCKeyEntry->ContentSize == CASC_INVALID_SIZE)
         {
-            cbFileData = CascGetFileSize(hFile, NULL);
-            if(cbFileData == 0 || cbFileData == CASC_INVALID_SIZE)
-                nError = ERROR_FILE_CORRUPT;
+            cbFileData = CascGetFileSize(hFile, &dwFileSizeHi);
+            if(cbFileData == CASC_INVALID_SIZE || dwFileSizeHi != 0)
+                dwErrCode = ERROR_FILE_CORRUPT;
+        }
+        else
+        {
+            cbFileData = pCKeyEntry->ContentSize;
         }
 
         // Retrieve the size of the ENCODING file
-        if(nError == ERROR_SUCCESS)
+        if(dwErrCode == ERROR_SUCCESS)
         {
             // Allocate space for the ENCODING file
             pbFileData = CASC_ALLOC<BYTE>(cbFileData);
@@ -1466,12 +1471,12 @@ LPBYTE LoadInternalFileToMemory(TCascStorage * hs, PCASC_CKEY_ENTRY pCKeyEntry, 
                 CascReadFile(hFile, pbFileData, cbFileData, &dwBytesRead);
                 if(dwBytesRead != cbFileData)
                 {
-                    nError = ERROR_FILE_CORRUPT;
+                    dwErrCode = ERROR_FILE_CORRUPT;
                 }
             }
             else
             {
-                nError = ERROR_NOT_ENOUGH_MEMORY;
+                dwErrCode = ERROR_NOT_ENOUGH_MEMORY;
             }
         }
 
@@ -1480,18 +1485,18 @@ LPBYTE LoadInternalFileToMemory(TCascStorage * hs, PCASC_CKEY_ENTRY pCKeyEntry, 
     }
     else
     {
-        nError = GetLastError();
+        dwErrCode = GetLastError();
     }
 
     // Handle errors
-    if(nError != ERROR_SUCCESS)
+    if(dwErrCode != ERROR_SUCCESS)
     {
         // Free the file data
         CASC_FREE(pbFileData);
         cbFileData = 0;
 
         // Set the last error
-        SetLastError(nError);
+        SetLastError(dwErrCode);
     }
 
     // Give the loaded file length

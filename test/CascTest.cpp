@@ -277,7 +277,7 @@ static FILE * OpenExtractedFile(HANDLE /* hStorage */, LPCSTR szFormat, CASC_FIN
         assert(false);
     }
 
-    return fopen(szOutFileName, "wt");
+    return fopen(szOutFileName, "wb");
 }
 
 static void TestStorageGetTagInfo(HANDLE hStorage)
@@ -326,19 +326,77 @@ static bool CascOpenFile(HANDLE hStorage, CASC_FIND_DATA & cf, DWORD dwOpenFlags
     return false;
 }
 
+static PCASC_FILE_SPAN_INFO GetFileInfo(HANDLE hFile, CASC_FILE_FULL_INFO & FileInfo)
+{
+    PCASC_FILE_SPAN_INFO pSpans = NULL;
+
+    // Retrieve the full file info
+    if(CascGetFileInfo(hFile, CascFileFullInfo, &FileInfo, sizeof(CASC_FILE_FULL_INFO), NULL))
+    {
+        if((pSpans = CASC_ALLOC<CASC_FILE_SPAN_INFO>(FileInfo.SpanCount)) != NULL)
+        {
+            if(!CascGetFileInfo(hFile, CascFileSpanInfo, pSpans, FileInfo.SpanCount * sizeof(CASC_FILE_SPAN_INFO), NULL))
+            {
+                CASC_FREE(pSpans);
+                pSpans = NULL;
+            }
+        }
+    }
+
+    return pSpans;
+}
+
+static DWORD CheckFileDataHash(MD5_CTX & md5_ctx, PCASC_FILE_SPAN_INFO pSpan, LPBYTE Buffer, ULONGLONG FileOffset, DWORD dwBytesRead, DWORD & dwSpanIndex)
+{
+    ULONGLONG StartOffset = FileOffset;
+    ULONGLONG EndOffset = FileOffset + dwBytesRead;
+    DWORD dwBytesToHash;
+    BYTE ContentKey[MD5_HASH_SIZE];
+    DWORD dwErrCode = ERROR_SUCCESS;
+
+    // Is there an end of span in this block?
+    if(StartOffset < pSpan->EndOffset && pSpan->EndOffset <= EndOffset)
+    {
+        // Finalize the hash
+        dwBytesToHash = (DWORD)(pSpan->EndOffset - StartOffset);
+        MD5_Update(&md5_ctx, Buffer, dwBytesRead);
+        MD5_Final(ContentKey, &md5_ctx);
+        Buffer += dwBytesToHash;
+
+        // Compare the hash
+        if(memcmp(ContentKey, pSpan->CKey, MD5_HASH_SIZE))
+            dwErrCode = ERROR_FILE_CORRUPT;
+
+        // Reset the hash generator
+        dwBytesToHash = (DWORD)(EndOffset - pSpan->EndOffset);
+        MD5_Init(&md5_ctx);
+        MD5_Update(&md5_ctx, Buffer, dwBytesToHash);
+        dwSpanIndex++;
+    }
+    else
+    {
+        // Update the hash
+        MD5_Update(&md5_ctx, Buffer, dwBytesRead);
+    }
+
+    return dwErrCode;
+}
+
+
 static DWORD ExtractFile(
     TLogHelper & LogHelper,
     TEST_PARAMS & Params,
     CASC_FIND_DATA & cf)
 {
+    PCASC_FILE_SPAN_INFO pSpans;
     CASC_FILE_FULL_INFO FileInfo;
     ULONGLONG TotalRead = 0;
     ULONGLONG FileSize = 0;
     MD5_CTX md5_ctx;
     HANDLE hFile = NULL;
-    BYTE md5_digest[MD5_HASH_SIZE];
     BYTE Buffer[0x1000];
     char szShortName[SHORT_NAME_SIZE];
+    DWORD dwSpanIndex = 0;
     DWORD dwBytesRead = 1;
     DWORD dwErrCode = ERROR_SUCCESS;
     bool bHashFileContent = true;
@@ -349,59 +407,72 @@ static DWORD ExtractFile(
     // Open the CASC file
     if(CascOpenFile(Params.hStorage, cf, Params.dwOpenFlags | CASC_STRICT_DATA_CHECK, &hFile))
     {
-        // Retrieve the span count
-        CascGetFileInfo(hFile, CascFileFullInfo, &FileInfo, sizeof(CASC_FILE_FULL_INFO), NULL);
-
-        // Retrieve the file size
-        if(!CascGetFileSize64(hFile, &FileSize))
+        // Retrieve the information about file spans
+        if((pSpans = GetFileInfo(hFile, FileInfo)) != NULL)
         {
-            LogHelper.PrintError("Warning: %s: Failed to get file size", szShortName);
-            return GetLastError();
-        }
+            // Initialize the per-file hashing
+            if(bHashFileContent && CascIsValidMD5(pSpans->CKey))
+                MD5_Init(&md5_ctx);
+            FileSize = FileInfo.ContentSize;
 
-        // Initialize the per-file hashing
-        if(bHashFileContent && cf.bCanOpenByCKey && FileInfo.SpanCount == 1)
-            MD5_Init(&md5_ctx);
+            // Show the progress, if open succeeded
+            if(!LogHelper.ProgressCooldown())
+                LogHelper.PrintProgress("Extracting: (%u of %u) %s ...", LogHelper.FileCount, LogHelper.TotalFiles, szShortName);
 
-        // Show the progress, if open succeeded
-        if(!LogHelper.ProgressCooldown())
-            LogHelper.PrintProgress("Extracting (%u of %u) %s ...", LogHelper.FileCount, LogHelper.TotalFiles, szShortName);
-
-        // Load the entire file, piece-by-piece, and calculate MD5
-        while(dwBytesRead != 0)
-        {
-            // Load the chunk of file
-            if(!CascReadFile(hFile, Buffer, sizeof(Buffer), &dwBytesRead))
+            // Load the entire file, piece-by-piece, and calculate MD5
+            while(dwBytesRead != 0)
             {
-                // Do not report some errors; for example, when the file is encrypted,
-                // we can't do much about it. Only report it if we are going to extract one file
-                switch(dwErrCode = GetLastError())
-                {
-                    case ERROR_FILE_ENCRYPTED:
-                        if(LogHelper.TotalFiles == 1)
-                            LogHelper.PrintMessage("Warning: %s: File is encrypted", szShortName);
-                        break;
+                // Show the progress, if open succeeded
+                if(!LogHelper.ProgressCooldown())
+                    LogHelper.PrintProgress("Extracting: (%u of %u) %s (%u%%) ...", LogHelper.FileCount, LogHelper.TotalFiles, szShortName, (DWORD)((TotalRead * 100) / FileInfo.ContentSize));
 
-                    default:
-                        LogHelper.PrintMessage("Warning: %s: Read error (offset %08X:%08X)", szShortName, (DWORD)(TotalRead >> 32), (DWORD)(TotalRead));
-                        break;
+                // Load the chunk of file
+                if(CascReadFile(hFile, Buffer, sizeof(Buffer), &dwBytesRead))
+                {
+                    // Do nothing if no more data was read
+                    if(dwBytesRead != 0)
+                    {
+                        // Write the file data
+                        if(Params.fp2 != NULL)
+                            fwrite(Buffer, 1, dwBytesRead, Params.fp2);
+
+                        // Per-file hashing. Don't do it if there is no CKey for the file
+                        if(bHashFileContent && CascIsValidMD5(pSpans->CKey))
+                        {
+                            dwErrCode = CheckFileDataHash(md5_ctx, pSpans + dwSpanIndex, Buffer, TotalRead, dwBytesRead, dwSpanIndex);
+                            if(dwErrCode != ERROR_SUCCESS)
+                            {
+                                LogHelper.PrintMessage("Warning: %s: MD5 mismatch", szShortName);
+                            }
+                        }
+
+                        // Per-storage hashing
+                        if(LogHelper.HasherReady)
+                            LogHelper.HashData(Buffer, dwBytesRead);
+                        TotalRead += dwBytesRead;
+                    }
                 }
-                break;
+                else
+                {
+                    // Do not report some errors; for example, when the file is encrypted,
+                    // we can't do much about it. Only report it if we are going to extract one file
+                    switch(dwErrCode = GetLastError())
+                    {
+                        case ERROR_FILE_ENCRYPTED:
+                            if(LogHelper.TotalFiles == 1)
+                                LogHelper.PrintMessage("Warning: %s: File is encrypted", szShortName);
+                            break;
+
+                        default:
+                            LogHelper.PrintMessage("Warning: %s: Read error (offset %08X:%08X)", szShortName, (DWORD)(TotalRead >> 32), (DWORD)(TotalRead));
+                            break;
+                    }
+                    break;
+                }
             }
 
-            // write the file data
-            if(Params.fp2 != NULL)
-                fwrite(Buffer, 1, dwBytesRead, Params.fp2);
-
-            // Per-file hashing
-            if(bHashFileContent && cf.bCanOpenByCKey)
-                MD5_Update(&md5_ctx, Buffer, dwBytesRead);
-
-            // Per-storage hashing
-            if(LogHelper.HasherReady)
-                LogHelper.HashData(Buffer, dwBytesRead);
-
-            TotalRead += dwBytesRead;
+            // Free the span array
+            CASC_FREE(pSpans);
         }
 
         // Check whether the total size matches
@@ -409,17 +480,6 @@ static DWORD ExtractFile(
         {
             LogHelper.PrintMessage("Warning: %s: TotalRead != FileSize", szShortName);
             dwErrCode = ERROR_FILE_CORRUPT;
-        }
-
-        // Check whether the MD5 matches
-        if(dwErrCode == ERROR_SUCCESS && bHashFileContent && cf.bCanOpenByCKey)
-        {
-            MD5_Final(md5_digest, &md5_ctx);
-            if(memcmp(md5_digest, cf.CKey, MD5_HASH_SIZE))
-            {
-                LogHelper.PrintMessage("Warning: %s: MD5 mismatch", szShortName);
-                dwErrCode = ERROR_FILE_CORRUPT;
-            }
         }
 
         // Increment the total number of files
@@ -452,7 +512,7 @@ static DWORD Storage_OpenFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
     cf.bCanOpenByName = true;
 
     // Setup the file to extract
-    //Params.fp2 = OpenExtractedFile(Params.hStorage, "\\%s", cf);
+    Params.fp2 = OpenExtractedFile(Params.hStorage, "\\%s", cf);
     
     // Perform the extraction
     ExtractFile(LogHelper, Params, cf);
@@ -512,6 +572,7 @@ static DWORD Storage_EnumFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
         {
             // Add the file name to the name hash
             LogHelper.HashName(cf.szFileName);
+            LogHelper.FileCount = dwFileCount;
 
             // There should always be a name
             if (Params.fp1 != NULL)
@@ -694,7 +755,7 @@ static STORAGE_INFO2 StorageInfo2[] =
 //  {"bna",      "us"},
 //  {"catalogs", NULL},
 //  {"clnt",     "us"},
-    {"hsb",      "us"},
+//  {"hsb",      "us"},
     {NULL}
 };
 
@@ -716,7 +777,7 @@ int main(void)
     // Single tests
     //
 
-//  LocalStorage_Test(Storage_OpenFiles, "2014 - Heroes of the Storm\\29049", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_autoai1.dds");
+//  LocalStorage_Test(Storage_OpenFiles, "2014 - Heroes of the Storm\\29049", "ENCODING");
 //  LocalStorage_Test(Storage_EnumFiles, "2015 - Diablo III\\30013");
 //  LocalStorage_Test(Storage_EnumFiles, "2016 - WoW\\18125");
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - New CASC\\00001");
@@ -735,7 +796,7 @@ int main(void)
     for(size_t i = 0; StorageInfo1[i].szPath != NULL; i++)
     {
         // Attempt to open the storage and extract single file
-//      dwErrCode = LocalStorage_Test(Storage_ExtractFiles, StorageInfo1[i].szPath, StorageInfo1[i].szNameHash, StorageInfo1[i].szDataHash);
+        dwErrCode = LocalStorage_Test(Storage_ExtractFiles, StorageInfo1[i].szPath, StorageInfo1[i].szNameHash, StorageInfo1[i].szDataHash);
 //      dwErrCode = LocalStorage_Test(Storage_EnumFiles, StorageInfo1[i].szPath);
         if(dwErrCode != ERROR_SUCCESS)
             break;

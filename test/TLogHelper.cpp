@@ -124,6 +124,13 @@ class TLogHelper
             // Is there a format character?
             if(szFormat[0] == '%')
             {
+                if(szFormat[1] == '%')
+                {
+                    *szBufferPtr++ = '%';
+                    szFormat += 2;
+                    continue;
+                }
+
                 // String argument
                 if(IsFormatSpecifier(szFormat, "%s"))
                 {

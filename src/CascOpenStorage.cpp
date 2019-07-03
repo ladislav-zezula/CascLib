@@ -276,6 +276,7 @@ static PCASC_CKEY_ENTRY InsertCKeyEntry(TCascStorage * hs, PCASC_CKEY_ENTRY pSou
                     pCKeyEntry->EncodedSize = CASC_INVALID_SIZE;
                     pCKeyEntry->ContentSize = CASC_INVALID_SIZE;
                     pCKeyEntry->Flags = (pSourceEntry->Flags & (CASC_CE_HAS_CKEY | CASC_CE_HAS_EKEY | CASC_CE_HAS_EKEY_PARTIAL));
+                    pCKeyEntry->SpanCount = 0;
                     bAllocatedNewEntry = true;
                 }
             }

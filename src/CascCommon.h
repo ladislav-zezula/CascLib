@@ -71,9 +71,7 @@ typedef enum _CSTRTG
 {
     CascCacheInvalid,                               // Do not cache anything. Used as invalid value
     CascCacheNothing,                               // Do not cache anything. Used on internal files, where the content is loaded directly to the user buffer
-    CascCachePartial,                               // Only cache one file frame
-    CascCacheWholeFile,                             // Cache the whole file, load as needed
-    CascCacheWholeFilePreload,                      // Cache the whole file. Preload on first read
+    CascCacheLastFrame,                             // Only cache one file frame
 } CSTRTG, *PCSTRTG;
 
 // Tag file entry, loaded from the DOWNLOAD file
@@ -216,6 +214,7 @@ typedef struct _CASC_FILE_SPAN
     TFileStream * pStream;                          // [Opened] stream for the file span
     DWORD ArchiveIndex;                             // Index of the archive
     DWORD ArchiveOffs;                              // Offset in the archive
+    DWORD HeaderSize;                               // Size of encoded frame headers
     DWORD FrameCount;                               // Number of frames in this span
 
 } CASC_FILE_SPAN, *PCASC_FILE_SPAN;
@@ -331,8 +330,8 @@ struct TCascFile
     // Class members
     TCascStorage * hs;                              // Pointer to storage structure
 
-    PCASC_CKEY_ENTRY pCKeyEntry;                    // Array of 
-    PCASC_FILE_SPAN pSpans;                         // Array of file spans
+    PCASC_CKEY_ENTRY pCKeyEntry;                    // Pointer to the first CKey entry. Each entry describes one file span
+    PCASC_FILE_SPAN pFileSpan;                      // Pointer to the first file span entry
     ULONGLONG ContentSize;                          // Content size. This is the summed content size of all file spans
     ULONGLONG EncodedSize;                          // Encoded size. This is the summed encoded size of all file spans
     ULONGLONG FilePointer;                          // Current file pointer
@@ -348,7 +347,7 @@ struct TCascFile
     CSTRTG CacheStrategy;                           // Caching strategy. See CSTRTG enum for more info
 
     // TODO: DELETE THIS!!!
-    PCASC_FILE_FRAME pFrames;                       // Array of file frames
+//  PCASC_FILE_FRAME pFrames;                       // Array of file frames
     DWORD FrameCount;                               // Number of the file frames
     DWORD cbFileCache;                              // Size of the file cache
 };
@@ -390,7 +389,7 @@ struct TCascSearch
 
         return (hFind != INVALID_HANDLE_VALUE &&
                 hFind != NULL &&
-                pSearch->ClassName != CASC_MAGIC_FIND &&
+                pSearch->ClassName == CASC_MAGIC_FIND &&
                 pSearch->szMask != NULL) ? pSearch : NULL;
     }
 

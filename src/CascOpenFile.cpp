@@ -29,9 +29,9 @@ TCascFile::TCascFile(TCascStorage * ahs, PCASC_CKEY_ENTRY apCKeyEntry)
     bLocalFileStream = false;
 
     // Allocate the array of file spans
-    if((pSpans = CASC_ALLOC_ZERO<CASC_FILE_SPAN>(SpanCount)) != NULL)
+    if((pFileSpan = CASC_ALLOC_ZERO<CASC_FILE_SPAN>(SpanCount)) != NULL)
     {
-        InitFileSpans(pSpans, pCKeyEntry, SpanCount);
+        InitFileSpans(pFileSpan, pCKeyEntry, SpanCount);
         InitCacheStrategy();
     }
 }
@@ -50,9 +50,9 @@ TCascFile::~TCascFile()
     {
         for(DWORD i = 0; i < SpanCount; i++)
         {
-            FileStream_Close(pSpans[i].pStream);
-            CASC_FREE(pSpans[i].pFrames);
-            pSpans[i].pStream = NULL;
+            FileStream_Close(pFileSpan[i].pStream);
+            CASC_FREE(pFileSpan[i].pFrames);
+            pFileSpan[i].pStream = NULL;
         }
     }
 }
@@ -62,6 +62,7 @@ void TCascFile::InitFileSpans(PCASC_FILE_SPAN pSpans, PCASC_CKEY_ENTRY pCKeyEntr
     ULONGLONG FileOffsetMask = ((ULONGLONG)1 << hs->FileOffsetBits) - 1;
     ULONGLONG FileOffsetBits = hs->FileOffsetBits;
     ULONGLONG StartOffset = 0;
+    bool bContentSizeInvalid = false;
 
     // Reset the sizes
     ContentSize = 0;
@@ -70,6 +71,13 @@ void TCascFile::InitFileSpans(PCASC_FILE_SPAN pSpans, PCASC_CKEY_ENTRY pCKeyEntr
     // Add all span sizes
     for(DWORD i = 0; i < dwSpanCount; i++, pSpans++, pCKeyEntry++)
     {
+        // If the content size is not known, we can't calculate the ranges
+        if(pCKeyEntry->ContentSize == CASC_INVALID_SIZE)
+        {
+            bContentSizeInvalid = true;
+            break;
+        }
+
         pSpans->StartOffset = StartOffset;
         pSpans->EndOffset = StartOffset + pCKeyEntry->ContentSize;
         pSpans->ArchiveIndex = (DWORD)(pCKeyEntry->StorageOffset >> FileOffsetBits);
@@ -79,30 +87,18 @@ void TCascFile::InitFileSpans(PCASC_FILE_SPAN pSpans, PCASC_CKEY_ENTRY pCKeyEntr
         EncodedSize = EncodedSize + pCKeyEntry->EncodedSize;
         StartOffset = pSpans->EndOffset;
     }
+
+    if(bContentSizeInvalid)
+    {
+        ContentSize = CASC_INVALID_SIZE64;
+    }
 }
 
 void TCascFile::InitCacheStrategy()
 {
-    // Initialize the cache
+    CacheStrategy = CascCacheLastFrame;
     FileCacheStart = FileCacheEnd = 0;
     pbFileCache = NULL;
-
-    // On files greater than 100 MB, we only cache one file frame for cases when someone reads the file byte-by-byte
-    if(ContentSize > 100 * 1024 * 1024)
-    {
-        CacheStrategy = CascCachePartial;
-        return;
-    }
-
-    // On files greater than 10 MB, we cache the entire file, but do not preload it
-    if(ContentSize > 10 * 1024 * 1024)
-    {
-        CacheStrategy = CascCacheWholeFile;
-        return;
-    }
-
-    // On all other files, we preload the entire file on the first read
-    CacheStrategy = CascCacheWholeFilePreload;
 }
 
 //-----------------------------------------------------------------------------

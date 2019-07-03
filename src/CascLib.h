@@ -129,6 +129,7 @@ extern "C" {
 #define CASC_INVALID_POS            0xFFFFFFFF
 #define CASC_INVALID_ID             0xFFFFFFFF
 #define CASC_INVALID_OFFS64         0xFFFFFFFFFFFFFFFF
+#define CASC_INVALID_SIZE64         0xFFFFFFFFFFFFFFFF
 
 // Flags for CASC_STORAGE_FEATURES::dwFeatures
 #define CASC_FEATURE_FILE_NAMES     0x00000001  // File names are supported by the storage
@@ -173,6 +174,7 @@ typedef enum _CASC_FILE_INFO_CLASS
     CascFileContentKey,
     CascFileEncodedKey,
     CascFileFullInfo,                           // Gives CASC_FILE_FULL_INFO structure
+    CascFileSpanInfo,                           // Gives CASC_FILE_SPAN_INFO structure for each file span
     CascFileInfoClassMax
 } CASC_FILE_INFO_CLASS, *PCASC_FILE_INFO_CLASS;
 
@@ -291,6 +293,19 @@ typedef struct _CASC_FILE_FULL_INFO
     DWORD ContentFlags;                         // Locale flags. CASC_INVALID_ID if not supported
 
 } CASC_FILE_FULL_INFO, *PCASC_FILE_FULL_INFO;
+
+typedef struct _CASC_FILE_SPAN_INFO
+{
+    BYTE CKey[MD5_HASH_SIZE];                   // Content key of the file span
+    BYTE EKey[MD5_HASH_SIZE];                   // Encoded key of the file span
+    ULONGLONG StartOffset;                      // Starting offset of the file span
+    ULONGLONG EndOffset;                        // Ending offset of the file span
+    DWORD ArchiveIndex;                         // Index of the archive
+    DWORD ArchiveOffs;                          // Offset in the archive
+    DWORD HeaderSize;                           // Size of encoded frame headers
+    DWORD FrameCount;                           // Number of frames in this span
+
+} CASC_FILE_SPAN_INFO, *PCASC_FILE_SPAN_INFO;
 
 //-----------------------------------------------------------------------------
 // Extended version of CascOpenStorage
