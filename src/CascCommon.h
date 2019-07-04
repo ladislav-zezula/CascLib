@@ -258,7 +258,6 @@ struct TCascStorage
     CASC_PRODUCT Product;                           // Product enum value (see CASC_PRODUCT)
     DWORD dwBuildNumber;                            // Product build number
     DWORD dwRefCount;                               // Number of references
-    DWORD dwDefaultLocale;                          // Default locale, read from ".build.info"
     DWORD dwFeatures;                               // List of CASC features. See CASC_FEATURE_XXX
     bool bAllowOrphans;                             // If TRUE, then orphaned items are allowed
 

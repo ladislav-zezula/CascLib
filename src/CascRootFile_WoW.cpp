@@ -178,7 +178,7 @@ struct TRootHandler_WoW : public TFileTreeRoot
         }
     }
 
-    int ParseWowRootFile_AddFiles_6x(TCascStorage * hs, FILE_ROOT_GROUP & RootGroup)
+    DWORD ParseWowRootFile_AddFiles_6x(TCascStorage * hs, FILE_ROOT_GROUP & RootGroup)
     {
         PFILE_ROOT_ENTRY pRootEntry = RootGroup.pRootEntries;
         PCASC_CKEY_ENTRY pCKeyEntry;
@@ -215,7 +215,7 @@ struct TRootHandler_WoW : public TFileTreeRoot
         return ERROR_SUCCESS;
     }
 
-    int ParseWowRootFile_AddFiles_82(TCascStorage * hs, FILE_ROOT_GROUP & RootGroup)
+    DWORD ParseWowRootFile_AddFiles_82(TCascStorage * hs, FILE_ROOT_GROUP & RootGroup)
     {
         PCASC_CKEY_ENTRY pCKeyEntry;
         PCONTENT_KEY pCKey = RootGroup.pCKeyEntries;
@@ -253,7 +253,7 @@ struct TRootHandler_WoW : public TFileTreeRoot
         return ERROR_SUCCESS;
     }
 
-    int ParseWowRootFile_Level2(
+    DWORD ParseWowRootFile_Level2(
         TCascStorage * hs,
         LPBYTE pbRootPtr,
         LPBYTE pbRootEnd,
@@ -269,6 +269,10 @@ struct TRootHandler_WoW : public TFileTreeRoot
         // Now parse the root file
         while(pbRootPtr < pbRootEnd)
         {
+            //char szMessage[0x100];
+            //StringCchPrintfA(szMessage, _countof(szMessage), "%p\n", (pbRootEnd - pbRootPtr));
+            //OutputDebugStringA(szMessage);
+
             // Validate the file locale block
             pbRootPtr = CaptureRootGroup(RootBlock, pbRootPtr, pbRootEnd);
             if(pbRootPtr == NULL)
@@ -287,7 +291,7 @@ struct TRootHandler_WoW : public TFileTreeRoot
                 continue;
 
             // WoW.exe (build 19116): Locales other than defined mask are skipped too
-            if((RootBlock.Header.LocaleFlags & dwLocaleMask) == 0)
+            if(RootBlock.Header.LocaleFlags != 0 && (RootBlock.Header.LocaleFlags & dwLocaleMask) == 0)
                 continue;
 
             // Now call the custom function
@@ -351,19 +355,19 @@ struct TRootHandler_WoW : public TFileTreeRoot
             LoadWowRootFileLocales(hs, pbRootPtr, cbRootFile, (1 << dwLocale), bOverrideArchive, bAudioLocale);
     */
 
-    int ParseWowRootFile_Level1(
+    DWORD ParseWowRootFile_Level1(
         TCascStorage * hs, 
         LPBYTE pbRootPtr,
         LPBYTE pbRootEnd,
         DWORD dwLocaleMask,
         BYTE bAudioLocale)
     {
-        int nError;
+        DWORD dwErrCode;
 
         // Load the locale as-is
-        nError = ParseWowRootFile_Level2(hs, pbRootPtr, pbRootEnd, dwLocaleMask, false, bAudioLocale);
-        if (nError != ERROR_SUCCESS)
-            return nError;
+        dwErrCode = ParseWowRootFile_Level2(hs, pbRootPtr, pbRootEnd, dwLocaleMask, false, bAudioLocale);
+        if (dwErrCode != ERROR_SUCCESS)
+            return dwErrCode;
 
         // If we wanted enGB, we also load enUS for the missing files
         if(dwLocaleMask == CASC_LOCALE_ENGB)
@@ -376,15 +380,15 @@ struct TRootHandler_WoW : public TFileTreeRoot
     }
 
     // WoW.exe: 004146C7 (BuildManifest::Load)
-    int Load(TCascStorage * hs, LPBYTE pbRootPtr, LPBYTE pbRootEnd, DWORD dwLocaleMask)
+    DWORD Load(TCascStorage * hs, LPBYTE pbRootPtr, LPBYTE pbRootEnd, DWORD dwLocaleMask)
     {
-        int nError;
+        DWORD dwErrCode;
 
-        nError = ParseWowRootFile_Level1(hs, pbRootPtr, pbRootEnd, dwLocaleMask, 0);
-        if (nError == ERROR_SUCCESS)
-            nError = ParseWowRootFile_Level1(hs, pbRootPtr, pbRootEnd, dwLocaleMask, 1);
+        dwErrCode = ParseWowRootFile_Level1(hs, pbRootPtr, pbRootEnd, dwLocaleMask, 0);
+        if (dwErrCode == ERROR_SUCCESS)
+            dwErrCode = ParseWowRootFile_Level1(hs, pbRootPtr, pbRootEnd, dwLocaleMask, 1);
 
-        return nError;
+        return dwErrCode;
     }
 
     // Search for files
@@ -469,7 +473,14 @@ int RootHandler_CreateWoW(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile
     LPBYTE pbRootEnd = pbRootFile + cbRootFile;
     LPBYTE pbRootPtr;
     DWORD FileCounterHashless = 0;
-    int nError = ERROR_BAD_FORMAT;
+    DWORD dwErrCode = ERROR_BAD_FORMAT;
+
+    //FILE * fp = fopen("E:\\root-new.dat", "wt");
+    //if(fp != NULL)
+    //{
+    //    fwrite(pbRootFile, 1, (pbRootEnd - pbRootFile), fp);
+    //    fclose(fp);
+    //}
 
     // Check for the new format (World of Warcraft 8.2, build 30170)
     pbRootPtr = TRootHandler_WoW::CaptureRootHeader(RootHeader, pbRootFile, pbRootEnd);
@@ -485,8 +496,8 @@ int RootHandler_CreateWoW(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile
     if(pRootHandler != NULL)
     {
         // Load the root directory. If load failed, we free the object
-        nError = pRootHandler->Load(hs, pbRootFile, pbRootEnd, dwLocaleMask);
-        if(nError != ERROR_SUCCESS)
+        dwErrCode = pRootHandler->Load(hs, pbRootFile, pbRootEnd, dwLocaleMask);
+        if(dwErrCode != ERROR_SUCCESS)
         {
             delete pRootHandler;
             pRootHandler = NULL;
@@ -495,6 +506,6 @@ int RootHandler_CreateWoW(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile
 
     // Assign the root directory (or NULL) and return error
     hs->pRootHandler = pRootHandler;
-    return nError;
+    return dwErrCode;
 }
 

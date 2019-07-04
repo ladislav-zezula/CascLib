@@ -197,19 +197,6 @@ static const char * CaptureHashCount(const char * szDataPtr, const char * szData
     return szDataPtr;
 }
 
-static DWORD GetLocaleMask(const char * szTag)
-{
-    for(size_t i = 0; LocaleStrings[i].szLocale != NULL; i++)
-    {
-        if(!strncmp(LocaleStrings[i].szLocale, szTag, 4))
-        {
-            return LocaleStrings[i].dwLocale;
-        }
-    }
-
-    return 0;
-}
-
 static bool CheckConfigFileVariable(
     TCascStorage * hs,                  // Pointer to storage structure
     const char * szLinePtr,             // Pointer to the begin of the line
@@ -535,31 +522,6 @@ static int LoadQueryKey(const CASC_CSV_COLUMN & Column, QUERY_KEY & Key)
     return LoadHashArray(&Key, Column.szValue, Column.szValue + Column.nLength, 1);
 }
 
-static int GetDefaultLocaleMask(TCascStorage * hs, const CASC_CSV_COLUMN & Column)
-{
-    const char * szTagEnd = Column.szValue + Column.nLength;
-    const char * szTagPtr = Column.szValue;
-    DWORD dwLocaleMask = 0;
-
-    while(szTagPtr < szTagEnd)
-    {
-        // Could this be a locale string?
-        if((szTagPtr + 4) <= szTagEnd && (szTagPtr[4] == ',' ||  szTagPtr[4] == ' '))
-        {
-            // Check whether the current tag is a language identifier
-            dwLocaleMask = dwLocaleMask | GetLocaleMask(szTagPtr);
-            szTagPtr += 4;
-        }
-        else
-        {
-            szTagPtr++;
-        }
-    }
-
-    hs->dwDefaultLocale = dwLocaleMask;
-    return ERROR_SUCCESS;
-}
-
 static void SetProductCodeName(TCascStorage * hs, LPCSTR szCodeName)
 {
     TCHAR szCodeNameT[0x40];
@@ -713,9 +675,6 @@ static DWORD ParseFile_BuildInfo(TCascStorage * hs, CASC_CSV & Csv)
         if (dwErrCode != ERROR_SUCCESS)
             return dwErrCode;
 
-        // If we found tags, we can extract language build from it
-        GetDefaultLocaleMask(hs, Csv[nSelected]["Tags!STRING:0"]);
-
         // If we found version, extract a build number
         const CASC_CSV_COLUMN & VerColumn = Csv[nSelected]["Version!STRING:0"];
         if(VerColumn.szValue && VerColumn.nLength)
@@ -778,9 +737,6 @@ static DWORD ParseFile_BuildDb(TCascStorage * hs, CASC_CSV & Csv)
     dwErrCode = LoadQueryKey(Csv[CSV_ZERO][1], hs->CdnConfigKey);
     if (dwErrCode != ERROR_SUCCESS)
         return dwErrCode;
-
-    // Load the the tags
-    GetDefaultLocaleMask(hs, Csv[CSV_ZERO][2]);
 
     // Verify all variables
     return (hs->CdnBuildKey.pbData != NULL && hs->CdnConfigKey.pbData != NULL) ? ERROR_SUCCESS : ERROR_BAD_FORMAT;

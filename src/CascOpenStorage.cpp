@@ -28,7 +28,6 @@ TCascStorage::TCascStorage()
     // Prepare the base storage parameters
     ClassName = CASC_MAGIC_STORAGE;
     pRootHandler = NULL;
-    dwDefaultLocale = CASC_LOCALE_ENUS | CASC_LOCALE_ENGB;
     dwRefCount = 1;
 
     szRootPath = szDataPath = szIndexPath = szBuildFile = szCdnServers = szCdnPath = szCodeName = NULL;
@@ -816,10 +815,8 @@ static int LoadBuildManifest(TCascStorage * hs, DWORD dwLocaleMask)
     assert(hs->CKeyMap.IsInitialized() == true);
     assert(hs->pRootHandler == NULL);
 
-    // Locale: The default parameter is 0 - in that case,
-    // we assign the default locale, loaded from the .build.info file
-    if(dwLocaleMask == 0)
-        dwLocaleMask = hs->dwDefaultLocale;
+    // Locale: The default parameter is 0 - in that case, we load all locales
+    dwLocaleMask = (dwLocaleMask != 0) ? dwLocaleMask : 0xFFFFFFFF;
 
     // Prioritize the VFS root over legacy ROOT file
     pCKeyEntry = (hs->VfsRoot.ContentSize != CASC_INVALID_SIZE) ? &hs->VfsRoot : &hs->RootFile;
@@ -1377,9 +1374,9 @@ bool WINAPI CascGetStorageInfo(
             dwInfoValue = hs->dwFeatures | hs->pRootHandler->GetFeatures();
             break;
 
-        case CascStorageInstalledLocales:
-            dwInfoValue = hs->dwDefaultLocale;
-            break;
+//      case CascStorageInstalledLocales:
+//          dwInfoValue = hs->dwDefaultLocale;
+//          break;
 
         case CascStorageProduct:
             return GetStorageProduct(hs, pvStorageInfo, cbStorageInfo, pcbLengthNeeded);
