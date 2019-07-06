@@ -15,8 +15,9 @@
 //-----------------------------------------------------------------------------
 // Local functions
 
-static int OpenDataStream(TCascStorage * hs, PCASC_FILE_SPAN pFileSpan, PCASC_CKEY_ENTRY pCKeyEntry, bool bDownloadFileIf)
+static int OpenDataStream(TCascFile * hf, PCASC_FILE_SPAN pFileSpan, PCASC_CKEY_ENTRY pCKeyEntry, bool bDownloadFileIf)
 {
+    TCascStorage * hs = hf->hs;
     TFileStream * pStream = NULL;
     TCHAR * szDataFile;
     TCHAR szCachePath[MAX_PATH];
@@ -59,14 +60,12 @@ static int OpenDataStream(TCascStorage * hs, PCASC_FILE_SPAN pFileSpan, PCASC_CK
             nError = DownloadFileFromCDN(hs, _T("data"), pCKeyEntry->EKey, NULL, szCachePath, _countof(szCachePath));
             if(nError == ERROR_SUCCESS)
             {
-/*
-                hf->pStream = FileStream_OpenFile(szCachePath, BASE_PROVIDER_FILE | STREAM_PROVIDER_FLAT);
-                if(hf->pStream != NULL)
+                pFileSpan->pStream = FileStream_OpenFile(szCachePath, BASE_PROVIDER_FILE | STREAM_PROVIDER_FLAT);
+                if(pFileSpan->pStream != NULL)
                 {
-                    hf->bLocalFileStream = true;
+                    hf->bCloseFileStream = true;
                     return ERROR_SUCCESS;
                 }
-*/
             }
         }
 
@@ -381,7 +380,7 @@ static DWORD LoadSpanFrames(TCascFile * hf, PCASC_FILE_SPAN pFileSpan, PCASC_CKE
     // Make sure that the data stream is open for that span
     if(pFileSpan->pStream == NULL)
     {
-        dwErrCode = OpenDataStream(hf->hs, pFileSpan, pCKeyEntry, hf->bDownloadFileIf);
+        dwErrCode = OpenDataStream(hf, pFileSpan, pCKeyEntry, hf->bDownloadFileIf);
         if(dwErrCode != ERROR_SUCCESS)
             return dwErrCode;
     }
@@ -468,6 +467,13 @@ static DWORD DecodeFileFrame(
     DWORD cbEncoded = pFrame->EncodedSize;
     DWORD cbDecoded = pFrame->ContentSize;
     bool bWorkComplete = false;
+
+    //if(pFrame->EncodedSize == 0xda001)
+    //{
+    //    FILE * fp = fopen("E:\\frame-da001-002.dat", "wb");
+    //    fwrite(pbEncoded, 1, pFrame->EncodedSize, fp);
+    //    fclose(fp);
+    //}
 
     // Shall we verify the frame integrity?
     if(hf->bVerifyIntegrity)
@@ -819,25 +825,18 @@ static DWORD ReadFile_FrameCached(TCascFile * hf, LPBYTE pbBuffer, ULONGLONG Sta
             hf->FileCacheStart = pFileFrame->StartOffset;
             hf->FileCacheEnd = pFileFrame->EndOffset;
             hf->pbFileCache = pbDecoded;
-        }
-        else
-        {
-            if(bNeedFreeDecoded)
-                CASC_FREE(pbDecoded);
             pbDecoded = NULL;
         }
+    }
 
-        // Return the amount of bytes read
-        return (DWORD)(pbBuffer - pbSaveBuffer);
-    }
-    else
-    {
-        // Free buffers and return
-        if(bNeedFreeDecoded)
-            CASC_FREE(pbDecoded);
-        SetLastError(dwErrCode);
-        return 0;
-    }
+    // Final free of the decoded buffer, if needeed
+    if(bNeedFreeDecoded)
+        CASC_FREE(pbDecoded);
+    pbDecoded = NULL;
+
+    // Return the number of bytes read. Always set LastError.
+    SetLastError(dwErrCode);
+    return (DWORD)(pbBuffer - pbSaveBuffer);
 }
 
 // No cache at all. The entire file will be read directly to the user buffer

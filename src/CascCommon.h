@@ -337,7 +337,7 @@ struct TCascFile
     DWORD SpanCount;                                // Number of file spans. There is one CKey entry for each file span
     DWORD bVerifyIntegrity:1;                       // If true, then the data are validated more strictly when read
     DWORD bDownloadFileIf:1;                        // If true, then the data will be downloaded from the online storage if missing
-    DWORD bLocalFileStream:1;                       // If true, then the file stream is a local file
+    DWORD bCloseFileStream:1;                       // If true, file stream needs to be closed during CascCloseFile
     DWORD bOvercomeEncrypted:1;                     // If true, then CascReadFile will fill the part that is encrypted (and key was not found) with zeros 
 
     ULONGLONG FileCacheStart;                       // Starting offset of the file cached area

@@ -26,7 +26,7 @@ TCascFile::TCascFile(TCascStorage * ahs, PCASC_CKEY_ENTRY apCKeyEntry)
     SpanCount = (pCKeyEntry->SpanCount != 0) ? pCKeyEntry->SpanCount : 1;
     bVerifyIntegrity = false;
     bDownloadFileIf = false;
-    bLocalFileStream = false;
+    bCloseFileStream = false;
 
     // Allocate the array of file spans
     if((pFileSpan = CASC_ALLOC_ZERO<CASC_FILE_SPAN>(SpanCount)) != NULL)
@@ -46,7 +46,7 @@ TCascFile::~TCascFile()
         for(DWORD i = 0; i < SpanCount; i++, pSpanPtr++)
         {
             // Close the span file stream if this is a local file
-            if(bLocalFileStream)
+            if(bCloseFileStream)
                 FileStream_Close(pSpanPtr->pStream);
             pSpanPtr->pStream = NULL;
 
@@ -70,7 +70,6 @@ void TCascFile::InitFileSpans(PCASC_FILE_SPAN pSpans, DWORD dwSpanCount)
     ULONGLONG FileOffsetMask = ((ULONGLONG)1 << hs->FileOffsetBits) - 1;
     ULONGLONG FileOffsetBits = hs->FileOffsetBits;
     ULONGLONG StartOffset = 0;
-    bool bContentSizeInvalid = false;
 
     // Reset the sizes
     ContentSize = 0;
@@ -79,26 +78,35 @@ void TCascFile::InitFileSpans(PCASC_FILE_SPAN pSpans, DWORD dwSpanCount)
     // Add all span sizes
     for(DWORD i = 0; i < dwSpanCount; i++, pSpans++)
     {
-        // If the content size is not known, we can't calculate the ranges
-        if(pCKeyEntry[i].ContentSize == CASC_INVALID_SIZE)
-        {
-            bContentSizeInvalid = true;
-            break;
-        }
-
-        pSpans->StartOffset = StartOffset;
-        pSpans->EndOffset = StartOffset + pCKeyEntry[i].ContentSize;
+        // Put the archive index and archive offset
         pSpans->ArchiveIndex = (DWORD)(pCKeyEntry[i].StorageOffset >> FileOffsetBits);
         pSpans->ArchiveOffs = (DWORD)(pCKeyEntry[i].StorageOffset & FileOffsetMask);
 
-        ContentSize = ContentSize + pCKeyEntry[i].ContentSize;
-        EncodedSize = EncodedSize + pCKeyEntry[i].EncodedSize;
-        StartOffset = pSpans->EndOffset;
-    }
+        // Add to the total encoded size
+        if(EncodedSize != CASC_INVALID_SIZE64 && pCKeyEntry[i].EncodedSize != CASC_INVALID_SIZE)
+        {
+            EncodedSize = EncodedSize + pCKeyEntry[i].EncodedSize;
+        }
+        else
+        {
+            EncodedSize = CASC_INVALID_SIZE64;
+        }
 
-    if(bContentSizeInvalid)
-    {
-        ContentSize = CASC_INVALID_SIZE64;
+        // Add to the total content size
+        if(ContentSize != CASC_INVALID_SIZE64 && pCKeyEntry[i].ContentSize != CASC_INVALID_SIZE)
+        {
+            // Put the start and end ranges
+            pSpans->StartOffset = StartOffset;
+            pSpans->EndOffset = StartOffset + pCKeyEntry[i].ContentSize;
+            StartOffset = pSpans->EndOffset;
+
+            // Increment the total content size
+            ContentSize = ContentSize + pCKeyEntry[i].ContentSize;
+        }
+        else
+        {
+            ContentSize = CASC_INVALID_SIZE64;
+        }
     }
 }
 
@@ -125,7 +133,7 @@ PCASC_CKEY_ENTRY FindCKeyEntry_EKey(TCascStorage * hs, LPBYTE pbEKey, PDWORD Ptr
 bool OpenFileByCKeyEntry(TCascStorage * hs, PCASC_CKEY_ENTRY pCKeyEntry, DWORD dwOpenFlags, HANDLE * PtrFileHandle)
 {
     TCascFile * hf = NULL;
-    int nError = ERROR_FILE_NOT_FOUND;
+    DWORD dwErrCode = ERROR_FILE_NOT_FOUND;
 
     // If the CKey entry is NULL, we consider the file non-existant
     if(pCKeyEntry != NULL)
@@ -136,11 +144,11 @@ bool OpenFileByCKeyEntry(TCascStorage * hs, PCASC_CKEY_ENTRY pCKeyEntry, DWORD d
             hf->bVerifyIntegrity   = (dwOpenFlags & CASC_STRICT_DATA_CHECK)  ? true : false;
             hf->bDownloadFileIf    = (hs->dwFeatures & CASC_FEATURE_ONLINE)  ? true : false;
             hf->bOvercomeEncrypted = (dwOpenFlags & CASC_OVERCOME_ENCRYPTED) ? true : false;
-            nError = ERROR_SUCCESS;
+            dwErrCode = ERROR_SUCCESS;
         }
         else
         {
-            nError = ERROR_NOT_ENOUGH_MEMORY;
+            dwErrCode = ERROR_NOT_ENOUGH_MEMORY;
         }
     }
 
@@ -148,9 +156,9 @@ bool OpenFileByCKeyEntry(TCascStorage * hs, PCASC_CKEY_ENTRY pCKeyEntry, DWORD d
     PtrFileHandle[0] = (HANDLE)hf;
 
     // Handle last error
-    if(nError != ERROR_SUCCESS)
-        SetLastError(nError);
-    return (nError == ERROR_SUCCESS);
+    if(dwErrCode != ERROR_SUCCESS)
+        SetLastError(dwErrCode);
+    return (dwErrCode == ERROR_SUCCESS);
 }
 
 bool SetCacheStrategy(HANDLE hFile, CSTRTG CacheStrategy)
