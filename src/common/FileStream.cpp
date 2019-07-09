@@ -889,7 +889,7 @@ static bool BlockStream_Read(
     BlockBufferOffset = (DWORD)(ByteOffset & (BlockSize - 1));
 
     // Allocate buffer for reading blocks
-    TransferBuffer = BlockBuffer = CASC_ALLOC(BYTE, (BlockCount * BlockSize));
+    TransferBuffer = BlockBuffer = CASC_ALLOC<BYTE>(BlockCount * BlockSize);
     if(TransferBuffer == NULL)
     {
         SetLastError(ERROR_NOT_ENOUGH_MEMORY);
@@ -1054,7 +1054,7 @@ static TFileStream * AllocateFileStream(
     }
 
     // Allocate the stream structure for the given stream type
-    pStream = (TFileStream *)CASC_ALLOC(BYTE, StreamSize + FileNameSize + sizeof(TCHAR));
+    pStream = (TFileStream *)CASC_ALLOC<BYTE>(StreamSize + FileNameSize + sizeof(TCHAR));
     if(pStream != NULL)
     {
         // Zero the entire structure
@@ -1137,7 +1137,7 @@ static bool FlatStream_LoadBitmap(TBlockStream * pStream)
                 if(ByteOffset + BitmapSize + sizeof(FILE_BITMAP_FOOTER) == pStream->Base.File.FileSize)
                 {
                     // Allocate space for the bitmap
-                    FileBitmap = CASC_ALLOC(BYTE, BitmapSize);
+                    FileBitmap = CASC_ALLOC<BYTE>(BitmapSize);
                     if(FileBitmap != NULL)
                     {
                         // Load the bitmap bits
@@ -1349,12 +1349,11 @@ static bool FlatStream_CreateMirror(TBlockStream * pStream)
     }
 
     // Allocate the bitmap array
-    FileBitmap = CASC_ALLOC(BYTE, dwBitmapSize);
+    FileBitmap = CASC_ALLOC_ZERO<BYTE>(dwBitmapSize);
     if(FileBitmap == NULL)
         return false;
 
     // Initialize the bitmap
-    memset(FileBitmap, 0, dwBitmapSize);
     pStream->FileBitmap = FileBitmap;
     pStream->BitmapSize = dwBitmapSize;
     pStream->BlockSize  = DEFAULT_BLOCK_SIZE;
@@ -1521,7 +1520,7 @@ static bool PartStream_LoadBitmap(TBlockStream * pStream)
                 if((ByteOffset + BitmapSize) < pStream->Base.File.FileSize)
                 {
                     // Allocate space for the array of PART_FILE_MAP_ENTRY
-                    FileBitmap = CASC_ALLOC(PART_FILE_MAP_ENTRY, BlockCount);
+                    FileBitmap = CASC_ALLOC<PART_FILE_MAP_ENTRY>(BlockCount);
                     if(FileBitmap != NULL)
                     {
                         // Load the block map
@@ -1771,12 +1770,11 @@ static bool PartStream_CreateMirror(TBlockStream * pStream)
     }
 
     // Allocate the bitmap array
-    FileBitmap = CASC_ALLOC(BYTE, dwBitmapSize);
+    FileBitmap = CASC_ALLOC_ZERO<BYTE>(dwBitmapSize);
     if(FileBitmap == NULL)
         return false;
 
     // Initialize the bitmap
-    memset(FileBitmap, 0, dwBitmapSize);
     pStream->FileBitmap = FileBitmap;
     pStream->BitmapSize = dwBitmapSize;
     pStream->BlockSize  = DEFAULT_BLOCK_SIZE;
@@ -2268,7 +2266,7 @@ static TFileStream * Block4Stream_Open(const TCHAR * szFileName, DWORD dwStreamF
     pStream->BlockRead     = (BLOCK_READ)Block4Stream_BlockRead;
 
     // Allocate work space for numeric names
-    szNameBuff = CASC_ALLOC(TCHAR, nNameLength + 4);
+    szNameBuff = CASC_ALLOC<TCHAR>(nNameLength + 4);
     if(szNameBuff != NULL)
     {
         // Set the base flags
@@ -2283,7 +2281,7 @@ static TFileStream * Block4Stream_Open(const TCHAR * szFileName, DWORD dwStreamF
                 break;
 
             // If the open succeeded, we re-allocate the base provider array
-            NewBaseArray = CASC_ALLOC(TBaseProviderData, dwBaseFiles + 1);
+            NewBaseArray = CASC_ALLOC<TBaseProviderData>(dwBaseFiles + 1);
             if(NewBaseArray == NULL)
             {
                 SetLastError(ERROR_NOT_ENOUGH_MEMORY);

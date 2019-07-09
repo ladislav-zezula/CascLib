@@ -85,9 +85,8 @@ struct CASC_CKEY_ENTRY
     DWORD ContentSize;                              // Content size of the file. 0 if not supported
     DWORD Flags;                                    // See CASC_CE_XXX
     USHORT RefCount;                                // This is the number of file names referencing this entry
+    BYTE SpanCount;                                 // Number of spans for the file
     BYTE Priority;                                  // Download priority
-    BYTE Alignment;
-
 };
 typedef CASC_CKEY_ENTRY *PCASC_CKEY_ENTRY;
 
@@ -112,7 +111,23 @@ extern unsigned char IntToHexChar[];
 //
 
 #define CASC_REALLOC(type, ptr, count) (type *)realloc(ptr, (count) * sizeof(type))
-#define CASC_ALLOC(type, count)        (type *)malloc((count) * sizeof(type))
+//#define CASC_ALLOC(type, count)        (type *)malloc((count) * sizeof(type))
+
+template <typename T>
+T * CASC_ALLOC(size_t nCount)
+{
+    return (T *)malloc(nCount * sizeof(T));
+}
+
+template <typename T>
+T * CASC_ALLOC_ZERO(size_t nCount)
+{
+    T * ptr = CASC_ALLOC<T>(nCount);
+
+    if(ptr != NULL)
+        memset(ptr, 0, sizeof(T) * nCount);
+    return ptr;
+}
 
 template <typename T>
 void CASC_FREE(T *& ptr)
