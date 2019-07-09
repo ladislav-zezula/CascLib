@@ -894,7 +894,7 @@ static DWORD GetStorageTotalFileCount(TCascStorage * hs)
     {
         if((pCKeyEntry = (PCASC_CKEY_ENTRY)hs->CKeyArray.ItemAt(i)) != NULL)
         {
-            if((pCKeyEntry->Flags & CASC_CE_FOLDER_ENTRY) == 0)
+            if((pCKeyEntry->Flags & (CASC_CE_FOLDER_ENTRY | CASC_CE_FILE_SPAN)) == 0)
             {
                 // If there is zero or one file name reference, we count the item as one file.
                 // If there is more than 1 name reference, we count the file as many times as number of references

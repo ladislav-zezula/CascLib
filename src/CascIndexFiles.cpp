@@ -208,9 +208,9 @@ static LPBYTE CaptureGuardedBlock3(LPBYTE pbFileData, LPBYTE pbFileEnd, size_t E
 
 static bool CaptureIndexEntry(CASC_INDEX_HEADER & InHeader, PCASC_CKEY_ENTRY pCKeyEntry, LPBYTE pbEKeyEntry)
 {
-    // Zero both CKey and EKey
-    ZeroMemory16(pCKeyEntry->CKey);
-    ZeroMemory16(pCKeyEntry->EKey);
+    // We assume that both CKey and EKey are already zeroed by CASC_CKEY_ENTRY constructor
+    assert(pCKeyEntry->CKey[0] == 0 && pCKeyEntry->CKey[1] == 0);
+    assert(pCKeyEntry->EKey[0] == 0 && pCKeyEntry->EKey[1] == 0);
 
     // Copy the EKey. We assume 9 bytes
     pCKeyEntry->EKey[0x00] = pbEKeyEntry[0];

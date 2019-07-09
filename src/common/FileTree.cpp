@@ -322,6 +322,7 @@ PCASC_FILE_NODE CASC_FILE_TREE::InsertByName(PCASC_CKEY_ENTRY pCKeyEntry, const 
             // If we created a new node, we need to increment the reference count
             assert(pCKeyEntry->RefCount != 0xFFFF);
             pCKeyEntry->RefCount++;
+            FileNodes++;
         }
     }
 
@@ -552,8 +553,8 @@ bool CASC_FILE_TREE::SetNodeFileName(PCASC_FILE_NODE pFileNode, const char * szF
                 // Populate the file entry
                 pFolderNode->FileNameHash = FileNameHash;
                 pFolderNode->Parent = Parent;
-                pFolderNode->Flags |= (chOneChar == ':') ? CFN_FLAG_MOUNT_POINT : 0;
-                pFolderNode->Flags |= CFN_FLAG_FOLDER;
+                pFolderNode->Flags |= (chOneChar == ':') ? (CFN_FLAG_FOLDER | CFN_FLAG_MOUNT_POINT) : CFN_FLAG_FOLDER;
+                FolderNodes++;
 
                 // Set the node sub name to the node
                 SetNodePlainName(pFolderNode, szNodeBegin, szFileName + i);

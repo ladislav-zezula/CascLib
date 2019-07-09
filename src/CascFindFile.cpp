@@ -130,7 +130,7 @@ static bool DoStorageSearch_CKey(TCascSearch * pSearch, PCASC_FIND_DATA pFindDat
     {
         // Locate the n-th CKey entry. If this entry is not referenced by the root handler, we include it in the search result
         pCKeyEntry = (PCASC_CKEY_ENTRY)hs->CKeyArray.ItemAt(pSearch->nFileIndex++);
-        if((pCKeyEntry->Flags & CASC_CE_FOLDER_ENTRY) == 0 && pCKeyEntry->RefCount == 0)
+        if((pCKeyEntry->Flags & (CASC_CE_FOLDER_ENTRY | CASC_CE_FILE_SPAN)) == 0 && pCKeyEntry->RefCount == 0)
         {
             return CopyCKeyEntryToFindData(pFindData, pCKeyEntry);
         }

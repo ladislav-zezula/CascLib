@@ -101,6 +101,8 @@ class CASC_FILE_TREE
     size_t FileDataIdOffset;                        // If nonzero, this is the offset of the "FileDataId" field in the CASC_FILE_NODE
     size_t LocaleFlagsOffset;                       // If nonzero, this is the offset of the "LocaleFlags" field in the CASC_FILE_NODE
     size_t ContentFlagsOffset;                      // If nonzero, this is the offset of the "ContentFlags" field in the CASC_FILE_NODE
+    size_t FolderNodes;                             // Number of folder nodes
+    size_t FileNodes;                               // Number of file nodes
     DWORD KeyLength;                                // Actual length of the key supported by the root handler
 };
 

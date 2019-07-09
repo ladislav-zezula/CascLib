@@ -60,6 +60,7 @@ typedef struct _PATH_BUFFER
 #define CASC_CE_IN_ENCODING        0x00000010       // Present in the ENCODING manifest
 #define CASC_CE_IN_DOWNLOAD        0x00000020       // Present in the DOWNLOAD manifest
 #define CASC_CE_FOLDER_ENTRY       0x00000040       // This CKey entry is a folder
+#define CASC_CE_FILE_SPAN          0x00000080       // This CKey entry is a follow-up file span
 
 // In-memory representation of a single entry. 
 struct CASC_CKEY_ENTRY

@@ -483,6 +483,9 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                 }
                 else
                 {
+                    //if(!strncmp(PathBuffer.szBegin, "zone/snd/bp/zm_mansion.bp.sabs", 30))
+                    //    __debugbreak();
+
                     // Capture the number of VFS spans
                     pbVfsSpanEntry = CaptureVfsSpanCount(DirHeader, PathEntry.NodeValue, dwSpanCount);
                     if(pbVfsSpanEntry == NULL)
@@ -529,6 +532,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                     {
                         PCASC_CKEY_ENTRY pSpanEntries;
                         PCASC_FILE_NODE pFileNode;
+                        bool bFilePresent = true;
 
                         //
                         // Need to support multi-span files, possibly lager than 4 GB
@@ -553,22 +557,34 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                             // Find the CKey entry
                             pCKeyEntry = FindCKeyEntry_EKey(hs, pSpanEntries[dwSpanIndex].EKey);
                             if(pCKeyEntry == NULL)
+                            {
+                                bFilePresent = false;
                                 break;
+                            }
 
-                            // The content size must match
-                            assert(pSpanEntry->ContentSize == pCKeyEntry->ContentSize);
+                            // Supply the content size
+                            if(pCKeyEntry->ContentSize == CASC_INVALID_SIZE)
+                                pCKeyEntry->ContentSize = pSpanEntry->ContentSize;
+                            assert(pCKeyEntry->ContentSize == pSpanEntry->ContentSize);
+
+                            // Fill-in the span count
                             assert(pCKeyEntry->SpanCount == 0);
                             pCKeyEntry->SpanCount = (BYTE)(dwSpanCount - dwSpanIndex);
+                            pCKeyEntry->RefCount = (dwSpanIndex == 0) ? 1 : 0;
+                            pCKeyEntry->Flags |= (dwSpanIndex != 0) ? CASC_CE_FILE_SPAN : 0;
 
                             // Copy all from the existing CKey entry
                             memcpy(pSpanEntry, pCKeyEntry, sizeof(CASC_CKEY_ENTRY));
-                            pCKeyEntry->RefCount++;
                         }
 
-                        // Insert a new file node that will contain pointer to the span entries
-                        pFileNode = FileTree.InsertByName(pSpanEntries, PathBuffer.szBegin);
-                        if(pFileNode == NULL)
-                            return ERROR_NOT_ENOUGH_MEMORY;
+                        // Do nothing if the file is not present locally
+                        if(bFilePresent)
+                        {
+                            // Insert a new file node that will contain pointer to the span entries
+                            pFileNode = FileTree.InsertByName(pSpanEntries, PathBuffer.szBegin);
+                            if(pFileNode == NULL)
+                                return ERROR_NOT_ENOUGH_MEMORY;
+                        }
 
                         // Fix the total number of files in the storage
                         hs->TotalFiles = hs->TotalFiles - (dwSpanCount - 1);
