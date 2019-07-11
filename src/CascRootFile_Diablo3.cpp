@@ -693,7 +693,7 @@ struct TDiabloRoot : public TFileTreeRoot
                 return ERROR_SUCCESS;
 
             // Allocate and populate the array of DIABLO3_CORE_TOC_ENTRYs
-            pFileIndices = CASC_ALLOC<DIABLO3_CORE_TOC_ENTRY>(dwMaxFileIndex + 1);
+            pFileIndices = CASC_ALLOC(DIABLO3_CORE_TOC_ENTRY, dwMaxFileIndex + 1);
             if(pFileIndices != NULL)
             {
                 // Initialize all entries to invalid

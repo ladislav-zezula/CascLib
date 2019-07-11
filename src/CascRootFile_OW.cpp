@@ -264,7 +264,7 @@ struct TApmFile
     LPBYTE CaptureArrayOfEntries(LPBYTE pbArrayOfEntries, LPBYTE pbApmEnd)
     {
         // Allocate array of entries
-        pApmEntries = CASC_ALLOC<APM_ENTRY>(EntryCount);
+        pApmEntries = CASC_ALLOC(APM_ENTRY, EntryCount);
         if(pApmEntries != NULL)
         {
             // The newest format
@@ -310,9 +310,12 @@ struct TApmFile
     LPBYTE CapturePackageEntries(LPBYTE pbArrayOfEntries, LPBYTE pbApmEnd)
     {
         // Allocate array of entries
-        pApmPackages = CASC_ALLOC_ZERO<APM_PACKAGE_ENTRY>(PackageCount);
+        pApmPackages = CASC_ALLOC(APM_PACKAGE_ENTRY, PackageCount);
         if(pApmPackages != NULL)
         {
+            // Zero the entire array
+            memset(pApmPackages, 0, PackageCount * sizeof(APM_PACKAGE_ENTRY));
+
             // The newest format
             if(BuildNumber > 45104 && BuildNumber != 45214)
             {

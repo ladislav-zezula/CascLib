@@ -421,7 +421,7 @@ class TByteStream
         // Allocate bytes for the array
         if (Pointer != NULL)
         {
-            Pointer[0] = CASC_ALLOC<T>(ItemCount);
+            Pointer[0] = CASC_ALLOC(T, ItemCount);
             if (Pointer[0] == NULL)
                 return ERROR_NOT_ENOUGH_MEMORY;
 
@@ -488,7 +488,7 @@ class TGenericArray
         T * NewArray;
 
         // Allocate new data buffer
-        NewArray = CASC_ALLOC<T>(NewMaxItemCount);
+        NewArray = CASC_ALLOC(T, NewMaxItemCount);
         if(NewArray != NULL)
         {
             // Copy the old items to the buffer
@@ -2508,7 +2508,7 @@ class TMndxMarFile
     int LoadRootData(FILE_MAR_INFO & MarInfo, LPBYTE pbRootFile, LPBYTE pbRootEnd)
     {
         // Allocate the MAR data
-        pbMarData = CASC_ALLOC<BYTE>(MarInfo.MarDataSize);
+        pbMarData = CASC_ALLOC(BYTE, MarInfo.MarDataSize);
         cbMarData = MarInfo.MarDataSize;
         if(pbMarData == NULL)
             return ERROR_NOT_ENOUGH_MEMORY;
@@ -2671,7 +2671,7 @@ struct TMndxHandler
                 assert(pPackage->szFileName == NULL);
 
                 // Allocate space for the file name
-                pPackage->szFileName = CASC_ALLOC<char>(Search.cchFoundPath + 1);
+                pPackage->szFileName = CASC_ALLOC(char, Search.cchFoundPath + 1);
                 if (pPackage->szFileName == NULL)
                     return ERROR_NOT_ENOUGH_MEMORY;
 
@@ -2777,7 +2777,7 @@ struct TMndxHandler
         if(nError == ERROR_SUCCESS)
         {
             assert(MndxInfo.FileNameCount <= MndxInfo.CKeyEntriesCount);
-            FileNameIndexToCKeyIndex = CASC_ALLOC<PMNDX_CKEY_ENTRY>(MndxInfo.FileNameCount + 1);
+            FileNameIndexToCKeyIndex = CASC_ALLOC(PMNDX_CKEY_ENTRY, MndxInfo.FileNameCount + 1);
             if(FileNameIndexToCKeyIndex != NULL)
             {
                 PMNDX_CKEY_ENTRY pRootEntry = pCKeyEntries;

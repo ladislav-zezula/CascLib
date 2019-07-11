@@ -288,7 +288,7 @@ static void TestStorageGetTagInfo(HANDLE hStorage)
     CascGetStorageInfo(hStorage, CascStorageTags, pTags, cbTags, &cbTags);
     if(cbTags != 0)
     {
-        pTags = (PCASC_STORAGE_TAGS)CASC_ALLOC<BYTE>(cbTags);
+        pTags = (PCASC_STORAGE_TAGS)CASC_ALLOC(BYTE, cbTags);
         if(pTags != NULL)
         {
             CascGetStorageInfo(hStorage, CascStorageTags, pTags, cbTags, &cbTags);
@@ -331,15 +331,14 @@ static DWORD ExtractFile(
     TEST_PARAMS & Params,
     CASC_FIND_DATA & cf)
 {
-    CASC_FILE_FULL_INFO FileInfo;
-    ULONGLONG TotalRead = 0;
-    ULONGLONG FileSize = 0;
     MD5_CTX md5_ctx;
     HANDLE hFile = NULL;
     BYTE md5_digest[MD5_HASH_SIZE];
     BYTE Buffer[0x1000];
     char szShortName[SHORT_NAME_SIZE];
+    DWORD dwTotalRead = 0;
     DWORD dwBytesRead = 1;
+    DWORD dwFileSize;
     DWORD dwErrCode = ERROR_SUCCESS;
     bool bHashFileContent = true;
 
@@ -349,18 +348,16 @@ static DWORD ExtractFile(
     // Open the CASC file
     if(CascOpenFile(Params.hStorage, cf, Params.dwOpenFlags | CASC_STRICT_DATA_CHECK, &hFile))
     {
-        // Retrieve the span count
-        CascGetFileInfo(hFile, CascFileFullInfo, &FileInfo, sizeof(CASC_FILE_FULL_INFO), NULL);
-
         // Retrieve the file size
-        if(!CascGetFileSize64(hFile, &FileSize))
+        dwFileSize = CascGetFileSize(hFile, NULL);
+        if(dwFileSize == CASC_INVALID_SIZE)
         {
             LogHelper.PrintError("Warning: %s: Failed to get file size", szShortName);
             return GetLastError();
         }
 
         // Initialize the per-file hashing
-        if(bHashFileContent && cf.bCanOpenByCKey && FileInfo.SpanCount == 1)
+        if(bHashFileContent && cf.bCanOpenByCKey)
             MD5_Init(&md5_ctx);
 
         // Show the progress, if open succeeded
@@ -383,7 +380,7 @@ static DWORD ExtractFile(
                         break;
 
                     default:
-                        LogHelper.PrintMessage("Warning: %s: Read error (offset %08X:%08X)", szShortName, (DWORD)(TotalRead >> 32), (DWORD)(TotalRead));
+                        LogHelper.PrintMessage("Warning: %s: Read error (offset %08X)", szShortName, dwTotalRead);
                         break;
                 }
                 break;
@@ -401,13 +398,13 @@ static DWORD ExtractFile(
             if(LogHelper.HasherReady)
                 LogHelper.HashData(Buffer, dwBytesRead);
 
-            TotalRead += dwBytesRead;
+            dwTotalRead += dwBytesRead;
         }
 
         // Check whether the total size matches
-        if(dwErrCode == ERROR_SUCCESS && TotalRead != FileSize)
+        if(dwErrCode == ERROR_SUCCESS && dwTotalRead != dwFileSize)
         {
-            LogHelper.PrintMessage("Warning: %s: TotalRead != FileSize", szShortName);
+            LogHelper.PrintMessage("Warning: %s: dwTotalRead != dwFileSize", szShortName);
             dwErrCode = ERROR_FILE_CORRUPT;
         }
 
@@ -423,7 +420,7 @@ static DWORD ExtractFile(
         }
 
         // Increment the total number of files
-        LogHelper.TotalBytes = LogHelper.TotalBytes + TotalRead;
+        LogHelper.TotalBytes = LogHelper.TotalBytes + dwTotalRead;
         LogHelper.FileCount++;
 
         // Close the handle
@@ -722,7 +719,7 @@ int main(void)
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - New CASC\\00001");
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - New CASC\\00002");
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - Warcraft III\\11889");
-    LocalStorage_Test(Storage_OpenFiles, "2018 - CoD4\\3314056", "zone/base.xpak");
+    LocalStorage_Test(Storage_EnumFiles, "d:\\Hry\\Call of Duty Black Ops 4");
     //OnlineStorage_Test(Storage_ExtractFiles, "agent");
 
     // "dbfilesclient\\battlepetspeciesstate.db2"

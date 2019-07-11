@@ -72,8 +72,8 @@ extern "C" {
 //-----------------------------------------------------------------------------
 // Defines
 
-#define CASCLIB_VERSION                 0x013C  // Current version of CascLib (1.50)
-#define CASCLIB_VERSION_STRING          "1.60"  // String version of CascLib version
+#define CASCLIB_VERSION                 0x0132  // Current version of CascLib (1.50)
+#define CASCLIB_VERSION_STRING          "1.50"  // String version of CascLib version
 
 // Values for CascOpenFile
 #define CASC_OPEN_BY_NAME           0x00000000  // Open the file by name. This is the default value
@@ -221,23 +221,20 @@ typedef struct _CASC_FIND_DATA
     // Tag mask. Only valid if the storage supports tags, otherwise 0
     ULONGLONG TagBitMask;
 
-    // Size of the file, as retrieved from CKey entry
-    ULONGLONG FileSize;
-
     // Plain name of the found file. Pointing inside the 'szFileName' array
     char * szPlainName;
 
     // File data ID. Only valid if the storage supports file data IDs, otherwise CASC_INVALID_ID
     DWORD dwFileDataId;
     
+    // Size of the file, as retrieved from CKey entry or EKey entry
+    DWORD dwFileSize;
+
     // Locale flags. Only valid if the storage supports locale flags, otherwise CASC_INVALID_ID
     DWORD dwLocaleFlags;
 
     // Content flags. Only valid if the storage supports content flags, otherwise CASC_INVALID_ID
     DWORD dwContentFlags;
-
-    // Span count
-    DWORD dwSpanCount;
 
     // Hints as for which open method is suitable
     DWORD bFileAvailable:1;                     // If true the file is available locally
@@ -282,11 +279,10 @@ typedef struct _CASC_FILE_FULL_INFO
     ULONGLONG SegmentOffset;                    // Offset of the file in the segment file ("data.###")
     ULONGLONG TagBitMask;                       // Bitmask of tags. Zero if not supported
     ULONGLONG FileNameHash;                     // Hash of the file name. Zero if not supported
-    ULONGLONG ContentSize;                      // Content size of all spans
-    ULONGLONG EncodedSize;                      // Encoded size of all spans
     DWORD SegmentIndex;                         // Index of the segment file (aka 0 = "data.000")
-    DWORD SpanCount;                            // Number of spans forming the file
     DWORD FileDataId;                           // File data ID. CASC_INVALID_ID if not supported.
+    DWORD ContentSize;                          // Content size of the file
+    DWORD EncodedSize;                          // Encoded size of the file
     DWORD LocaleFlags;                          // Locale flags. CASC_INVALID_ID if not supported.
     DWORD ContentFlags;                         // Locale flags. CASC_INVALID_ID if not supported
 
@@ -357,13 +353,10 @@ bool  WINAPI CascCloseStorage(HANDLE hStorage);
 
 bool  WINAPI CascOpenFile(HANDLE hStorage, const void * pvFileName, DWORD dwLocaleFlags, DWORD dwOpenFlags, HANDLE * phFile);
 bool  WINAPI CascGetFileInfo(HANDLE hFile, CASC_FILE_INFO_CLASS InfoClass, void * pvFileInfo, size_t cbFileInfo, size_t * pcbLengthNeeded);
-bool  WINAPI CascGetFileSize64(HANDLE hFile, PULONGLONG PtrFileSize);
-bool  WINAPI CascSetFilePointer64(HANDLE hFile, LONGLONG DistanceToMove, PULONGLONG PtrNewPos, DWORD dwMoveMethod);
+DWORD WINAPI CascGetFileSize(HANDLE hFile, PDWORD pdwFileSizeHigh);
+DWORD WINAPI CascSetFilePointer(HANDLE hFile, LONG lFilePos, LONG * plFilePosHigh, DWORD dwMoveMethod);
 bool  WINAPI CascReadFile(HANDLE hFile, void * lpBuffer, DWORD dwToRead, PDWORD pdwRead);
 bool  WINAPI CascCloseFile(HANDLE hFile);
-
-DWORD WINAPI CascGetFileSize(HANDLE hFile, PDWORD pdwFileSizeHigh);
-DWORD WINAPI CascSetFilePointer(HANDLE hFile, LONG lFilePos, LONG * PtrFilePosHigh, DWORD dwMoveMethod);
 
 HANDLE WINAPI CascFindFirstFile(HANDLE hStorage, LPCSTR szMask, PCASC_FIND_DATA pFindData, LPCTSTR szListFile);
 bool  WINAPI CascFindNextFile(HANDLE hFind, PCASC_FIND_DATA pFindData);

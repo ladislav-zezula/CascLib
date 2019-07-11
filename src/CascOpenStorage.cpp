@@ -21,12 +21,12 @@
 #define CASC_MAX_ORPHANED_ITEMS 0x100
 
 //-----------------------------------------------------------------------------
-// TCascStorage class functions
+// TCascStorage service functions
 
 TCascStorage::TCascStorage()
 {
     // Prepare the base storage parameters
-    ClassName = CASC_MAGIC_STORAGE;
+    szClassName = "TCascStorage";
     pRootHandler = NULL;
     dwDefaultLocale = CASC_LOCALE_ENUS | CASC_LOCALE_ENGB;
     dwRefCount = 1;
@@ -79,7 +79,7 @@ TCascStorage::~TCascStorage()
     FreeCascBlob(&PatchArchivesKey);
     FreeCascBlob(&PatchArchivesGroup);
     FreeCascBlob(&BuildFiles);
-    ClassName = 0;
+    szClassName = NULL;
 }
 
 TCascStorage * TCascStorage::AddRef()
@@ -98,6 +98,13 @@ TCascStorage * TCascStorage::Release()
 
     dwRefCount--;
     return NULL;
+}
+
+TCascStorage * TCascStorage::IsValid(HANDLE hStorage)
+{
+    TCascStorage * hs = (TCascStorage *)hStorage;
+
+    return (hs != NULL && hs->szClassName != NULL && !strcmp(hs->szClassName, "TCascStorage")) ? hs : NULL;
 }
 
 //-----------------------------------------------------------------------------
@@ -225,7 +232,6 @@ static int LoadEncodingCKeyPage(TCascStorage * hs, CASC_ENCODING_HEADER & EnHead
             pCKeyEntry->EncodedSize = CASC_INVALID_SIZE;
             pCKeyEntry->ContentSize = ConvertBytesToInteger_4(pFileEntry->ContentSize);
             pCKeyEntry->RefCount = 0;
-            pCKeyEntry->SpanCount = 0;
             pCKeyEntry->Priority = 0;
             pCKeyEntry->Flags = (CASC_CE_HAS_CKEY | CASC_CE_HAS_EKEY | CASC_CE_IN_ENCODING);
 
@@ -618,7 +624,7 @@ static int LoadDownloadManifest(TCascStorage * hs, CASC_DOWNLOAD_HEADER & DlHead
         hs->dwFeatures |= CASC_FEATURE_TAGS;
 
         // Allocate space for the tag array
-        TagArray = CASC_ALLOC<CASC_TAG_ENTRY1>(DlHeader.TagCount);
+        TagArray = CASC_ALLOC(CASC_TAG_ENTRY1, DlHeader.TagCount);
         if(TagArray != NULL)
         {
             // Get the longest tag name

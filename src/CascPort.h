@@ -161,8 +161,6 @@
   typedef int            LONG;
   typedef unsigned int   DWORD;
   typedef long long      LONGLONG;
-  typedef signed long long LONGLONG;
-  typedef signed long long *PLONGLONG;
   typedef unsigned long long ULONGLONG;
   typedef unsigned long long *PULONGLONG;
   typedef void         * HANDLE;

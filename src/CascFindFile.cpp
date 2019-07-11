@@ -24,11 +24,10 @@ static void ResetFindData(PCASC_FIND_DATA pFindData)
     pFindData->szFileName[0] = 0;
     pFindData->szPlainName = pFindData->szFileName;
     pFindData->TagBitMask = 0;
-    pFindData->FileSize = CASC_INVALID_SIZE;
     pFindData->dwFileDataId = CASC_INVALID_ID;
+    pFindData->dwFileSize = CASC_INVALID_SIZE;
     pFindData->dwLocaleFlags = CASC_INVALID_ID;
     pFindData->dwContentFlags = CASC_INVALID_ID;
-    pFindData->dwSpanCount = 1;
     pFindData->NameType = CascNameFull;
     pFindData->bFileAvailable = false;
     pFindData->bCanOpenByName = false;
@@ -78,8 +77,8 @@ static bool CopyCKeyEntryToFindData(PCASC_FIND_DATA pFindData, PCASC_CKEY_ENTRY 
 
     // If we retrieved the file size directly from the root provider, use it
     // Otherwise, supply EncodedSize or ContentSize, whichever is available (but ContentSize > EncodedSize)
-    if(pFindData->FileSize == CASC_INVALID_SIZE)
-        pFindData->dwSpanCount = GetFileSpanInfo(pCKeyEntry, &pFindData->FileSize);
+    if(pFindData->dwFileSize == CASC_INVALID_SIZE)
+        pFindData->dwFileSize = pCKeyEntry->ContentSize;
 
     // Set flag indicating that the file is locally available
     pFindData->bFileAvailable = (pCKeyEntry->Flags & CASC_CE_FILE_IS_LOCAL);
