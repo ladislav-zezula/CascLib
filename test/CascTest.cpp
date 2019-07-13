@@ -828,11 +828,11 @@ int main(void)
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - New CASC\\00001");
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - New CASC\\00002");
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - Warcraft III\\11889");
-    LocalStorage_Test(Storage_EnumFiles, "2018 - CoD4\\3376209", "zone\\snd\\bp\\zm_mansion.bp.sabs");
+//  LocalStorage_Test(Storage_EnumFiles, "2018 - CoD4\\3376209", "zone\\snd\\bp\\zm_mansion.bp.sabs");
     //OnlineStorage_Test(Storage_ExtractFiles, "agent");
 
     // "dbfilesclient\\battlepetspeciesstate.db2"
-    //LocalStorage_Test(Storage_OpenFiles, "2016 - WoW\\30123", "File00801581.bin");
+    LocalStorage_Test(Storage_OpenFiles, "d:\\Hry\\World of Warcraft\\Data", "File00666606.bin");
     //LocalStorage_Test(Storage_OpenFiles, "z:\\Hry\\World of Warcraft\\Data", "FILE000C3B2D.bin");
 
     //
