@@ -34,6 +34,7 @@
 *.db
 *.opendb
 .vs/
+/bin/
 
 # Xcode related files
 *.xcodeproj
