@@ -148,6 +148,14 @@ class TLogHelper
                     continue;
                 }
 
+                // 64-bit integer argument (hexa)
+                if(IsFormatSpecifier(szFormat, "%llX"))
+                {
+                    szBufferPtr += CascStrPrintf(szBufferPtr, (szBufferEnd - szBufferPtr), fmt_I64X, va_arg(argList, ULONGLONG));
+                    szFormat += 4;
+                    continue;
+                }
+
                 // 32-bit integer argument
                 if(IsFormatSpecifier(szFormat, "%u"))
                 {

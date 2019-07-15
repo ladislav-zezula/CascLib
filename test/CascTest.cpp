@@ -559,6 +559,133 @@ static DWORD Storage_OpenFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
     return dwErrCode;
 }
 
+static DWORD Storage_SeekTest(TLogHelper & LogHelper, TEST_PARAMS & Params)
+{
+    CASC_FIND_DATA cf = {0};
+    TFileStream * pStream;
+    ULONGLONG TotalRead = 0;
+    ULONGLONG FileSize = 0;
+    HANDLE hFile;
+    TCHAR szPlainName[MAX_PATH];
+    DWORD dwBytesRead;
+    DWORD dwErrCode = ERROR_SUCCESS;
+    BYTE Buffer[0x1000];
+
+    // Setup the name structure
+    CascStrCopy(szPlainName, _countof(szPlainName), GetPlainFileName(Params.szFileName));
+    CascStrCopy(cf.szFileName, _countof(cf.szFileName), Params.szFileName);
+    cf.bCanOpenByName = true;
+
+    // Extract the file to a local file
+    if((pStream = FileStream_OpenFile(szPlainName, 0)) == NULL)
+        pStream = FileStream_CreateFile(szPlainName, 0);
+    if(pStream  != NULL)
+    {
+        if(CascOpenFile(Params.hStorage, cf, Params.dwOpenFlags, &hFile))
+        {
+            //
+            // Phase 1: Create local copy of the file
+            //
+
+            LogHelper.PrintProgress("Extracting file ...");
+            CascGetFileSize64(hFile, &FileSize);
+/*
+            while(TotalRead < FileSize)
+            {
+                if(!LogHelper.ProgressCooldown())
+                    LogHelper.PrintProgress("Extracting file (%u %%) ...", (DWORD)((TotalRead * 100) / FileSize));
+
+                // Get the amount of bytes to read
+                DWORD dwBytesToRead = sizeof(Buffer);
+                if((TotalRead + dwBytesToRead) > FileSize)
+                    dwBytesToRead = (DWORD)(FileSize - TotalRead);
+
+                // Read the chunk
+                CascReadFile(hFile, Buffer, dwBytesToRead, &dwBytesRead);
+                if(dwBytesRead != dwBytesToRead)
+                {
+                    LogHelper.PrintMessage("Error: Failed to read %u bytes at offset %llX.", dwBytesToRead, TotalRead);
+                    dwErrCode = GetLastError();
+                    break;
+                }
+
+                // Write to the target file
+                if(!FileStream_Write(pStream, &TotalRead, Buffer, dwBytesRead))
+                {
+                    LogHelper.PrintMessage("Error: Failed to write %u bytes at offset %llX.", dwBytesToRead, TotalRead);
+                    dwErrCode = GetLastError();
+                    break;
+                }
+
+                TotalRead += dwBytesRead;
+            }
+*/
+            //
+            // Phase 2: Compare the loaded data from the random positions in the file
+            //
+
+            if(dwErrCode == ERROR_SUCCESS)
+            {
+                // Always set random number generator to the same value
+                srand(0x12345678);
+
+                // Perform several random offset reads and compare data
+                for(DWORD i = 0; i < 0x1000; i++)
+                {
+                    ULONGLONG ByteOffset;
+                    ULONGLONG RandomHi = rand();
+                    DWORD RandomLo = rand();
+                    DWORD Length = rand() % sizeof(Buffer);
+                    BYTE Buffer2[0x1000];
+
+                    if(!LogHelper.ProgressCooldown())
+                        LogHelper.PrintProgress("Testing seek operations (%u of %u) ...", i, 0x1000);
+
+                    // Determine offset and length
+                    ByteOffset = ((RandomHi << 0x20) | RandomLo) % FileSize;
+                    if((ByteOffset + Length) > FileSize)
+                        ByteOffset = FileSize - Length;
+
+                    // Load the data from CASC file
+                    CascSetFilePointer64(hFile, ByteOffset, NULL, FILE_BEGIN);
+                    CascReadFile(hFile, Buffer, Length, &dwBytesRead);
+                    if(dwBytesRead != Length)
+                    {
+                        LogHelper.PrintMessage("Error: Failed to read %u bytes from CASC file (offset %llX).", Length, ByteOffset);
+                        dwErrCode = GetLastError();
+                        break;
+                    }
+
+                    // Load data from the local file
+                    if(!FileStream_Read(pStream, &ByteOffset, Buffer2, Length))
+                    {
+                        LogHelper.PrintMessage("Error: Failed to read %u bytes from LOCAL file (offset %llX).", Length, ByteOffset);
+                        dwErrCode = GetLastError();
+                        break;
+                    }
+
+                    // Compare the loaded data blocks
+                    if(memcmp(Buffer, Buffer2, Length))
+                    {
+                        LogHelper.PrintMessage("Error: Data mismatchat offset %llX, length %u.", ByteOffset, Length);
+                        dwErrCode = GetLastError();
+                        break;
+                    }
+                }
+            }
+
+            // Close the file handle
+            CascCloseFile(hFile);
+        }
+        FileStream_Close(pStream);
+        //_tunlink(szPlainName);
+    }
+
+    // Perform the extraction
+    LogHelper.PrintTotalTime();
+    return dwErrCode;
+}
+
 static DWORD Storage_EnumFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
 {
     CASC_FIND_DATA cf;
@@ -690,7 +817,7 @@ static DWORD LocalStorage_Test(PFN_RUN_TEST PfnRunTest, LPCSTR szStorage, LPCSTR
         Params.hStorage = hStorage;
         Params.szExpectedNameHash = (PfnRunTest != Storage_OpenFiles) ? szExpectedNameHash : NULL;
         Params.szExpectedDataHash = szExpectedDataHash;
-        Params.szFileName = (PfnRunTest == Storage_OpenFiles) ? szExpectedNameHash : NULL;
+        Params.szFileName = (PfnRunTest != Storage_ExtractFiles) ? szExpectedNameHash : NULL;
         dwErrCode = PfnRunTest(LogHelper, Params);
     }
     else
@@ -788,7 +915,7 @@ static STORAGE_INFO1 StorageInfo1[] =
     //{"2018 - Warcraft III/09655",        "b1aeb7180848b83a7a3132cba608b254", "5d0e71a47f0b550de6884cfbbe3f50e5", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
     //{"2018 - Warcraft III/11889",        "f084ee1713153d8a15f1f75e94719aa8", "3541073dd77d370a01fbbcadd029477e", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
 
-    {"2018 - CoD4/3376209",              NULL,                               NULL,                               "zone/base.xpak" },
+    {"2018 - CoD4/3376209",              "b547336a835ab527a9c05f5e89691dbb",   NULL,                               "zone/base.xpak" },
 
     {"2019 - WoW Classic/30406",         NULL,                               NULL,                          "dbfilesclient\\battlepetspeciesstate.db2"},
     {NULL}
@@ -828,11 +955,11 @@ int main(void)
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - New CASC\\00001");
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - New CASC\\00002");
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - Warcraft III\\11889");
-//  LocalStorage_Test(Storage_EnumFiles, "2018 - CoD4\\3376209", "zone\\snd\\bp\\zm_mansion.bp.sabs");
+    LocalStorage_Test(Storage_SeekTest, "2018 - CoD4\\3376209", "zone/base.xpak");
     //OnlineStorage_Test(Storage_ExtractFiles, "agent");
 
     // "dbfilesclient\\battlepetspeciesstate.db2"
-    LocalStorage_Test(Storage_OpenFiles, "d:\\Hry\\World of Warcraft\\Data", "File00666606.bin");
+    //LocalStorage_Test(Storage_OpenFiles, "d:\\Hry\\World of Warcraft\\Data", "File00666606.bin");
     //LocalStorage_Test(Storage_OpenFiles, "z:\\Hry\\World of Warcraft\\Data", "FILE000C3B2D.bin");
 
     //

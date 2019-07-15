@@ -894,14 +894,20 @@ static DWORD GetStorageTotalFileCount(TCascStorage * hs)
     {
         if((pCKeyEntry = (PCASC_CKEY_ENTRY)hs->CKeyArray.ItemAt(i)) != NULL)
         {
-            if((pCKeyEntry->Flags & (CASC_CE_FOLDER_ENTRY | CASC_CE_FILE_SPAN)) == 0)
+            // Must not be a folder entry
+            if((pCKeyEntry->Flags & CASC_CE_FOLDER_ENTRY) == 0)
             {
-                // If there is zero or one file name reference, we count the item as one file.
-                // If there is more than 1 name reference, we count the file as many times as number of references
-                DWORD RefCount = (pCKeyEntry->RefCount > 0) ? pCKeyEntry->RefCount : 1;
+                // There can be entries that are both file span or the standalone file
+                // * zone/zm_red.xpak - { zone/zm_red.xpak_1, zone/zm_red.xpak_2, ..., zone/zm_red.xpak_6 }
+                if((pCKeyEntry->Flags & CASC_CE_FILE_SPAN) == 0 || pCKeyEntry->RefCount != 0)
+                {
+                    // If there is zero or one file name reference, we count the item as one file.
+                    // If there is more than 1 name reference, we count the file as many times as number of references
+                    DWORD RefCount = (pCKeyEntry->RefCount > 0) ? pCKeyEntry->RefCount : 1;
 
-                // Add the number of references to the total file count
-                TotalFileCount += RefCount;
+                    // Add the number of references to the total file count
+                    TotalFileCount += RefCount;
+                }
             }
         }
     }

@@ -294,7 +294,7 @@ struct TCascStorage
     size_t LocalFiles;                              // Number of files that are present locally
     size_t TotalFiles;                              // Total number of files in the storage, some may not be present locally
     size_t EKeyEntries;                             // Number of CKeyEntry-ies loaded from text build file
-    size_t OrphanItems;                             // Number of EKey entries in indexes that do not have their counterpart in ENCODING
+    size_t OrphanItems;                             // Number of EKey entries in indexes that do not have record in ENCODING. Always include ENCODING itself.
     size_t SkippedItems;                            // Number of EKey entries in indexes that were ignored due to insufficient capacity of CKeyArray
     size_t EKeyLength;                              // EKey length from the index files
     DWORD FileOffsetBits;                           // Number of bits in the storage offset which mean data segent offset

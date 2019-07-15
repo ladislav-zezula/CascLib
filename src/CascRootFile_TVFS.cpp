@@ -532,6 +532,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                     {
                         PCASC_CKEY_ENTRY pSpanEntries;
                         PCASC_FILE_NODE pFileNode;
+                        USHORT RefCount;
                         bool bFilePresent = true;
 
                         //
@@ -567,11 +568,19 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                                 pCKeyEntry->ContentSize = pSpanEntry->ContentSize;
                             assert(pCKeyEntry->ContentSize == pSpanEntry->ContentSize);
 
-                            // Fill-in the span count
-                            assert(pCKeyEntry->SpanCount == 0);
-                            pCKeyEntry->SpanCount = (BYTE)(dwSpanCount - dwSpanIndex);
-                            pCKeyEntry->RefCount = (dwSpanIndex == 0) ? 1 : 0;
-                            pCKeyEntry->Flags |= (dwSpanIndex != 0) ? CASC_CE_FILE_SPAN : 0;
+                            // Fill-in the span entry
+                            if(dwSpanIndex == 0)
+                            {
+                                pCKeyEntry->SpanCount = (BYTE)(dwSpanCount);
+                                pCKeyEntry->RefCount++;
+                            }
+                            else
+                            {
+                                // Mark the CKey entry as a file span. Note that a CKey entry
+                                // can actually be both a file span and a standalone file:
+                                // * zone/zm_red.xpak - { zone/zm_red.xpak_1, zone/zm_red.xpak_2, ..., zone/zm_red.xpak_6 }
+                                pCKeyEntry->Flags |= CASC_CE_FILE_SPAN;
+                            }
 
                             // Copy all from the existing CKey entry
                             memcpy(pSpanEntry, pCKeyEntry, sizeof(CASC_CKEY_ENTRY));
@@ -581,7 +590,10 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                         if(bFilePresent)
                         {
                             // Insert a new file node that will contain pointer to the span entries
+                            RefCount = pSpanEntries->RefCount;
                             pFileNode = FileTree.InsertByName(pSpanEntries, PathBuffer.szBegin);
+                            pSpanEntries->RefCount = RefCount;
+
                             if(pFileNode == NULL)
                                 return ERROR_NOT_ENOUGH_MEMORY;
                         }
