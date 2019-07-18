@@ -283,7 +283,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                 return NULL;
 
             // Copy the EKey and content size
-            memcpy(PtrSpanEntry->EKey, pbCftFileEntry, DirHeader.EKeySize);
+            CaptureEncodedKey(PtrSpanEntry->EKey, pbCftFileEntry, DirHeader.EKeySize);
             PtrSpanEntry->ContentSize  = ConvertBytesToInteger_4(pbVfsSpanEntry + sizeof(DWORD));
 
             // Move to the next entry
@@ -483,9 +483,6 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                 }
                 else
                 {
-                    //if(!strncmp(PathBuffer.szBegin, "zone/snd/bp/zm_mansion.bp.sabs", 30))
-                    //    __debugbreak();
-
                     // Capture the number of VFS spans
                     pbVfsSpanEntry = CaptureVfsSpanCount(DirHeader, PathEntry.NodeValue, dwSpanCount);
                     if(pbVfsSpanEntry == NULL)
@@ -597,9 +594,6 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                             if(pFileNode == NULL)
                                 return ERROR_NOT_ENOUGH_MEMORY;
                         }
-
-                        // Fix the total number of files in the storage
-                        hs->TotalFiles = hs->TotalFiles - (dwSpanCount - 1);
                     }
                 }
 
@@ -691,7 +685,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
 //-----------------------------------------------------------------------------
 // Public functions - TVFS root
 
-int RootHandler_CreateTVFS(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile)
+DWORD RootHandler_CreateTVFS(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile)
 {
     TRootHandler_TVFS * pRootHandler = NULL;
     TVFS_DIRECTORY_HEADER RootHeader;

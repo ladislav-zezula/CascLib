@@ -24,7 +24,6 @@ set(SRC_FILES
     src/common/ListFile.cpp
     src/common/RootHandler.cpp
     src/jenkins/lookup3.c
-    src/CascCommon.cpp
     src/CascDecompress.cpp
     src/CascDecrypt.cpp
     src/CascDumpData.cpp

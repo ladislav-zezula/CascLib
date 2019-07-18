@@ -133,6 +133,49 @@ LPBYTE CaptureContentKey(LPBYTE pbDataPtr, LPBYTE pbDataEnd, PCONTENT_KEY * PtrC
     return pbDataPtr + sizeof(CONTENT_KEY);
 }
 
+LPBYTE CaptureEncodedKey(LPBYTE pbEKey, LPBYTE pbData, BYTE EKeyLength)
+{
+    // Two usual lengths of EKey
+    assert(EKeyLength == 0x09 || EKeyLength == 0x10);
+
+    // Copy the first 0x09 bytes
+    if(EKeyLength >= 0x09)
+    {
+        pbEKey[0x00] = pbData[0x00];
+        pbEKey[0x01] = pbData[0x01];
+        pbEKey[0x02] = pbData[0x02];
+        pbEKey[0x03] = pbData[0x03];
+        pbEKey[0x04] = pbData[0x04];
+        pbEKey[0x05] = pbData[0x05];
+        pbEKey[0x06] = pbData[0x06];
+        pbEKey[0x07] = pbData[0x07];
+        pbEKey[0x08] = pbData[0x08];
+
+        if(EKeyLength == 0x10)
+        {
+            pbEKey[0x09] = pbData[0x09];
+            pbEKey[0x0A] = pbData[0x0A];
+            pbEKey[0x0B] = pbData[0x0B];
+            pbEKey[0x0C] = pbData[0x0C];
+            pbEKey[0x0D] = pbData[0x0D];
+            pbEKey[0x0E] = pbData[0x0E];
+            pbEKey[0x0F] = pbData[0x0F];
+        }
+        else
+        {
+            pbEKey[0x09] = 0;
+            pbEKey[0x0A] = 0;
+            pbEKey[0x0B] = 0;
+            pbEKey[0x0C] = 0;
+            pbEKey[0x0D] = 0;
+            pbEKey[0x0E] = 0;
+            pbEKey[0x0F] = 0;
+        }
+    }
+
+    return pbData + EKeyLength;
+}
+
 LPBYTE CaptureArray_(LPBYTE pbDataPtr, LPBYTE pbDataEnd, LPBYTE * PtrArray, size_t ItemSize, size_t ItemCount)
 {
     size_t ArraySize = ItemSize * ItemCount;
@@ -229,6 +272,7 @@ size_t CascStrPrintf(char * buffer, size_t nCount, const char * format, ...)
     
 #ifdef PLATFORM_WINDOWS
     StringCchVPrintfExA(buffer, nCount, &buffend, NULL, 0, format, argList);
+//  buffend = buffer + vsnprintf(buffer, nCount, format, argList);
 #else
     buffend = buffer + vsnprintf(buffer, nCount, format, argList);
 #endif
@@ -248,6 +292,7 @@ size_t CascStrPrintf(wchar_t * buffer, size_t nCount, const wchar_t * format, ..
 
 #ifdef PLATFORM_WINDOWS
     StringCchVPrintfExW(buffer, nCount, &buffend, NULL, 0, format, argList);
+//  buffend = buffer + vswprintf(buffer, nCount, format, argList);
 #else
     buffend = buffer + vswprintf(buffer, nCount, format, argList);
 #endif

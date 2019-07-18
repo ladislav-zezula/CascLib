@@ -17,8 +17,8 @@
 // Local defines
 
 typedef DWORD (*PARSECSVFILE)(TCascStorage * hs, CASC_CSV & Csv);
-typedef int (*PARSETEXTFILE)(TCascStorage * hs, void * pvListFile);
-typedef int (*PARSE_VARIABLE)(TCascStorage * hs, const char * szVariableName, const char * szDataBegin, const char * szDataEnd, void * pvParam);
+typedef DWORD (*PARSETEXTFILE)(TCascStorage * hs, void * pvListFile);
+typedef DWORD (*PARSE_VARIABLE)(TCascStorage * hs, const char * szVariableName, const char * szDataBegin, const char * szDataEnd, void * pvParam);
 
 #define MAX_VAR_NAME 80
 
@@ -227,13 +227,13 @@ static bool CheckConfigFileVariable(
     return (PfnParseProc(hs, szVariableName, szLinePtr, szLineEnd, pvParseParam) == ERROR_SUCCESS);
 }
 
-static int LoadHashArray(
+static DWORD LoadHashArray(
     PQUERY_KEY pBlob,
     const char * szLinePtr,
     const char * szLineEnd,
     size_t HashCount)
 {
-    int nError = ERROR_NOT_ENOUGH_MEMORY;
+    DWORD dwErrCode = ERROR_NOT_ENOUGH_MEMORY;
 
     // Allocate the blob buffer
     pBlob->cbData = (DWORD)(HashCount * MD5_HASH_SIZE);
@@ -253,16 +253,16 @@ static int LoadHashArray(
             pbBuffer += MD5_HASH_SIZE;
         }
         
-        nError = ERROR_SUCCESS;
+        dwErrCode = ERROR_SUCCESS;
     }
 
-    return nError;
+    return dwErrCode;
 }
 
-static int LoadMultipleHashes(PQUERY_KEY pBlob, const char * szLineBegin, const char * szLineEnd)
+static DWORD LoadMultipleHashes(PQUERY_KEY pBlob, const char * szLineBegin, const char * szLineEnd)
 {
     size_t HashCount = 0;
-    int nError = ERROR_SUCCESS;
+    DWORD dwErrCode = ERROR_SUCCESS;
 
     // Retrieve the hash count
     if (CaptureHashCount(szLineBegin, szLineEnd, &HashCount) == NULL)
@@ -271,20 +271,20 @@ static int LoadMultipleHashes(PQUERY_KEY pBlob, const char * szLineBegin, const 
     // Do nothing if there is no data
     if(HashCount != 0)
     {
-        nError = LoadHashArray(pBlob, szLineBegin, szLineEnd, HashCount);
+        dwErrCode = LoadHashArray(pBlob, szLineBegin, szLineEnd, HashCount);
     }
 
-    return nError;
+    return dwErrCode;
 }
 
 // Loads a query key from the text form
 // A QueryKey is an array of "ContentKey EncodedKey1 ... EncodedKeyN"
-static int LoadQueryKey(TCascStorage * /* hs */, const char * /* szVariableName */, const char * szDataBegin, const char * szDataEnd, void * pvParam)
+static DWORD LoadQueryKey(TCascStorage * /* hs */, const char * /* szVariableName */, const char * szDataBegin, const char * szDataEnd, void * pvParam)
 {
     return LoadMultipleHashes((PQUERY_KEY)pvParam, szDataBegin, szDataEnd);
 }
 
-static int LoadCKeyEntry(TCascStorage * hs, const char * szVariableName, const char * szDataPtr, const char * szDataEnd, void * pvParam)
+static DWORD LoadCKeyEntry(TCascStorage * hs, const char * szVariableName, const char * szDataPtr, const char * szDataEnd, void * pvParam)
 {
     PCASC_CKEY_ENTRY pCKeyEntry = (PCASC_CKEY_ENTRY)pvParam;
     size_t nLength = strlen(szVariableName);
@@ -342,7 +342,7 @@ static int LoadCKeyEntry(TCascStorage * hs, const char * szVariableName, const c
     return ERROR_BAD_FORMAT;
 }
 
-static int LoadVfsRootEntry(TCascStorage * hs, const char * szVariableName, const char * szDataPtr, const char * szDataEnd, void * pvParam)
+static DWORD LoadVfsRootEntry(TCascStorage * hs, const char * szVariableName, const char * szDataPtr, const char * szDataEnd, void * pvParam)
 {
     PCASC_CKEY_ENTRY pCKeyEntry;
     CASC_ARRAY * pArray = (CASC_ARRAY *)pvParam;
@@ -384,7 +384,7 @@ static int LoadVfsRootEntry(TCascStorage * hs, const char * szVariableName, cons
     return ERROR_SUCCESS;
 }
 
-static int LoadBuildProductId(TCascStorage * hs, const char * /* szVariableName */, const char * szDataBegin, const char * szDataEnd, void * /* pvParam */)
+static DWORD LoadBuildProductId(TCascStorage * hs, const char * /* szVariableName */, const char * szDataBegin, const char * szDataEnd, void * /* pvParam */)
 {
     DWORD dwBuildUid = 0;
 
@@ -480,7 +480,7 @@ static int LoadBuildProductId(TCascStorage * hs, const char * /* szVariableName 
 // "WOW-18125patch6.0.1"
 // "30013_Win32_2_2_0_Ptr_ptr"
 // "prometheus-0_8_0_0-24919"
-static int LoadBuildNumber(TCascStorage * hs, const char * /* szVariableName */, const char * szDataBegin, const char * szDataEnd, void * /* pvParam */)
+static DWORD LoadBuildNumber(TCascStorage * hs, const char * /* szVariableName */, const char * szDataBegin, const char * szDataEnd, void * /* pvParam */)
 {
     DWORD dwBuildNumber = 0;
     DWORD dwMaxValue = 0;
@@ -742,11 +742,11 @@ static DWORD ParseFile_BuildDb(TCascStorage * hs, CASC_CSV & Csv)
     return (hs->CdnBuildKey.pbData != NULL && hs->CdnConfigKey.pbData != NULL) ? ERROR_SUCCESS : ERROR_BAD_FORMAT;
 }
 
-static int ParseFile_CdnConfig(TCascStorage * hs, void * pvListFile)
+static DWORD ParseFile_CdnConfig(TCascStorage * hs, void * pvListFile)
 {
     const char * szLineBegin;
     const char * szLineEnd;
-    int nError = ERROR_SUCCESS;
+    DWORD dwErrCode = ERROR_SUCCESS;
 
     // Keep parsing the listfile while there is something in there
     for(;;)
@@ -783,19 +783,19 @@ static int ParseFile_CdnConfig(TCascStorage * hs, void * pvListFile)
     if(hs->ArchivesKey.pbData == NULL || hs->ArchivesKey.cbData == 0)
         return ERROR_BAD_FORMAT;
 
-    return nError;
+    return dwErrCode;
 }
 
-static int ParseFile_CdnBuild(TCascStorage * hs, void * pvListFile)
+static DWORD ParseFile_CdnBuild(TCascStorage * hs, void * pvListFile)
 {
     const char * szLineBegin;
     const char * szLineEnd = NULL;
-    int nError;
+    DWORD dwErrCode;
 
     // Initialize the empty VFS array
-    nError = hs->VfsRootList.Create<CASC_CKEY_ENTRY>(0x10);
-    if (nError != ERROR_SUCCESS)
-        return nError;
+    dwErrCode = hs->VfsRootList.Create<CASC_CKEY_ENTRY>(0x10);
+    if (dwErrCode != ERROR_SUCCESS)
+        return dwErrCode;
 
     // Parse all variables
     while(ListFile_GetNextLine(pvListFile, &szLineBegin, &szLineEnd) != 0)
@@ -860,13 +860,19 @@ static int ParseFile_CdnBuild(TCascStorage * hs, void * pvListFile)
     // Both CKey and EKey of ENCODING file is required
     if((hs->EncodingCKey.Flags & (CASC_CE_HAS_CKEY | CASC_CE_HAS_EKEY)) != (CASC_CE_HAS_CKEY | CASC_CE_HAS_EKEY))
         return ERROR_BAD_FORMAT;
-    return nError;
+
+    // If the storage has a VFS root file, it usually references files by EKey.
+    // These files are often not present in the ENCODING table and thus we need to enable
+    // orphaned items (i.e. those present in indexes but not in ENCODING)
+    if(hs->VfsRoot.Flags & CASC_CE_HAS_CKEY)
+        hs->dwFeatures |= CASC_FEATURE_EKEYS_MERGED;
+    return dwErrCode;
 }
 
-static int CheckDataDirectory(TCascStorage * hs, TCHAR * szDirectory)
+static DWORD CheckDataDirectory(TCascStorage * hs, TCHAR * szDirectory)
 {
     TCHAR * szDataPath;
-    int nError = ERROR_FILE_NOT_FOUND;
+    DWORD dwErrCode = ERROR_FILE_NOT_FOUND;
 
     // Try all known subdirectories
     for(size_t i = 0; DataDirs[i] != NULL; i++)
@@ -888,7 +894,7 @@ static int CheckDataDirectory(TCascStorage * hs, TCHAR * szDirectory)
         }
     }
 
-    return nError;
+    return dwErrCode;
 }
 
 static DWORD LoadCsvFile(TCascStorage * hs, const TCHAR * szFileName, PARSECSVFILE PfnParseProc, bool bHasHeader)
@@ -929,12 +935,12 @@ static const TCHAR * ExtractCdnServerName(TCHAR * szServerName, size_t cchServer
     return NULL;
 }
 
-static int ForcePathExist(const TCHAR * szFileName, bool bIsFileName)
+static DWORD ForcePathExist(const TCHAR * szFileName, bool bIsFileName)
 {
     TCHAR * szLocalPath;
     size_t nIndex;
     bool bFirstSeparator = false;
-    int nError = ERROR_NOT_ENOUGH_MEMORY;
+    DWORD dwErrCode = ERROR_NOT_ENOUGH_MEMORY;
 
     // Sanity checks
     if(szFileName && szFileName[0])
@@ -963,7 +969,7 @@ static int ForcePathExist(const TCHAR * szFileName, bool bIsFileName)
                             // Is it there?
                             if(DirectoryExists(szLocalPath) == false && MakeDirectory(szLocalPath) == false)
                             {
-                                nError = ERROR_PATH_NOT_FOUND;
+                                dwErrCode = ERROR_PATH_NOT_FOUND;
                                 break;
                             }
                         }
@@ -971,29 +977,29 @@ static int ForcePathExist(const TCHAR * szFileName, bool bIsFileName)
                         // Restore the character
                         szLocalPath[nIndex] = PATH_SEP_CHAR;
                         bFirstSeparator = true;
-                        nError = ERROR_SUCCESS;
+                        dwErrCode = ERROR_SUCCESS;
                     }
                 }
 
                 // Now check the final path
                 if(DirectoryExists(szLocalPath) || MakeDirectory(szLocalPath))
                 {
-                    nError = ERROR_SUCCESS;
+                    dwErrCode = ERROR_SUCCESS;
                 }
             }
             else
             {
-                nError = ERROR_SUCCESS;
+                dwErrCode = ERROR_SUCCESS;
             }
 
             CASC_FREE(szLocalPath);
         }
     }
 
-    return nError;
+    return dwErrCode;
 }
 
-static int DownloadFile(
+static DWORD DownloadFile(
     const TCHAR * szRemoteName,
     const TCHAR * szLocalName,
     PULONGLONG PtrByteOffset,
@@ -1003,7 +1009,7 @@ static int DownloadFile(
     TFileStream * pRemStream;
     TFileStream * pLocStream;
     LPBYTE pbFileData;
-    int nError = ERROR_NOT_ENOUGH_MEMORY;
+    DWORD dwErrCode = ERROR_NOT_ENOUGH_MEMORY;
 
     // Open the remote stream
     pRemStream = FileStream_OpenFile(szRemoteName, BASE_PROVIDER_HTTP | STREAM_PROVIDER_FLAT | dwPortFlags);
@@ -1014,8 +1020,8 @@ static int DownloadFile(
         {
             ULONGLONG FileSize = 0;
 
-            // Retrieve the file size
-            if (FileStream_GetSize(pRemStream, &FileSize) && 0 < FileSize && FileSize < 0x10000000)
+            // Retrieve the file size, but not longer than 1 GB
+            if (FileStream_GetSize(pRemStream, &FileSize) && 0 < FileSize && FileSize < 0x40000000)
             {
                 // Cut the file size down to 32 bits
                 cbReadSize = (DWORD)FileSize;
@@ -1032,7 +1038,7 @@ static int DownloadFile(
                 if (pLocStream != NULL)
                 {
                     if (FileStream_Write(pLocStream, NULL, pbFileData, cbReadSize))
-                        nError = ERROR_SUCCESS;
+                        dwErrCode = ERROR_SUCCESS;
 
                     FileStream_Close(pLocStream);
                 }
@@ -1047,13 +1053,13 @@ static int DownloadFile(
     }
     else
     {
-        nError = GetLastError();
+        dwErrCode = GetLastError();
     }
 
-    return nError;
+    return dwErrCode;
 }
 
-static int DownloadFile(
+static DWORD DownloadFile(
     TCascStorage * hs,
     const TCHAR * szServerName,
     const TCHAR * szServerPath1,
@@ -1070,7 +1076,7 @@ static int DownloadFile(
     TCHAR szRemotePath[MAX_PATH];
     TCHAR szLocalPath[MAX_PATH];
     size_t nLength;
-    int nError = ERROR_NOT_ENOUGH_MEMORY;
+    DWORD dwErrCode = ERROR_NOT_ENOUGH_MEMORY;
 
     // Format the target URL
     if(bWowClassicRedirect && !_tcsicmp(szServerPath1, _T("wow_classic_beta")))
@@ -1088,15 +1094,15 @@ static int DownloadFile(
     // If we are not forced to download a new one, try if local file exists.
     if ((bAlwaysDownload == false) && (_taccess(szLocalPath, 0) == 0))
     {
-        nError = ERROR_SUCCESS;
+        dwErrCode = ERROR_SUCCESS;
     }
     else
     {
-        nError = DownloadFile(szRemotePath, szLocalPath, PtrByteOffset, cbReadSize, dwPortFlags);
+        dwErrCode = DownloadFile(szRemotePath, szLocalPath, PtrByteOffset, cbReadSize, dwPortFlags);
     }
 
     // If succeeded, give the local path
-    if(nError == ERROR_SUCCESS)
+    if(dwErrCode == ERROR_SUCCESS)
     {
         // If the caller wanted local path, give it to him
         if (szOutLocalPath && cchOutLocalPath)
@@ -1109,23 +1115,23 @@ static int DownloadFile(
         }
     }
 
-    return nError;
+    return dwErrCode;
 }
 
-static int FetchAndLoadConfigFile(TCascStorage * hs, PQUERY_KEY pFileKey, PARSETEXTFILE PfnParseProc)
+static DWORD FetchAndLoadConfigFile(TCascStorage * hs, PQUERY_KEY pFileKey, PARSETEXTFILE PfnParseProc)
 {
     const TCHAR * szPathType = _T("config");
     TCHAR szLocalPath[MAX_PATH];
     TCHAR szSubDir[0x80] = _T("");
     void * pvListFile = NULL;
-    int nError = ERROR_CAN_NOT_COMPLETE;
+    DWORD dwErrCode = ERROR_CAN_NOT_COMPLETE;
 
     // If online storage, we download the file. Otherwise, create a local path
     if(hs->dwFeatures & CASC_FEATURE_ONLINE)
     {
-        nError = DownloadFileFromCDN(hs, szPathType, pFileKey->pbData, NULL, szLocalPath, _countof(szLocalPath));
-        if(nError != ERROR_SUCCESS)
-            return nError;
+        dwErrCode = DownloadFileFromCDN(hs, szPathType, pFileKey->pbData, NULL, szLocalPath, _countof(szLocalPath));
+        if(dwErrCode != ERROR_SUCCESS)
+            return dwErrCode;
     }
     else
     {
@@ -1139,20 +1145,20 @@ static int FetchAndLoadConfigFile(TCascStorage * hs, PQUERY_KEY pFileKey, PARSET
     {
         if (ListFile_VerifyMD5(pvListFile, pFileKey->pbData))
         {
-            nError = PfnParseProc(hs, pvListFile);
+            dwErrCode = PfnParseProc(hs, pvListFile);
         }
         else
         {
-            nError = ERROR_FILE_CORRUPT;
+            dwErrCode = ERROR_FILE_CORRUPT;
         }
         CASC_FREE(pvListFile);
     }
     else
     {
-        nError = ERROR_FILE_NOT_FOUND;
+        dwErrCode = ERROR_FILE_NOT_FOUND;
     }
 
-    return nError;
+    return dwErrCode;
 }
 
 //-----------------------------------------------------------------------------
@@ -1202,7 +1208,7 @@ DWORD GetFileSpanInfo(PCASC_CKEY_ENTRY pCKeyEntry, PULONGLONG PtrContentSize, PU
 
 DWORD DownloadFileFromCDN(TCascStorage * hs, const TCHAR * szSubDir, LPBYTE pbEKey, const TCHAR * szExtension, TCHAR * szOutLocalPath, size_t cchOutLocalPath)
 {
-    PCASC_ARCINDEX_ENTRY pIndexEntry;
+    PCASC_EKEY_ENTRY pEKeyEntry;
     const TCHAR * szCdnServers = hs->szCdnServers;
     TCHAR szRemoteFolder[MAX_PATH];
     TCHAR szLocalFolder[MAX_PATH];
@@ -1216,20 +1222,27 @@ DWORD DownloadFileFromCDN(TCascStorage * hs, const TCHAR * szSubDir, LPBYTE pbEK
         CreateCascSubdirectoryName(szLocalFolder, _countof(szLocalFolder), szSubDir, szExtension, pbEKey);
 
         // If the EKey is in an archive, we need to change the source
-        if ((pIndexEntry = (PCASC_ARCINDEX_ENTRY)hs->ArcIndexMap.FindObject(pbEKey)) != NULL)
+        if ((pEKeyEntry = (PCASC_EKEY_ENTRY)hs->IndexMap.FindObject(pbEKey)) != NULL)
         {
             ULONGLONG ByteOffset;
+            ULONGLONG ByteMask = 1;
+            LPBYTE pbEKey;
+            DWORD nArchive = (DWORD)(pEKeyEntry->StorageOffset >> hs->FileOffsetBits);
+
+            // Get the archive index and archive offset
+            ByteOffset = pEKeyEntry->StorageOffset & ((ByteMask << hs->FileOffsetBits) - 1);
+            nArchive = (DWORD)(pEKeyEntry->StorageOffset >> hs->FileOffsetBits);
+            pbEKey = hs->ArchivesKey.pbData + (MD5_HASH_SIZE * nArchive);
 
             // Change the subpath to an archive
-            CreateCascSubdirectoryName(szRemoteFolder, _countof(szRemoteFolder), szSubDir, szExtension, pIndexEntry->IndexHash);
-            ByteOffset = pIndexEntry->ArchiveOffset;
+            CreateCascSubdirectoryName(szRemoteFolder, _countof(szRemoteFolder), szSubDir, szExtension, pbEKey);
             dwErrCode = DownloadFile(hs,
                                      szServerName,
                                      hs->szCdnPath,
                                      szRemoteFolder,
                                      szLocalFolder,
                                     &ByteOffset,
-                                     pIndexEntry->EncodedSize,
+                                     pEKeyEntry->EncodedSize,
                                      szOutLocalPath,
                                      cchOutLocalPath, 0, false, false);
         }

@@ -374,27 +374,27 @@ static LPBYTE CascFindKey(TCascStorage * hs, ULONGLONG KeyName)
 //-----------------------------------------------------------------------------
 // Public functions
 
-int CascLoadEncryptionKeys(TCascStorage * hs)
+DWORD CascLoadEncryptionKeys(TCascStorage * hs)
 {
     size_t nKeyCount = (sizeof(CascKeys) / sizeof(CASC_ENCRYPTION_KEY));
     size_t nMaxItems = nKeyCount + CASC_EXTRA_KEYS;
-    int nError;
+    DWORD dwErrCode;
 
     // Create fast map of KeyName -> Key
-    nError = hs->EncryptionKeys.Create(nMaxItems, sizeof(ULONGLONG), FIELD_OFFSET(CASC_ENCRYPTION_KEY, KeyName));
-    if(nError != ERROR_SUCCESS)
-        return nError;
+    dwErrCode = hs->EncryptionKeys.Create(nMaxItems, sizeof(ULONGLONG), FIELD_OFFSET(CASC_ENCRYPTION_KEY, KeyName));
+    if(dwErrCode != ERROR_SUCCESS)
+        return dwErrCode;
 
     // Insert all static keys
     for (size_t i = 0; i < nKeyCount; i++)
         hs->EncryptionKeys.InsertObject(&CascKeys[i], &CascKeys[i].KeyName);
 
     // Create array for extra keys
-    nError = hs->ExtraKeysList.Create<CASC_ENCRYPTION_KEY>(CASC_EXTRA_KEYS);
-    return nError;
+    dwErrCode = hs->ExtraKeysList.Create<CASC_ENCRYPTION_KEY>(CASC_EXTRA_KEYS);
+    return dwErrCode;
 }
 
-int CascDecrypt(TCascStorage * hs, LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBYTE pbInBuffer, DWORD cbInBuffer, DWORD dwFrameIndex)
+DWORD CascDecrypt(TCascStorage * hs, LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBYTE pbInBuffer, DWORD cbInBuffer, DWORD dwFrameIndex)
 {
     ULONGLONG KeyName = 0;
     LPBYTE pbBufferEnd = pbInBuffer + cbInBuffer;
@@ -404,7 +404,7 @@ int CascDecrypt(TCascStorage * hs, LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBY
     DWORD IVSize;
     BYTE Vector[0x08];
     BYTE EncryptionType;
-    int nError;
+    DWORD dwErrCode;
 
     // Verify and retrieve the key name size
     if(pbInBuffer >= pbBufferEnd)
@@ -462,9 +462,9 @@ int CascDecrypt(TCascStorage * hs, LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBY
     switch(EncryptionType)
     {
         case 'S':   // Salsa20
-            nError = Decrypt_Salsa20(pbOutBuffer, pbInBuffer, (pbBufferEnd - pbInBuffer), pbKey, 0x10, Vector);
-            if(nError != ERROR_SUCCESS)
-                return nError;
+            dwErrCode = Decrypt_Salsa20(pbOutBuffer, pbInBuffer, (pbBufferEnd - pbInBuffer), pbKey, 0x10, Vector);
+            if(dwErrCode != ERROR_SUCCESS)
+                return dwErrCode;
 
             // Supply the size of the output buffer
             pcbOutBuffer[0] = (DWORD)(pbBufferEnd - pbInBuffer);
@@ -478,7 +478,7 @@ int CascDecrypt(TCascStorage * hs, LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBY
     return ERROR_NOT_SUPPORTED;
 }
 
-int CascDirectCopy(LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBYTE pbInBuffer, DWORD cbInBuffer)
+DWORD CascDirectCopy(LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBYTE pbInBuffer, DWORD cbInBuffer)
 {
     // Check the buffer size
     if((cbInBuffer - 1) > pcbOutBuffer[0])

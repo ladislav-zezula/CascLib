@@ -203,11 +203,11 @@ bool CASC_FILE_TREE::RebuildNameMaps()
 //-----------------------------------------------------------------------------
 // Public functions
 
-int CASC_FILE_TREE::Create(DWORD Flags)
+DWORD CASC_FILE_TREE::Create(DWORD Flags)
 {
     PCASC_FILE_NODE pRootNode;
     size_t FileNodeSize = FIELD_OFFSET(CASC_FILE_NODE, ExtraValues);
-    int nError;
+    DWORD dwErrCode;
 
     // Initialize the file tree
     memset(this, 0, sizeof(CASC_FILE_TREE));
@@ -221,9 +221,9 @@ int CASC_FILE_TREE::Create(DWORD Flags)
         FileNodeSize += sizeof(DWORD);
 
         // Create the array for FileDataId -> CASC_FILE_NODE
-        nError = FileDataIds.Create<PCASC_FILE_NODE>(START_ITEM_COUNT);
-        if(nError != ERROR_SUCCESS)
-            return nError;
+        dwErrCode = FileDataIds.Create<PCASC_FILE_NODE>(START_ITEM_COUNT);
+        if(dwErrCode != ERROR_SUCCESS)
+            return dwErrCode;
     }
 
     // Shall we use the locale ID in the tree node?
@@ -243,12 +243,12 @@ int CASC_FILE_TREE::Create(DWORD Flags)
     FileNodeSize = ALIGN_TO_SIZE(FileNodeSize, 8);
 
     // Initialize the dynamic array
-    nError = NodeTable.Create(FileNodeSize, START_ITEM_COUNT);
-    if(nError == ERROR_SUCCESS)
+    dwErrCode = NodeTable.Create(FileNodeSize, START_ITEM_COUNT);
+    if(dwErrCode == ERROR_SUCCESS)
     {
         // Create the dynamic array that will hold the node names
-        nError = NameTable.Create<char>(START_ITEM_COUNT);
-        if(nError == ERROR_SUCCESS)
+        dwErrCode = NameTable.Create<char>(START_ITEM_COUNT);
+        if(dwErrCode == ERROR_SUCCESS)
         {
             // Insert the first "root" node, without name
             pRootNode = (PCASC_FILE_NODE)NodeTable.Insert(1);
@@ -266,8 +266,8 @@ int CASC_FILE_TREE::Create(DWORD Flags)
 
     // Create both maps
     if(!RebuildNameMaps())
-        nError = ERROR_NOT_ENOUGH_MEMORY;
-    return nError;
+        dwErrCode = ERROR_NOT_ENOUGH_MEMORY;
+    return dwErrCode;
 }
 
 void CASC_FILE_TREE::Free()

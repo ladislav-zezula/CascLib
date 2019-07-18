@@ -108,7 +108,7 @@ typedef struct _CASC_ARCINDEX_FOOTER
     BYTE   Version;                                 // Version of the index footer
     BYTE   OffsetBytes;                             // Length, in bytes, of the file offset field
     BYTE   SizeBytes;                               // Length, in bytes, of the file size field
-    BYTE   EKeyBytes;                               // Length, in bytes, of the EKey field
+    BYTE   EKeyLength;                              // Length, in bytes, of the EKey field
     BYTE   FooterHashBytes;                         // Length, in bytes, of the hash and checksum
     BYTE   Alignment[3];
     size_t ElementCount;                            // total number of elements in the index file
@@ -259,7 +259,6 @@ struct TCascStorage
     DWORD dwBuildNumber;                            // Product build number
     DWORD dwRefCount;                               // Number of references
     DWORD dwFeatures;                               // List of CASC features. See CASC_FEATURE_XXX
-    bool bAllowOrphans;                             // If TRUE, then orphaned items are allowed
 
     CBLD_TYPE BuildFileType;                        // Type of the build file
 
@@ -284,18 +283,15 @@ struct TCascStorage
     CASC_ARRAY VfsRootList;                         // List of CASC_EKEY_ENTRY for each TVFS sub-root
 
     TRootHandler * pRootHandler;                    // Common handler for various ROOT file formats
-    CASC_ARRAY ArcIndexArray;                       // Array of CASC_ARCINDEX_ENTRY, loaded from archive indexes
-    CASC_ARRAY IndexArray;                          // Array of CASC_CKEY_ENTRY loaded from local index files
-    CASC_ARRAY CKeyArray;                           // Array of CASC_CKEY_ENTRY, one entry for each physical file
+    CASC_ARRAY IndexArray;                          // Array of CASC_EKEY_ENTRY, loaded from local index files
+    CASC_ARRAY CKeyArray;                           // Array of CASC_CKEY_ENTRY, loaded from ENCODING file
     CASC_ARRAY TagsArray;                           // Array of CASC_DOWNLOAD_TAG2
-    CASC_MAP ArcIndexMap;                           // Map of EKey -> CASC_ARCINDEX_ENTRY
-    CASC_MAP CKeyMap;                               // Map of CKey -> CASC_CKEY_ENTRY
-    CASC_MAP EKeyMap;                               // Map of EKey -> CASC_EKEY_ENTRY
+    CASC_MAP IndexMap;                              // Map of EKey -> IndexArray (for online archives)
+    CASC_MAP CKeyMap;                               // Map of CKey -> CKeyArray
+    CASC_MAP EKeyMap;                               // Map of EKey -> CKeyArray
     size_t LocalFiles;                              // Number of files that are present locally
     size_t TotalFiles;                              // Total number of files in the storage, some may not be present locally
     size_t EKeyEntries;                             // Number of CKeyEntry-ies loaded from text build file
-    size_t OrphanItems;                             // Number of EKey entries in indexes that do not have record in ENCODING. Always include ENCODING itself.
-    size_t SkippedItems;                            // Number of EKey entries in indexes that were ignored due to insufficient capacity of CKeyArray
     size_t EKeyLength;                              // EKey length from the index files
     DWORD FileOffsetBits;                           // Number of bits in the storage offset which mean data segent offset
 
@@ -444,27 +440,27 @@ PCASC_CKEY_ENTRY FindCKeyEntry_EKey(TCascStorage * hs, LPBYTE pbEKey, PDWORD Ptr
 
 size_t GetTagBitmapLength(LPBYTE pbFilePtr, LPBYTE pbFileEnd, DWORD EntryCount);
 
-int CascDecompress(LPBYTE pvOutBuffer, PDWORD pcbOutBuffer, LPBYTE pvInBuffer, DWORD cbInBuffer);
-int CascDirectCopy(LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBYTE pbInBuffer, DWORD cbInBuffer);
+DWORD CascDecompress(LPBYTE pvOutBuffer, PDWORD pcbOutBuffer, LPBYTE pvInBuffer, DWORD cbInBuffer);
+DWORD CascDirectCopy(LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBYTE pbInBuffer, DWORD cbInBuffer);
 
-int CascLoadEncryptionKeys(TCascStorage * hs);
-int CascDecrypt(TCascStorage * hs, LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBYTE pbInBuffer, DWORD cbInBuffer, DWORD dwFrameIndex);
+DWORD CascLoadEncryptionKeys(TCascStorage * hs);
+DWORD CascDecrypt(TCascStorage * hs, LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBYTE pbInBuffer, DWORD cbInBuffer, DWORD dwFrameIndex);
 
 //-----------------------------------------------------------------------------
 // Support for index files
 
-int LoadIndexFiles(TCascStorage * hs);
+DWORD LoadIndexFiles(TCascStorage * hs);
 
 //-----------------------------------------------------------------------------
 // Support for ROOT file
 
-int RootHandler_CreateMNDX(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
-int RootHandler_CreateTVFS(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
-int RootHandler_CreateDiablo3(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
-int RootHandler_CreateWoW(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile, DWORD dwLocaleMask);
-int RootHandler_CreateOverwatch(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
-int RootHandler_CreateStarcraft1(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
-int RootHandler_CreateInstall(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
+DWORD RootHandler_CreateMNDX(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
+DWORD RootHandler_CreateTVFS(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
+DWORD RootHandler_CreateDiablo3(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
+DWORD RootHandler_CreateWoW(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile, DWORD dwLocaleMask);
+DWORD RootHandler_CreateOverwatch(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
+DWORD RootHandler_CreateStarcraft1(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
+DWORD RootHandler_CreateInstall(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile);
 
 //-----------------------------------------------------------------------------
 // Dumpers (CascDumpData.cpp)

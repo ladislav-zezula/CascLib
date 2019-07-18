@@ -229,6 +229,7 @@ struct TRootHandler_WoW : public TFileTreeRoot
         {
             // Set the file data ID
             FileDataId = FileDataId + RootGroup.FileDataIds[i];
+            //printf("File Data ID: %u\n", FileDataId);
 
             // Find the item in the central storage. Insert it to the tree
             if((pCKeyEntry = FindCKeyEntry_CKey(hs, pCKey->Value)) != NULL)
@@ -465,7 +466,7 @@ struct TRootHandler_WoW : public TFileTreeRoot
 //-----------------------------------------------------------------------------
 // Public functions
 
-int RootHandler_CreateWoW(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile, DWORD dwLocaleMask)
+DWORD RootHandler_CreateWoW(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile, DWORD dwLocaleMask)
 {
     TRootHandler_WoW * pRootHandler = NULL;
     FILE_ROOT_HEADER_82 RootHeader;

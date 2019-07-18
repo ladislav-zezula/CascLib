@@ -191,7 +191,7 @@ bool WINAPI CascOpenFile(HANDLE hStorage, const void * pvFileName, DWORD dwLocal
     const char * szFileName;
     DWORD FileDataId = CASC_INVALID_ID;
     BYTE CKeyEKeyBuffer[MD5_HASH_SIZE];
-    int nError = ERROR_SUCCESS;
+    DWORD dwErrCode = ERROR_SUCCESS;
 
     // This parameter is not used
     CASCLIB_UNUSED(dwLocaleFlags);
@@ -287,7 +287,7 @@ bool WINAPI CascOpenFile(HANDLE hStorage, const void * pvFileName, DWORD dwLocal
         default:
 
             // Unknown open mode
-            nError = ERROR_INVALID_PARAMETER;
+            dwErrCode = ERROR_INVALID_PARAMETER;
             break;
     }
 

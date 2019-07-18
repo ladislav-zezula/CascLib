@@ -280,10 +280,10 @@ class TLogHelper
 
     bool ProgressCooldown()
     {
-        DWORD dwTickCount = GetTickCount();
+        time_t dwTickCount = time(NULL);
         bool bResult = true;
 
-        if(dwTickCount > (dwPrevTickCount + 100))
+        if(dwTickCount > dwPrevTickCount)
         {
             dwPrevTickCount = dwTickCount;
             bResult = false;
@@ -442,6 +442,6 @@ class TLogHelper
     size_t nSaveConsoleWidth;                       // Saved width of the console window, in chars
     size_t nMessageCounter;
     size_t nTextLength;                             // Length of the previous progress message
-    DWORD dwPrevTickCount;
+    time_t dwPrevTickCount;
     bool bMessagePrinted;
 };

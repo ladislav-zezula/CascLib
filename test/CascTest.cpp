@@ -111,6 +111,7 @@ struct TEST_PARAMS
     DWORD dwOpenFlags;
     DWORD bOnlineStorage:1;
     DWORD bExtractFiles:1;
+    DWORD bHashData:1;
 };
 
 typedef DWORD (*PFN_RUN_TEST)(TLogHelper & LogHelper, TEST_PARAMS & Params);
@@ -194,13 +195,13 @@ static LPTSTR CopyPath(LPTSTR szBuffer, LPTSTR szBufferEnd, LPCSTR szSource)
             *szBuffer++ = PATH_SEP_CHAR;
         else
             *szBuffer++ = szSource[0];
-        
+
         szSource++;
     }
-    
+
     szBuffer[0] = 0;
     return szBuffer;
-}        
+}
 
 static LPTSTR MakeFullPath(LPTSTR szBuffer, size_t ccBuffer, LPCSTR szStorage)
 {
@@ -219,7 +220,7 @@ static LPTSTR MakeFullPath(LPTSTR szBuffer, size_t ccBuffer, LPCSTR szStorage)
         szBuffer = CopyPath(szBuffer, szBufferEnd, szPathRoot);
         szBuffer = CopyPath(szBuffer, szBufferEnd, PATH_SEP_STRING);
     }
-    
+
     // Copy the rest of the path
     return CopyPath(szBuffer, szBufferEnd, szStorage);
 }
@@ -546,7 +547,7 @@ static DWORD Storage_OpenFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
 
     // Setup the file to extract
     //Params.fp2 = OpenExtractedFile(Params.hStorage, "\\%s", cf);
-    
+
     // Perform the extraction
     ExtractFile(LogHelper, Params, cf);
     LogHelper.PrintTotalTime();
@@ -555,7 +556,7 @@ static DWORD Storage_OpenFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
     if(Params.fp2 != NULL)
         fclose(Params.fp2);
     Params.fp2 = NULL;
-    
+
     return dwErrCode;
 }
 
@@ -570,6 +571,10 @@ static DWORD Storage_SeekTest(TLogHelper & LogHelper, TEST_PARAMS & Params)
     DWORD dwBytesRead;
     DWORD dwErrCode = ERROR_SUCCESS;
     BYTE Buffer[0x1000];
+
+    // Check whether the file name was given
+    if(Params.szFileName == NULL)
+        return ERROR_INVALID_PARAMETER;
 
     // Setup the name structure
     CascStrCopy(szPlainName, _countof(szPlainName), GetPlainFileName(Params.szFileName));
@@ -589,7 +594,7 @@ static DWORD Storage_SeekTest(TLogHelper & LogHelper, TEST_PARAMS & Params)
 
             LogHelper.PrintProgress("Extracting file ...");
             CascGetFileSize64(hFile, &FileSize);
-/*
+
             while(TotalRead < FileSize)
             {
                 if(!LogHelper.ProgressCooldown())
@@ -619,7 +624,7 @@ static DWORD Storage_SeekTest(TLogHelper & LogHelper, TEST_PARAMS & Params)
 
                 TotalRead += dwBytesRead;
             }
-*/
+
             //
             // Phase 2: Compare the loaded data from the random positions in the file
             //
@@ -718,7 +723,7 @@ static DWORD Storage_EnumFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
     TestStorageGetName(hStorage);
 
     // Init the hasher
-    if(Params.szExpectedNameHash)
+    if(Params.bHashData)
     {
         LogHelper.InitHashers();
     }
@@ -734,14 +739,14 @@ static DWORD Storage_EnumFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
             LogHelper.HashName(cf.szFileName);
             LogHelper.FileCount = dwFileCount;
 
-            char szCKey[MD5_STRING_SIZE + 1];
-            char szEKey[MD5_STRING_SIZE + 1];
-            StringFromBinary(cf.CKey, MD5_HASH_SIZE, szCKey);
-            StringFromBinary(cf.EKey, MD5_HASH_SIZE, szEKey);
-            OutputDebugStringA(szCKey);
-            OutputDebugStringA(" ");
-            OutputDebugStringA(szEKey);
-            OutputDebugStringA("\n");
+            //char szCKey[MD5_STRING_SIZE + 1];
+            //char szEKey[MD5_STRING_SIZE + 1];
+            //StringFromBinary(cf.CKey, MD5_HASH_SIZE, szCKey);
+            //StringFromBinary(cf.EKey, MD5_HASH_SIZE, szEKey);
+            //OutputDebugStringA(szCKey);
+            //OutputDebugStringA(" ");
+            //OutputDebugStringA(szEKey);
+            //OutputDebugStringA("\n");
 
             // There should always be a name
             if (Params.fp1 != NULL)
@@ -793,6 +798,7 @@ static DWORD Storage_EnumFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
 
 static DWORD Storage_ExtractFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
 {
+    Params.bHashData = true;
     Params.bExtractFiles = true;
     return Storage_EnumFiles(LogHelper, Params);
 }
@@ -835,7 +841,7 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, LPCSTR szCodeName, LPCS
     TLogHelper LogHelper(szCodeName);
     HANDLE hStorage;
     TCHAR szParamsT[MAX_PATH];
-    CHAR szParamsA[MAX_PATH];
+    char szParamsA[MAX_PATH];
     size_t nLength;
     DWORD dwErrCode = ERROR_SUCCESS;
 
@@ -877,47 +883,49 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, LPCSTR szCodeName, LPCS
 static STORAGE_INFO1 StorageInfo1[] =
 {
     //- Name of the storage folder -------- Compound file name hash ----------- Compound file data hash ----------- Example file to extract -----------------------------------------------------------
-    //{"2014 - Heroes of the Storm/29049", "98396c1a521e5dee511d835b9e8086c7", "8febac8275e204800e5a4da0259e91c9", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_autoai1.dds"},
-    //{"2014 - Heroes of the Storm/30027", "6bcbe7c889cc465e4993f92d6ae1ee75", "54ed1440368de80723eddd89931fe191", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_claim1.dds"},
-    //{"2014 - Heroes of the Storm/30414", "4b5d1f21de95c2a448684f98cc157f10", "ff32ed33bfcb40e01bf75c8df381eca5", "mods\\heromods\\murky.stormmod\\base.stormdata\\gamedata\\buttondata.xml"},
-    //{"2014 - Heroes of the Storm/31726", "8b7633e519b78c96c85a1faa1c9f151f", "a0fd31d04f1bd6c5b3532c72592abf19", "mods\\heroes.stormmod\\base.stormassets\\Assets\\modeltextures.db"},
-    //{"2014 - Heroes of the Storm/39445", "c672b26f8f14ab2e68a9f9d7d6ca6062", "5ab7d596b5d6025072d7f331b3d7167a", "versions.osxarchive\\Versions\\Base39153\\Heroes.app\\Contents\\_CodeSignature\\CodeResources"},
-    //{"2014 - Heroes of the Storm/50286", "d1d57e83cbd72cbecd76916c22f6c4b6", "572598a728ac46dd18278636394c4fbc", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
-    //{"2014 - Heroes of the Storm/65943", "c5d75f4e12dbc05d4560fe61c4b88773", "981b882e090bdc027910ba70744c0e2c", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
+    {"2014 - Heroes of the Storm/29049", "98396c1a521e5dee511d835b9e8086c7", "8febac8275e204800e5a4da0259e91c9", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_autoai1.dds"},
+    {"2014 - Heroes of the Storm/30027", "6bcbe7c889cc465e4993f92d6ae1ee75", "54ed1440368de80723eddd89931fe191", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_claim1.dds"},
+    {"2014 - Heroes of the Storm/30414", "4b5d1f21de95c2a448684f98cc157f10", "ff32ed33bfcb40e01bf75c8df381eca5", "mods\\heromods\\murky.stormmod\\base.stormdata\\gamedata\\buttondata.xml"},
+    {"2014 - Heroes of the Storm/31726", "8b7633e519b78c96c85a1faa1c9f151f", "a0fd31d04f1bd6c5b3532c72592abf19", "mods\\heroes.stormmod\\base.stormassets\\Assets\\modeltextures.db"},
+    {"2014 - Heroes of the Storm/39445", "c672b26f8f14ab2e68a9f9d7d6ca6062", "5ab7d596b5d6025072d7f331b3d7167a", "versions.osxarchive\\Versions\\Base39153\\Heroes.app\\Contents\\_CodeSignature\\CodeResources"},
+    {"2014 - Heroes of the Storm/50286", "d1d57e83cbd72cbecd76916c22f6c4b6", "572598a728ac46dd18278636394c4fbc", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
+    {"2014 - Heroes of the Storm/65943", "c5d75f4e12dbc05d4560fe61c4b88773", "981b882e090bdc027910ba70744c0e2c", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
 
-    //{"2015 - Diablo III/30013",          "86ba76b46c88eb7c6188d28a27d00f49", "b642f0dd232c591f05e6bdd65e28da82", "ENCODING"},
-    //{"2015 - Diablo III/50649",          "18cd3eb87a46e2d3aa0c57d1d8f8b8ff", "84f4d3c1815afd69fc7edd8fb403815d", "ENCODING"},
-  
-    //{"2015 - Overwatch/24919/data/casc", "53afa15570c29bd40bba4707b607657e", "117073f6e207e8cdcf43b705b80bf120", "ROOT"},
-    //{"2015 - Overwatch/47161",           "53db1f3da005211204997a6b50aa71e1", "434d7ff16fe0d283a2dacfc1390cb16e", "TactManifest\\Win_SPWin_RCN_LesMX_EExt.apm"},
+    {"2015 - Diablo III/30013",          "86ba76b46c88eb7c6188d28a27d00f49", "b642f0dd232c591f05e6bdd65e28da82", "ENCODING"},
+    {"2015 - Diablo III/50649",          "18cd3eb87a46e2d3aa0c57d1d8f8b8ff", "84f4d3c1815afd69fc7edd8fb403815d", "ENCODING"},
 
-    //{"2016 - Starcraft II/45364/\\/",    "28f8b15b5bbd87c16796246eac3f800c", "4f5d1cd5453557ef7e10d35975df2b12", "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
+    {"2015 - Overwatch/24919/data/casc", "53afa15570c29bd40bba4707b607657e", "117073f6e207e8cdcf43b705b80bf120", "ROOT"},
+    {"2015 - Overwatch/47161",           "53db1f3da005211204997a6b50aa71e1", "434d7ff16fe0d283a2dacfc1390cb16e", "TactManifest\\Win_SPWin_RCN_LesMX_EExt.apm"},
 
-    //{"2016 - WoW/18125",                 "d259ca3ed110ed15eab4b1f878698ba9", "515e1e4a52e01164325381e32eefb4b8", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    //{"2016 - WoW/18379",                 "d1845d0e89a42e8abef58810ace0bff0", "6b1c506bb469c4a720a013fc370222d9", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    //{"2016 - WoW/18865",                 "6166ff84ff51d98c842484474befdff4", "65d3e817e66ab6b8590fbc8993c1d8d2", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    //{"2016 - WoW/18888",                 "86a9e3fbfdf918d8ef04c9c7c4d539ec", "89f71a4a0dafde62779494f05538191f", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    //{"2016 - WoW/19116",                 "80d44137f73304aad50058bf7c9665db", "13748b5c63a0208a0249fefdc7ad2107", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    //{"2016 - WoW/19342",                 "88c38a8bae64f96e7909242dca0bcbca", "840ae2d707c39b7bb505bdf44577881e", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    //{"2016 - WoW/21742",                 "f2fae76c751f37ab96e055c29509d0b1", "14af3edcb36182f40d0be939db9a2bf4", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    //{"2016 - WoW/22267",                 "e7ff9e86262cb76d6942d3d0c3e9cc8f", "1fccee4bd1ce543b675895a44136e5f6", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    //{"2016 - WoW/23420",                 "86606a70b8ef7c6852fbeed74d12a76e", "53abbd39879c5bdc687f904da3adff7d", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    //{"2016 - WoW/29981",                 "10cfc2ab6cad8f10bb2d3d9d1af3a9c9", "f9c095253077188992c49e7c2f0d3318", "dbfilesclient\\battlepetspeciesstate.db2"},
-    //{"2016 - WoW/30123",                 "31b3a0ff6d3d6b3b56dc2c9eaceedf6c", "89f30ee6bce242d519804628837ef365", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - Starcraft II/45364/\\/",    "28f8b15b5bbd87c16796246eac3f800c", "4f5d1cd5453557ef7e10d35975df2b12", "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
 
-    //{"2017 - Starcraft1/2457",           "3eabb81825735cf66c0fc10990f423fa", "2ed3292de2285f7cf1f9c889a318b240", "music\\radiofreezerg.ogg"},
-    //{"2017 - Starcraft1/4037",           "bb2b76d657a841953fe093b75c2bdaf6", "5bf1dc985f0957d3ba92ed9c5431b31b", "music\\radiofreezerg.ogg"},
-    //{"2017 - Starcraft1/4261",           "59ea96addacccb73938fdf688d7aa29b", "4bade608b78b186a90339aa557ad3332", "music\\radiofreezerg.ogg"},
+    {"2016 - WoW/18125",                 "d259ca3ed110ed15eab4b1f878698ba9", "515e1e4a52e01164325381e32eefb4b8", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/18379",                 "d1845d0e89a42e8abef58810ace0bff0", "6b1c506bb469c4a720a013fc370222d9", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/18865",                 "6166ff84ff51d98c842484474befdff4", "65d3e817e66ab6b8590fbc8993c1d8d2", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/18888",                 "86a9e3fbfdf918d8ef04c9c7c4d539ec", "89f71a4a0dafde62779494f05538191f", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/19116",                 "80d44137f73304aad50058bf7c9665db", "13748b5c63a0208a0249fefdc7ad2107", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/19342",                 "88c38a8bae64f96e7909242dca0bcbca", "840ae2d707c39b7bb505bdf44577881e", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/21742",                 "f2fae76c751f37ab96e055c29509d0b1", "14af3edcb36182f40d0be939db9a2bf4", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/22267",                 "e7ff9e86262cb76d6942d3d0c3e9cc8f", "1fccee4bd1ce543b675895a44136e5f6", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/23420",                 "86606a70b8ef7c6852fbeed74d12a76e", "53abbd39879c5bdc687f904da3adff7d", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/29981",                 "10cfc2ab6cad8f10bb2d3d9d1af3a9c9", "ca40f5e4441a047e4a9ccf83de62398b", "dbfilesclient\\battlepetspeciesstate.db2"},
+    {"2016 - WoW/30993:wow",             "c8ac90663b2be8321cee7469baa0279e", "62559142b42ef19fe949439a2faa9152", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"2016 - WoW/30993:wowt",            "01f84acbaaa4bde0532aa2e6490c6162", "80334898119c04ae50032cb2c537dea4", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
 
-    //{"2018 - New CASC/00001",            "43d576ee81841a63f2211d43a50bb593", "2b7829b59c0b6e7ca6f6111bfb0dc426", "ROOT"},
-    //{"2018 - New CASC/00002",            "1c76139b51edd3ee114b5225d1b44c86", "4289e1e095dbfaec5dd926b5f9f22c6f", "ENCODING"},
+    {"2017 - Starcraft1/2457",           "3eabb81825735cf66c0fc10990f423fa", "2ed3292de2285f7cf1f9c889a318b240", "music\\radiofreezerg.ogg"},
+    {"2017 - Starcraft1/4037",           "bb2b76d657a841953fe093b75c2bdaf6", "5bf1dc985f0957d3ba92ed9c5431b31b", "music\\radiofreezerg.ogg"},
+    {"2017 - Starcraft1/4261",           "59ea96addacccb73938fdf688d7aa29b", "4bade608b78b186a90339aa557ad3332", "music\\radiofreezerg.ogg"},
 
-    //{"2018 - Warcraft III/09655",        "b1aeb7180848b83a7a3132cba608b254", "5d0e71a47f0b550de6884cfbbe3f50e5", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
-    //{"2018 - Warcraft III/11889",        "f084ee1713153d8a15f1f75e94719aa8", "3541073dd77d370a01fbbcadd029477e", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
+    {"2018 - New CASC/00001",            "43d576ee81841a63f2211d43a50bb593", "2b7829b59c0b6e7ca6f6111bfb0dc426", "ROOT"},
+    {"2018 - New CASC/00002",            "1c76139b51edd3ee114b5225d1b44c86", "4289e1e095dbfaec5dd926b5f9f22c6f", "ENCODING"},
 
-    {"2018 - CoD4/3376209",              "b547336a835ab527a9c05f5e89691dbb",   NULL,                               "zone/base.xpak" },
+    {"2018 - Warcraft III/09655",        "b1aeb7180848b83a7a3132cba608b254", "5d0e71a47f0b550de6884cfbbe3f50e5", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
+    {"2018 - Warcraft III/11889",        "f084ee1713153d8a15f1f75e94719aa8", "3541073dd77d370a01fbbcadd029477e", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
 
-    {"2019 - WoW Classic/30406",         NULL,                               NULL,                          "dbfilesclient\\battlepetspeciesstate.db2"},
+    {"2019 - WoW Classic/30406",           "f8970d6eb325eb7f8a009ec5dec38a14", "46813aeb2614e331e77dfd0a0e3af788", "dbfilesclient\\battlepetspeciesstate.db2"},
+
+    {"2018 - CoD4/3376209",              "b547336a835ab527a9c05f5e89691dbb", "bf4afee17e60183fbe80b8b5b989e786", "zone/base.xpak" },
+
     {NULL}
 };
 
@@ -949,17 +957,18 @@ int main(void)
     // Single tests
     //
 
-//  LocalStorage_Test(Storage_OpenFiles, "2014 - Heroes of the Storm\\50286", "ENCODING");
+//  LocalStorage_Test(Storage_OpenFiles, "2014 - Heroes of the Storm\\29049", "ENCODING");
 //  LocalStorage_Test(Storage_EnumFiles, "2015 - Diablo III\\30013");
 //  LocalStorage_Test(Storage_OpenFiles, "2016 - WoW\\29981", "dbfilesclient\\battlepetspeciesstate.db2");
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - New CASC\\00001");
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - New CASC\\00002");
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - Warcraft III\\11889");
-    LocalStorage_Test(Storage_SeekTest, "2018 - CoD4\\3376209", "zone/base.xpak");
+//  LocalStorage_Test(Storage_SeekTest, "2018 - CoD4\\3376209", "zone/base.xpak");
     //OnlineStorage_Test(Storage_ExtractFiles, "agent");
+    //OnlineStorage_Test(Storage_SeekTest, "viper", "us", "zone/base.xpak");
 
     // "dbfilesclient\\battlepetspeciesstate.db2"
-    //LocalStorage_Test(Storage_OpenFiles, "d:\\Hry\\World of Warcraft\\Data", "File00666606.bin");
+    //LocalStorage_Test(Storage_OpenFiles, "z:\\Hry\\World of Warcraft\\Data", "File00666606.bin");
     //LocalStorage_Test(Storage_OpenFiles, "z:\\Hry\\World of Warcraft\\Data", "FILE000C3B2D.bin");
 
     //

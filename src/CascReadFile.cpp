@@ -15,14 +15,14 @@
 //-----------------------------------------------------------------------------
 // Local functions
 
-static int OpenDataStream(TCascFile * hf, PCASC_FILE_SPAN pFileSpan, PCASC_CKEY_ENTRY pCKeyEntry, bool bDownloadFileIf)
+static DWORD OpenDataStream(TCascFile * hf, PCASC_FILE_SPAN pFileSpan, PCASC_CKEY_ENTRY pCKeyEntry, bool bDownloadFileIf)
 {
     TCascStorage * hs = hf->hs;
     TFileStream * pStream = NULL;
     TCHAR * szDataFile;
     TCHAR szCachePath[MAX_PATH];
     TCHAR szPlainName[0x80];
-    int nError;
+    DWORD dwErrCode;
 
     // If the file is available locally, we rely on data files.
     // If not, we download the file and open the stream
@@ -57,12 +57,16 @@ static int OpenDataStream(TCascFile * hf, PCASC_FILE_SPAN pFileSpan, PCASC_CKEY_
         if(bDownloadFileIf)
         {
             // Create the local folder path and download the file from CDN
-            nError = DownloadFileFromCDN(hs, _T("data"), pCKeyEntry->EKey, NULL, szCachePath, _countof(szCachePath));
-            if(nError == ERROR_SUCCESS)
+            dwErrCode = DownloadFileFromCDN(hs, _T("data"), pCKeyEntry->EKey, NULL, szCachePath, _countof(szCachePath));
+            if(dwErrCode == ERROR_SUCCESS)
             {
                 pFileSpan->pStream = FileStream_OpenFile(szCachePath, BASE_PROVIDER_FILE | STREAM_PROVIDER_FLAT);
                 if(pFileSpan->pStream != NULL)
                 {
+                    // Initialize information about the archive
+                    pFileSpan->ArchiveIndex = pFileSpan->ArchiveOffs = 0;
+
+                    // We need to close the file stream after we're done
                     hf->bCloseFileStream = true;
                     return ERROR_SUCCESS;
                 }

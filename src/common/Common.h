@@ -48,6 +48,20 @@ typedef struct _PATH_BUFFER
 } PATH_BUFFER, *PPATH_BUFFER;
 
 //-----------------------------------------------------------------------------
+// EKey entry, captured from index files of all types. This structure
+// is somewhat less memory consuming than CASC_CKEY_ENTRY
+
+typedef struct _CASC_EKEY_ENTRY
+{
+    BYTE EKey[MD5_HASH_SIZE];                       // Encoded key. Length depends on TCascStorage::EKeyLength
+    ULONGLONG StorageOffset;                        // Offset of the encoded file in archive.
+                                                    // Lower (TCascStorage::FileOffsetBits) bits are archive offset.
+                                                    // Upper bits are archive index
+    DWORD EncodedSize;                              // Encoded size
+    DWORD Alignment;                                // Alignment to 8-byte boundary. Reserved for future use
+} CASC_EKEY_ENTRY, *PCASC_EKEY_ENTRY;
+
+//-----------------------------------------------------------------------------
 // Basic structure used by all CascLib objects to describe a single entry
 // in the CASC storage. Each entry represents one physical file
 // in the storage. Note that the file may be present under several file names.
@@ -263,6 +277,7 @@ LPBYTE CaptureInteger32(LPBYTE pbDataPtr, LPBYTE pbDataEnd, PDWORD PtrValue);
 LPBYTE CaptureInteger32_BE(LPBYTE pbDataPtr, LPBYTE pbDataEnd, PDWORD PtrValue);
 LPBYTE CaptureByteArray(LPBYTE pbDataPtr, LPBYTE pbDataEnd, size_t nLength, LPBYTE pbOutput);
 LPBYTE CaptureContentKey(LPBYTE pbDataPtr, LPBYTE pbDataEnd, PCONTENT_KEY * PtrCKey);
+LPBYTE CaptureEncodedKey(LPBYTE pbEKey, LPBYTE pbData, BYTE EKeyLength);
 LPBYTE CaptureArray_(LPBYTE pbDataPtr, LPBYTE pbDataEnd, LPBYTE * PtrArray, size_t ItemSize, size_t ItemCount);
 
 #define CaptureArray(pbDataPtr, pbDataEnd, PtrArray, type, count) CaptureArray_(pbDataPtr, pbDataEnd, PtrArray, sizeof(type), count) 

@@ -43,7 +43,7 @@ class CASC_FILE_TREE
     public:
 
     // Initializes/destroys the entire tree
-    int Create(DWORD Flags = 0);
+    DWORD Create(DWORD Flags = 0);
     void Free();
 
     // Inserts a new node to the tree; either with name or nameless

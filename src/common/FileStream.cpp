@@ -615,7 +615,7 @@ static bool BaseHttp_Open(TFileStream * pStream, const TCHAR * szFileName, DWORD
     HINTERNET hRequest;
     DWORD dwTemp = 0;
     bool bFileAvailable = false;
-    int nError = ERROR_SUCCESS;
+    DWORD dwErrCode = ERROR_SUCCESS;
 
     // Check alternate ports
     if(dwStreamFlags & STREAM_FLAG_USE_PORT_1119)
@@ -625,10 +625,10 @@ static bool BaseHttp_Open(TFileStream * pStream, const TCHAR * szFileName, DWORD
 
     // Don't download if we are not connected to the internet
     if(!InternetGetConnectedState(&dwTemp, 0))
-        nError = GetLastError();
+        dwErrCode = GetLastError();
 
     // Initiate the connection to the internet
-    if(nError == ERROR_SUCCESS)
+    if(dwErrCode == ERROR_SUCCESS)
     {
         pStream->Base.Http.hInternet = InternetOpen(_T("agent/2.17.2.6700"),
                                                     INTERNET_OPEN_TYPE_PRECONFIG,
@@ -636,11 +636,11 @@ static bool BaseHttp_Open(TFileStream * pStream, const TCHAR * szFileName, DWORD
                                                     NULL,
                                                     0);
         if(pStream->Base.Http.hInternet == NULL)
-            nError = GetLastError();
+            dwErrCode = GetLastError();
     }
 
     // Connect to the server
-    if(nError == ERROR_SUCCESS)
+    if(dwErrCode == ERROR_SUCCESS)
     {
         TCHAR szServerName[MAX_PATH];
         DWORD dwFlags = INTERNET_FLAG_KEEP_CONNECTION | INTERNET_FLAG_NO_UI | INTERNET_FLAG_NO_CACHE_WRITE;
@@ -656,11 +656,11 @@ static bool BaseHttp_Open(TFileStream * pStream, const TCHAR * szFileName, DWORD
                                                       dwFlags,
                                                       0);
         if(pStream->Base.Http.hConnect == NULL)
-            nError = GetLastError();
+            dwErrCode = GetLastError();
     }
 
     // Now try to query the file size
-    if(nError == ERROR_SUCCESS)
+    if(dwErrCode == ERROR_SUCCESS)
     {
         // Open HTTP request to the file
         hRequest = HttpOpenRequest(pStream->Base.Http.hConnect, _T("GET"), szFileName, NULL, NULL, NULL, INTERNET_FLAG_NO_CACHE_WRITE, 0);
@@ -702,7 +702,7 @@ static bool BaseHttp_Open(TFileStream * pStream, const TCHAR * szFileName, DWORD
                 }
                 else
                 {
-                    nError = ERROR_FILE_NOT_FOUND;
+                    dwErrCode = ERROR_FILE_NOT_FOUND;
                 }
             }
             InternetCloseHandle(hRequest);
@@ -714,7 +714,7 @@ static bool BaseHttp_Open(TFileStream * pStream, const TCHAR * szFileName, DWORD
     if(bFileAvailable == false)
     {
         pStream->BaseClose(pStream);
-        SetLastError(nError);
+        SetLastError(dwErrCode);
         return false;
     }
 

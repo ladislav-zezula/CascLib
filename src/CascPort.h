@@ -87,6 +87,7 @@
   #include <errno.h>
   #include <stddef.h>
   #include <string.h>
+  #include <ctype.h>
   #include <cassert>
 
   // Support for PowerPC on Max OS X

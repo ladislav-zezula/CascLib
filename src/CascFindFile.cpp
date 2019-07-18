@@ -190,31 +190,31 @@ HANDLE WINAPI CascFindFirstFile(
 {
     TCascStorage * hs;
     TCascSearch * pSearch = NULL;
-    int nError = ERROR_SUCCESS;
+    DWORD dwErrCode = ERROR_SUCCESS;
 
     // Check parameters
     if((hs = TCascStorage::IsValid(hStorage)) == NULL)
-        nError = ERROR_INVALID_HANDLE;
+        dwErrCode = ERROR_INVALID_HANDLE;
     if(szMask == NULL || pFindData == NULL)
-        nError = ERROR_INVALID_PARAMETER;
+        dwErrCode = ERROR_INVALID_PARAMETER;
 
     // Init the search structure and search handle
-    if(nError == ERROR_SUCCESS)
+    if(dwErrCode == ERROR_SUCCESS)
     {
         // Allocate the search handle
         pSearch = new TCascSearch(hs, szListFile, szMask);
         if(pSearch == NULL)
-            nError = ERROR_NOT_ENOUGH_MEMORY;
+            dwErrCode = ERROR_NOT_ENOUGH_MEMORY;
     }
 
     // Perform search
-    if(nError == ERROR_SUCCESS)
+    if(dwErrCode == ERROR_SUCCESS)
     {
         if(!DoStorageSearch(pSearch, pFindData))
-            nError = ERROR_NO_MORE_FILES;
+            dwErrCode = ERROR_NO_MORE_FILES;
     }
 
-    if(nError != ERROR_SUCCESS)
+    if(dwErrCode != ERROR_SUCCESS)
     {
         delete pSearch;
         pSearch = (TCascSearch *)INVALID_HANDLE_VALUE;
