@@ -17,6 +17,7 @@ EXPORTS
     CascCloseStorage
 
     CascOpenFile
+    CascOpenLocalFile
     CascGetFileInfo
     CascGetFileSize
     CascGetFileSize64

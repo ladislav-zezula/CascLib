@@ -2367,7 +2367,7 @@ static TFileStream * Block4Stream_Open(const TCHAR * szFileName, DWORD dwStreamF
  */
 
 TFileStream * FileStream_CreateFile(
-    const TCHAR * szFileName,
+    LPCTSTR szFileName,
     DWORD dwStreamFlags)
 {
     TFileStream * pStream;
@@ -2422,7 +2422,7 @@ TFileStream * FileStream_CreateFile(
  */
 
 TFileStream * FileStream_OpenFile(
-    const TCHAR * szFileName,
+    LPCTSTR szFileName,
     DWORD dwStreamFlags)
 {
     DWORD dwProvider = dwStreamFlags & STREAM_PROVIDERS_MASK;
@@ -2471,7 +2471,7 @@ const TCHAR * FileStream_GetFileName(TFileStream * pStream)
  * \a pdwStreamProvider Pointer to a DWORD variable that receives stream provider (STREAM_PROVIDER_XXX)
  */
 
-size_t FileStream_Prefix(const TCHAR * szFileName, DWORD * pdwProvider)
+size_t FileStream_Prefix(LPCTSTR szFileName, DWORD * pdwProvider)
 {
     size_t nPrefixLength1 = 0;
     size_t nPrefixLength2 = 0;

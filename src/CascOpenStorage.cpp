@@ -205,6 +205,7 @@ static int LoadEncodingCKeyPage(TCascStorage * hs, CASC_ENCODING_HEADER & EnHead
         // Example of a file entry with multiple EKeys: 
         // Overwatch build 24919, CKey: 0e 90 94 fa d2 cb 85 ac d0 7c ea 09 f9 c5 ba 00 
 //      BREAKIF(pFileEntry->EKeyCount > 1);
+        BREAK_ON_XKEY3(pFileEntry->CKey, 0xE8, 0xF8, 0x5A);
 
         // Insert the CKey entry into the array
         pCKeyEntry = (PCASC_CKEY_ENTRY)hs->CKeyArray.Insert(1);

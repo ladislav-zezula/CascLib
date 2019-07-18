@@ -305,6 +305,7 @@ struct TCascFile
     TCascFile(TCascStorage * hs, PCASC_CKEY_ENTRY pCKeyEntry);
     ~TCascFile();
 
+    DWORD OpenFileSpans(LPCTSTR szSpanList);
     void InitFileSpans(PCASC_FILE_SPAN pSpans, DWORD dwSpanCount);
     void InitCacheStrategy();
 
@@ -314,7 +315,6 @@ struct TCascFile
 
         return (hf != INVALID_HANDLE_VALUE &&
                 hf != NULL &&
-                hf->hs != NULL &&
                 hf->ClassName == CASC_MAGIC_FILE &&
                 hf->pCKeyEntry != NULL) ? hf : NULL;
     }
@@ -335,16 +335,12 @@ struct TCascFile
     DWORD bDownloadFileIf:1;                        // If true, then the data will be downloaded from the online storage if missing
     DWORD bCloseFileStream:1;                       // If true, file stream needs to be closed during CascCloseFile
     DWORD bOvercomeEncrypted:1;                     // If true, then CascReadFile will fill the part that is encrypted (and key was not found) with zeros 
+    DWORD bFreeCKeyEntries:1;                       // If true, dectructor will free the array of CKey entries
 
     ULONGLONG FileCacheStart;                       // Starting offset of the file cached area
     ULONGLONG FileCacheEnd;                         // Ending offset of the file cached area
     LPBYTE pbFileCache;                             // Pointer to file cached area
     CSTRTG CacheStrategy;                           // Caching strategy. See CSTRTG enum for more info
-
-    // TODO: DELETE THIS!!!
-//  PCASC_FILE_FRAME pFrames;                       // Array of file frames
-    DWORD FrameCount;                               // Number of the file frames
-    DWORD cbFileCache;                              // Size of the file cache
 };
 
 struct TCascSearch

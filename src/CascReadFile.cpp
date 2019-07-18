@@ -398,38 +398,41 @@ static DWORD LoadFileSpanFrames(TCascFile * hf)
 {
     PCASC_CKEY_ENTRY pCKeyEntry = hf->pCKeyEntry;
     PCASC_FILE_SPAN pFileSpan = hf->pFileSpan;
-    ULONGLONG StartOffset = 0;
     DWORD dwErrCode = ERROR_SUCCESS;
-    bool bUpdateContentSize = false;
 
-    // Shall we update the content size?
-    if(hf->ContentSize == CASC_INVALID_SIZE64)
+    // If the ContentSize/EncodedSize is still unknown, we need to get it from the file frames
+    if(hf->ContentSize == CASC_INVALID_SIZE64 || hf->EncodedSize == CASC_INVALID_SIZE64)
     {
-        bUpdateContentSize = true;
+        // Set initially to zero
         hf->ContentSize = 0;
-    }
+        hf->EncodedSize = 0;
 
-    // Load file frames for all spans
-    for(DWORD i = 0; i < hf->SpanCount; i++, pCKeyEntry++, pFileSpan++)
-    {
-        // Update the start offset, if needed
-        if(bUpdateContentSize)
+        // Load file frames for all spans
+        for(DWORD i = 0; i < hf->SpanCount; i++, pCKeyEntry++, pFileSpan++)
         {
-            pFileSpan->StartOffset = StartOffset;
-            pFileSpan->EndOffset = StartOffset;
+            // Init the range of the file span
+            pFileSpan->StartOffset = hf->ContentSize;
+            pFileSpan->EndOffset = hf->ContentSize;
+
+            // Load the frames of the file span
+            dwErrCode = LoadSpanFrames(hf, pFileSpan, pCKeyEntry);
+            if(dwErrCode != ERROR_SUCCESS)
+                break;
+
+            hf->ContentSize += pCKeyEntry->ContentSize;
+            hf->EncodedSize += pCKeyEntry->EncodedSize;
+            pFileSpan->EndOffset = hf->ContentSize;
         }
-
-        // Load the frames of the file span
-        dwErrCode = LoadSpanFrames(hf, pFileSpan, pCKeyEntry);
-        if(dwErrCode != ERROR_SUCCESS)
-            break;
-
-        // Update the span area
-        if(bUpdateContentSize)
+    }
+    else
+    {
+        // Load file frames for all spans
+        for(DWORD i = 0; i < hf->SpanCount; i++, pCKeyEntry++, pFileSpan++)
         {
-            pFileSpan->EndOffset = StartOffset + pCKeyEntry->ContentSize;
-            hf->ContentSize = hf->ContentSize + pCKeyEntry->ContentSize;
-            StartOffset = StartOffset + pCKeyEntry->ContentSize;
+            // Load the frames of the file span
+            dwErrCode = LoadSpanFrames(hf, pFileSpan, pCKeyEntry);
+            if(dwErrCode != ERROR_SUCCESS)
+                break;
         }
     }
 
@@ -1107,6 +1110,15 @@ bool WINAPI CascReadFile(HANDLE hFile, void * pvBuffer, DWORD dwBytesToRead, PDW
         return false;
     }
 
+    // If we don't have file frames loaded, we need to do it now.
+    // Need to do it before file range check, as the file size may be unknown at this point
+    dwErrCode = EnsureFileSpanFramesLoaded(hf);
+    if(dwErrCode != ERROR_SUCCESS)
+    {
+        SetLastError(dwErrCode);
+        return false;
+    }
+
     // If the file position is at or beyond end of file, do nothing
     SaveFilePointer = StartOffset = hf->FilePointer;
     if(StartOffset >= hf->ContentSize)
@@ -1120,14 +1132,6 @@ bool WINAPI CascReadFile(HANDLE hFile, void * pvBuffer, DWORD dwBytesToRead, PDW
     if(EndOffset > hf->ContentSize)
     {
         EndOffset = hf->ContentSize;
-    }
-
-    // If we don't have file frames loaded, we need to do it now
-    dwErrCode = EnsureFileSpanFramesLoaded(hf);
-    if(dwErrCode != ERROR_SUCCESS)
-    {
-        SetLastError(dwErrCode);
-        return false;
     }
 
     // Can we handle the request (at least partially) from the cache?
