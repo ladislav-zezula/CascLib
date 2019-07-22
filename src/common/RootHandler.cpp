@@ -82,8 +82,8 @@ PCASC_CKEY_ENTRY TFileTreeRoot::Search(TCascSearch * pSearch, PCASC_FIND_DATA pF
                     FileTree.GetExtras(pFileNode, &pFindData->dwFileDataId, &pFindData->dwLocaleFlags, &pFindData->dwContentFlags);
 
                     // Supply the bCanOpenByDataId variable
-                    pFindData->bCanOpenByName = (pFileNode->FileNameHash != 0);
-                    pFindData->bCanOpenByDataId = (pFindData->dwFileDataId != CASC_INVALID_ID);
+//                  pFindData->bCanOpenByName = (pFileNode->FileNameHash != 0);
+//                  pFindData->bCanOpenByDataId = (pFindData->dwFileDataId != CASC_INVALID_ID);
 
                     // Return the found CKey entry
                     return pFileNode->pCKeyEntry;

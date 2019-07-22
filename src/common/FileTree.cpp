@@ -477,8 +477,8 @@ PCASC_FILE_NODE CASC_FILE_TREE::Find(const char * szFullPath, DWORD FileDataId, 
     if(pFileNode != NULL && pFindData != NULL)
     {
         GetExtras(pFileNode, &pFindData->dwFileDataId, &pFindData->dwLocaleFlags, &pFindData->dwContentFlags);
-        pFindData->bCanOpenByName   = (pFileNode->FileNameHash != 0);
-        pFindData->bCanOpenByDataId = (FileDataIdOffset != 0);
+//      pFindData->bCanOpenByName   = (pFileNode->FileNameHash != 0);
+//      pFindData->bCanOpenByDataId = (FileDataIdOffset != 0);
     }
 
     return pFileNode;
@@ -588,8 +588,16 @@ bool CASC_FILE_TREE::SetNodeFileName(PCASC_FILE_NODE pFileNode, const char * szF
         // We need to reset the file node pointer, as the file node table might have changed
         pFileNode = (PCASC_FILE_NODE)NodeTable.ItemAt(nFileNode);
         
+        // Write the plain file name to the node
         SetNodePlainName(pFileNode, szNodeBegin, szFileName + i);
         pFileNode->Parent = Parent;
+
+        // Also insert the node to the hash table so CascOpenFile can find it
+        if(pFileNode->FileNameHash == 0)
+        {
+            pFileNode->FileNameHash = CalcNormNameHash(szPathBuffer, i);
+            InsertToHashTable(pFileNode);
+        }
     }
     return true;
 }

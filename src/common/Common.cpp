@@ -81,6 +81,19 @@ void SetLastError(DWORD dwErrCode)
 //-----------------------------------------------------------------------------
 // Linear data stream manipulation
 
+LPBYTE CaptureInteger16_BE(LPBYTE pbDataPtr, LPBYTE pbDataEnd, PDWORD PtrValue)
+{
+    // Is there enough data?
+    if((pbDataPtr + sizeof(USHORT)) > pbDataEnd)
+        return NULL;
+
+    // Convert data from Little endian to 
+    PtrValue[0] = ConvertBytesToInteger_2(pbDataPtr);
+
+    // Return the pointer to data following after the integer
+    return pbDataPtr + sizeof(USHORT);
+}
+
 LPBYTE CaptureInteger32(LPBYTE pbDataPtr, LPBYTE pbDataEnd, PDWORD PtrValue)
 {
     // Is there enough data?

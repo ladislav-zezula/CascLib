@@ -476,13 +476,6 @@ DWORD RootHandler_CreateWoW(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFi
     DWORD FileCounterHashless = 0;
     DWORD dwErrCode = ERROR_BAD_FORMAT;
 
-    //FILE * fp = fopen("E:\\root-new.dat", "wt");
-    //if(fp != NULL)
-    //{
-    //    fwrite(pbRootFile, 1, (pbRootEnd - pbRootFile), fp);
-    //    fclose(fp);
-    //}
-
     // Check for the new format (World of Warcraft 8.2, build 30170)
     pbRootPtr = TRootHandler_WoW::CaptureRootHeader(RootHeader, pbRootFile, pbRootEnd);
     if(pbRootPtr != NULL)

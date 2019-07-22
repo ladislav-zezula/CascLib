@@ -740,19 +740,7 @@ struct TDiabloRoot : public TFileTreeRoot
         {
             LPBYTE pbPackagesPtr = pbPackagesDat;
             LPBYTE pbPackagesEnd = pbPackagesDat + cbPackagesDat;
-/*
-            LPBYTE pbPackagesPtr = pbPackagesDat + 8;
-            FILE * fp = fopen("E:\\Packages.dat", "wt");
-            if(fp != NULL)
-            {
-                while(pbPackagesPtr < pbPackagesEnd)
-                {
-                    fprintf(fp, "%s\n", pbPackagesPtr);
-                    pbPackagesPtr = pbPackagesPtr + strlen((char *)pbPackagesPtr) + 1;
-                }
-                fclose(fp);
-            }
-*/
+
             // Get the header. There is just Signature + NumberOfNames
             if((pbPackagesPtr = CaptureInteger32(pbPackagesPtr, pbPackagesEnd, &Signature)) == NULL)
                 return ERROR_BAD_FORMAT;

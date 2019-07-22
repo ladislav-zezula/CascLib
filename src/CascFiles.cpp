@@ -859,13 +859,7 @@ static DWORD ParseFile_CdnBuild(TCascStorage * hs, void * pvListFile)
 
     // Both CKey and EKey of ENCODING file is required
     if((hs->EncodingCKey.Flags & (CASC_CE_HAS_CKEY | CASC_CE_HAS_EKEY)) != (CASC_CE_HAS_CKEY | CASC_CE_HAS_EKEY))
-        return ERROR_BAD_FORMAT;
-
-    // If the storage has a VFS root file, it usually references files by EKey.
-    // These files are often not present in the ENCODING table and thus we need to enable
-    // orphaned items (i.e. those present in indexes but not in ENCODING)
-    if(hs->VfsRoot.Flags & CASC_CE_HAS_CKEY)
-        hs->dwFeatures |= CASC_FEATURE_EKEYS_MERGED;
+        dwErrCode = ERROR_BAD_FORMAT;
     return dwErrCode;
 }
 
@@ -1091,6 +1085,8 @@ static DWORD DownloadFile(
     // Make sure that the path exists
     ForcePathExist(szLocalPath, true);
 
+    _tprintf(_T("%s\n"), szRemotePath);
+
     // If we are not forced to download a new one, try if local file exists.
     if ((bAlwaysDownload == false) && (_taccess(szLocalPath, 0) == 0))
     {
@@ -1176,33 +1172,30 @@ bool InvokeProgressCallback(TCascStorage * hs, LPCSTR szMessage, LPCSTR szObject
 
 DWORD GetFileSpanInfo(PCASC_CKEY_ENTRY pCKeyEntry, PULONGLONG PtrContentSize, PULONGLONG PtrEncodedSize)
 {
-    ULONGLONG ContentSize;
-    ULONGLONG EncodedSize;
-    DWORD dwSpanCount;
+    ULONGLONG ContentSize = 0;
+    ULONGLONG EncodedSize = 0;
+    DWORD dwSpanCount = pCKeyEntry->SpanCount;
+    bool bContentSizeError = false;
+    bool bEncodedSizeError = false;
 
-    if((dwSpanCount = pCKeyEntry->SpanCount) == 0)
-    {
-        ContentSize = pCKeyEntry->ContentSize;
-        EncodedSize = pCKeyEntry->EncodedSize;
-        dwSpanCount = 1;
-    }
-    else
-    {
-        // Initialize the variables
-        ContentSize = 0;
-        EncodedSize = 0;
+    // Sanity check
+    assert(pCKeyEntry->SpanCount != 0);
 
-        // Sum all span size
-        for(DWORD i = 0; i < dwSpanCount; i++, pCKeyEntry++)
-        {
-            ContentSize = ContentSize + pCKeyEntry->ContentSize;
-            EncodedSize = EncodedSize + pCKeyEntry->EncodedSize;
-        }
+    // Sum all span size
+    for(DWORD i = 0; i < dwSpanCount; i++, pCKeyEntry++)
+    {
+        if(pCKeyEntry->ContentSize == CASC_INVALID_SIZE)
+            bContentSizeError = true;
+        if(pCKeyEntry->EncodedSize == CASC_INVALID_SIZE)
+            bEncodedSizeError = true;
+
+        ContentSize = ContentSize + pCKeyEntry->ContentSize;
+        EncodedSize = EncodedSize + pCKeyEntry->EncodedSize;
     }
 
-    if(PtrEncodedSize != NULL)
-        PtrEncodedSize[0] = EncodedSize;
-    PtrContentSize[0] = ContentSize;
+    // Reset the sizes if there was an error
+    PtrContentSize[0] = (bContentSizeError == false) ? ContentSize : CASC_INVALID_SIZE64;
+    PtrEncodedSize[0] = (bEncodedSizeError == false) ? EncodedSize : CASC_INVALID_SIZE64;
     return dwSpanCount;
 }
 

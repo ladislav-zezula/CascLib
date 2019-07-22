@@ -141,7 +141,6 @@ extern "C" {
 #define CASC_FEATURE_LOCALE_FLAGS   0x00000040  // Locale flags are supported
 #define CASC_FEATURE_CONTENT_FLAGS  0x00000080  // Content flags are supported
 #define CASC_FEATURE_ONLINE         0x00000100  // The storage is an online storage
-#define CASC_FEATURE_EKEYS_MERGED   0x00000200  // The CKey table is merged with EKey entries from the index files
 
 // Macro to convert FileDataId to the argument of CascOpenFile
 #define CASC_FILE_DATA_ID(FileDataId) ((LPCSTR)(size_t)FileDataId)
@@ -162,7 +161,7 @@ typedef enum _CASC_STORAGE_INFO_CLASS
 
     
     CascStorageFeatures,                        // Returns the features flag
-    CascStorageInstalledLocales,
+    CascStorageInstalledLocales,                // Not supported
     CascStorageProduct,                         // Gives CASC_STORAGE_PRODUCT
     CascStorageTags,                            // Gives CASC_STORAGE_TAGS structure
     CascStoragePathProduct,                     // Gives Path:Product into a LPTSTR buffer
@@ -242,12 +241,11 @@ typedef struct _CASC_FIND_DATA
     // Span count
     DWORD dwSpanCount;
 
-    // Hints as for which open method is suitable
     DWORD bFileAvailable:1;                     // If true the file is available locally
-    DWORD bCanOpenByName:1;
-    DWORD bCanOpenByDataId:1;
-    DWORD bCanOpenByCKey:1;
-    DWORD bCanOpenByEKey:1;
+//  DWORD bCanOpenByName:1;
+//  DWORD bCanOpenByDataId:1;
+//  DWORD bCanOpenByCKey:1;
+//  DWORD bCanOpenByEKey:1;
     CASC_NAME_TYPE NameType;
 
 } CASC_FIND_DATA, *PCASC_FIND_DATA;

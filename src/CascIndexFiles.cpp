@@ -231,18 +231,52 @@ static bool CaptureIndexEntry(CASC_INDEX_HEADER & InHeader, PCASC_EKEY_ENTRY pEK
     return (pEKeyEntry->EncodedSize > FIELD_OFFSET(BLTE_ENCODED_HEADER, Signature));
 }
 
-static void CheckForEncodingManifestEKey(TCascStorage * hs, CASC_EKEY_ENTRY & EKeyEntry)
+static void InsertCKeyEntry(TCascStorage * hs, CASC_EKEY_ENTRY & EKeyEntry, DWORD Flags)
 {
-    // If the encoding file was not found yet
-    if(hs->EncodingCKey.StorageOffset == CASC_INVALID_OFFS64)
+    PCASC_CKEY_ENTRY pCKeyEntry;
+
+    // Multiple items with the same EKey in the index files may exist.
+    // Example: "2018 - New CASC\00001", EKey 37 89 16 5b 2d cc 71 c1 25 00 00 00 00 00 00 00
+    // Positions: 0x1D, 0x1E, 0x1F
+    // In that case, we only take the first one into account
+    // BREAK_ON_XKEY3(EKeyEntry.EKey, 0x09, 0xF3, 0xCD);
+
+    // If the item is not there yet, insert a new one
+    if((pCKeyEntry = FindCKeyEntry_EKey(hs, EKeyEntry.EKey)) == NULL)
     {
-        if(!memcmp(EKeyEntry.EKey, hs->EncodingCKey.EKey, hs->EKeyLength))
+        // Insert a new entry to the array. DO NOT ALLOW enlarge array here
+        pCKeyEntry = (PCASC_CKEY_ENTRY)hs->CKeyArray.Insert(1, false);
+        if(pCKeyEntry == NULL)
+            return;
+
+        // Fill-in the information
+        ZeroMemory16(pCKeyEntry->CKey);
+        CopyMemory16(pCKeyEntry->EKey, EKeyEntry.EKey);
+        pCKeyEntry->StorageOffset = EKeyEntry.StorageOffset;
+        pCKeyEntry->TagBitMask = 0;
+        pCKeyEntry->ContentSize = CASC_INVALID_SIZE;
+        pCKeyEntry->EncodedSize = EKeyEntry.EncodedSize;
+        pCKeyEntry->Flags = CASC_CE_HAS_EKEY | CASC_CE_HAS_EKEY_PARTIAL;
+        pCKeyEntry->RefCount = 0;
+        pCKeyEntry->SpanCount = 1;
+        pCKeyEntry->Priority = 0;
+
+        // Insert the item to the EKey table
+        hs->EKeyMap.InsertObject(pCKeyEntry, pCKeyEntry->EKey);
+    }
+    else
+    {
+        // The entry already exists. True e.g. for ENCODING.
+        // Only copy the storage offset and sizes if not available yet
+        if(pCKeyEntry->StorageOffset == CASC_INVALID_OFFS64)
         {
-            hs->EncodingCKey.StorageOffset = EKeyEntry.StorageOffset;
-            hs->EncodingCKey.EncodedSize = EKeyEntry.EncodedSize;
-            hs->EncodingCKey.Flags |= CASC_CE_FILE_IS_LOCAL;
+            pCKeyEntry->StorageOffset = EKeyEntry.StorageOffset;
+            pCKeyEntry->EncodedSize = EKeyEntry.EncodedSize;
         }
     }
+
+    // Add the extra flag
+    pCKeyEntry->Flags |= Flags;
 }
 
 static DWORD LoadIndexItems(TCascStorage * hs, CASC_INDEX_HEADER & InHeader, LPBYTE pbEKeyEntry, LPBYTE pbEKeyEnd)
@@ -256,12 +290,11 @@ static DWORD LoadIndexItems(TCascStorage * hs, CASC_INDEX_HEADER & InHeader, LPB
         // Capture the index entry and verify it.
         if(CaptureIndexEntry(InHeader, &EKeyEntry, pbEKeyEntry))
         {
-            // Insert new entry to the array of CKey entries
-            if(hs->IndexArray.Insert(&EKeyEntry, 1) == NULL)
-                return ERROR_NOT_ENOUGH_MEMORY;
+            // DOWNLOAD in HOTS
+            //BREAK_ON_XKEY3(EKeyEntry.EKey, 0x09, 0xF3, 0xCD);
 
-            // Verify whether the key is not a CKEy entry for ENCODING file
-            CheckForEncodingManifestEKey(hs, EKeyEntry);
+            // Insert the index entry to the central table
+            InsertCKeyEntry(hs, EKeyEntry, CASC_CE_FILE_IS_LOCAL);
         }
 
         pbEKeyEntry += EntryLength;
@@ -425,12 +458,7 @@ static DWORD LoadIndexFile_V2(TCascStorage * hs, CASC_INDEX_HEADER & InHeader, L
                 // Capture the index entry and verify it.
                 if(CaptureIndexEntry(InHeader, &EKeyEntry, pbEKeyEntry))
                 {
-                    // Insert the EKey entry to the array
-                    if(hs->IndexArray.Insert(&EKeyEntry, 1) == NULL)
-                        return ERROR_NOT_ENOUGH_MEMORY;
-
-                    // Check whether the CKey entry is an encoding entry
-                    CheckForEncodingManifestEKey(hs, EKeyEntry);
+                    InsertCKeyEntry(hs, EKeyEntry, CASC_CE_FILE_IS_LOCAL);
                 }
 
                 // Move to the next entry
@@ -498,32 +526,28 @@ static DWORD LoadLocalIndexFiles(TCascStorage * hs)
     dwErrCode = ScanIndexDirectory(hs->szIndexPath, IndexDirectory_OnFileFound, IndexArray, OldIndexArray, hs);
     if(dwErrCode == ERROR_SUCCESS)
     {
-        // Initialize the array of index files
-        if((dwErrCode = hs->IndexArray.Create(sizeof(CASC_EKEY_ENTRY), 0x200000)) == ERROR_SUCCESS)
+        // Load each index file
+        for(DWORD i = 0; i < CASC_INDEX_COUNT; i++)
         {
-            // Load each index file
-            for(DWORD i = 0; i < CASC_INDEX_COUNT; i++)
+            // Create the name of the index file
+            if((szFileName = CreateIndexFileName(hs, i, IndexArray[i])) != NULL)
             {
-                // Create the name of the index file
-                if((szFileName = CreateIndexFileName(hs, i, IndexArray[i])) != NULL)
+                // Inform the user about what we are doing
+                if(InvokeProgressCallback(hs, "Loading index files", NULL, i, CASC_INDEX_COUNT))
                 {
-                    // Inform the user about what we are doing
-                    if(InvokeProgressCallback(hs, "Loading index files", NULL, i, CASC_INDEX_COUNT))
-                    {
-                        dwErrCode = ERROR_CANCELLED;
-                        break;
-                    }
-
-                    // Load the index file
-                    if((dwErrCode = LoadIndexFile(hs, szFileName, i)) != ERROR_SUCCESS)
-                        break;
-                    CASC_FREE(szFileName);
+                    dwErrCode = ERROR_CANCELLED;
+                    break;
                 }
-            }
 
-            // Remember the number of files that are present locally
-            hs->LocalFiles = hs->IndexArray.ItemCount();
+                // Load the index file
+                if((dwErrCode = LoadIndexFile(hs, szFileName, i)) != ERROR_SUCCESS)
+                    break;
+                CASC_FREE(szFileName);
+            }
         }
+
+        // Remember the number of files that are present locally
+        hs->LocalFiles = hs->CKeyArray.ItemCount();
     }
 
     return dwErrCode;
@@ -632,9 +656,6 @@ static DWORD LoadArchiveIndexPage(TCascStorage * hs, CASC_ARCINDEX_FOOTER & InFo
         if((hs->IndexArray.Insert(&EKeyEntry, 1)) == NULL)
             return ERROR_NOT_ENOUGH_MEMORY;
 
-        // Verify whether the key is not a CKEy entry for ENCODING file
-        CheckForEncodingManifestEKey(hs, EKeyEntry);
-
         // Move to the next entry
         pbIndexPage += InFooter.ItemLength;
     }
@@ -676,7 +697,7 @@ static DWORD LoadArchiveIndexFile(TCascStorage * hs, LPBYTE pbIndexFile, DWORD c
     return ERROR_SUCCESS;
 }
 
-static DWORD BuildMapOfArcIndices(TCascStorage * hs)
+static DWORD BuildMapOfArchiveIndices(TCascStorage * hs)
 {
     PCASC_EKEY_ENTRY pEKeyEntry;
     size_t nItemCount = hs->IndexArray.ItemCount();
@@ -746,9 +767,9 @@ static DWORD LoadArchiveIndexFiles(TCascStorage * hs)
             break;
     }
 
-    // Build map of EKey -> CASC_ARCINDEX_ENTRY
+    // Build map of EKey -> CASC_EKEY_ENTRY
     if (dwErrCode == ERROR_SUCCESS)
-        dwErrCode = BuildMapOfArcIndices(hs);
+        dwErrCode = BuildMapOfArchiveIndices(hs);
     return dwErrCode;
 }
 

@@ -73,8 +73,10 @@ typedef struct _CASC_EKEY_ENTRY
 #define CASC_CE_HAS_EKEY_PARTIAL   0x00000008       // The EKey is only partial, padded by zeros. Always used with CASC_CE_HAS_EKEY
 #define CASC_CE_IN_ENCODING        0x00000010       // Present in the ENCODING manifest
 #define CASC_CE_IN_DOWNLOAD        0x00000020       // Present in the DOWNLOAD manifest
-#define CASC_CE_FOLDER_ENTRY       0x00000040       // This CKey entry is a folder
-#define CASC_CE_FILE_SPAN          0x00000080       // This CKey entry is a follow-up file span
+#define CASC_CE_IN_BUILD           0x00000040       // Present in the BUILD (text) manifest
+#define CASC_CE_IN_ARCHIVE         0x00000080       // File is stored in an archive (for online storages)
+#define CASC_CE_FOLDER_ENTRY       0x00000100       // This CKey entry is a folder
+#define CASC_CE_FILE_SPAN          0x00000200       // This CKey entry is a follow-up file span
 
 // In-memory representation of a single entry. 
 struct CASC_CKEY_ENTRY
@@ -90,14 +92,34 @@ struct CASC_CKEY_ENTRY
         StorageOffset = CASC_INVALID_OFFS64;
         EncodedSize = CASC_INVALID_SIZE;
         ContentSize = CASC_INVALID_SIZE;
+        SpanCount = 1;
+    }
+
+    bool IsFile()
+    {
+        // Must not be a folder entry
+        if((Flags & CASC_CE_FOLDER_ENTRY) == 0)
+        {
+            // There can be entries that are both file span or the standalone file
+            // * zone/zm_red.xpak - { zone/zm_red.xpak_1, zone/zm_red.xpak_2, ..., zone/zm_red.xpak_6 }
+            if((Flags & CASC_CE_FILE_SPAN) == 0 || RefCount != 0)
+            {
+                // To include the file, it must either be present in ENCODING or in DOWNLOAD
+                if(Flags & (CASC_CE_IN_ENCODING | CASC_CE_IN_DOWNLOAD | CASC_CE_IN_BUILD))
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     BYTE CKey[MD5_HASH_SIZE];                       // Content key of the full length
     BYTE EKey[MD5_HASH_SIZE];                       // Encoded key of the full length
     ULONGLONG StorageOffset;                        // Linear offset over the entire storage. 0 if not present
     ULONGLONG TagBitMask;                           // Bitmap for the tags. 0 ig tags are not supported
-    DWORD EncodedSize;                              // Encoded size of the file. 0 if not supported
-    DWORD ContentSize;                              // Content size of the file. 0 if not supported
+    DWORD ContentSize;                              // Content size of the file
+    DWORD EncodedSize;                              // Encoded size of the file
     DWORD Flags;                                    // See CASC_CE_XXX
     USHORT RefCount;                                // This is the number of file names referencing this entry
     BYTE SpanCount;                                 // Number of spans for the file
@@ -273,6 +295,7 @@ inline void CopyMemory16(void * Target, void * Source)
 //-----------------------------------------------------------------------------
 // Linear data stream manipulation
 
+LPBYTE CaptureInteger16_BE(LPBYTE pbDataPtr, LPBYTE pbDataEnd, PDWORD PtrValue);
 LPBYTE CaptureInteger32(LPBYTE pbDataPtr, LPBYTE pbDataEnd, PDWORD PtrValue);
 LPBYTE CaptureInteger32_BE(LPBYTE pbDataPtr, LPBYTE pbDataEnd, PDWORD PtrValue);
 LPBYTE CaptureByteArray(LPBYTE pbDataPtr, LPBYTE pbDataEnd, size_t nLength, LPBYTE pbOutput);

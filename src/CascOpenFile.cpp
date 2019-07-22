@@ -118,12 +118,11 @@ void TCascFile::InitFileSpans(PCASC_FILE_SPAN pSpans, DWORD dwSpanCount)
 {
     ULONGLONG FileOffsetBits = 30;
     ULONGLONG FileOffsetMask = 0;
-    bool bContentSizeError = false;
-    bool bEncodedSizeError = false;
+    ULONGLONG FileOffset = 0;
 
-    // Reset the sizes
-    ContentSize = 0;
-    EncodedSize = 0;
+    // Initialize the file sizes. Note that if any of the spans has invalid size,
+    // the entire file size will be set to CASC_INVALID_SIZE64.
+    GetFileSpanInfo(pCKeyEntry, &ContentSize, &EncodedSize);
 
     // Resolve the file offset bits and file offset mask
     if(hs != NULL)
@@ -138,21 +137,13 @@ void TCascFile::InitFileSpans(PCASC_FILE_SPAN pSpans, DWORD dwSpanCount)
         pSpans->ArchiveOffs = (DWORD)(pCKeyEntry[i].StorageOffset & FileOffsetMask);
 
         // Add to the total encoded size
-        if(pCKeyEntry[i].ContentSize == CASC_INVALID_SIZE)
-            bContentSizeError = true;
-        if(pCKeyEntry[i].EncodedSize == CASC_INVALID_SIZE)
-            bEncodedSizeError = true;
-
-        pSpans->StartOffset = ContentSize;
-        ContentSize = ContentSize + pCKeyEntry[i].ContentSize;
-        EncodedSize = EncodedSize + pCKeyEntry[i].EncodedSize;
-        pSpans->EndOffset = ContentSize;
+        if(ContentSize != CASC_INVALID_SIZE64)
+        {
+            pSpans->StartOffset = FileOffset;
+            FileOffset = FileOffset + pCKeyEntry[i].ContentSize;
+            pSpans->EndOffset = FileOffset;
+        }
     }
-
-    if(bContentSizeError)
-        ContentSize = CASC_INVALID_SIZE64;
-    if(bEncodedSizeError)
-        EncodedSize = CASC_INVALID_SIZE64;
 }
 
 void TCascFile::InitCacheStrategy()

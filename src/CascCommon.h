@@ -118,15 +118,6 @@ typedef struct _CASC_ARCINDEX_FOOTER
 
 } CASC_ARCINDEX_FOOTER, *PCASC_ARCINDEX_FOOTER;
 
-// Normalized structure for archive index entry
-typedef struct _CASC_ARCINDEX_ENTRY
-{
-    BYTE IndexHash[MD5_HASH_SIZE];
-    BYTE EKey[MD5_HASH_SIZE];
-    DWORD ArchiveOffset;
-    DWORD EncodedSize;
-} CASC_ARCINDEX_ENTRY, *PCASC_ARCINDEX_ENTRY;
-
 // Normalized header of the ENCODING file
 typedef struct _CASC_ENCODING_HEADER
 {
@@ -283,7 +274,7 @@ struct TCascStorage
     CASC_ARRAY VfsRootList;                         // List of CASC_EKEY_ENTRY for each TVFS sub-root
 
     TRootHandler * pRootHandler;                    // Common handler for various ROOT file formats
-    CASC_ARRAY IndexArray;                          // Array of CASC_EKEY_ENTRY, loaded from local index files
+    CASC_ARRAY IndexArray;                          // Array of CASC_EKEY_ENTRY, loaded from online indexes
     CASC_ARRAY CKeyArray;                           // Array of CASC_CKEY_ENTRY, loaded from ENCODING file
     CASC_ARRAY TagsArray;                           // Array of CASC_DOWNLOAD_TAG2
     CASC_MAP IndexMap;                              // Map of EKey -> IndexArray (for online archives)
