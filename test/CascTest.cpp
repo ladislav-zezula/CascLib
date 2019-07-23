@@ -536,7 +536,7 @@ static DWORD Storage_OpenFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
     return dwErrCode;
 }
 
-static DWORD Storage_SeekTest(TLogHelper & LogHelper, TEST_PARAMS & Params)
+static DWORD Storage_SeekFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
 {
     TFileStream * pStream;
     ULONGLONG TotalRead = 0;
@@ -762,7 +762,7 @@ static DWORD Storage_EnumFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
     return dwErrCode;
 }
 
-static DWORD Storage_ExtractFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
+static DWORD Storage_ReadFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
 {
     Params.bHashData = true;
     Params.bExtractFiles = true;
@@ -789,7 +789,7 @@ static DWORD LocalStorage_Test(PFN_RUN_TEST PfnRunTest, LPCSTR szStorage, LPCSTR
         Params.hStorage = hStorage;
         Params.szExpectedNameHash = (PfnRunTest != Storage_OpenFiles) ? szExpectedNameHash : NULL;
         Params.szExpectedDataHash = szExpectedDataHash;
-        Params.szFileName = (PfnRunTest != Storage_ExtractFiles) ? szExpectedNameHash : NULL;
+        Params.szFileName = (PfnRunTest != Storage_ReadFiles) ? szExpectedNameHash : NULL;
         dwErrCode = PfnRunTest(LogHelper, Params);
     }
     else
@@ -922,15 +922,15 @@ int main(void)
     //
 
 //  LocalStorage_Test(Storage_OpenFiles, "2014 - Heroes of the Storm\\29049", "ENCODING");
-//  LocalStorage_Test(Storage_ExtractFiles, "2014 - Heroes of the Storm\\30414", "84fd9825f313363fd2528cd999bcc852");
+//  LocalStorage_Test(Storage_ReadFiles, "2014 - Heroes of the Storm\\30414", "84fd9825f313363fd2528cd999bcc852");
 //  LocalStorage_Test(Storage_EnumFiles, "2015 - Diablo III\\30013");
 //  LocalStorage_Test(Storage_EnumFiles, "2016 - WoW/30993:wow", "00039929a204d6e65500000000000000");
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - New CASC\\00001");
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - New CASC\\00002");
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - Warcraft III\\11889");
-//  LocalStorage_Test(Storage_SeekTest, "2018 - CoD4\\3376209", "zone/base.xpak");
-//  OnlineStorage_Test(Storage_EnumFiles, "agent");
-    //OnlineStorage_Test(Storage_SeekTest, "viper", "us", "zone/base.xpak");
+//  LocalStorage_Test(Storage_SeekFiles, "2018 - CoD4\\3376209", "zone/base.xpak");
+    OnlineStorage_Test(Storage_ReadFiles, "agent", NULL, "Agent.6732\\Agent.app\\Contents\\_CodeSignature\\CodeResources");
+    //OnlineStorage_Test(Storage_SeekFiles, "viper", "us", "zone/base.xpak");
 
     //HANDLE hFile = NULL;
     //LPBYTE Buffer;
@@ -950,7 +950,7 @@ int main(void)
     for(size_t i = 0; StorageInfo1[i].szPath != NULL; i++)
     {
         // Attempt to open the storage and extract single file
-        dwErrCode = LocalStorage_Test(Storage_ExtractFiles, StorageInfo1[i].szPath, StorageInfo1[i].szNameHash, StorageInfo1[i].szDataHash);
+        dwErrCode = LocalStorage_Test(Storage_ReadFiles, StorageInfo1[i].szPath, StorageInfo1[i].szNameHash, StorageInfo1[i].szDataHash);
 //      dwErrCode = LocalStorage_Test(Storage_EnumFiles, StorageInfo1[i].szPath);
         if(dwErrCode != ERROR_SUCCESS)
             break;

@@ -740,6 +740,7 @@ static DWORD LoadArchiveIndexFiles(TCascStorage * hs)
     // Load all the indices
     for (size_t i = 0; i < nArchiveCount; i++)
     {
+        CASC_CDN_DOWNLOAD CdnsInfo = {0};
         LPBYTE pbIndexHash = hs->ArchivesKey.pbData + (i * MD5_HASH_SIZE);
 
         // Inform the user about what we are doing
@@ -749,8 +750,16 @@ static DWORD LoadArchiveIndexFiles(TCascStorage * hs)
             break;
         }
 
-        // Make sure that we have local copy of the file
-        dwErrCode = DownloadFileFromCDN(hs, _T("data"), pbIndexHash, _T(".index"), szLocalPath, _countof(szLocalPath));
+        // Prepare the download structure for "%CDNS_HOST%/%CDNS_PATH%/##/##/EKey" file
+        CdnsInfo.szCdnsPath = hs->szCdnPath;
+        CdnsInfo.szPathType = _T("data");
+        CdnsInfo.pbEKey = pbIndexHash;
+        CdnsInfo.szExtension = _T(".index");
+        CdnsInfo.szLocalPath = szLocalPath;
+        CdnsInfo.ccLocalPath = _countof(szLocalPath);
+        dwErrCode = DownloadFileFromCDN(hs, CdnsInfo);
+
+        // Load and parse the archive index
         if (dwErrCode == ERROR_SUCCESS)
         {
             // Load the index file to memory

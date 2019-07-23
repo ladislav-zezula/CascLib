@@ -356,43 +356,145 @@ wchar_t * CascNewStr(const wchar_t * szString, size_t nCharsToReserve)
     return szNewString;
 }
 
-template <typename XCHAR>
-TCHAR * AppendPathFragment(TCHAR * szBuffer, TCHAR * szBufferEnd, const XCHAR * szPath, char chSeparator, bool bFirstFragment = false)
+//-----------------------------------------------------------------------------
+// Path merging functions
+
+CASC_PATH::CASC_PATH(TCHAR chSeparator)
 {
-    // The "Path" must not be empty
-    if(szPath && szPath[0])
+    m_szBufferBegin = m_szBufferPtr = m_Buffer;
+    m_szBufferEnd = m_szBufferBegin + _countof(m_Buffer);
+    m_chSeparator = chSeparator;
+    m_Buffer[0] = 0;
+}
+
+CASC_PATH::~CASC_PATH()
+{
+    if(m_szBufferBegin != m_Buffer)
     {
-        // Append the path separator after the first fragment
-        if(szBuffer < szBufferEnd && bFirstFragment == false)
-        {
-            if(szBuffer[-1] != chSeparator)
-            {
-                *szBuffer++ = chSeparator;
-            }
-        }
+        CASC_FREE(m_szBufferBegin);
+    }
+}
 
-        // Copy the sub path
-        while(szBuffer < szBufferEnd && szPath[0] != 0)
-        {
-            // If there is a path separator, we skip it (all of them) and put single separator there
-            if(szPath[0] == '\\' || szPath[0] == '/')
-            {
-                while(szPath[0] == '\\' || szPath[0] == '/')
-                    szPath++;
-                *szBuffer++ = chSeparator;
-            }
-            else
-            {
-                *szBuffer++ = *szPath++;
-            }
-        }
+LPTSTR CASC_PATH::New()
+{
+    LPTSTR szNewStr;
 
-        // Append end of string
-        szBuffer[0] = 0;
+    if((szNewStr = CASC_ALLOC<TCHAR>(Length() + 1)) != NULL)
+    {
+        memcpy(szNewStr, m_szBufferBegin, Length() * sizeof(TCHAR));
+        szNewStr[Length()] = 0;
     }
 
-    return szBuffer;
+    return szNewStr;
 }
+
+bool CASC_PATH::Copy(LPTSTR szBuffer, size_t cchBuffer)
+{
+    if(Length() + 1 > cchBuffer)
+        return false;
+
+    memcpy(szBuffer, m_szBufferBegin, Length() * sizeof(TCHAR));
+    szBuffer[Length()] = 0;
+    return true;
+}
+
+bool CASC_PATH::SetPathRoot(LPCTSTR szRoot)
+{
+    // Make sure that there is no characters
+    m_szBufferPtr = m_szBufferBegin;
+    m_szBufferPtr[0] = 0;
+
+    // Append the root path
+    return AppendString(szRoot, false);
+}
+
+bool CASC_PATH::AppendStringN(LPCTSTR szString, size_t nMaxChars, bool bWithSeparator)
+{
+    LPCTSTR szStringEnd = szString + nMaxChars;
+    TCHAR chOneChar;
+
+    if(szString && szString[0] && nMaxChars)
+    {
+        // Append separator, if required and not in begin of the string
+        if(m_szBufferPtr > m_szBufferBegin && bWithSeparator)
+            AppendChar(m_chSeparator);
+
+        // Append the characters from the string
+        while(szString[0] && szString < szStringEnd)
+        {
+            // Retrieve the single character
+            chOneChar = *szString++;
+
+            // Normalize the character
+            if(chOneChar == '/' || chOneChar == '\\')
+                chOneChar = m_chSeparator;
+
+            if(!AppendChar(chOneChar))
+                break;
+        }
+    }
+
+    return AppendEOL();
+}
+
+bool CASC_PATH::AppendString(LPCTSTR szString, bool bWithSeparator)
+{
+    return AppendStringN(szString, (0x10000 / sizeof(TCHAR)), bWithSeparator);
+}
+
+bool CASC_PATH::AppendEKey(LPBYTE pbEKey)
+{
+    TCHAR szEKey[MD5_STRING_SIZE + 1];
+    CHAR szEKeyA[MD5_STRING_SIZE + 1];
+
+    StringFromBinary(pbEKey, MD5_HASH_SIZE, szEKeyA);
+    CascStrCopy(szEKey, _countof(szEKey), szEKeyA, MD5_STRING_SIZE);
+
+    AppendStringN(szEKey, 2, true);
+    AppendStringN(szEKey+2, 2, true);
+    return AppendString(szEKey, true);
+}
+
+bool CASC_PATH::AppendEOL()
+{
+    if(!AppendChar((TCHAR)0))
+        return false;
+
+    m_szBufferPtr--;
+    return true;
+}
+
+bool CASC_PATH::AppendChar(TCHAR chOneChar)
+{
+    // Are we out of buffer?
+    if((m_szBufferPtr + 1) >= m_szBufferEnd)
+    {
+        LPTSTR szOldBuffer = m_szBufferBegin;
+        LPTSTR szNewBuffer;
+        size_t nToAllocate = (m_szBufferEnd - m_szBufferBegin) * 2;
+        size_t nLength = (m_szBufferPtr - m_szBufferBegin);
+
+        if((szNewBuffer = CASC_ALLOC<TCHAR>(nToAllocate)) == NULL)
+            return false;
+
+        // Copy the chars
+        memcpy(szNewBuffer, m_szBufferBegin, (m_szBufferPtr - m_szBufferBegin) * sizeof(TCHAR));
+        m_szBufferBegin = szNewBuffer;
+        m_szBufferPtr = m_szBufferBegin + nLength;
+        m_szBufferEnd = m_szBufferBegin + nToAllocate;
+        
+        // Free the old buffer
+        if(szOldBuffer != m_Buffer)
+            CASC_FREE(szOldBuffer);
+    }
+
+    // Append the character
+    *m_szBufferPtr++ = chOneChar;
+    return true;
+}
+
+//-----------------------------------------------------------------------------
+// String merging
 
 LPTSTR GetLastPathPart(LPTSTR szWorkPath)
 {
@@ -435,19 +537,18 @@ bool CutLastPathPart(TCHAR * szWorkPath)
 
 size_t CombinePath(LPTSTR szBuffer, size_t nMaxChars, char chSeparator, va_list argList)
 {
-    LPTSTR szSaveBuffer = szBuffer;
-    LPTSTR szBufferEnd = szBuffer + nMaxChars - 1;
-    LPTSTR szFragment;
-    bool bFirstFragment = true;
+    CASC_PATH Path(chSeparator);
+    LPCTSTR szFragment;
+    bool bWithSeparator = false;
 
     // Combine all parts of the path here
     while((szFragment = va_arg(argList, LPTSTR)) != NULL)
     {
-        szBuffer = AppendPathFragment(szBuffer, szBufferEnd, szFragment, chSeparator, bFirstFragment);
-        bFirstFragment = false;
+        Path.AppendString(szFragment, bWithSeparator);
+        bWithSeparator = true;
     }
 
-    return (szBuffer - szSaveBuffer);
+    return Path.Copy(szBuffer, nMaxChars);
 }
 
 size_t CombinePath(LPTSTR szBuffer, size_t nMaxChars, char chSeparator, ...)
@@ -464,40 +565,12 @@ size_t CombinePath(LPTSTR szBuffer, size_t nMaxChars, char chSeparator, ...)
 
 LPTSTR CombinePath(LPCTSTR szDirectory, LPCTSTR szSubDir)
 {
-    LPTSTR szFullPath;
-    size_t nLength = 0;
+    CASC_PATH Path(PATH_SEP_CHAR);
 
-    // Calculate length
-    if(szDirectory != NULL)
-        nLength += (_tcslen(szDirectory) + 1);
-    if(szSubDir != NULL)
-        nLength += (_tcslen(szSubDir) + 1);
-
-    // Allocate buffer
-    if((szFullPath = CASC_ALLOC<TCHAR>(nLength)) != NULL)
-    {
-        CombinePath(szFullPath, nLength, PATH_SEP_CHAR, szDirectory, szSubDir, NULL);
-    }
-
-    return szFullPath;
-}
-
-size_t CreateCascSubdirectoryName(LPTSTR szBuffer, size_t nMaxChars, LPCTSTR szSubDir, LPCTSTR szExtension, LPBYTE pbEKey)
-{
-    TCHAR * szSaveBuffer = szBuffer;
-    TCHAR * szBufferEnd = szBuffer + nMaxChars - 1;
-    char szHashSubPath[0x80];
-    char szHashText[MD5_STRING_SIZE+1];
-
-    // Prepare the subpath
-    StringFromBinary(pbEKey, MD5_HASH_SIZE, szHashText);
-    CascStrPrintf(szHashSubPath, _countof(szHashSubPath), "%02x/%02x/%s", pbEKey[0], pbEKey[1], szHashText);
-
-    // Combine the path together
-    szBuffer = AppendPathFragment(szBuffer, szBufferEnd, szSubDir, URL_SEP_CHAR, true);
-    szBuffer = AppendPathFragment(szBuffer, szBufferEnd, szHashSubPath, URL_SEP_CHAR);
-    szBuffer = AppendPathFragment(szBuffer, szBufferEnd, szExtension, URL_SEP_CHAR, true);
-    return (szBuffer - szSaveBuffer);
+    // Merge the path
+    Path.AppendString(szDirectory, false);
+    Path.AppendString(szSubDir, true);
+    return Path.New();
 }
 
 size_t NormalizeFileName(const unsigned char * NormTable, char * szNormName, const char * szFileName, size_t cchMaxChars)

@@ -929,6 +929,62 @@ static const TCHAR * ExtractCdnServerName(TCHAR * szServerName, size_t cchServer
     return NULL;
 }
 
+static void CreateRemoteAndLocalPath(TCascStorage * hs, CASC_CDN_DOWNLOAD & CdnsInfo, CASC_PATH & RemotePath, CASC_PATH & LocalPath)
+{
+    PCASC_EKEY_ENTRY pEKeyEntry;
+    ULONGLONG ByteMask = 1;
+    DWORD ArchiveIndex;
+
+    // Append the CDN host / root folder
+    RemotePath.SetPathRoot(CdnsInfo.szCdnsHost);
+    RemotePath.AppendString(CdnsInfo.szCdnsPath, true);
+    LocalPath.SetPathRoot(hs->szRootPath);
+
+    // If there is an EKey, take EKey
+    if(CdnsInfo.pbEKey != NULL)
+    {
+        // The file is given by EKey. It's either a loose file, or it's stored in an archive.
+        // We check that using the EKey map
+        if ((pEKeyEntry = (PCASC_EKEY_ENTRY)hs->IndexMap.FindObject(CdnsInfo.pbEKey)) != NULL)
+        {
+            // Change the path type to "data"
+            RemotePath.AppendString(_T("data"), true);
+            LocalPath.AppendString(_T("data"), true);
+
+            // Append the EKey of the archive instead of the file itself
+            ArchiveIndex = (DWORD)(pEKeyEntry->StorageOffset >> hs->FileOffsetBits);
+            CdnsInfo.pbArchiveKey = hs->ArchivesKey.pbData + (MD5_HASH_SIZE * ArchiveIndex);
+            RemotePath.AppendEKey(CdnsInfo.pbArchiveKey);
+            LocalPath.AppendEKey(CdnsInfo.pbArchiveKey);
+
+            // Get the archive index and archive offset
+            CdnsInfo.ArchiveIndex = ArchiveIndex;
+            CdnsInfo.ArchiveOffs = pEKeyEntry->StorageOffset & ((ByteMask << hs->FileOffsetBits) - 1);
+            CdnsInfo.EncodedSize = pEKeyEntry->EncodedSize;
+        }
+        else
+        {
+            // Append the path type
+            RemotePath.AppendString(CdnsInfo.szPathType, true);
+            LocalPath.AppendString((CdnsInfo.szLoPaType != NULL) ? CdnsInfo.szLoPaType : CdnsInfo.szPathType, true);
+
+            // Append the EKey
+            RemotePath.AppendEKey(CdnsInfo.pbEKey);
+            LocalPath.AppendEKey(CdnsInfo.pbEKey);
+        }
+    }
+    else
+    {
+        assert(CdnsInfo.szFileName != NULL);
+        RemotePath.AppendString(CdnsInfo.szFileName, true);
+        LocalPath.AppendString(CdnsInfo.szFileName, true);
+    }
+
+    // Append extension
+    RemotePath.AppendString(CdnsInfo.szExtension, false);
+    LocalPath.AppendString(CdnsInfo.szExtension, false);
+}
+
 static DWORD ForcePathExist(const TCHAR * szFileName, bool bIsFileName)
 {
     TCHAR * szLocalPath;
@@ -994,8 +1050,8 @@ static DWORD ForcePathExist(const TCHAR * szFileName, bool bIsFileName)
 }
 
 static DWORD DownloadFile(
-    const TCHAR * szRemoteName,
-    const TCHAR * szLocalName,
+    LPCTSTR szRemoteName,
+    LPCTSTR szLocalName,
     PULONGLONG PtrByteOffset,
     DWORD cbReadSize,
     DWORD dwPortFlags)
@@ -1053,62 +1109,57 @@ static DWORD DownloadFile(
     return dwErrCode;
 }
 
-static DWORD DownloadFile(
-    TCascStorage * hs,
-    const TCHAR * szServerName,
-    const TCHAR * szServerPath1,
-    const TCHAR * szServerPath2,
-    const TCHAR * szLocalPath2,
-    PULONGLONG PtrByteOffset,
-    DWORD cbReadSize,
-    TCHAR * szOutLocalPath,
-    size_t cchOutLocalPath,
-    DWORD dwPortFlags,
-    bool bAlwaysDownload,
-    bool bWowClassicRedirect)
+static DWORD DownloadFileFromCDN2(TCascStorage * hs, CASC_CDN_DOWNLOAD & CdnsInfo)
 {
-    TCHAR szRemotePath[MAX_PATH];
-    TCHAR szLocalPath[MAX_PATH];
-    size_t nLength;
-    DWORD dwErrCode = ERROR_NOT_ENOUGH_MEMORY;
+    CASC_PATH RemotePath(URL_SEP_CHAR);
+    CASC_PATH LocalPath(PATH_SEP_CHAR);
+    DWORD dwPortFlags = (CdnsInfo.Flags & CASC_CDN_FLAG_PORT1119) ? STREAM_FLAG_USE_PORT_1119 : 0;
+    DWORD dwErrCode;
 
-    // Format the target URL
-    if(bWowClassicRedirect && !_tcsicmp(szServerPath1, _T("wow_classic_beta")))
-        szServerPath1 = _T("wow");
-    if (szLocalPath2 == NULL)
-        szLocalPath2 = szServerPath2;
+    // Assemble both the remote and local path
+    assert(CdnsInfo.szCdnsHost != NULL && CdnsInfo.szCdnsHost[0] != 0);
+    CreateRemoteAndLocalPath(hs, CdnsInfo, RemotePath, LocalPath);
 
-    // Create remote path
-    CombinePath(szRemotePath, _countof(szRemotePath), URL_SEP_CHAR, szServerName, szServerPath1, szServerPath2, NULL);
-    CombinePath(szLocalPath, _countof(szLocalPath), PATH_SEP_CHAR, hs->szRootPath, szLocalPath2, NULL);
-
-    // Make sure that the path exists
-    ForcePathExist(szLocalPath, true);
-
-    _tprintf(_T("%s\n"), szRemotePath);
-
-    // If we are not forced to download a new one, try if local file exists.
-    if ((bAlwaysDownload == false) && (_taccess(szLocalPath, 0) == 0))
+    // Check whether the local file exists
+    if((CdnsInfo.Flags & CASC_CDN_FORCE_DOWNLOAD) || (_taccess(LocalPath, 0) == -1))
     {
-        dwErrCode = ERROR_SUCCESS;
+        // Make sure that the path exists
+        dwErrCode = ForcePathExist(LocalPath, true);
+        if(dwErrCode != ERROR_SUCCESS)
+            return dwErrCode;
+
+        // Attempt to download the file
+        dwErrCode = DownloadFile(RemotePath, LocalPath, NULL, 0, dwPortFlags);
+        if(dwErrCode != ERROR_SUCCESS)
+            return dwErrCode;
+    }
+
+    // Give the path to the caller, if any
+    LocalPath.Copy(CdnsInfo.szLocalPath, CdnsInfo.ccLocalPath);
+    return ERROR_SUCCESS;
+}
+
+DWORD DownloadFileFromCDN(TCascStorage * hs, CASC_CDN_DOWNLOAD & CdnsInfo)
+{
+    LPCTSTR szCdnServers = hs->szCdnServers;
+    TCHAR szCdnHost[MAX_PATH] = _T("");
+    DWORD dwErrCode = ERROR_CAN_NOT_COMPLETE;
+
+    // If we have a given CDN server, use it. If not, try all CDNs
+    // from the storage's configuration
+    if(CdnsInfo.szCdnsHost == NULL)
+    {
+        // Try all download servers
+        while((szCdnServers = ExtractCdnServerName(szCdnHost, _countof(szCdnHost), szCdnServers)) != NULL)
+        {
+            CdnsInfo.szCdnsHost = szCdnHost;
+            if((dwErrCode = DownloadFileFromCDN2(hs, CdnsInfo)) == ERROR_SUCCESS)
+                return ERROR_SUCCESS;
+        }
     }
     else
     {
-        dwErrCode = DownloadFile(szRemotePath, szLocalPath, PtrByteOffset, cbReadSize, dwPortFlags);
-    }
-
-    // If succeeded, give the local path
-    if(dwErrCode == ERROR_SUCCESS)
-    {
-        // If the caller wanted local path, give it to him
-        if (szOutLocalPath && cchOutLocalPath)
-        {
-            nLength = _tcslen(szLocalPath);
-            if ((nLength + 1) <= cchOutLocalPath)
-            {
-                CascStrCopy(szOutLocalPath, cchOutLocalPath, szLocalPath);
-            }
-        }
+        dwErrCode = DownloadFileFromCDN2(hs, CdnsInfo);
     }
 
     return dwErrCode;
@@ -1116,7 +1167,7 @@ static DWORD DownloadFile(
 
 static DWORD FetchAndLoadConfigFile(TCascStorage * hs, PQUERY_KEY pFileKey, PARSETEXTFILE PfnParseProc)
 {
-    const TCHAR * szPathType = _T("config");
+    LPCTSTR szPathType = _T("config");
     TCHAR szLocalPath[MAX_PATH];
     TCHAR szSubDir[0x80] = _T("");
     void * pvListFile = NULL;
@@ -1125,14 +1176,29 @@ static DWORD FetchAndLoadConfigFile(TCascStorage * hs, PQUERY_KEY pFileKey, PARS
     // If online storage, we download the file. Otherwise, create a local path
     if(hs->dwFeatures & CASC_FEATURE_ONLINE)
     {
-        dwErrCode = DownloadFileFromCDN(hs, szPathType, pFileKey->pbData, NULL, szLocalPath, _countof(szLocalPath));
+        CASC_CDN_DOWNLOAD CdnsInfo = {0};
+
+        // Prepare the download structure for "%CDNS_HOST%/%CDNS_PATH%/##/##/EKey" file
+        CdnsInfo.szCdnsPath = hs->szCdnPath;
+        CdnsInfo.szPathType = szPathType;
+        CdnsInfo.pbEKey = pFileKey->pbData;
+        CdnsInfo.szLocalPath = szLocalPath;
+        CdnsInfo.ccLocalPath = _countof(szLocalPath);
+
+        // Download the config file
+        dwErrCode = DownloadFileFromCDN(hs, CdnsInfo);
         if(dwErrCode != ERROR_SUCCESS)
             return dwErrCode;
     }
     else
     {
-        CreateCascSubdirectoryName(szSubDir, _countof(szSubDir), szPathType, NULL, pFileKey->pbData);
-        CombinePath(szLocalPath, _countof(szLocalPath), PATH_SEP_CHAR, hs->szDataPath, szSubDir, NULL);
+        CASC_PATH Path;
+
+        Path.AppendString(hs->szDataPath, false);
+        Path.AppendString(szSubDir, true);
+        Path.AppendString(szPathType, true);
+        Path.AppendEKey(pFileKey->pbData);
+        Path.Copy(szLocalPath, _countof(szLocalPath));
     }
 
     // Load and verify the external listfile
@@ -1199,66 +1265,6 @@ DWORD GetFileSpanInfo(PCASC_CKEY_ENTRY pCKeyEntry, PULONGLONG PtrContentSize, PU
     return dwSpanCount;
 }
 
-DWORD DownloadFileFromCDN(TCascStorage * hs, const TCHAR * szSubDir, LPBYTE pbEKey, const TCHAR * szExtension, TCHAR * szOutLocalPath, size_t cchOutLocalPath)
-{
-    PCASC_EKEY_ENTRY pEKeyEntry;
-    const TCHAR * szCdnServers = hs->szCdnServers;
-    TCHAR szRemoteFolder[MAX_PATH];
-    TCHAR szLocalFolder[MAX_PATH];
-    TCHAR szServerName[MAX_PATH];
-    DWORD dwErrCode = ERROR_CAN_NOT_COMPLETE;
-
-    // Try all download servers
-    while((szCdnServers = ExtractCdnServerName(szServerName, _countof(szServerName), szCdnServers)) != NULL)
-    {
-        // Create the local subdirectory
-        CreateCascSubdirectoryName(szLocalFolder, _countof(szLocalFolder), szSubDir, szExtension, pbEKey);
-
-        // If the EKey is in an archive, we need to change the source
-        if ((pEKeyEntry = (PCASC_EKEY_ENTRY)hs->IndexMap.FindObject(pbEKey)) != NULL)
-        {
-            ULONGLONG ByteOffset;
-            ULONGLONG ByteMask = 1;
-            LPBYTE pbEKey;
-            DWORD nArchive = (DWORD)(pEKeyEntry->StorageOffset >> hs->FileOffsetBits);
-
-            // Get the archive index and archive offset
-            ByteOffset = pEKeyEntry->StorageOffset & ((ByteMask << hs->FileOffsetBits) - 1);
-            nArchive = (DWORD)(pEKeyEntry->StorageOffset >> hs->FileOffsetBits);
-            pbEKey = hs->ArchivesKey.pbData + (MD5_HASH_SIZE * nArchive);
-
-            // Change the subpath to an archive
-            CreateCascSubdirectoryName(szRemoteFolder, _countof(szRemoteFolder), szSubDir, szExtension, pbEKey);
-            dwErrCode = DownloadFile(hs,
-                                     szServerName,
-                                     hs->szCdnPath,
-                                     szRemoteFolder,
-                                     szLocalFolder,
-                                    &ByteOffset,
-                                     pEKeyEntry->EncodedSize,
-                                     szOutLocalPath,
-                                     cchOutLocalPath, 0, false, false);
-        }
-        else
-        {
-            dwErrCode = DownloadFile(hs,
-                                     szServerName,
-                                     hs->szCdnPath,
-                                     szLocalFolder,
-                                     szLocalFolder,
-                                     NULL,
-                                     0,
-                                     szOutLocalPath,
-                                     cchOutLocalPath, 0, false, false);
-        }
-
-        if (dwErrCode == ERROR_SUCCESS)
-            break;
-    }
-
-    return dwErrCode;
-}
-
 // Checks whether there is a ".build.info" or ".build.db".
 // If yes, the function sets "szDataPath" and "szIndexPath"
 // in the storage structure and returns ERROR_SUCCESS
@@ -1308,19 +1314,33 @@ DWORD LoadBuildInfo(TCascStorage * hs)
     // If the storage is online storage, we need to download "versions"
     if(hs->dwFeatures & CASC_FEATURE_ONLINE)
     {
+        CASC_CDN_DOWNLOAD CdnsInfo = {0};
+        TCHAR szLocalFile[MAX_PATH];
+
         // Inform the user about loading the build.info/build.db/versions
         if(InvokeProgressCallback(hs, "Downloading the \"versions\" file", NULL, 0, 0))
             return ERROR_CANCELLED;
 
+        // Prepare the download structure for "us.patch.battle.net/%CODENAME%/versions" file
+        CdnsInfo.szCdnsHost = _T("us.patch.battle.net");
+        CdnsInfo.szCdnsPath = hs->szCodeName;
+        CdnsInfo.szPathType = _T("");
+        CdnsInfo.szFileName = _T("versions");
+        CdnsInfo.szLocalPath = szLocalFile;
+        CdnsInfo.ccLocalPath = _countof(szLocalFile);
+        CdnsInfo.Flags = CASC_CDN_FLAG_PORT1119 | CASC_CDN_FORCE_DOWNLOAD;
+
         // Attempt to download the "versions" file
-        dwErrCode = DownloadFile(hs, _T("us.patch.battle.net"), hs->szCodeName, _T("versions"), NULL, NULL, 0, NULL, 0, STREAM_FLAG_USE_PORT_1119, true, false);
+        dwErrCode = DownloadFileFromCDN(hs, CdnsInfo);
         if(dwErrCode != ERROR_SUCCESS)
-        {
             return dwErrCode;
-        }
+
+        // Retrieve the name of the "versions" file
+        if((hs->szBuildFile = CascNewStr(szLocalFile)) == NULL)
+            return ERROR_NOT_ENOUGH_MEMORY;
     }
 
-    // We support either ".build.info" or ".build.db"
+    // We support ".build.info", ".build.db" or "versions"
     switch (hs->BuildFileType)
     {
         case CascBuildInfo:
@@ -1340,11 +1360,13 @@ DWORD LoadBuildInfo(TCascStorage * hs)
             return ERROR_NOT_SUPPORTED;
     }
 
+    assert(hs->szBuildFile != NULL);
     return LoadCsvFile(hs, hs->szBuildFile, PfnParseProc, bHasHeader);
 }
 
-DWORD LoadCdnsInfo(TCascStorage * hs)
+DWORD LoadCdnsFile(TCascStorage * hs)
 {
+    CASC_CDN_DOWNLOAD CdnsInfo = {0};
     TCHAR szLocalPath[MAX_PATH];
     DWORD dwErrCode = ERROR_SUCCESS;
 
@@ -1355,9 +1377,17 @@ DWORD LoadCdnsInfo(TCascStorage * hs)
     if(InvokeProgressCallback(hs, "Downloading the \"cdns\" file", NULL, 0, 0))
         return ERROR_CANCELLED;
 
+    // Prepare the download structure
+    CdnsInfo.szCdnsHost = _T("us.patch.battle.net");
+    CdnsInfo.szCdnsPath = hs->szCodeName;
+    CdnsInfo.szPathType = _T("");
+    CdnsInfo.szFileName = _T("cdns");
+    CdnsInfo.szLocalPath = szLocalPath;
+    CdnsInfo.ccLocalPath = _countof(szLocalPath);
+    CdnsInfo.Flags = CASC_CDN_FLAG_PORT1119 | CASC_CDN_FORCE_DOWNLOAD;
+
     // Download file and parse it
-    dwErrCode = DownloadFile(hs, _T("us.patch.battle.net"), hs->szCodeName, _T("cdns"), NULL, NULL, 0, szLocalPath, _countof(szLocalPath), STREAM_FLAG_USE_PORT_1119, false, true);
-    if(dwErrCode == ERROR_SUCCESS)
+    if((dwErrCode = DownloadFileFromCDN(hs, CdnsInfo)) == ERROR_SUCCESS)
     {
         dwErrCode = LoadCsvFile(hs, szLocalPath, ParseFile_CDNS, true);
     }
@@ -1371,7 +1401,7 @@ DWORD LoadCdnConfigFile(TCascStorage * hs)
     assert(hs->CdnConfigKey.pbData != NULL && hs->CdnConfigKey.cbData == MD5_HASH_SIZE);
 
     // Inform the user about what we are doing
-    if(InvokeProgressCallback(hs, "Downloading CDN config file", NULL, 0, 0))
+    if(InvokeProgressCallback(hs, "Loading CDN config file", NULL, 0, 0))
         return ERROR_CANCELLED;
 
     // Load the CDN config file
@@ -1384,7 +1414,7 @@ DWORD LoadCdnBuildFile(TCascStorage * hs)
     assert(hs->CdnBuildKey.pbData != NULL && hs->CdnBuildKey.cbData == MD5_HASH_SIZE);
 
     // Inform the user about what we are doing
-    if(InvokeProgressCallback(hs, "Downloading CDN build file", NULL, 0, 0))
+    if(InvokeProgressCallback(hs, "Loading CDN build file", NULL, 0, 0))
         return ERROR_CANCELLED;
 
     // Load the CDN config file. Note that we don't

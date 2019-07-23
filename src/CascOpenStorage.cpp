@@ -1006,50 +1006,7 @@ static bool GetStoragePathProduct(TCascStorage * hs, void * pvStorageInfo, size_
 
     return (szBuffer != NULL);
 }
-/*
-static bool GetStorageCdnInfo(TCascStorage * hs, void * pvStorageInfo, size_t cbStorageInfo, size_t * pcbLengthNeeded)
-{
-    PCASC_STORAGE_CDNS szBuffer = (LPTSTR)pvStorageInfo;
-    size_t nMaxChars = cbStorageInfo / sizeof(TCHAR);
-    size_t nLength;
 
-    // Calculate the length needed
-    nLength = _tcslen(hs->szRootPath);
-    if(hs->szCodeName != NULL)
-        nLength = nLength + 1 + _tcslen(hs->szCodeName);
-    if(hs->szRegion != NULL)
-        nLength = nLength + 1 + strlen(hs->szRegion);
-    nLength++;
-
-    // Verify whether we have enough space in the buffer
-    szBuffer = (LPTSTR)ProbeOutputBuffer(pvStorageInfo, cbStorageInfo, (nLength * sizeof(TCHAR)), pcbLengthNeeded);
-    if(szBuffer != NULL)
-    {
-        LPTSTR szBufferEnd = szBuffer + nMaxChars;
-
-        // Copy the storage path
-        CascStrCopy(szBuffer, (szBufferEnd - szBuffer), hs->szRootPath);
-        szBuffer += _tcslen(hs->szRootPath);
-
-        // Append the product code name, if any
-        if(hs->szCodeName != NULL)
-        {
-            *szBuffer++ = _T(':');
-            CascStrCopy(szBuffer, (szBufferEnd - szBuffer), hs->szCodeName);
-            szBuffer += _tcslen(hs->szCodeName);
-        }
-
-        // Append the product region, if any
-        if(hs->szRegion != NULL)
-        {
-            *szBuffer++ = _T(':');
-            CascStrCopy(szBuffer, (szBufferEnd - szBuffer), hs->szRegion);
-        }
-    }
-
-    return (szBuffer != NULL);
-}
-*/
 static DWORD InitializeLocalDirectories(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
 {
     TCHAR * szWorkPath;
@@ -1110,14 +1067,9 @@ static DWORD InitializeOnlineDirectories(TCascStorage * hs, PCASC_OPEN_STORAGE_A
     hs->szRootPath = CombinePath(szLocalCache, szCodeName);
     if (hs->szRootPath != NULL)
     {
-        // Create the name of the build file
-        hs->szBuildFile = CombinePath(hs->szRootPath, _T("versions"));
-        if(hs->szBuildFile != NULL)
-        {
-            hs->BuildFileType = CascVersionsDb;
-            hs->dwFeatures |= CASC_FEATURE_ONLINE;
-            return ERROR_SUCCESS;
-        }
+        hs->BuildFileType = CascVersionsDb;
+        hs->dwFeatures |= CASC_FEATURE_ONLINE;
+        return ERROR_SUCCESS;
     }
 
     return ERROR_NOT_ENOUGH_MEMORY;
@@ -1151,7 +1103,7 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
     // For online storages, we need to load CDN servers
     if ((dwErrCode == ERROR_SUCCESS) && (hs->dwFeatures & CASC_FEATURE_ONLINE))
     {
-        dwErrCode = LoadCdnsInfo(hs);
+        dwErrCode = LoadCdnsFile(hs);
     }
 
     // Now, load the main storage file ".build.info" (or ".build.db" in old storages) 
@@ -1416,9 +1368,6 @@ bool WINAPI CascGetStorageInfo(
 
         case CascStoragePathProduct:
             return GetStoragePathProduct(hs, pvStorageInfo, cbStorageInfo, pcbLengthNeeded);
-
-//      case CascStorageCdnInfo:
-//          return GetStorageCdnInfo(hs, pvStorageInfo, cbStorageInfo, pcbLengthNeeded);
 
         default:
             SetLastError(ERROR_INVALID_PARAMETER);

@@ -128,6 +128,41 @@ struct CASC_CKEY_ENTRY
 typedef CASC_CKEY_ENTRY *PCASC_CKEY_ENTRY;
 
 //-----------------------------------------------------------------------------
+// Global path merger class
+
+struct CASC_PATH
+{
+    CASC_PATH(TCHAR chSeparator = PATH_SEP_CHAR);
+    ~CASC_PATH();
+
+    operator LPCTSTR()
+    {
+        return m_szBufferBegin;
+    }
+
+    size_t Length()
+    {
+        return m_szBufferPtr - m_szBufferBegin;
+    }
+
+    LPTSTR New();
+    bool Copy(LPTSTR szBuffer, size_t cchBuffer);
+
+    bool SetPathRoot(LPCTSTR szRoot);
+    bool AppendStringN(LPCTSTR szString, size_t nMaxChars, bool bWithSeparator);
+    bool AppendString(LPCTSTR szString, bool bWithSeparator);
+    bool AppendEKey(LPBYTE pbEKey);
+    bool AppendChar(TCHAR chOneChar);
+    bool AppendEOL();
+
+    LPTSTR m_szBufferBegin;
+    LPTSTR m_szBufferPtr;
+    LPTSTR m_szBufferEnd;
+    TCHAR m_Buffer[0x80];
+    TCHAR m_chSeparator;
+};
+
+//-----------------------------------------------------------------------------
 // Conversion tables
 
 extern unsigned char AsciiToLowerTable_Slash[256];
@@ -148,7 +183,6 @@ extern unsigned char IntToHexChar[];
 //
 
 #define CASC_REALLOC(type, ptr, count) (type *)realloc(ptr, (count) * sizeof(type))
-//#define CASC_ALLOC(type, count)        (type *)malloc((count) * sizeof(type))
 
 template <typename T>
 T * CASC_ALLOC(size_t nCount)
@@ -331,7 +365,6 @@ LPTSTR CombinePath(LPCTSTR szPath, LPCTSTR szSubDir);
 LPTSTR GetLastPathPart(LPTSTR szWorkPath);
 bool CutLastPathPart(TCHAR * szWorkPath);
 
-size_t CreateCascSubdirectoryName(TCHAR * szBuffer, size_t nMaxChars, const TCHAR * szSubDir, const TCHAR * szExtension, LPBYTE pbEKey);
 size_t NormalizeFileName_UpperBkSlash(char * szNormName, const char * szFileName, size_t cchMaxChars);
 size_t NormalizeFileName_LowerSlash(char * szNormName, const char * szFileName, size_t cchMaxChars);
 

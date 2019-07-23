@@ -56,15 +56,34 @@ static DWORD OpenDataStream(TCascFile * hf, PCASC_FILE_SPAN pFileSpan, PCASC_CKE
     {
         if(bDownloadFileIf)
         {
-            // Create the local folder path and download the file from CDN
-            dwErrCode = DownloadFileFromCDN(hs, _T("data"), pCKeyEntry->EKey, NULL, szCachePath, _countof(szCachePath));
+            CASC_CDN_DOWNLOAD CdnsInfo = {0};
+
+            // Prepare the download structure for "%CDNS_HOST%/%CDNS_PATH%/##/##/EKey" file
+            CdnsInfo.szCdnsPath = hs->szCdnPath;
+            CdnsInfo.szPathType = _T("data");
+            CdnsInfo.pbEKey = pCKeyEntry->EKey;
+            CdnsInfo.szLocalPath = szCachePath;
+            CdnsInfo.ccLocalPath = _countof(szCachePath);
+
+            // Download the file from CDN
+            dwErrCode = DownloadFileFromCDN(hs, CdnsInfo);
             if(dwErrCode == ERROR_SUCCESS)
             {
                 pFileSpan->pStream = FileStream_OpenFile(szCachePath, BASE_PROVIDER_FILE | STREAM_PROVIDER_FLAT);
                 if(pFileSpan->pStream != NULL)
                 {
-                    // Initialize information about the archive
-                    pFileSpan->ArchiveIndex = pFileSpan->ArchiveOffs = 0;
+                    // Is it an archive?
+                    if(CdnsInfo.pbArchiveKey != NULL)
+                    {
+                        assert(CdnsInfo.EncodedSize == pCKeyEntry->EncodedSize);
+                        pFileSpan->ArchiveIndex = CdnsInfo.ArchiveIndex;
+                        pFileSpan->ArchiveOffs = (DWORD)CdnsInfo.ArchiveOffs;
+                    }
+                    else
+                    {
+                        // Initialize information about the archive
+                        pFileSpan->ArchiveIndex = pFileSpan->ArchiveOffs = 0;
+                    }
 
                     // We need to close the file stream after we're done
                     hf->bCloseFileStream = true;

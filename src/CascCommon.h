@@ -210,6 +210,35 @@ typedef struct _CASC_FILE_SPAN
 
 } CASC_FILE_SPAN, *PCASC_FILE_SPAN;
 
+// Structure for downloading a file from the CDN (https://wowdev.wiki/TACT#File_types)
+// Remote path is combined as the following:
+//  [szCdnsHost]       /[szCdnsPath]/[szPathType]/EKey[0-1]/EKey[2-3]/[EKey].[Extension]
+//  level3.blizzard.com/tpr/bnt001  /data        /fe       /3d       /fe3d7cf9d04e07066de32bd95a5c2627.index
+typedef struct _CASC_CDN_DOWNLOAD
+{
+    ULONGLONG ArchiveOffs;                          // Archive offset (if pbArchiveKey != NULL)
+    LPCTSTR szCdnsHost;                             // Address of the remote CDN server. ("level3.blizzard.com")
+                                                    // If NULL, the downloader will try all CDN servers from the storage
+    LPCTSTR szCdnsPath;                             // Remote CDN path ("tpr/bnt001")
+    LPCTSTR szPathType;                             // Path type ("config", "data", "patch")
+    LPCTSTR szLoPaType;                             // Local path type ("config", "data", "patch"). If NULL, it's gonna be the same like szPathType, If "", then it's not used
+    LPCTSTR szFileName;                             // Plain file name, without path and extension
+    LPBYTE  pbArchiveKey;                            // If non-NULL, then the file is present in the archive.
+    LPBYTE  pbEKey;                                 // 16-byte EKey of the file of of the archive
+    LPCTSTR szExtension;                            // Extension for the file. Can be NULL.
+
+    LPTSTR szLocalPath;                             // Pointer to the variable that, upon success, reveives the local path where the file was downloaded
+    size_t ccLocalPath;                             // Maximum length of szLocalPath, in TCHARs
+    DWORD ArchiveIndex;                             // Index of the archive (if pbArchiveKey != NULL)
+    DWORD EncodedSize;                              // Encoded length (if pbArchiveKey != NULL)
+    DWORD Flags;                                    // See CASC_CDN_FLAG_XXX
+
+} CASC_CDN_DOWNLOAD, *PCASC_CDN_DOWNLOAD;
+
+#define CASC_CDN_WOW_CLASSIC_REDIRECT   0x0001      // Redirect WOW classic
+#define CASC_CDN_FORCE_DOWNLOAD         0x0002      // Force downloading the file even if in the cache
+#define CASC_CDN_FLAG_PORT1119          0x0004      // Use port 1119
+
 //-----------------------------------------------------------------------------
 // Structures for CASC storage and CASC file
 
@@ -405,9 +434,9 @@ inline void FreeCascBlob(PQUERY_KEY pBlob)
 
 bool  InvokeProgressCallback(TCascStorage * hs, LPCSTR szMessage, LPCSTR szObject, DWORD CurrentValue, DWORD TotalValue);
 DWORD GetFileSpanInfo(PCASC_CKEY_ENTRY pCKeyEntry, PULONGLONG PtrContentSize, PULONGLONG PtrEncodedSize = NULL);
-DWORD DownloadFileFromCDN(TCascStorage * hs, LPCTSTR szSubDir, LPBYTE pbEKey, LPCTSTR szExtension, LPTSTR szOutLocalPath, size_t cchOutLocalPath);
+DWORD DownloadFileFromCDN(TCascStorage * hs, CASC_CDN_DOWNLOAD & CdnsInfo);
 DWORD CheckGameDirectory(TCascStorage * hs, LPTSTR szDirectory);
-DWORD LoadCdnsInfo(TCascStorage * hs);
+DWORD LoadCdnsFile(TCascStorage * hs);
 DWORD LoadBuildInfo(TCascStorage * hs);
 DWORD LoadCdnConfigFile(TCascStorage * hs);
 DWORD LoadCdnBuildFile(TCascStorage * hs);
