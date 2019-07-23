@@ -15,6 +15,16 @@
 //-----------------------------------------------------------------------------
 // Local functions
 
+static DWORD GetStreamEncodedSize(TFileStream * pStream)
+{
+    ULONGLONG FileSize = 0;
+
+    FileStream_GetSize(pStream, &FileSize);
+    assert((FileSize >> 32) == 0);
+
+    return (DWORD)(FileSize);
+}
+
 static DWORD OpenDataStream(TCascFile * hf, PCASC_FILE_SPAN pFileSpan, PCASC_CKEY_ENTRY pCKeyEntry, bool bDownloadFileIf)
 {
     TCascStorage * hs = hf->hs;
@@ -65,27 +75,47 @@ static DWORD OpenDataStream(TCascFile * hf, PCASC_FILE_SPAN pFileSpan, PCASC_CKE
             CdnsInfo.szLocalPath = szCachePath;
             CdnsInfo.ccLocalPath = _countof(szCachePath);
 
+            // Special treatment for PATCH file
+            if(pCKeyEntry->Flags & CASC_CE_FILE_PATCH)
+            {
+                CdnsInfo.szPathType = _T("patch");
+                CdnsInfo.pbEKey = pCKeyEntry->CKey;
+            }
+
             // Download the file from CDN
             dwErrCode = DownloadFileFromCDN(hs, CdnsInfo);
             if(dwErrCode == ERROR_SUCCESS)
             {
-                pFileSpan->pStream = FileStream_OpenFile(szCachePath, BASE_PROVIDER_FILE | STREAM_PROVIDER_FLAT);
-                if(pFileSpan->pStream != NULL)
+                pStream = FileStream_OpenFile(szCachePath, BASE_PROVIDER_FILE | STREAM_PROVIDER_FLAT);
+                if(pStream != NULL)
                 {
-                    // Is it an archive?
+                    // Initialize information about the position and size of the file in archive
+                    // On loose files, their position is zero and encoded size is length of the file
                     if(CdnsInfo.pbArchiveKey != NULL)
                     {
-                        assert(CdnsInfo.EncodedSize == pCKeyEntry->EncodedSize);
+                        // Archive position
                         pFileSpan->ArchiveIndex = CdnsInfo.ArchiveIndex;
                         pFileSpan->ArchiveOffs = (DWORD)CdnsInfo.ArchiveOffs;
+
+                        // Encoded size
+                        if(pCKeyEntry->EncodedSize == CASC_INVALID_SIZE)
+                            pCKeyEntry->EncodedSize = CdnsInfo.EncodedSize;
+                        assert(pCKeyEntry->EncodedSize == CdnsInfo.EncodedSize);
                     }
                     else
                     {
-                        // Initialize information about the archive
-                        pFileSpan->ArchiveIndex = pFileSpan->ArchiveOffs = 0;
+                        // Archive position
+                        pFileSpan->ArchiveIndex = 0;
+                        pFileSpan->ArchiveOffs = 0;
+
+                        // Encoded size
+                        if(pCKeyEntry->EncodedSize == CASC_INVALID_SIZE)
+                            pCKeyEntry->EncodedSize = GetStreamEncodedSize(pStream);
+                        assert(pCKeyEntry->EncodedSize == GetStreamEncodedSize(pStream));
                     }
 
                     // We need to close the file stream after we're done
+                    pFileSpan->pStream = pStream;
                     hf->bCloseFileStream = true;
                     return ERROR_SUCCESS;
                 }

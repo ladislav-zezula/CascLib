@@ -929,7 +929,7 @@ int main(void)
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - New CASC\\00002");
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - Warcraft III\\11889");
 //  LocalStorage_Test(Storage_SeekFiles, "2018 - CoD4\\3376209", "zone/base.xpak");
-    OnlineStorage_Test(Storage_ReadFiles, "agent", NULL, "Agent.6732\\Agent.app\\Contents\\_CodeSignature\\CodeResources");
+    OnlineStorage_Test(Storage_OpenFiles, "agent", NULL, "PATCH");
     //OnlineStorage_Test(Storage_SeekFiles, "viper", "us", "zone/base.xpak");
 
     //HANDLE hFile = NULL;

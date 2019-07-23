@@ -764,7 +764,7 @@ static int LoadInstallManifest(TCascStorage * hs)
     return dwErrCode;
 }
 
-static bool InsertWellKnownFile(TCascStorage * hs, const char * szFileName, CASC_CKEY_ENTRY & FakeCKeyEntry)
+static bool InsertWellKnownFile(TCascStorage * hs, const char * szFileName, CASC_CKEY_ENTRY & FakeCKeyEntry, DWORD dwFlags = 0)
 {
     PCASC_CKEY_ENTRY pCKeyEntry = NULL;
 
@@ -781,6 +781,8 @@ static bool InsertWellKnownFile(TCascStorage * hs, const char * szFileName, CASC
                 hs->pRootHandler->Insert(szFileName, pCKeyEntry);
                 pCKeyEntry->Flags |= CASC_CE_IN_BUILD;
             }
+
+            pCKeyEntry->Flags |= dwFlags;
             return true;
         }
     }
@@ -1170,7 +1172,7 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
         InsertWellKnownFile(hs, "ENCODING", hs->EncodingCKey);
         InsertWellKnownFile(hs, "DOWNLOAD", hs->DownloadCKey);
         InsertWellKnownFile(hs, "INSTALL", hs->InstallCKey);
-        InsertWellKnownFile(hs, "PATCH", hs->PatchFile);
+        InsertWellKnownFile(hs, "PATCH", hs->PatchFile, CASC_CE_FILE_PATCH);
         InsertWellKnownFile(hs, "ROOT", hs->RootFile);
         InsertWellKnownFile(hs, "SIZE", hs->SizeFile);
 

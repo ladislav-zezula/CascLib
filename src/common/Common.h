@@ -77,6 +77,7 @@ typedef struct _CASC_EKEY_ENTRY
 #define CASC_CE_IN_ARCHIVE         0x00000080       // File is stored in an archive (for online storages)
 #define CASC_CE_FOLDER_ENTRY       0x00000100       // This CKey entry is a folder
 #define CASC_CE_FILE_SPAN          0x00000200       // This CKey entry is a follow-up file span
+#define CASC_CE_FILE_PATCH         0x00000400       // The file is in PATCH subfolder in remote storage
 
 // In-memory representation of a single entry. 
 struct CASC_CKEY_ENTRY

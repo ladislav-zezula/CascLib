@@ -94,6 +94,11 @@ static bool IsCharDigit(BYTE OneByte)
     return ('0' <= OneByte && OneByte <= '9');
 }
 
+static bool StringEndsWith(LPCSTR szString, size_t nLength, LPCSTR szSuffix, size_t nSuffixLength)
+{
+    return ((nLength > nSuffixLength) && !strcmp(szString + nLength - nSuffixLength, szSuffix));
+}
+
 static const char * CaptureDecimalInteger(const char * szDataPtr, const char * szDataEnd, PDWORD PtrValue)
 {
     const char * szSaveDataPtr = szDataPtr;
@@ -290,22 +295,28 @@ static DWORD LoadCKeyEntry(TCascStorage * hs, const char * szVariableName, const
     size_t nLength = strlen(szVariableName);
     size_t HashCount = 0;
 
+    // Ignore "xxx-config" items
+    if(StringEndsWith(szVariableName, nLength, "-config", 7))
+        return ERROR_SUCCESS;
+
     // If the variable ends at "-size", it means we need to capture the size
-    if((nLength > 5) && !strcmp(szVariableName + nLength - 5, "-size"))
+    if(StringEndsWith(szVariableName, nLength, "-size", 5))
     {
         DWORD ContentSize = CASC_INVALID_SIZE;
         DWORD EncodedSize = CASC_INVALID_SIZE;
 
         // Load the content size
         szDataPtr = CaptureDecimalInteger(szDataPtr, szDataEnd, &ContentSize);
-        if(szDataPtr != NULL)
-        {
-            CaptureDecimalInteger(szDataPtr, szDataEnd, &EncodedSize);
-            pCKeyEntry->ContentSize = ContentSize;
-            pCKeyEntry->EncodedSize = EncodedSize;
-            return ERROR_SUCCESS;
-        }
+        if(szDataPtr == NULL)
+            return ERROR_BAD_FORMAT;
+
+        CaptureDecimalInteger(szDataPtr, szDataEnd, &EncodedSize);
+        pCKeyEntry->ContentSize = ContentSize;
+        pCKeyEntry->EncodedSize = EncodedSize;
+        return ERROR_SUCCESS;
     }
+
+    // If the string doesn't end with "-config", assume it's the CKey/EKey
     else
     {
         // Get the number of hashes. It is expected to be 1 or 2
