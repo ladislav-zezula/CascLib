@@ -445,7 +445,7 @@ bool CASC_PATH::AppendString(LPCTSTR szString, bool bWithSeparator)
 bool CASC_PATH::AppendEKey(LPBYTE pbEKey)
 {
     TCHAR szEKey[MD5_STRING_SIZE + 1];
-    CHAR szEKeyA[MD5_STRING_SIZE + 1];
+    char szEKeyA[MD5_STRING_SIZE + 1];
 
     StringFromBinary(pbEKey, MD5_HASH_SIZE, szEKeyA);
     CascStrCopy(szEKey, _countof(szEKey), szEKeyA, MD5_STRING_SIZE);
