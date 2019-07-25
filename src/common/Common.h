@@ -39,14 +39,6 @@ typedef struct _CONTENT_KEY
 
 } CONTENT_KEY, *PCONTENT_KEY, ENCODED_KEY, *PENCODED_KEY;
 
-// Helper structure for merging file paths
-typedef struct _PATH_BUFFER
-{
-    char * szBegin;
-    char * szPtr;
-    char * szEnd;
-} PATH_BUFFER, *PPATH_BUFFER;
-
 //-----------------------------------------------------------------------------
 // EKey entry, captured from index files of all types. This structure
 // is somewhat less memory consuming than CASC_CKEY_ENTRY
@@ -103,14 +95,12 @@ struct CASC_CKEY_ENTRY
         {
             // There can be entries that are both file span or the standalone file
             // * zone/zm_red.xpak - { zone/zm_red.xpak_1, zone/zm_red.xpak_2, ..., zone/zm_red.xpak_6 }
-            if((Flags & CASC_CE_FILE_SPAN) == 0 || RefCount != 0)
-            {
-                // To include the file, it must either be present in ENCODING or in DOWNLOAD
-                if(Flags & (CASC_CE_IN_ENCODING | CASC_CE_IN_DOWNLOAD | CASC_CE_IN_BUILD))
-                {
-                    return true;
-                }
-            }
+            if(RefCount != 0)
+                return true;
+
+            // To include the file, it must either be present in ENCODING, DOWNLOAD or in BUILD file
+            if(((Flags & CASC_CE_FILE_SPAN) == 0) && (Flags & (CASC_CE_IN_ENCODING | CASC_CE_IN_DOWNLOAD | CASC_CE_IN_BUILD)))
+                return true;
         }
         return false;
     }
@@ -127,41 +117,6 @@ struct CASC_CKEY_ENTRY
     BYTE Priority;                                  // Download priority
 };
 typedef CASC_CKEY_ENTRY *PCASC_CKEY_ENTRY;
-
-//-----------------------------------------------------------------------------
-// Global path merger class
-
-struct CASC_PATH
-{
-    CASC_PATH(TCHAR chSeparator = PATH_SEP_CHAR);
-    ~CASC_PATH();
-
-    operator LPCTSTR()
-    {
-        return m_szBufferBegin;
-    }
-
-    size_t Length()
-    {
-        return m_szBufferPtr - m_szBufferBegin;
-    }
-
-    LPTSTR New();
-    bool Copy(LPTSTR szBuffer, size_t cchBuffer);
-
-    bool SetPathRoot(LPCTSTR szRoot);
-    bool AppendStringN(LPCTSTR szString, size_t nMaxChars, bool bWithSeparator);
-    bool AppendString(LPCTSTR szString, bool bWithSeparator);
-    bool AppendEKey(LPBYTE pbEKey);
-    bool AppendChar(TCHAR chOneChar);
-    bool AppendEOL();
-
-    LPTSTR m_szBufferBegin;
-    LPTSTR m_szBufferPtr;
-    LPTSTR m_szBufferEnd;
-    TCHAR m_Buffer[0x80];
-    TCHAR m_chSeparator;
-};
 
 //-----------------------------------------------------------------------------
 // Conversion tables
@@ -376,8 +331,31 @@ int ConvertDigitToInt32(const TCHAR * szString, PDWORD PtrValue);
 int ConvertStringToInt08(const char * szString, PDWORD PtrValue);
 int ConvertStringToInt32(const TCHAR * szString, size_t nMaxDigits, PDWORD PtrValue);
 int ConvertStringToBinary(const char * szString, size_t nMaxDigits, LPBYTE pbBinary);
-char * StringFromBinary(LPBYTE pbBinary, size_t cbBinary, char * szBuffer);
-char * StringFromMD5(LPBYTE md5, char * szBuffer);
+
+//-----------------------------------------------------------------------------
+// Conversion from binary array to string. The caller must ensure that
+// the buffer has at least ((cbBinary * 2) + 1) characters
+
+template <typename xchar>
+xchar * StringFromBinary(LPBYTE pbBinary, size_t cbBinary, xchar * szBuffer)
+{
+    xchar * szSaveBuffer = szBuffer;
+
+    // Verify the binary pointer
+    if(pbBinary && cbBinary)
+    {
+        // Convert the bytes to string array
+        for(size_t i = 0; i < cbBinary; i++)
+        {
+            *szBuffer++ = IntToHexChar[pbBinary[i] >> 0x04];
+            *szBuffer++ = IntToHexChar[pbBinary[i] & 0x0F];
+        }
+    }
+
+    // Terminate the string
+    *szBuffer = 0;
+    return szSaveBuffer;
+}
 
 //-----------------------------------------------------------------------------
 // Structure query key

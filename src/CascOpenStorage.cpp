@@ -415,8 +415,6 @@ static int LoadEncodingManifest(TCascStorage * hs)
             // Go through all CKey pages and verify them
             for(DWORD i = 0; i < EnHeader.CKeyPageCount; i++)
             {
-                PFILE_CKEY_ENTRY pCKeyEntry = (PFILE_CKEY_ENTRY)pbCKeyPage;
-
                 // Check if there is enough space in the buffer
                 if((pbCKeyPage + EnHeader.CKeyPageSize) > (pbEncodingFile + cbEncodingFile))
                 {
@@ -433,7 +431,7 @@ static int LoadEncodingManifest(TCascStorage * hs)
 //              }
 
                 // Check if the CKey matches with the expected first value
-                if(memcmp(pCKeyEntry->CKey, pPageHeader[i].FirstKey, CASC_CKEY_SIZE))
+                if(memcmp(((PFILE_CKEY_ENTRY)pbCKeyPage)->CKey, pPageHeader[i].FirstKey, MD5_HASH_SIZE))
                 {
                     dwErrCode = ERROR_FILE_CORRUPT;
                     break;
@@ -775,14 +773,10 @@ static bool InsertWellKnownFile(TCascStorage * hs, const char * szFileName, CASC
         pCKeyEntry = FindCKeyEntry_CKey(hs, FakeCKeyEntry.CKey);
         if(pCKeyEntry != NULL)
         {
-            // Insert the key to the root handler, unless it's already referenced by a name
-            if(pCKeyEntry->RefCount == 0)
-            {
-                hs->pRootHandler->Insert(szFileName, pCKeyEntry);
-                pCKeyEntry->Flags |= CASC_CE_IN_BUILD;
-            }
-
-            pCKeyEntry->Flags |= dwFlags;
+            // Insert the key to the root handler. Note that the file can already be referenced
+            // ("index" vs "vfs-root" in Warcraft III storages)
+            hs->pRootHandler->Insert(szFileName, pCKeyEntry);
+            pCKeyEntry->Flags |= (CASC_CE_IN_BUILD | dwFlags);
             return true;
         }
     }

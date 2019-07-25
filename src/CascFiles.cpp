@@ -940,7 +940,7 @@ static const TCHAR * ExtractCdnServerName(TCHAR * szServerName, size_t cchServer
     return NULL;
 }
 
-static void CreateRemoteAndLocalPath(TCascStorage * hs, CASC_CDN_DOWNLOAD & CdnsInfo, CASC_PATH & RemotePath, CASC_PATH & LocalPath)
+static void CreateRemoteAndLocalPath(TCascStorage * hs, CASC_CDN_DOWNLOAD & CdnsInfo, CASC_PATH<TCHAR> & RemotePath, CASC_PATH<TCHAR> & LocalPath)
 {
     PCASC_EKEY_ENTRY pEKeyEntry;
     ULONGLONG ByteMask = 1;
@@ -1122,8 +1122,8 @@ static DWORD DownloadFile(
 
 static DWORD DownloadFileFromCDN2(TCascStorage * hs, CASC_CDN_DOWNLOAD & CdnsInfo)
 {
-    CASC_PATH RemotePath(URL_SEP_CHAR);
-    CASC_PATH LocalPath(PATH_SEP_CHAR);
+    CASC_PATH<TCHAR> RemotePath(URL_SEP_CHAR);
+    CASC_PATH<TCHAR> LocalPath(PATH_SEP_CHAR);
     DWORD dwPortFlags = (CdnsInfo.Flags & CASC_CDN_FLAG_PORT1119) ? STREAM_FLAG_USE_PORT_1119 : 0;
     DWORD dwErrCode;
 
@@ -1203,7 +1203,7 @@ static DWORD FetchAndLoadConfigFile(TCascStorage * hs, PQUERY_KEY pFileKey, PARS
     }
     else
     {
-        CASC_PATH Path;
+        CASC_PATH<TCHAR> Path;
 
         Path.AppendString(hs->szDataPath, false);
         Path.AppendString(szSubDir, true);

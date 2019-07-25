@@ -195,33 +195,6 @@ struct TDiabloRoot : public TFileTreeRoot
         FreeLoadingStuff();
     }
 
-    void AppendBackslashToTotalPath(PATH_BUFFER & PathBuffer)
-    {
-        if(PathBuffer.szPtr < PathBuffer.szEnd)
-        {
-            PathBuffer.szPtr[0] = '\\';
-            PathBuffer.szPtr++;
-        }
-    }
-
-    void AppendPathToTotalPath(PATH_BUFFER & PathBuffer, const char * szFileName, const char * szFileEnd)
-    {
-        char * szPathPtr = PathBuffer.szPtr;
-        size_t nLength = (szFileEnd - szFileName);
-
-        // Append the name
-        if((szPathPtr + nLength) < PathBuffer.szEnd)
-        {
-            memcpy(szPathPtr, szFileName, nLength);
-            szPathPtr += nLength;
-        }
-
-        // Append zero terminator
-        if(szPathPtr < PathBuffer.szEnd)
-            szPathPtr[0] = 0;
-        PathBuffer.szPtr = szPathPtr;
-    }
-
     PDIABLO3_ASSET_INFO GetAssetInfo(DWORD dwAssetIndex)
     {
         if(dwAssetIndex < DIABLO3_ASSET_COUNT && Assets[dwAssetIndex].szDirectoryName != NULL)
@@ -404,52 +377,28 @@ struct TDiabloRoot : public TFileTreeRoot
     }
 
     bool CreateAssetFileName(
-        PATH_BUFFER & PathBuffer,
+        CASC_PATH<char> & PathBuffer,
         DWORD FileIndex,
         DWORD SubIndex)
     {
         PDIABLO3_CORE_TOC_ENTRY pTocEntry;
         PDIABLO3_ASSET_INFO pAssetInfo;
-        const char * szPackageName = NULL;
-        const char * szPlainName;
-        const char * szFormat;
-        char * szPathEnd = PathBuffer.szEnd;
-        char * szPathPtr = PathBuffer.szPtr;
-        size_t nLength = 0;
+        LPCSTR szPackageName = NULL;
+        LPCSTR szPlainName;
+        LPCSTR szFormat;
+        char szBuffer[MAX_PATH];
 
         // Find and check the entry
         pTocEntry = pFileIndices + FileIndex;
         if(pTocEntry->FileIndex == FileIndex)
         {
             // Retrieve the asset information
+            szPlainName = (LPCSTR)(pbCoreTocData + pTocEntry->NameOffset);
             pAssetInfo = GetAssetInfo(pTocEntry->AssetIndex);
-            
-            // Either use the asset info for getting the folder name or supply "Asset##"
-            if(pAssetInfo != NULL)
-            {
-                CascStrCopy(szPathPtr, (szPathEnd - szPathPtr), pAssetInfo->szDirectoryName);
-                szPathPtr += strlen(szPathPtr);
-            }
-            else
-            {
-                szPathPtr[0] = 'A';
-                szPathPtr[1] = 's';
-                szPathPtr[2] = 's';
-                szPathPtr[3] = 'e';
-                szPathPtr[4] = 't';
-                szPathPtr[5] = (char)('0' + (pTocEntry->AssetIndex / 10));
-                szPathPtr[6] = (char)('0' + (pTocEntry->AssetIndex % 10));
-                szPathPtr += 7;
-            }
-
-            // Put the backslash
-            if(szPathPtr < PathBuffer.szEnd)
-                *szPathPtr++ = '\\';
 
             // Construct the file name, up to the extension. Don't include the '.'
-            szPlainName = (const char *)(pbCoreTocData + pTocEntry->NameOffset);
             szFormat = (SubIndex != CASC_INVALID_INDEX) ? "%s\\%04u" : "%s";
-            nLength = CascStrPrintf(szPathPtr, (szPathEnd - szPathPtr), szFormat, szPlainName, SubIndex);
+            CascStrPrintf(szBuffer, _countof(szBuffer), szFormat, szPlainName, SubIndex);
 
             // Try to fixup the file extension from the package name.
             // File extensions are not predictable because for subitems,
@@ -466,27 +415,41 @@ struct TDiabloRoot : public TFileTreeRoot
             // We use the Base\Data_D3\PC\Misc\Packages.dat for real file extensions, where possible
             //
 
-            if(PackagesMap.IsInitialized() && pAssetInfo != NULL)
+            if(pAssetInfo != NULL)
             {
                 // Retrieve the asset name
-                szPackageName = FindPackageName(pAssetInfo->szDirectoryName, szPathPtr);
+                szPackageName = FindPackageName(pAssetInfo->szDirectoryName, szBuffer);
                 if(szPackageName != NULL)
                 {
-                    CascStrCopy(PathBuffer.szPtr, (PathBuffer.szEnd - PathBuffer.szPtr), szPackageName);
+                    PathBuffer.AppendString(szPackageName, false);
                     return true;
                 }
+
+                // Append the directory name
+                PathBuffer.AppendString(pAssetInfo->szDirectoryName, false);
+            }
+            else
+            {
+                // Append generic name "Asset##" and continue
+                PathBuffer.AppendString("Asset", false);
+                PathBuffer.AppendChar((char)('0' + (pTocEntry->AssetIndex / 10)));
+                PathBuffer.AppendChar((char)('0' + (pTocEntry->AssetIndex % 10)));
             }
 
-            // Use the extension from the AssetInfo, if we have any
+            // Append the content of the buffer
+            PathBuffer.AppendString(szBuffer, true);
+
+            // If we have an extension, use it. Otherwise, supply "a##"
             if(pAssetInfo != NULL && pAssetInfo->szExtension != NULL)
             {
-                szPathPtr[nLength++] = '.';
-                CascStrCopy(szPathPtr + nLength, (szPathEnd - (szPathPtr + nLength)), pAssetInfo->szExtension);
-                return true;
+                PathBuffer.AppendChar('.');
+                PathBuffer.AppendString(pAssetInfo->szExtension, false);
             }
-
-            // Otherwise, supply "a##"
-            CascStrPrintf(szPathPtr + nLength, (szPathEnd - (szPathPtr + nLength)), ".a%02u", pTocEntry->AssetIndex);
+            else
+            {
+                CascStrPrintf(szBuffer, _countof(szBuffer), ".a%02u", pTocEntry->AssetIndex);
+                PathBuffer.AppendString(szBuffer, false);
+            }
             return true;
         }
 
@@ -494,13 +457,14 @@ struct TDiabloRoot : public TFileTreeRoot
     }
 
     // Parse the asset entries
-    int ParseAssetEntries(
+    DWORD ParseAssetEntries(
         TCascStorage * hs,
         DIABLO3_DIRECTORY & Directory,
-        PATH_BUFFER & PathBuffer)
+        CASC_PATH<char> & PathBuffer)
     {
         PDIABLO3_ASSET_ENTRY pEntry = (PDIABLO3_ASSET_ENTRY)Directory.pbAssetEntries;
         PCASC_CKEY_ENTRY pCKeyEntry;
+        size_t nSavePos = PathBuffer.Save();
         DWORD dwEntries = Directory.dwAssetEntries;
 
         // Do nothing if there is no entries
@@ -516,8 +480,11 @@ struct TDiabloRoot : public TFileTreeRoot
                     if(CreateAssetFileName(PathBuffer, pEntry->FileIndex, CASC_INVALID_INDEX))
                     {
                         // Insert the entry to the file tree
-                        FileTree.InsertByName(pCKeyEntry, PathBuffer.szBegin);
+                        FileTree.InsertByName(pCKeyEntry, PathBuffer);
                     }
+
+                    // Restore the path buffer position
+                    PathBuffer.Restore(nSavePos);
                 }
             }
         }
@@ -525,13 +492,14 @@ struct TDiabloRoot : public TFileTreeRoot
         return ERROR_SUCCESS;
     }
 
-    int ParseAssetAndIdxEntries(
+    DWORD ParseAssetAndIdxEntries(
         TCascStorage * hs,
         DIABLO3_DIRECTORY & Directory,
-        PATH_BUFFER & PathBuffer)
+        CASC_PATH<char> & PathBuffer)
     {
         PDIABLO3_ASSETIDX_ENTRY pEntry = (PDIABLO3_ASSETIDX_ENTRY)Directory.pbAssetIdxEntries;
         PCASC_CKEY_ENTRY pCKeyEntry;
+        size_t nSavePos = PathBuffer.Save();
         DWORD dwEntries = Directory.dwAssetIdxEntries;
 
         // Do nothing if there is no entries
@@ -548,8 +516,11 @@ struct TDiabloRoot : public TFileTreeRoot
                     {
                         // Insert the entry to the file tree
 //                      fprintf(fp, "%08u %04u %s\n", pEntry->FileIndex, pEntry->SubIndex, PathBuffer.szBegin);
-                        FileTree.InsertByName(pCKeyEntry, PathBuffer.szBegin);
+                        FileTree.InsertByName(pCKeyEntry, PathBuffer);
                     }
+
+                    // Restore the path buffer position
+                    PathBuffer.Restore(nSavePos);
                 }
             }
         }
@@ -561,12 +532,12 @@ struct TDiabloRoot : public TFileTreeRoot
     DWORD ParseDirectory_Phase1(
         TCascStorage * hs, 
         DIABLO3_DIRECTORY & Directory,
-        PATH_BUFFER & PathBuffer,
+        CASC_PATH<char> & PathBuffer,
         bool bIsRootDirectory)
     {
         DIABLO3_NAMED_ENTRY NamedEntry;
-        char * szSavePtr = PathBuffer.szPtr;
         size_t nFolderIndex = 0;
+        size_t nSavePos = PathBuffer.Save();
         DWORD dwErrCode = ERROR_SUCCESS;
 
         // Do nothing if there is no named headers
@@ -587,21 +558,20 @@ struct TDiabloRoot : public TFileTreeRoot
                     return ERROR_BAD_FORMAT;
 
                 // Append the path fragment to the total path
-                AppendPathToTotalPath(PathBuffer, NamedEntry.szFileName, NamedEntry.szFileEnd);
+                PathBuffer.AppendStringN(NamedEntry.szFileName, (NamedEntry.szFileEnd - NamedEntry.szFileName), true);
 
                 // Check whether the file exists in the storage
                 pCKeyEntry = FindCKeyEntry_CKey(hs, NamedEntry.pCKey->Value);
                 if(pCKeyEntry != NULL)
                 {
                     // Create file node belonging to this folder
-                    pFileNode = FileTree.InsertByName(pCKeyEntry, PathBuffer.szBegin);
+                    pFileNode = FileTree.InsertByName(pCKeyEntry, PathBuffer);
                     dwNodeIndex = (DWORD)FileTree.IndexOf(pFileNode);
 
                     // If we are parsing root folder, we also need to load the data of the sub-folder file
                     if(bIsRootDirectory)
                     {
                         // Mark the node as directory
-                        AppendBackslashToTotalPath(PathBuffer);
                         pCKeyEntry->Flags |= CASC_CE_FOLDER_ENTRY;
                         pFileNode->Flags |= CFN_FLAG_FOLDER;
 
@@ -621,8 +591,7 @@ struct TDiabloRoot : public TFileTreeRoot
                     }
 
                     // Restore the path pointer
-                    PathBuffer.szPtr = szSavePtr;
-                    szSavePtr[0] = 0;
+                    PathBuffer.Restore(nSavePos);
                 }
             }
         }
@@ -633,8 +602,8 @@ struct TDiabloRoot : public TFileTreeRoot
     // Parse the nameless entries of all folders
     int ParseDirectory_Phase2(TCascStorage * hs)
     {
-        PATH_BUFFER PathBuffer;
-        char szPathBuffer[MAX_PATH];
+        CASC_PATH<char> PathBuffer;
+        char szBuffer[MAX_PATH];
 
         // Parse each root subdirectory
         for(size_t i = 0; i < DIABLO3_MAX_ROOT_FOLDERS; i++)
@@ -642,16 +611,11 @@ struct TDiabloRoot : public TFileTreeRoot
             // Is this root folder loaded?
             if(RootFolders[i].pbDirectoryData != NULL)
             {
-                PathBuffer.szBegin = szPathBuffer;
-                PathBuffer.szPtr = szPathBuffer;
-                PathBuffer.szEnd = szPathBuffer + MAX_PATH - 1;
-                szPathBuffer[0] = 0;
-
                 // Retrieve the parent name
                 if(RootFolders[i].dwNodeIndex != 0)
                 {
-                    FileTree.PathAt(szPathBuffer, MAX_PATH, RootFolders[i].dwNodeIndex);
-                    PathBuffer.szPtr = PathBuffer.szBegin + strlen(szPathBuffer);
+                    FileTree.PathAt(szBuffer, _countof(szBuffer), RootFolders[i].dwNodeIndex);
+                    PathBuffer.SetPathRoot(szBuffer);
                 }
 
                 // Array of DIABLO3_ASSET_ENTRY entries.
@@ -773,15 +737,8 @@ struct TDiabloRoot : public TFileTreeRoot
 
     DWORD Load(TCascStorage * hs, DIABLO3_DIRECTORY & RootDirectory)
     {
-        PATH_BUFFER PathBuffer;
-        char szPathBuffer[MAX_PATH];
+        CASC_PATH<char> PathBuffer;
         DWORD dwErrCode;
-
-        // Initialize path buffer and go parse the directory
-        PathBuffer.szBegin = szPathBuffer;
-        PathBuffer.szPtr = szPathBuffer;
-        PathBuffer.szEnd = szPathBuffer + MAX_PATH;
-        szPathBuffer[0] = 0;
 
         // Always parse the named entries first. They always point to a file.
         // These are entries with arbitrary names, and they do not belong to an asset

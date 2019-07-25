@@ -128,46 +128,20 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         return 1;
     }
 
-    bool PathBuffer_AddChar(PATH_BUFFER & PathBuffer, char chOneChar)
-    {
-        if(PathBuffer.szPtr >= PathBuffer.szEnd)
-            return false;
-
-        *PathBuffer.szPtr++ = chOneChar;
-        *PathBuffer.szPtr = 0;
-        return true;
-    }
-
-    bool PathBuffer_AddString(PATH_BUFFER & PathBuffer, LPBYTE pbNamePtr, LPBYTE pbNameEnd)
-    {
-        size_t nLength = (pbNameEnd - pbNamePtr);
-
-        // Check whether we have enough space
-        if ((PathBuffer.szPtr + nLength) > PathBuffer.szEnd)
-            return false;
-
-        // Copy the node name
-        memcpy(PathBuffer.szPtr, pbNamePtr, nLength);
-        PathBuffer.szPtr += nLength;
-        return true;
-    }
-
-    bool PathBuffer_AppendNode(PATH_BUFFER & PathBuffer, TVFS_PATH_TABLE_ENTRY & PathEntry)
+    bool PathBuffer_AppendNode(CASC_PATH<char> & PathBuffer, TVFS_PATH_TABLE_ENTRY & PathEntry)
     {
         // Append the prefix separator, if needed
         if (PathEntry.NodeFlags & TVFS_PTE_PATH_SEPARATOR_PRE)
-            PathBuffer_AddChar(PathBuffer, '/');
+            PathBuffer.AppendChar('/');
 
         // Append the name fragment, if any
         if (PathEntry.pbNameEnd > PathEntry.pbNamePtr)
-            PathBuffer_AddString(PathBuffer, PathEntry.pbNamePtr, PathEntry.pbNameEnd);
+            PathBuffer.AppendStringN((const char *)PathEntry.pbNamePtr, (PathEntry.pbNameEnd - PathEntry.pbNamePtr), false);
 
         // Append the postfix separator, if needed
         if (PathEntry.NodeFlags & TVFS_PTE_PATH_SEPARATOR_POST)
-            PathBuffer_AddChar(PathBuffer, '/');
+            PathBuffer.AppendChar('/');
 
-        // Always end the buffer with zero
-        PathBuffer.szPtr[0] = 0;
         return true;
     }
 
@@ -436,13 +410,13 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         }
     }
 
-    DWORD ParsePathFileTable(TCascStorage * hs, TVFS_DIRECTORY_HEADER & DirHeader, PATH_BUFFER & PathBuffer, LPBYTE pbPathTablePtr, LPBYTE pbPathTableEnd)
+    DWORD ParsePathFileTable(TCascStorage * hs, TVFS_DIRECTORY_HEADER & DirHeader, CASC_PATH<char> & PathBuffer, LPBYTE pbPathTablePtr, LPBYTE pbPathTableEnd)
     {
         TVFS_DIRECTORY_HEADER SubHeader;
         TVFS_PATH_TABLE_ENTRY PathEntry;
         PCASC_CKEY_ENTRY pCKeyEntry;
         LPBYTE pbVfsSpanEntry;
-        char * szSavePathPtr = PathBuffer.szPtr;
+        size_t  nSavePos = PathBuffer.Save();
         DWORD dwSpanCount;
         DWORD dwErrCode;
 
@@ -506,11 +480,11 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                             if (IsVfsSubDirectory(hs, DirHeader, SubHeader, SpanEntry.EKey, SpanEntry.ContentSize) == ERROR_SUCCESS)
                             {
                                 // Add colon (':')
-                                PathBuffer_AddChar(PathBuffer, ':');
+                                PathBuffer.AppendChar(':');
 
                                 // The file content size should already be there
                                 assert(pCKeyEntry->ContentSize == SpanEntry.ContentSize);
-                                FileTree.InsertByName(pCKeyEntry, PathBuffer.szBegin);
+                                FileTree.InsertByName(pCKeyEntry, PathBuffer);
 
                                 // Parse the subdir
                                 ParseDirectoryData(hs, SubHeader, PathBuffer);
@@ -521,7 +495,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                                 // If the content content size is not there, supply it now
                                 if(pCKeyEntry->ContentSize == CASC_INVALID_SIZE)
                                     pCKeyEntry->ContentSize = SpanEntry.ContentSize;
-                                FileTree.InsertByName(pCKeyEntry, PathBuffer.szBegin);
+                                FileTree.InsertByName(pCKeyEntry, PathBuffer);
                             }
                         }
                     }
@@ -588,7 +562,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                         {
                             // Insert a new file node that will contain pointer to the span entries
                             RefCount = pSpanEntries->RefCount;
-                            pFileNode = FileTree.InsertByName(pSpanEntries, PathBuffer.szBegin);
+                            pFileNode = FileTree.InsertByName(pSpanEntries, PathBuffer);
                             pSpanEntries->RefCount = RefCount;
 
                             if(pFileNode == NULL)
@@ -598,8 +572,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                 }
 
                 // Reset the position of the path buffer
-                PathBuffer.szPtr = szSavePathPtr;
-                PathBuffer.szPtr[0] = 0;
+                PathBuffer.Restore(nSavePos);
             }
         }
 
@@ -607,7 +580,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         return ERROR_SUCCESS;
     }
 
-    DWORD ParseDirectoryData(TCascStorage * hs, TVFS_DIRECTORY_HEADER & DirHeader, PATH_BUFFER & PathBuffer)
+    DWORD ParseDirectoryData(TCascStorage * hs, TVFS_DIRECTORY_HEADER & DirHeader, CASC_PATH<char> & PathBuffer)
     {
         LPBYTE pbRootDirectory = DirHeader.pbDirectoryData + DirHeader.PathTableOffset;
         LPBYTE pbRootDirPtr = pbRootDirectory;
@@ -647,15 +620,8 @@ struct TRootHandler_TVFS : public TFileTreeRoot
 
     DWORD Load(TCascStorage * hs, TVFS_DIRECTORY_HEADER & RootHeader)
     {
-//      PCASC_CKEY_ENTRY pCKeyEntry;
-        PATH_BUFFER PathBuffer;
+        CASC_PATH<char> PathBuffer;
         DWORD dwErrCode;
-        char szPathBuffer[MAX_PATH] = {0};
-
-        // Initialize the path buffer
-        PathBuffer.szBegin =
-        PathBuffer.szPtr = szPathBuffer;
-        PathBuffer.szEnd = szPathBuffer + MAX_PATH;
 
         // Save the length of the key
         FileTree.SetKeyLength(RootHeader.EKeySize);

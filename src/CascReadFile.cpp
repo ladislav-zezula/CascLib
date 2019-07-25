@@ -29,8 +29,8 @@ static DWORD OpenDataStream(TCascFile * hf, PCASC_FILE_SPAN pFileSpan, PCASC_CKE
 {
     TCascStorage * hs = hf->hs;
     TFileStream * pStream = NULL;
-    TCHAR * szDataFile;
     TCHAR szCachePath[MAX_PATH];
+    TCHAR szDataFile[MAX_PATH];
     TCHAR szPlainName[0x80];
     DWORD dwErrCode;
 
@@ -45,17 +45,12 @@ static DWORD OpenDataStream(TCascFile * hf, PCASC_FILE_SPAN pFileSpan, PCASC_CKE
         {
             // Prepare the name of the data file
             CascStrPrintf(szPlainName, _countof(szPlainName), _T("data.%03u"), dwArchiveIndex);
-            szDataFile = CombinePath(hs->szIndexPath, szPlainName);
+            CombinePath(szDataFile, _countof(szDataFile), PATH_SEP_CHAR, hs->szIndexPath, szPlainName, NULL);
 
-            // Open the data file
-            if(szDataFile != NULL)
-            {
-                // Open the data stream with read+write sharing to prevent Battle.net agent
-                // detecting a corruption and redownloading the entire package
-                pStream = FileStream_OpenFile(szDataFile, STREAM_FLAG_READ_ONLY | STREAM_FLAG_WRITE_SHARE | STREAM_PROVIDER_FLAT | STREAM_FLAG_FILL_MISSING | BASE_PROVIDER_FILE);
-                hs->DataFiles[dwArchiveIndex] = pStream;
-                CASC_FREE(szDataFile);
-            }
+            // Open the data stream with read+write sharing to prevent Battle.net agent
+            // detecting a corruption and redownloading the entire package
+            pStream = FileStream_OpenFile(szDataFile, STREAM_FLAG_READ_ONLY | STREAM_FLAG_WRITE_SHARE | STREAM_PROVIDER_FLAT | STREAM_FLAG_FILL_MISSING | BASE_PROVIDER_FILE);
+            hs->DataFiles[dwArchiveIndex] = pStream;
         }
 
         // Return error or success

@@ -357,143 +357,6 @@ wchar_t * CascNewStr(const wchar_t * szString, size_t nCharsToReserve)
 }
 
 //-----------------------------------------------------------------------------
-// Path merging functions
-
-CASC_PATH::CASC_PATH(TCHAR chSeparator)
-{
-    m_szBufferBegin = m_szBufferPtr = m_Buffer;
-    m_szBufferEnd = m_szBufferBegin + _countof(m_Buffer);
-    m_chSeparator = chSeparator;
-    m_Buffer[0] = 0;
-}
-
-CASC_PATH::~CASC_PATH()
-{
-    if(m_szBufferBegin != m_Buffer)
-    {
-        CASC_FREE(m_szBufferBegin);
-    }
-}
-
-LPTSTR CASC_PATH::New()
-{
-    LPTSTR szNewStr;
-
-    if((szNewStr = CASC_ALLOC<TCHAR>(Length() + 1)) != NULL)
-    {
-        memcpy(szNewStr, m_szBufferBegin, Length() * sizeof(TCHAR));
-        szNewStr[Length()] = 0;
-    }
-
-    return szNewStr;
-}
-
-bool CASC_PATH::Copy(LPTSTR szBuffer, size_t cchBuffer)
-{
-    if(Length() + 1 > cchBuffer)
-        return false;
-
-    memcpy(szBuffer, m_szBufferBegin, Length() * sizeof(TCHAR));
-    szBuffer[Length()] = 0;
-    return true;
-}
-
-bool CASC_PATH::SetPathRoot(LPCTSTR szRoot)
-{
-    // Make sure that there is no characters
-    m_szBufferPtr = m_szBufferBegin;
-    m_szBufferPtr[0] = 0;
-
-    // Append the root path
-    return AppendString(szRoot, false);
-}
-
-bool CASC_PATH::AppendStringN(LPCTSTR szString, size_t nMaxChars, bool bWithSeparator)
-{
-    LPCTSTR szStringEnd = szString + nMaxChars;
-    TCHAR chOneChar;
-
-    if(szString && szString[0] && nMaxChars)
-    {
-        // Append separator, if required and not in begin of the string
-        if(m_szBufferPtr > m_szBufferBegin && bWithSeparator)
-            AppendChar(m_chSeparator);
-
-        // Append the characters from the string
-        while(szString[0] && szString < szStringEnd)
-        {
-            // Retrieve the single character
-            chOneChar = *szString++;
-
-            // Normalize the character
-            if(chOneChar == '/' || chOneChar == '\\')
-                chOneChar = m_chSeparator;
-
-            if(!AppendChar(chOneChar))
-                break;
-        }
-    }
-
-    return AppendEOL();
-}
-
-bool CASC_PATH::AppendString(LPCTSTR szString, bool bWithSeparator)
-{
-    return AppendStringN(szString, (0x10000 / sizeof(TCHAR)), bWithSeparator);
-}
-
-bool CASC_PATH::AppendEKey(LPBYTE pbEKey)
-{
-    TCHAR szEKey[MD5_STRING_SIZE + 1];
-    char szEKeyA[MD5_STRING_SIZE + 1];
-
-    StringFromBinary(pbEKey, MD5_HASH_SIZE, szEKeyA);
-    CascStrCopy(szEKey, _countof(szEKey), szEKeyA, MD5_STRING_SIZE);
-
-    AppendStringN(szEKey, 2, true);
-    AppendStringN(szEKey+2, 2, true);
-    return AppendString(szEKey, true);
-}
-
-bool CASC_PATH::AppendEOL()
-{
-    if(!AppendChar((TCHAR)0))
-        return false;
-
-    m_szBufferPtr--;
-    return true;
-}
-
-bool CASC_PATH::AppendChar(TCHAR chOneChar)
-{
-    // Are we out of buffer?
-    if((m_szBufferPtr + 1) >= m_szBufferEnd)
-    {
-        LPTSTR szOldBuffer = m_szBufferBegin;
-        LPTSTR szNewBuffer;
-        size_t nToAllocate = (m_szBufferEnd - m_szBufferBegin) * 2;
-        size_t nLength = (m_szBufferPtr - m_szBufferBegin);
-
-        if((szNewBuffer = CASC_ALLOC<TCHAR>(nToAllocate)) == NULL)
-            return false;
-
-        // Copy the chars
-        memcpy(szNewBuffer, m_szBufferBegin, (m_szBufferPtr - m_szBufferBegin) * sizeof(TCHAR));
-        m_szBufferBegin = szNewBuffer;
-        m_szBufferPtr = m_szBufferBegin + nLength;
-        m_szBufferEnd = m_szBufferBegin + nToAllocate;
-        
-        // Free the old buffer
-        if(szOldBuffer != m_Buffer)
-            CASC_FREE(szOldBuffer);
-    }
-
-    // Append the character
-    *m_szBufferPtr++ = chOneChar;
-    return true;
-}
-
-//-----------------------------------------------------------------------------
 // String merging
 
 LPTSTR GetLastPathPart(LPTSTR szWorkPath)
@@ -537,7 +400,7 @@ bool CutLastPathPart(TCHAR * szWorkPath)
 
 size_t CombinePath(LPTSTR szBuffer, size_t nMaxChars, char chSeparator, va_list argList)
 {
-    CASC_PATH Path(chSeparator);
+    CASC_PATH<TCHAR> Path(chSeparator);
     LPCTSTR szFragment;
     bool bWithSeparator = false;
 
@@ -565,7 +428,7 @@ size_t CombinePath(LPTSTR szBuffer, size_t nMaxChars, char chSeparator, ...)
 
 LPTSTR CombinePath(LPCTSTR szDirectory, LPCTSTR szSubDir)
 {
-    CASC_PATH Path(PATH_SEP_CHAR);
+    CASC_PATH<TCHAR> Path(PATH_SEP_CHAR);
 
     // Merge the path
     Path.AppendString(szDirectory, false);
@@ -714,32 +577,6 @@ int ConvertStringToBinary(
     }
 
     return ERROR_SUCCESS;
-}
-
-char * StringFromBinary(LPBYTE pbBinary, size_t cbBinary, char * szBuffer)
-{
-    char * szSaveBuffer = szBuffer;
-
-    // Verify the binary pointer
-    if(pbBinary && cbBinary)
-    {
-        // Convert the string to the array of MD5
-        // Copy the blob data as text
-        for(size_t i = 0; i < cbBinary; i++)
-        {
-            *szBuffer++ = IntToHexChar[pbBinary[i] >> 0x04];
-            *szBuffer++ = IntToHexChar[pbBinary[i] & 0x0F];
-        }
-    }
-
-    // Terminate the string
-    *szBuffer = 0;
-    return szSaveBuffer;
-}
-
-char * StringFromMD5(LPBYTE md5, char * szBuffer)
-{
-    return StringFromBinary(md5, MD5_HASH_SIZE, szBuffer);
 }
 
 //-----------------------------------------------------------------------------

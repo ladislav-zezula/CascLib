@@ -30,6 +30,7 @@
 #include "common/Directory.h"
 #include "common/ListFile.h"
 #include "common/Csv.h"
+#include "common/Path.h"
 #include "common/RootHandler.h"
 
 // Headers from Alexander Peslyak's MD5 implementation
