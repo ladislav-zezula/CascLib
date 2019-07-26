@@ -31,12 +31,10 @@ TCascStorage::TCascStorage()
     dwRefCount = 1;
 
     szRootPath = szDataPath = szIndexPath = szBuildFile = szCdnServers = szCdnPath = szCodeName = NULL;
-    szProductName = NULL;
     szIndexFormat = NULL;
     szRegion = NULL;
     
     memset(DataFiles, 0, sizeof(DataFiles));
-    Product = UnknownProduct;
     dwBuildNumber = 0;
     dwFeatures = 0;
     BuildFileType = CascBuildNone;
@@ -898,9 +896,13 @@ static bool GetStorageProduct(TCascStorage * hs, void * pvStorageInfo, size_t cb
     pProductInfo = (PCASC_STORAGE_PRODUCT)ProbeOutputBuffer(pvStorageInfo, cbStorageInfo, sizeof(CASC_STORAGE_PRODUCT), pcbLengthNeeded);
     if(pProductInfo != NULL)
     {
-        pProductInfo->szProductName = hs->szProductName;
-        pProductInfo->dwBuildNumber = hs->dwBuildNumber;
-        pProductInfo->Product = hs->Product;
+        // Clear the entire structure
+        memset(pProductInfo, 0, sizeof(CASC_STORAGE_PRODUCT));
+
+        // Copy the product code name and build number
+        if(hs->szCodeName != NULL)
+            CascStrCopy(pProductInfo->szCodeName, _countof(pProductInfo->szCodeName), hs->szCodeName);
+        pProductInfo->BuildNumber = hs->dwBuildNumber;
     }
 
     return (pProductInfo != NULL);
@@ -1056,11 +1058,8 @@ static DWORD InitializeLocalDirectories(TCascStorage * hs, PCASC_OPEN_STORAGE_AR
 
 static DWORD InitializeOnlineDirectories(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
 {
-    LPCTSTR szLocalCache = pArgs->szLocalPath;
-    LPCTSTR szCodeName = pArgs->szCodeName;
-
     // Create the root path
-    hs->szRootPath = CombinePath(szLocalCache, szCodeName);
+    hs->szRootPath = CascNewStr(pArgs->szLocalPath);
     if (hs->szRootPath != NULL)
     {
         hs->BuildFileType = CascVersionsDb;

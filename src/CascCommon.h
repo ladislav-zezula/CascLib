@@ -267,7 +267,6 @@ struct TCascStorage
     PCASC_OPEN_STORAGE_ARGS pArgs;                  // Open storage arguments. Only valid during opening the storage
 
     LPCTSTR szIndexFormat;                          // Format of the index file name
-    LPCSTR  szProductName;                          // String representation of the product name
     LPTSTR  szCodeName;                             // On local storage, this select a product in a multi-product storage. For online storage, this selects a product
     LPTSTR  szRootPath;                             // Path where the build file is
     LPTSTR  szDataPath;                             // This is the directory where data files are
@@ -276,7 +275,6 @@ struct TCascStorage
     LPTSTR  szCdnServers;                           // Multi-SZ list of CDN servers
     LPTSTR  szCdnPath;                              // Remote CDN sub path for the product
     LPSTR   szRegion;                               // Product region. Only when "versions" is used as storage root file
-    CASC_PRODUCT Product;                           // Product enum value (see CASC_PRODUCT)
     DWORD dwBuildNumber;                            // Product build number
     DWORD dwRefCount;                               // Number of references
     DWORD dwFeatures;                               // List of CASC features. See CASC_FEATURE_XXX

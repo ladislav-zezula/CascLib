@@ -16,7 +16,7 @@
 #define __CASCLIB_H__
 
 #ifdef _MSC_VER
-#pragma warning(disable:4668)       // 'XXX' is not defined as a preprocessor macro, replacing with '0' for '#if/#elif'
+#pragma warning(disable:4668)                   // 'XXX' is not defined as a preprocessor macro, replacing with '0' for '#if/#elif'
 #pragma warning(disable:4820)       // 'XXX' : '2' bytes padding added after data member 'XXX::yyy'
 #endif
 
@@ -41,29 +41,29 @@ extern "C" {
   #ifdef _DEBUG                                 // DEBUG VERSIONS
     #ifndef _UNICODE
       #ifdef _DLL
-        #pragma comment(lib, "CascLibDAD.lib") // Debug Ansi CRT-DLL version
+        #pragma comment(lib, "CascLibDAD.lib")  // Debug Ansi CRT-DLL version
       #else
-        #pragma comment(lib, "CascLibDAS.lib") // Debug Ansi CRT-LIB version
+        #pragma comment(lib, "CascLibDAS.lib")  // Debug Ansi CRT-LIB version
       #endif
     #else
       #ifdef _DLL
-        #pragma comment(lib, "CascLibDUD.lib") // Debug Unicode CRT-DLL version
+        #pragma comment(lib, "CascLibDUD.lib")  // Debug Unicode CRT-DLL version
       #else
-        #pragma comment(lib, "CascLibDUS.lib") // Debug Unicode CRT-LIB version
+        #pragma comment(lib, "CascLibDUS.lib")  // Debug Unicode CRT-LIB version
       #endif
     #endif
   #else                                         // RELEASE VERSIONS
     #ifndef _UNICODE
       #ifdef _DLL
-        #pragma comment(lib, "CascLibRAD.lib") // Release Ansi CRT-DLL version
+        #pragma comment(lib, "CascLibRAD.lib")  // Release Ansi CRT-DLL version
       #else
-        #pragma comment(lib, "CascLibRAS.lib") // Release Ansi CRT-LIB version
+        #pragma comment(lib, "CascLibRAS.lib")  // Release Ansi CRT-LIB version
       #endif
     #else
       #ifdef _DLL
-        #pragma comment(lib, "CascLibRUD.lib") // Release Unicode CRT-DLL version
+        #pragma comment(lib, "CascLibRUD.lib")  // Release Unicode CRT-DLL version
       #else
-        #pragma comment(lib, "CascLibRUS.lib") // Release Unicode CRT-LIB version
+        #pragma comment(lib, "CascLibRUS.lib")  // Release Unicode CRT-LIB version
       #endif
     #endif
   #endif
@@ -72,14 +72,14 @@ extern "C" {
 //-----------------------------------------------------------------------------
 // Defines
 
-#define CASCLIB_VERSION                 0x013C  // Current version of CascLib (1.50)
-#define CASCLIB_VERSION_STRING          "1.60"  // String version of CascLib version
+#define CASCLIB_VERSION                 0x0200  // CascLib version - integral (1.50)
+#define CASCLIB_VERSION_STRING           "2.0"  // CascLib version - string
 
 // Values for CascOpenFile
 #define CASC_OPEN_BY_NAME           0x00000000  // Open the file by name. This is the default value
 #define CASC_OPEN_BY_CKEY           0x00000001  // The name is just the content key; skip ROOT file processing
 #define CASC_OPEN_BY_EKEY           0x00000002  // The name is just the encoded key; skip ROOT file processing
-#define CASC_OPEN_BY_FILEID         0x00000003  // The name is CASC_IDTONAME(FileDataId)
+#define CASC_OPEN_BY_FILEID         0x00000003  // The name is CASC_FILE_DATA_ID(FileDataId)
 #define CASC_OPEN_TYPE_MASK         0x0000000F  // The mask which gets open type from the dwFlags
 #define CASC_OPEN_FLAGS_MASK        0xFFFFFFF0  // The mask which gets open type from the dwFlags
 #define CASC_STRICT_DATA_CHECK      0x00000010  // Verify all data read from a file
@@ -117,10 +117,6 @@ extern "C" {
 #ifndef MD5_HASH_SIZE
 #define MD5_HASH_SIZE                     0x10
 #define MD5_STRING_SIZE                   0x20
-#endif
-
-#ifndef SHA1_DIGEST_SIZE
-#define SHA1_DIGEST_SIZE                  0x14  // 160 bits
 #endif
 
 // Return value for CascGetFileSize and CascSetFilePointer
@@ -178,24 +174,6 @@ typedef enum _CASC_FILE_INFO_CLASS
     CascFileInfoClassMax
 } CASC_FILE_INFO_CLASS, *PCASC_FILE_INFO_CLASS;
 
-// See https://wowdev.wiki/TACT#Products
-typedef enum _CASC_PRODUCT
-{
-    UnknownProduct,
-    HeroesOfTheStorm,
-    Diablo3,
-    Overwatch,
-    StarCraft1,
-    StarCraft2,
-    WorldOfWarcraft,
-    WarCraft3,
-    Destiny2,
-    CallOfDutyBlackOps4,
-    Odin,
-    MaxProductValue
-
-} CASC_PRODUCT, *PCASC_PRODUCT;
-
 // CascLib may provide a fake name, constructed from file data id, CKey or EKey.
 // This enum helps to see what name was actually returned
 // Note that any of these names can be passed to CascOpenFile with no extra flags
@@ -241,11 +219,11 @@ typedef struct _CASC_FIND_DATA
     // Span count
     DWORD dwSpanCount;
 
-    DWORD bFileAvailable:1;                     // If true the file is available locally
-//  DWORD bCanOpenByName:1;
-//  DWORD bCanOpenByDataId:1;
-//  DWORD bCanOpenByCKey:1;
-//  DWORD bCanOpenByEKey:1;
+    // If true the file is available locally
+    DWORD bFileAvailable:1;
+
+    // Name type in 'szFileName'. In case the file name is not known,
+    // CascLib can put FileDataId-like name or a string representation of CKey/EKey
     CASC_NAME_TYPE NameType;
 
 } CASC_FIND_DATA, *PCASC_FIND_DATA;
@@ -268,9 +246,8 @@ typedef struct _CASC_STORAGE_TAGS
 
 typedef struct _CASC_STORAGE_PRODUCT
 {
-    LPCSTR szProductName;
-    DWORD dwBuildNumber;
-    CASC_PRODUCT Product;
+    char szCodeName[0x1C];                      // Code name of the product ("wowt" = "World of Warcraft PTR")
+    DWORD BuildNumber;                          // Build number. If zero, then CascLib didn't recognize build number
 
 } CASC_STORAGE_PRODUCT, *PCASC_STORAGE_PRODUCT;
 

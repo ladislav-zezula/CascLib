@@ -477,8 +477,6 @@ PCASC_FILE_NODE CASC_FILE_TREE::Find(const char * szFullPath, DWORD FileDataId, 
     if(pFileNode != NULL && pFindData != NULL)
     {
         GetExtras(pFileNode, &pFindData->dwFileDataId, &pFindData->dwLocaleFlags, &pFindData->dwContentFlags);
-//      pFindData->bCanOpenByName   = (pFileNode->FileNameHash != 0);
-//      pFindData->bCanOpenByDataId = (FileDataIdOffset != 0);
     }
 
     return pFileNode;

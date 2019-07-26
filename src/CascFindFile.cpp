@@ -31,10 +31,6 @@ static void ResetFindData(PCASC_FIND_DATA pFindData)
     pFindData->dwSpanCount = 1;
     pFindData->NameType = CascNameFull;
     pFindData->bFileAvailable = false;
-    //pFindData->bCanOpenByName = false;
-    //pFindData->bCanOpenByDataId = false;
-    //pFindData->bCanOpenByCKey = false;
-    //pFindData->bCanOpenByEKey = false;
 }
 
 static void SupplyFakeFileName(PCASC_FIND_DATA pFindData, PCASC_CKEY_ENTRY pCKeyEntry)
@@ -74,8 +70,6 @@ static bool CopyCKeyEntryToFindData(PCASC_FIND_DATA pFindData, PCASC_CKEY_ENTRY 
     // Supply both keys
     CopyMemory16(pFindData->CKey, pCKeyEntry->CKey);
     CopyMemory16(pFindData->EKey, pCKeyEntry->EKey);
-//  pFindData->bCanOpenByCKey = (pCKeyEntry->Flags & CASC_CE_HAS_CKEY) ? true : false;
-//  pFindData->bCanOpenByEKey = (pCKeyEntry->Flags & CASC_CE_HAS_EKEY) ? true : false;
 
     // Supply the tag mask
     pFindData->TagBitMask = pCKeyEntry->TagBitMask;

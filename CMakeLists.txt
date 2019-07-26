@@ -8,10 +8,13 @@ set(HEADER_FILES
     src/common/Array.h
     src/common/Common.h
     src/common/Csv.h
+    src/common/Directory.h
     src/common/FileStream.h
     src/common/FileTree.h
     src/common/ListFile.h
     src/common/Map.h
+    src/common/Path.h
+    src/common/RootHandler.h
     src/jenkins/lookup.h
 )
 
@@ -24,6 +27,7 @@ set(SRC_FILES
     src/common/ListFile.cpp
     src/common/RootHandler.cpp
     src/jenkins/lookup3.c
+    src/md5/md5.cpp
     src/CascDecompress.cpp
     src/CascDecrypt.cpp
     src/CascDumpData.cpp
@@ -40,10 +44,6 @@ set(SRC_FILES
     src/CascRootFile_TVFS.cpp
     src/CascRootFile_OW.cpp
     src/CascRootFile_WoW.cpp
-)
-
-set(MD5_FILES
-    src/md5/md5.cpp
 )
 
 set(ZLIB_FILES
@@ -68,9 +68,9 @@ if(WIN32)
         message(STATUS "Using MSVC")
         add_definitions(-D_7ZIP_ST)
     else()
-        message(STATUS "Using mingw")	 
+        message(STATUS "Using mingw")
     endif()
-    set(SRC_ADDITIONAL_FILES ${ZLIB_FILES} ${MD5_FILES})
+    set(SRC_ADDITIONAL_FILES ${ZLIB_FILES})
     set(LINK_LIBS wininet)
     if(CASC_UNICODE)
 	message(STATUS "Build UNICODE version")
@@ -83,12 +83,12 @@ endif()
 if(APPLE)
     message(STATUS "Using Mac OS X port")
     set(LINK_LIBS z bz2)
-    set(SRC_ADDITIONAL_FILES ${MD5_FILES})
+    set(SRC_ADDITIONAL_FILES)
 endif()
 
 if (${CMAKE_SYSTEM_NAME} STREQUAL Linux)
     message(STATUS "Using Linux port")
-    set(SRC_ADDITIONAL_FILES ${MD5_FILES} ${ZLIB_FILES})
+    set(SRC_ADDITIONAL_FILES ${ZLIB_FILES})
 endif()
 
 option(CASC_BUILD_SHARED_LIB "Compile dynamically linked library" ON)
@@ -106,8 +106,8 @@ if(CASC_BUILD_SHARED_LIB)
 	if(WIN32)
 		set_target_properties(casc PROPERTIES OUTPUT_NAME CascLib)
 	endif()
-	
-	
+
+
 if(APPLE)
     set_target_properties(casc PROPERTIES FRAMEWORK true)
     set_target_properties(casc PROPERTIES PUBLIC_HEADER "src/CascLib.h src/CascPort.h")
@@ -142,7 +142,7 @@ if(CASC_BUILD_STATIC_LIB)
 			$<INSTALL_INTERFACE:include>
 	)
 	install(TARGETS casc_static RUNTIME DESTINATION bin LIBRARY DESTINATION lib${LIB_SUFFIX} ARCHIVE DESTINATION lib${LIB_SUFFIX} FRAMEWORK DESTINATION /Library/Frameworks)
-	
+
 	if(APPLE)
     set_target_properties(casc_static PROPERTIES FRAMEWORK true)
     set_target_properties(casc_static PROPERTIES PUBLIC_HEADER "src/CascLib.h src/CascPort.h")

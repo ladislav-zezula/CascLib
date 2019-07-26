@@ -260,7 +260,7 @@ static FILE * OpenOutputTextFile(HANDLE hStorage, LPCSTR szFormat)
 
     if(CascGetStorageInfo(hStorage, CascStorageProduct, &ProductInfo, sizeof(CASC_STORAGE_PRODUCT), NULL))
     {
-        CascStrPrintf(szOutFileName, _countof(szOutFileName), szFormat, ProductInfo.szProductName, ProductInfo.dwBuildNumber);
+        CascStrPrintf(szOutFileName, _countof(szOutFileName), szFormat, ProductInfo.szCodeName, ProductInfo.BuildNumber);
         fp = fopen(szOutFileName, "wt");
     }
 
@@ -874,7 +874,7 @@ static STORAGE_INFO1 StorageInfo1[] =
     {"2016 - WoW/29981",                 "0de024afd819724712e1a9d6d4318467", "e3c5c6f51d1bd74b8f09f5469aaf1290", "dbfilesclient\\battlepetspeciesstate.db2"},
     {"2016 - WoW/30993:wow",             "bf63fb5ee13e9d323fdca3ac9a42c635", "187528bedd080ba049dd6bbeaa9444d0", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"2016 - WoW/30993:wowt",            "aab4e18cccb413a8ac10cc68daa1e938", "5165e632c69e1d68371346d63c719de8", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"2016 - WoW/30993:wow_classic",     "ff9377439f91605a17117bf8c89815b4", "3010a70f89e6fd96cac23fa7082b6d3d", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+//  {"2016 - WoW/30993:wow_classic",     "ff9377439f91605a17117bf8c89815b4", "3010a70f89e6fd96cac23fa7082b6d3d", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
 
     {"2017 - Starcraft1/2457",           "e49f1880a14e3197d3bc05aea3befb12", "1ef032898743e6772108bf4a85974915", "music\\radiofreezerg.ogg"},
     {"2017 - Starcraft1/4037",           "9536c1c74703c117496189c507c8758c", "ce1681e86a487e183101a1271558f687", "music\\radiofreezerg.ogg"},
@@ -918,16 +918,16 @@ int main(void)
     // Single tests
     //
 
-//  LocalStorage_Test(Storage_OpenFiles, "2014 - Heroes of the Storm\\29049", "ENCODING");
-//  LocalStorage_Test(Storage_ReadFiles, "2014 - Heroes of the Storm\\30414", "84fd9825f313363fd2528cd999bcc852");
+    LocalStorage_Test(Storage_OpenFiles, "2014 - Heroes of the Storm\\29049", NULL, NULL, "ENCODING");
+//  LocalStorage_Test(Storage_ReadFiles, "2014 - Heroes of the Storm\\30414", NULL, NULL, "84fd9825f313363fd2528cd999bcc852");
 //  LocalStorage_Test(Storage_EnumFiles, "2015 - Diablo III\\30013");
-//  LocalStorage_Test(Storage_EnumFiles, "2016 - WoW/30993:wow", "00039929a204d6e65500000000000000");
+//  LocalStorage_Test(Storage_EnumFiles, "2016 - WoW/30993:wow", NULL, NULL, "00039929a204d6e65500000000000000");
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - New CASC\\00001");
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - New CASC\\00002");
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - Warcraft III\\11889");
-//  LocalStorage_Test(Storage_SeekFiles, "2018 - CoD4\\3376209", "zone/base.xpak");
-    //OnlineStorage_Test(Storage_OpenFiles, "agent", NULL, "PATCH");
-    //OnlineStorage_Test(Storage_SeekFiles, "viper", "us", "zone/base.xpak");
+//  LocalStorage_Test(Storage_SeekFiles, "2018 - CoD4\\3376209", NULL, NULL, "zone/base.xpak");
+    //OnlineStorage_Test(Storage_OpenFiles, "agent", NULL, NULL, NULL, "PATCH");
+    //OnlineStorage_Test(Storage_SeekFiles, "viper", "us", NULL, NULL, "zone/base.xpak");
 
     //HANDLE hFile = NULL;
     //LPBYTE Buffer;

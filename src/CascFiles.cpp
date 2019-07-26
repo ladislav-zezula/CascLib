@@ -397,91 +397,14 @@ static DWORD LoadVfsRootEntry(TCascStorage * hs, const char * szVariableName, co
 
 static DWORD LoadBuildProductId(TCascStorage * hs, const char * /* szVariableName */, const char * szDataBegin, const char * szDataEnd, void * /* pvParam */)
 {
-    DWORD dwBuildUid = 0;
+    size_t nLength = (szDataEnd - szDataBegin);
 
-    // Convert up to 4 chars to DWORD
-    for(size_t i = 0; i < 4 && szDataBegin < szDataEnd; i++)
+    if(hs->szCodeName == NULL)
     {
-        dwBuildUid = (dwBuildUid << 0x08) | (BYTE)szDataBegin[0];
-        szDataBegin++;
-    }
-
-    // Product-specific. See https://wowdev.wiki/TACT#Products
-    switch(dwBuildUid)
-    {
-        case 0x00006433:    // 'd3'
-        case 0x00643364:    // 'd3b': Diablo 3 Beta (2013) 
-        case 0x6433636e:    // 'd3cn': Diablo 3 China
-        case 0x00643374:    // 'd3t': Diablo 3 Test
-            hs->szProductName = "Diablo 3";
-            hs->Product = Diablo3;
-            break;
-
-        case 0x64737432:     // 'dst2':
-            hs->szProductName = "Destiny 2";
-            hs->Product = Destiny2;
-            break;
-
-        case 0x00626e74:    // 'bnt': Heroes of the Storm Alpha 
-        case 0x6865726f:    // 'hero': Heroes of the Storm Retail
-        case 0x73746f72:    // 'stor': Heroes of the Storm (deprecated)
-            hs->szProductName = "Heroes Of The Storm";
-            hs->Product = HeroesOfTheStorm;
-            break;
-
-        case 0x0070726f:    // 'pro':
-        case 0x70726f63:    // 'proc':
-        case 0x70726f64:    // 'prod': "prodev": Overwatch Dev
-        case 0x70726f65:    // 'proe': Not on public CDNs
-        case 0x70726f74:    // 'prot': Overwatch Test
-        case 0x70726f76:    // 'prov': Overwatch Vendor
-        case 0x70726f6d:    // 'prom': "proms": Overwatch World Cup Viewer
-            hs->szProductName = "Overwatch";
-            hs->Product = Overwatch;
-            break;
-
-        case 0x00007331:    // 's1': StarCraft 1
-        case 0x00733161:    // 's1a': Starcraft 1 Alpha
-        case 0x00733174:    // 's1t': StarCraft 1 Test
-            hs->szProductName = "Starcraft 1";
-            hs->Product = StarCraft1;
-            break;
-
-        case 0x00007332:    // 's2': StarCraft 2
-        case 0x00733262:    // 's2b': Starcraft 2 Beta
-        case 0x00733274:    // 's2t': StarCraft 2 Test
-        case 0x00736332:    // 'sc2': StarCraft 2 (deprecated)
-            hs->szProductName = "Starcraft 2";
-            hs->Product = StarCraft2;
-            break;
-
-        case 0x76697065:    // "viper", "viperdev", "viperv1": Call of Duty Black Ops 4
-            hs->szProductName = "Call Of Duty Black Ops 4";
-            hs->Product = CallOfDutyBlackOps4;
-            break;
-
-        case 0x00007733:    // 'w3': Warcraft III
-        case 0x00773374:    // 'w3t': Warcraft III Public Test
-        case 0x77617233:    // 'war3': Warcraft III (old)
-            hs->szProductName = "WarCraft 3";
-            hs->Product = WarCraft3;
-            break;
-
-        case 0x00776f77:    // 'wow': World of Warcraft
-        case 0x776f775f:    // "wow_beta", "wow_classic", "wow_classic_beta"
-        case 0x776f7764:    // "wowdev", "wowdemo"
-        case 0x776f7765:    // "wowe1", "wowe3", "wowe3"
-        case 0x776f7774:    // 'wowt': World of Warcraft Test
-        case 0x776f7776:    // 'wowv': World of Warcraft Vendor
-        case 0x776f777a:    // 'wowz': World of Warcraft Submission (previously Vendor)
-            hs->szProductName = "World Of Warcraft";
-            hs->Product = WorldOfWarcraft;
-            break;
-
-        default:
-            hs->szProductName = "Unknown Product";
-            hs->Product = UnknownProduct;
-            break;
+        if((hs->szCodeName = CASC_ALLOC<TCHAR>(nLength + 1)) != NULL)
+        {
+            CascStrCopy(hs->szCodeName, nLength + 1, szDataBegin, nLength);
+        }
     }
 
     return ERROR_SUCCESS;
@@ -590,7 +513,6 @@ static DWORD ParseFile_BuildInfo(TCascStorage * hs, CASC_CSV & Csv)
     size_t nLineCount = Csv.GetLineCount();
     size_t nSelected = CASC_INVALID_INDEX;
     DWORD dwErrCode;
-    char szWantedCodeName[0x40] = "";
 
     //
     // Find the configuration that we're gonna load.
@@ -637,12 +559,6 @@ static DWORD ParseFile_BuildInfo(TCascStorage * hs, CASC_CSV & Csv)
         }
     }
 
-    // If the product is specified by hs->szCodeName and the ".build.info" contains "Product!STRING:0", we watch for that product.
-    if(hs->szCodeName != NULL && nProductColumnIndex != CASC_INVALID_INDEX)
-    {
-        CascStrCopy(szWantedCodeName, _countof(szWantedCodeName), hs->szCodeName);
-    }
-
     // Parse all lines in the CSV file. Either take the first that is active
     // or take the one that has been selected by the callback
     for(size_t i = 0; i < nLineCount; i++)
@@ -650,28 +566,27 @@ static DWORD ParseFile_BuildInfo(TCascStorage * hs, CASC_CSV & Csv)
         // Ignore anything that is not marked "active"
         if(!strcmp(Csv[i]["Active!DEC:1"].szValue, "1"))
         {
-            // If we have no product code name specified, we pick the very first active build
-            if(hs->szCodeName == NULL)
+            // If the product code is specified and exists in the build file, we need to check it
+            if(hs->szCodeName != NULL && (szCodeName = Csv[i]["Product!STRING:0"].szValue) != NULL)
             {
+                TCHAR szBuffer[0x20];
+
+                // Skip if they are not equal
+                CascStrCopy(szBuffer, _countof(szBuffer), szCodeName);
+                if(_tcsicmp(hs->szCodeName, szBuffer))
+                    continue;
+
                 // Save the code name of the selected product
                 SetProductCodeName(hs, Csv[i]["Product!STRING:0"].szValue);
                 nSelected = i;
-                goto __ChooseThisProduct;
+                break;
             }
 
-            // If we have a product code name specified, pick the first matching
-            else if((szCodeName = Csv[i]["Product!STRING:0"].szValue) != NULL)
-            {
-                if(!strcmp(szCodeName, szWantedCodeName))
-                {
-                    nSelected = i;
-                    goto __ChooseThisProduct;
-                }
-            }
+            // If the caller didn't specify the product code name, pick the first active
+            nSelected = i;
+            break;
         }
     }
-
-    __ChooseThisProduct:
 
     // Load the selected product
     if(nSelected < nLineCount)
@@ -854,18 +769,9 @@ static DWORD ParseFile_CdnBuild(TCascStorage * hs, void * pvListFile)
     }
 
     // Special case: Some builds of WoW (22267) don't have the variable in the build file
-    if(hs->szProductName == NULL || hs->Product == UnknownProduct)
+    if(hs->szCodeName == NULL && hs->szCdnPath != NULL)
     {
-        if(hs->szCdnPath != NULL)
-        {
-            TCHAR * szPlainName = (TCHAR *)GetPlainFileName(hs->szCdnPath);
-
-            if(szPlainName[0] == 'w' && szPlainName[1] == 'o' && szPlainName[2] == 'w')
-            {
-                hs->szProductName = "World Of Warcraft";
-                hs->Product = WorldOfWarcraft;
-            }
-        }
+        hs->szCodeName = CascNewStr(GetPlainFileName(hs->szCdnPath));
     }
 
     // Both CKey and EKey of ENCODING file is required
