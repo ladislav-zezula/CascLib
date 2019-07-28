@@ -809,7 +809,7 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, LPCSTR szCodeName, LPCS
     DWORD dwErrCode = ERROR_SUCCESS;
 
     // Prepare the path and region
-    nLength = CascStrPrintf(szParamsA, _countof(szParamsA), "%s:%s", CASC_WORK_ROOT, szCodeName);
+    nLength = CascStrPrintf(szParamsA, _countof(szParamsA), "%s/%s:%s", CASC_WORK_ROOT, szCodeName, szCodeName);
     if(szRegion  && szRegion[0])
     {
         szParamsA[nLength++] = ':';
@@ -918,15 +918,15 @@ int main(void)
     // Single tests
     //
 
-    LocalStorage_Test(Storage_OpenFiles, "2014 - Heroes of the Storm\\29049", NULL, NULL, "ENCODING");
+//  LocalStorage_Test(Storage_OpenFiles, "2014 - Heroes of the Storm\\29049", NULL, NULL, "ENCODING");
 //  LocalStorage_Test(Storage_ReadFiles, "2014 - Heroes of the Storm\\30414", NULL, NULL, "84fd9825f313363fd2528cd999bcc852");
 //  LocalStorage_Test(Storage_EnumFiles, "2015 - Diablo III\\30013");
-//  LocalStorage_Test(Storage_EnumFiles, "2016 - WoW/30993:wow", NULL, NULL, "00039929a204d6e65500000000000000");
+//  LocalStorage_Test(Storage_EnumFiles, "2016 - WoW/30993:wow", NULL, NULL, "PATCH");
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - New CASC\\00001");
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - New CASC\\00002");
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - Warcraft III\\11889");
 //  LocalStorage_Test(Storage_SeekFiles, "2018 - CoD4\\3376209", NULL, NULL, "zone/base.xpak");
-    //OnlineStorage_Test(Storage_OpenFiles, "agent", NULL, NULL, NULL, "PATCH");
+    OnlineStorage_Test(Storage_OpenFiles, "agent", NULL, "PATCH");
     //OnlineStorage_Test(Storage_SeekFiles, "viper", "us", NULL, NULL, "zone/base.xpak");
 
     //HANDLE hFile = NULL;

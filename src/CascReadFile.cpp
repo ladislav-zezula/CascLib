@@ -62,20 +62,14 @@ static DWORD OpenDataStream(TCascFile * hf, PCASC_FILE_SPAN pFileSpan, PCASC_CKE
         if(bDownloadFileIf)
         {
             CASC_CDN_DOWNLOAD CdnsInfo = {0};
+            LPCTSTR szPathType = (pCKeyEntry->Flags & CASC_CE_FILE_PATCH) ? _T("patch") : _T("data");
 
             // Prepare the download structure for "%CDNS_HOST%/%CDNS_PATH%/##/##/EKey" file
             CdnsInfo.szCdnsPath = hs->szCdnPath;
-            CdnsInfo.szPathType = _T("data");
+            CdnsInfo.szPathType = szPathType;
             CdnsInfo.pbEKey = pCKeyEntry->EKey;
             CdnsInfo.szLocalPath = szCachePath;
             CdnsInfo.ccLocalPath = _countof(szCachePath);
-
-            // Special treatment for PATCH file
-            if(pCKeyEntry->Flags & CASC_CE_FILE_PATCH)
-            {
-                CdnsInfo.szPathType = _T("patch");
-                CdnsInfo.pbEKey = pCKeyEntry->CKey;
-            }
 
             // Download the file from CDN
             dwErrCode = DownloadFileFromCDN(hs, CdnsInfo);
@@ -351,6 +345,35 @@ static DWORD LoadSpanFrames(PCASC_FILE_SPAN pFileSpan, PCASC_CKEY_ENTRY pCKeyEnt
     return dwErrCode;
 }
 
+static DWORD LoadSpanFramesForPlainFile(PCASC_FILE_SPAN pFileSpan, PCASC_CKEY_ENTRY pCKeyEntry)
+{
+    PCASC_FILE_FRAME pFrames;
+
+    // Allocate single "dummy" frame
+    pFrames = CASC_ALLOC<CASC_FILE_FRAME>(1);
+    if (pFrames != NULL)
+    {
+        // Setup the size
+        pFileSpan->EndOffset = pFileSpan->StartOffset + pCKeyEntry->ContentSize;
+        pCKeyEntry->Flags |= CASC_CE_PLAIN_DATA;
+
+        // Fill the single frame
+        memset(&pFrames->FrameHash, 0, sizeof(CONTENT_KEY));
+        pFrames->StartOffset = pFileSpan->StartOffset;
+        pFrames->EndOffset = pFrames->StartOffset + pCKeyEntry->ContentSize;
+        pFrames->DataFileOffset = 0;
+        pFrames->EncodedSize = pCKeyEntry->EncodedSize;
+        pFrames->ContentSize = pCKeyEntry->ContentSize;
+
+        // Save the number of file frames
+        pFileSpan->FrameCount = 1;
+        pFileSpan->pFrames = pFrames;
+        return ERROR_SUCCESS;
+    }
+
+    return ERROR_NOT_ENOUGH_MEMORY;
+}
+
 static DWORD LoadEncodedHeaderAndSpanFrames(PCASC_FILE_SPAN pFileSpan, PCASC_CKEY_ENTRY pCKeyEntry)
 {
     LPBYTE pbEncodedBuffer;
@@ -399,6 +422,15 @@ static DWORD LoadEncodedHeaderAndSpanFrames(PCASC_FILE_SPAN pFileSpan, PCASC_CKE
                 {
                     assert((DWORD)(ReadOffset + cbHeaderSize) > (DWORD)ReadOffset);
                     dwErrCode = LoadSpanFrames(pFileSpan, pCKeyEntry, (DWORD)(ReadOffset + cbHeaderSize), pbEncodedBuffer + cbHeaderSize, pbEncodedBuffer + cbEncodedBuffer, cbHeaderSize);
+                }
+            }
+            else
+            {
+                // Special treatment for plain files ("PATCH"): If the content size and encoded size
+                // are equal, we will create a single fake frame
+                if(pCKeyEntry->EncodedSize == pCKeyEntry->ContentSize)
+                {
+                    dwErrCode = LoadSpanFramesForPlainFile(pFileSpan, pCKeyEntry);
                 }
             }
         }
@@ -495,7 +527,7 @@ static DWORD EnsureFileSpanFramesLoaded(TCascFile * hf)
             return dwErrCode;
 
         // Now the content size must be known
-        if(hf->ContentSize == CASC_INVALID_SIZE64 || hf->pFileSpan->pFrames == NULL)
+        if(hf->ContentSize == CASC_INVALID_SIZE64)
             return ERROR_CAN_NOT_COMPLETE;
     }
 
@@ -504,6 +536,7 @@ static DWORD EnsureFileSpanFramesLoaded(TCascFile * hf)
 
 static DWORD DecodeFileFrame(
     TCascFile * hf,
+    PCASC_CKEY_ENTRY pCKeyEntry,
     PCASC_FILE_FRAME pFrame,
     LPBYTE pbEncoded,
     LPBYTE pbDecoded,
@@ -525,6 +558,16 @@ static DWORD DecodeFileFrame(
     //    fwrite(pbEncoded, 1, pFrame->EncodedSize, fp);
     //    fclose(fp);
     //}
+
+    // If this is a file span with plain data, just copy the data
+    if(pCKeyEntry->Flags & CASC_CE_PLAIN_DATA)
+    {
+        assert(pCKeyEntry->ContentSize == pCKeyEntry->EncodedSize);
+        assert(pCKeyEntry->ContentSize == pFrame->ContentSize);
+        assert(pFrame->ContentSize == pFrame->EncodedSize);
+        memcpy(pbDecoded, pbEncoded, pCKeyEntry->ContentSize);
+        return ERROR_SUCCESS;
+    }
 
     // Shall we verify the frame integrity?
     if(hf->bVerifyIntegrity)
@@ -587,8 +630,8 @@ static DWORD DecodeFileFrame(
                 bWorkComplete = true;
                 break;
 
-            case 'F':   // Recursive frames - not supported
-            default:    // Unrecognized - if we unpacked something, we consider it done
+            case 'F':   // Recursive frames (not supported)
+            default:    // Unrecognized. Could be a plain file data
                 dwErrCode = ERROR_NOT_SUPPORTED;
                 bWorkComplete = true;
                 assert(false);
@@ -756,7 +799,7 @@ static DWORD ReadFile_WholeFile(TCascFile * hf, LPBYTE pbBuffer)
             for(DWORD FrameIndex = 0; FrameIndex < pFileSpan->FrameCount; FrameIndex++, pFileFrame++)
             {
                 // Decode the file frame
-                dwErrCode = DecodeFileFrame(hf, pFileFrame, pbEncodedPtr, pbBuffer, FrameIndex);
+                dwErrCode = DecodeFileFrame(hf, pCKeyEntry, pFileFrame, pbEncodedPtr, pbBuffer, FrameIndex);
                 if(dwErrCode != ERROR_SUCCESS)
                     break;
 
@@ -840,7 +883,7 @@ static DWORD ReadFile_FrameCached(TCascFile * hf, LPBYTE pbBuffer, ULONGLONG Sta
                         DWORD dwBytesToCopy = (DWORD)(EndOfCopy - StartOffset);
 
                         // Decode the frame
-                        dwErrCode = DecodeFileFrame(hf, pFileFrame, pbEncoded, pbDecoded, FrameIndex);
+                        dwErrCode = DecodeFileFrame(hf, pCKeyEntry, pFileFrame, pbEncoded, pbDecoded, FrameIndex);
                         if(dwErrCode == ERROR_SUCCESS)
                         {
                             // Copy the data

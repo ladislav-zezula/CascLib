@@ -353,6 +353,29 @@ static DWORD LoadCKeyEntry(TCascStorage * hs, const char * szVariableName, const
     return ERROR_BAD_FORMAT;
 }
 
+// For files like PATCH, which only contain EKey in the build file
+static DWORD LoadEKeyEntry(TCascStorage * hs, const char * szVariableName, const char * szDataPtr, const char * szDataEnd, void * pvParam)
+{
+    PCASC_CKEY_ENTRY pCKeyEntry = (PCASC_CKEY_ENTRY)pvParam;
+    DWORD dwErrCode;
+
+    // Load the entry as if it was a CKey. Then move CKey into EKey and adjust flags
+    if((dwErrCode = LoadCKeyEntry(hs, szVariableName, szDataPtr, szDataEnd, pvParam)) == ERROR_SUCCESS)
+    {
+        if((pCKeyEntry->Flags & (CASC_CE_HAS_CKEY | CASC_CE_HAS_EKEY | CASC_CE_HAS_EKEY_PARTIAL)) == CASC_CE_HAS_CKEY)
+        {
+            // Move the CKey into EKey
+            CopyMemory16(pCKeyEntry->EKey, pCKeyEntry->CKey);
+            ZeroMemory16(pCKeyEntry->CKey);
+
+            // Adjust flags
+            pCKeyEntry->Flags = (pCKeyEntry->Flags & ~CASC_CE_HAS_CKEY) | CASC_CE_HAS_EKEY;
+        }
+    }
+
+    return dwErrCode;
+}
+
 static DWORD LoadVfsRootEntry(TCascStorage * hs, const char * szVariableName, const char * szDataPtr, const char * szDataEnd, void * pvParam)
 {
     PCASC_CKEY_ENTRY pCKeyEntry;
@@ -752,7 +775,7 @@ static DWORD ParseFile_CdnBuild(TCascStorage * hs, void * pvListFile)
             continue;
 
         // PATCH file
-        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "patch*", LoadCKeyEntry, &hs->PatchFile))
+        if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "patch*", LoadEKeyEntry, &hs->PatchFile))
             continue;
 
         // SIZE file

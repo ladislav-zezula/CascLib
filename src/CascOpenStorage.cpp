@@ -779,6 +779,20 @@ static bool InsertWellKnownFile(TCascStorage * hs, const char * szFileName, CASC
         }
     }
 
+    // Special case: the PATCH file is usually not in any indices.
+    // It's also never locally available
+    if((dwFlags & CASC_CE_FILE_PATCH) && (hs->dwFeatures & CASC_FEATURE_ONLINE))
+    {
+        // Get or insert the PATCH entry
+        pCKeyEntry = InsertCKeyEntry(hs, FakeCKeyEntry);
+        if(pCKeyEntry != NULL)
+        {
+            hs->pRootHandler->Insert(szFileName, pCKeyEntry);
+            pCKeyEntry->Flags |= (CASC_CE_IN_BUILD | dwFlags);
+            return true;
+        }
+    }
+
     return false;
 }
 
