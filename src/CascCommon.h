@@ -58,9 +58,8 @@
 #define CASC_MAGIC_FIND     0x444E494643534143      // 'CASCFIND'
 
 // For CASC_CDN_DOWNLOAD::Flags
-#define CASC_CDN_WOW_CLASSIC_REDIRECT   0x0001      // Redirect WOW classic
+#define CASC_CDN_FLAG_PORT1119          0x0001      // Use port 1119
 #define CASC_CDN_FORCE_DOWNLOAD         0x0002      // Force downloading the file even if in the cache
-#define CASC_CDN_FLAG_PORT1119          0x0004      // Use port 1119
 
 //-----------------------------------------------------------------------------
 // In-memory structures

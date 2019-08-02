@@ -927,7 +927,7 @@ int main(void)
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - Warcraft III\\11889");
 //  LocalStorage_Test(Storage_SeekFiles, "2018 - CoD4\\3376209", NULL, NULL, "zone/base.xpak");
     //OnlineStorage_Test(Storage_OpenFiles, "agent", NULL, "PATCH");
-    OnlineStorage_Test(Storage_EnumFiles, "wow", "us");
+    OnlineStorage_Test(Storage_EnumFiles, "wow_classic_beta", "us");
 
     //HANDLE hFile = NULL;
     //LPBYTE Buffer;
