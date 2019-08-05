@@ -284,7 +284,7 @@ inline void CopyMemory16(void * Target, void * Source)
 }
 
 //-----------------------------------------------------------------------------
-// Linear data stream manipulation
+// Capturing various integral values
 
 LPBYTE CaptureInteger16_BE(LPBYTE pbDataPtr, LPBYTE pbDataEnd, PDWORD PtrValue);
 LPBYTE CaptureInteger32(LPBYTE pbDataPtr, LPBYTE pbDataEnd, PDWORD PtrValue);

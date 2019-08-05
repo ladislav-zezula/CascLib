@@ -80,20 +80,19 @@ TCascStorage::~TCascStorage()
 
 TCascStorage * TCascStorage::AddRef()
 {
-    dwRefCount++;
+    CascInterlockedIncrement(&dwRefCount);
     return this;
 }
 
 TCascStorage * TCascStorage::Release()
 {
-    if (dwRefCount == 1)
+    if(CascInterlockedDecrement(&dwRefCount) == 0)
     {
         delete this;
         return NULL;
     }
 
-    dwRefCount--;
-    return NULL;
+    return this;
 }
 
 //-----------------------------------------------------------------------------

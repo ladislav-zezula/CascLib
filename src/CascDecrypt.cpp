@@ -16,16 +16,17 @@
 // Local structures
 
 #define CASC_EXTRA_KEYS 0x80
+#define CASC_KEY_LENGTH 0x10
 
 typedef struct _CASC_ENCRYPTION_KEY
 {
     ULONGLONG KeyName;                  // "Name" of the key
-    BYTE Key[0x10];                     // The key itself
+    BYTE Key[CASC_KEY_LENGTH];          // The key itself
 } CASC_ENCRYPTION_KEY, *PCASC_ENCRYPTION_KEY;
 
 typedef struct _CASC_SALSA20
 {
-    DWORD Key[0x10];
+    DWORD Key[CASC_KEY_LENGTH];
     DWORD dwRounds;
 
 } CASC_SALSA20, *PCASC_SALSA20;
@@ -537,6 +538,27 @@ bool WINAPI CascAddEncryptionKey(HANDLE hStorage, ULONGLONG KeyName, LPBYTE Key)
 
     // Also insert the key to the map
     return hs->EncryptionKeys.InsertObject(pEncKey, &pEncKey->KeyName);
+}
+
+bool WINAPI CascAddStringEncryptionKey(HANDLE hStorage, ULONGLONG KeyName, LPCSTR szKey)
+{
+	BYTE Key[CASC_KEY_LENGTH];
+
+	// Check the length of the string key
+	if(strlen(szKey) != CASC_KEY_LENGTH * 2)
+	{
+		SetLastError(ERROR_INVALID_PARAMETER);
+		return false;
+	}
+
+	// Convert the string key to the binary array
+	if(ConvertStringToBinary(szKey, CASC_KEY_LENGTH * 2, Key) != ERROR_SUCCESS)
+	{
+		SetLastError(ERROR_INVALID_PARAMETER);
+		return false;
+	}
+
+	return CascAddEncryptionKey(hStorage, KeyName, Key);
 }
 
 LPBYTE WINAPI CascFindEncryptionKey(HANDLE hStorage, ULONGLONG KeyName)

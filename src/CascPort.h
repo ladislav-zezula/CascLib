@@ -307,6 +307,27 @@
 #endif
 
 //-----------------------------------------------------------------------------
+// Interlocked operations
+
+inline DWORD CascInterlockedIncrement(PDWORD PtrValue)
+{
+#ifdef PLATFORM_WINDOWS
+    return (DWORD)InterlockedIncrement((LONG *)(PtrValue));
+#else
+    return ++PtrValue[0];
+#endif
+}
+
+inline DWORD CascInterlockedDecrement(PDWORD PtrValue)
+{
+#ifdef PLATFORM_WINDOWS
+    return (DWORD)InterlockedIncrement((LONG *)(PtrValue));
+#else
+    return --PtrValue[0];
+#endif
+}
+
+//-----------------------------------------------------------------------------
 // Forbidden functions, do not use
 
 #ifdef __CASCLIB_SELF__
