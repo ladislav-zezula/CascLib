@@ -537,7 +537,13 @@ bool WINAPI CascAddEncryptionKey(HANDLE hStorage, ULONGLONG KeyName, LPBYTE Key)
     pEncKey->KeyName = KeyName;
 
     // Also insert the key to the map
-    return hs->EncryptionKeys.InsertObject(pEncKey, &pEncKey->KeyName);
+	if (!hs->EncryptionKeys.InsertObject(pEncKey, &pEncKey->KeyName))
+	{
+		SetLastError(ERROR_ALREADY_EXISTS);
+		return false;
+	}
+
+	return true;
 }
 
 bool WINAPI CascAddStringEncryptionKey(HANDLE hStorage, ULONGLONG KeyName, LPCSTR szKey)

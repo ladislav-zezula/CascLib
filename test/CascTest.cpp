@@ -861,6 +861,8 @@ static DWORD LocalStorage_Test(PFN_RUN_TEST PfnRunTest, LPCSTR szStorage, LPCSTR
     {
         TEST_PARAMS Params;
 
+        CascAddStringEncryptionKey(hStorage, 0x259EE68CD9E76DBA, "00112233445566778899AABBCCDDEEFF");
+
         // Configure the test parameters
         Params.hStorage = hStorage;
         Params.szExpectedNameHash = szExpectedNameHash;
@@ -997,7 +999,7 @@ int main(void)
     // Single tests
     //
 
-//  LocalStorage_Test(Storage_ReadFiles, "2014 - Heroes of the Storm\\29049", NULL, NULL, "ENCODING");
+    LocalStorage_Test(Storage_ReadFiles, "2014 - Heroes of the Storm\\29049", NULL, NULL, "ENCODING");
 //  LocalStorage_Test(Storage_ReadFiles, "2014 - Heroes of the Storm\\30414", NULL, NULL, "84fd9825f313363fd2528cd999bcc852");
 //  LocalStorage_Test(Storage_EnumFiles, "2015 - Diablo III\\30013");
 //  LocalStorage_Test(Storage_ReadFiles, "2016 - WoW/31299:wow_classic", NULL, NULL, "PATCH");
@@ -1007,8 +1009,6 @@ int main(void)
 //  LocalStorage_Test(Storage_SeekFiles, "2018 - CoD4\\3376209", NULL, NULL, "zone/base.xpak");
     //OnlineStorage_Test(Storage_OpenFiles, "agent", NULL, "PATCH");
     //OnlineStorage_Test(Storage_EnumFiles, "wow_classic_beta", "us");
-
-	CascAddEncryptionStringKey(NULL, 0, "00112233445566778899AABBCCDDEEFF");
 
     //HANDLE hFile = NULL;
     //LPBYTE Buffer;
