@@ -283,7 +283,6 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\CascCommon.cpp" />
     <ClCompile Include="src\CascDecompress.cpp" />
     <ClCompile Include="src\CascDecrypt.cpp" />
     <ClCompile Include="src\CascDumpData.cpp" />

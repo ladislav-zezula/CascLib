@@ -430,10 +430,6 @@
 			Filter="cpp;c;cxx;rc;def;r;odl;idl;hpj;bat"
 			>
 			<File
-				RelativePath=".\src\CascCommon.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\src\CascDecompress.cpp"
 				>
 			</File>
