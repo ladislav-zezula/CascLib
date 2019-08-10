@@ -56,26 +56,6 @@ static const TCHAR * DataDirs[] =
     NULL,
 };
 
-static const TGameLocaleString LocaleStrings[] = 
-{
-    {"enUS", CASC_LOCALE_ENUS},
-    {"koKR", CASC_LOCALE_KOKR},
-    {"frFR", CASC_LOCALE_FRFR},
-    {"deDE", CASC_LOCALE_DEDE},
-    {"zhCN", CASC_LOCALE_ZHCN},
-    {"esES", CASC_LOCALE_ESES},
-    {"zhTW", CASC_LOCALE_ZHTW},
-    {"enGB", CASC_LOCALE_ENGB},
-    {"enCN", CASC_LOCALE_ENCN},
-    {"enTW", CASC_LOCALE_ENTW},
-    {"esMX", CASC_LOCALE_ESMX},
-    {"ruRU", CASC_LOCALE_RURU},
-    {"ptBR", CASC_LOCALE_PTBR},
-    {"itIT", CASC_LOCALE_ITIT},
-    {"ptPT", CASC_LOCALE_PTPT},
-    {NULL, 0}
-};
-
 //-----------------------------------------------------------------------------
 // Local functions
 
@@ -200,6 +180,39 @@ static const char * CaptureHashCount(const char * szDataPtr, const char * szData
     // Give results
     PtrHashCount[0] = HashCount;
     return szDataPtr;
+}
+
+static DWORD GetLocaleValue(LPCSTR szTag)
+{
+    DWORD Language = 0;
+
+    // Convert the string language to integer
+    Language = (Language << 0x08) | szTag[0];
+    Language = (Language << 0x08) | szTag[1];
+    Language = (Language << 0x08) | szTag[2];
+    Language = (Language << 0x08) | szTag[3];
+
+    // Language-specific action
+    switch(Language)
+    {
+        case 0x656e5553: return CASC_LOCALE_ENUS;
+        case 0x656e4742: return CASC_LOCALE_ENGB;
+        case 0x656e434e: return CASC_LOCALE_ENCN;
+        case 0x656e5457: return CASC_LOCALE_ENTW;
+        case 0x65734553: return CASC_LOCALE_ESES;
+        case 0x65734d58: return CASC_LOCALE_ESMX;
+        case 0x70744252: return CASC_LOCALE_PTBR;
+        case 0x70745054: return CASC_LOCALE_PTPT;
+        case 0x7a68434e: return CASC_LOCALE_ZHCN;
+        case 0x7a685457: return CASC_LOCALE_ZHTW;
+        case 0x6b6f4b52: return CASC_LOCALE_KOKR;
+        case 0x66724652: return CASC_LOCALE_FRFR;
+        case 0x64654445: return CASC_LOCALE_DEDE;
+        case 0x72755255: return CASC_LOCALE_RURU;
+        case 0x69744954: return CASC_LOCALE_ITIT;
+    }
+
+    return 0;
 }
 
 static bool CheckConfigFileVariable(
@@ -490,6 +503,31 @@ static void SetProductCodeName(TCascStorage * hs, LPCSTR szCodeName)
     }
 }
 
+static int GetDefaultLocaleMask(TCascStorage * hs, const CASC_CSV_COLUMN & Column)
+{
+    LPCSTR szTagEnd = Column.szValue + Column.nLength - 4;
+    LPCSTR szTagPtr = Column.szValue;
+    DWORD dwLocaleMask = 0;
+
+    while(szTagPtr < szTagEnd)
+    {
+        DWORD dwLocaleValue = GetLocaleValue(szTagPtr);
+
+        if(dwLocaleValue != 0)
+        {
+            dwLocaleMask = dwLocaleMask | GetLocaleValue(szTagPtr);
+            szTagPtr += 4;
+        }
+        else
+        {
+            szTagPtr++;
+        }
+    }
+
+    hs->dwDefaultLocale = dwLocaleMask;
+    return ERROR_SUCCESS;
+}
+
 static DWORD ParseFile_CDNS(TCascStorage * hs, CASC_CSV & Csv)
 {
     const char * szWantedRegion = hs->szRegion;
@@ -623,6 +661,9 @@ static DWORD ParseFile_BuildInfo(TCascStorage * hs, CASC_CSV & Csv)
         dwErrCode = LoadQueryKey(Csv[nSelected]["CDN Key!HEX:16"], hs->CdnConfigKey);
         if (dwErrCode != ERROR_SUCCESS)
             return dwErrCode;
+
+        // If we found tags, we can extract language build from it
+        GetDefaultLocaleMask(hs, Csv[nSelected]["Tags!STRING:0"]);
 
         // If we found version, extract a build number
         const CASC_CSV_COLUMN & VerColumn = Csv[nSelected]["Version!STRING:0"];

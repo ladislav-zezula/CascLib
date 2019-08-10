@@ -1368,6 +1368,10 @@ bool WINAPI CascGetStorageInfo(
             dwInfoValue = hs->dwFeatures | hs->pRootHandler->GetFeatures();
             break;
 
+        case CascStorageInstalledLocales:
+            dwInfoValue = hs->dwDefaultLocale;
+            break;
+
         case CascStorageProduct:
             return GetStorageProduct(hs, pvStorageInfo, cbStorageInfo, pcbLengthNeeded);
 

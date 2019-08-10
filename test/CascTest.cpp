@@ -525,9 +525,8 @@ static void RunExtractWorkers(PCASC_FIND_DATA_ARRAY pFiles)
     DWORD dwThreadId = 0;
 
     // Retrieve the number of processors. Let one third of them to do the work.
-    // Attempt to make all cores work will lead to CPU slowing down to prevent overheating.
     GetSystemInfo(&si);
-    si.dwNumberOfProcessors = si.dwNumberOfProcessors / 3;
+    si.dwNumberOfProcessors = 1;
 
     // Create threads
     for(DWORD i = 0; i < si.dwNumberOfProcessors; i++)
@@ -999,10 +998,10 @@ int main(void)
     // Single tests
     //
 
-    LocalStorage_Test(Storage_ReadFiles, "2014 - Heroes of the Storm\\29049", NULL, NULL, "ENCODING");
+//  LocalStorage_Test(Storage_ReadFiles, "2014 - Heroes of the Storm\\29049", NULL, NULL, "ENCODING");
 //  LocalStorage_Test(Storage_ReadFiles, "2014 - Heroes of the Storm\\30414", NULL, NULL, "84fd9825f313363fd2528cd999bcc852");
 //  LocalStorage_Test(Storage_EnumFiles, "2015 - Diablo III\\30013");
-//  LocalStorage_Test(Storage_ReadFiles, "2016 - WoW/31299:wow_classic", NULL, NULL, "PATCH");
+    LocalStorage_Test(Storage_ReadFiles, "2016 - WoW/31299:wow_classic", NULL, NULL, "PATCH");
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - New CASC\\00001");
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - New CASC\\00002");
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - Warcraft III\\11889");

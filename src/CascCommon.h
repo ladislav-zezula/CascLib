@@ -275,6 +275,7 @@ struct TCascStorage
     LPTSTR  szCdnServers;                           // Multi-SZ list of CDN servers
     LPTSTR  szCdnPath;                              // Remote CDN sub path for the product
     LPSTR   szRegion;                               // Product region. Only when "versions" is used as storage root file
+    DWORD dwDefaultLocale;                          // Default locale, read from ".build.info"
     DWORD dwBuildNumber;                            // Product build number
     DWORD dwRefCount;                               // Number of references
     DWORD dwFeatures;                               // List of CASC features. See CASC_FEATURE_XXX
