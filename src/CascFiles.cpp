@@ -503,7 +503,20 @@ static void SetProductCodeName(TCascStorage * hs, LPCSTR szCodeName)
     }
 }
 
-static int GetDefaultLocaleMask(TCascStorage * hs, const CASC_CSV_COLUMN & Column)
+static DWORD GetDefaultCdnPath(TCascStorage * hs, const CASC_CSV_COLUMN & Column)
+{
+    TCHAR szCdnPath[MAX_PATH];
+
+    if(hs->szCdnPath == NULL && Column.nLength != 0)
+    {
+        CascStrCopy(szCdnPath, _countof(szCdnPath), Column.szValue);
+        hs->szCdnPath = CascNewStr(szCdnPath);
+    }
+
+    return ERROR_SUCCESS;
+}
+
+static DWORD GetDefaultLocaleMask(TCascStorage * hs, const CASC_CSV_COLUMN & Column)
 {
     LPCSTR szTagEnd = Column.szValue + Column.nLength - 4;
     LPCSTR szTagPtr = Column.szValue;
@@ -661,6 +674,9 @@ static DWORD ParseFile_BuildInfo(TCascStorage * hs, CASC_CSV & Csv)
         dwErrCode = LoadQueryKey(Csv[nSelected]["CDN Key!HEX:16"], hs->CdnConfigKey);
         if (dwErrCode != ERROR_SUCCESS)
             return dwErrCode;
+
+        // Get the CDN path
+        GetDefaultCdnPath(hs, Csv[nSelected]["CDN Path!STRING:0"]);
 
         // If we found tags, we can extract language build from it
         GetDefaultLocaleMask(hs, Csv[nSelected]["Tags!STRING:0"]);
