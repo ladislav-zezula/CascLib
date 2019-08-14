@@ -321,7 +321,7 @@ inline DWORD CascInterlockedIncrement(PDWORD PtrValue)
 inline DWORD CascInterlockedDecrement(PDWORD PtrValue)
 {
 #ifdef PLATFORM_WINDOWS
-    return (DWORD)InterlockedIncrement((LONG *)(PtrValue));
+    return (DWORD)InterlockedDecrement((LONG *)(PtrValue));
 #else
     return --PtrValue[0];
 #endif
