@@ -89,6 +89,8 @@
   #include <string.h>
   #include <ctype.h>
   #include <cassert>
+  #include <cwchar>
+  #include <cstdio>
 
   // Support for PowerPC on Max OS X
   #if (__ppc__ == 1) || (__POWERPC__ == 1) || (_ARCH_PPC == 1)
