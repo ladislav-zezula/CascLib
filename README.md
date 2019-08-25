@@ -1,6 +1,6 @@
 # CascLib
 
-**CascLib** is an open-source implementation of library for reading CASC storages from Blizzard games since 2014.
+**CascLib** is an open-source implementation of library for reading Blizzard's CASC storages since 2014.
 
 For API documentation, refer to http://www.zezula.net/en/casc/casclib.html .
 
