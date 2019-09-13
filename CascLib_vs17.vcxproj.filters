@@ -76,9 +76,6 @@
     <ClCompile Include="src\CascFiles.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\CascCommon.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\CascDecompress.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
