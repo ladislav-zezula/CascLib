@@ -807,16 +807,16 @@ static int LoadBuildManifest(TCascStorage * hs, DWORD dwLocaleMask)
     assert(hs->CKeyMap.IsInitialized() == true);
     assert(hs->pRootHandler == NULL);
 
+    // Inform the user about what we are doing
+    if(InvokeProgressCallback(hs, "Loading ROOT manifest", NULL, 0, 0))
+        return ERROR_CANCELLED;
+
     // Locale: The default parameter is 0 - in that case, we load all locales
     dwLocaleMask = (dwLocaleMask != 0) ? dwLocaleMask : 0xFFFFFFFF;
 
     // Prioritize the VFS root over legacy ROOT file
     pCKeyEntry = (hs->VfsRoot.ContentSize != CASC_INVALID_SIZE) ? &hs->VfsRoot : &hs->RootFile;
     pCKeyEntry = FindCKeyEntry_CKey(hs, pCKeyEntry->CKey);
-
-    // Inform the user about what we are doing
-    if(InvokeProgressCallback(hs, "Loading ROOT manifest", NULL, 0, 0))
-        return ERROR_CANCELLED;
 
     // Load the entire ROOT file to memory
     pbRootFile = LoadInternalFileToMemory(hs, pCKeyEntry, &cbRootFile);
