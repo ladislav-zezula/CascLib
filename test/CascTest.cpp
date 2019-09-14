@@ -860,8 +860,6 @@ static DWORD LocalStorage_Test(PFN_RUN_TEST PfnRunTest, LPCSTR szStorage, LPCSTR
     {
         TEST_PARAMS Params;
 
-        CascAddStringEncryptionKey(hStorage, 0x259EE68CD9E76DBA, "00112233445566778899AABBCCDDEEFF");
-
         // Configure the test parameters
         Params.hStorage = hStorage;
         Params.szExpectedNameHash = szExpectedNameHash;
