@@ -35,6 +35,7 @@ TCascStorage::TCascStorage()
     szRegion = NULL;
     
     memset(DataFiles, 0, sizeof(DataFiles));
+    memset(IndexFiles, 0, sizeof(IndexFiles));
     dwBuildNumber = 0;
     dwFeatures = 0;
     BuildFileType = CascBuildNone;
@@ -177,7 +178,10 @@ static PCASC_CKEY_ENTRY InsertCKeyEntry(TCascStorage * hs, PFILE_CKEY_ENTRY pFil
         // Insert a new entry to the array. DO NOT ALLOW enlarge array here
         pCKeyEntry = (PCASC_CKEY_ENTRY)hs->CKeyArray.Insert(1, false);
         if(pCKeyEntry == NULL)
+        {
+            assert(false);
             return NULL;
+        }
 
         CopyMemory16(pCKeyEntry->CKey, pFileEntry->CKey);
         CopyMemory16(pCKeyEntry->EKey, pFileEntry->EKey);
@@ -278,25 +282,41 @@ static DWORD CopyBuildFileItemsToCKeyArray(TCascStorage * hs)
     return ERROR_SUCCESS;
 }
 
+static size_t GetEstimatedNumberOfFilesFromIndexes(TCascStorage * hs)
+{
+    ULONGLONG TotalSize = 0;
+
+    for(size_t i = 0; i < CASC_INDEX_COUNT; i++)
+        TotalSize = TotalSize + hs->IndexFiles[i].FileSize;
+    return (size_t)(TotalSize / sizeof(FILE_EKEY_ENTRY));
+}
+
 // Estimate the total number of files, so we won't have to re-allocate the array
 static size_t GetEstimatedNumberOfFiles(TCascStorage * hs)
 {
+    size_t nNumberOfFiles1 = 0;
+    size_t nNumberOfFiles2 = 0;
+    size_t nNumberOfFiles3 = 0;
+
     // If we know the size of DOWNLOAD at this point, we estimate number of files from it.
-    // Size of one entry in DOWNLOAD is at least 26 bytes. This is the most reliable method.
+    // Size of one entry in DOWNLOAD is at least 22 bytes. This is the most reliable method.
     // However, for some online storages ("agent"), this is a very small value
     if(hs->DownloadCKey.ContentSize != CASC_INVALID_SIZE)
-        return (hs->DownloadCKey.ContentSize / 26) + CASC_MAX_EXTRA_ITEMS;
+        nNumberOfFiles1 = (hs->DownloadCKey.ContentSize / sizeof(FILE_DOWNLOAD_ENTRY)) + CASC_MAX_EXTRA_ITEMS;
 
     // If we know the size of ENCODING at this point, we estimate number of files from it.
     // Size of one entry in ENCODING is at least 38 bytes. This method fails on storages
     // with TVFS file system, as ENCODING only contains a small subset of file.
     // Fortunately, all known TVFS-based storages have "download-size" present
     if(hs->EncodingCKey.ContentSize != CASC_INVALID_SIZE)
-        return (hs->EncodingCKey.ContentSize / 26) + CASC_MAX_EXTRA_ITEMS;
+        nNumberOfFiles2 = (hs->EncodingCKey.ContentSize / sizeof(FILE_CKEY_ENTRY)) + CASC_MAX_EXTRA_ITEMS;
 
-    // By default, it's gonna be half a million, which is the maximum observed number of files
-    // for all older storages (HOTS before 39445, WoW before 19116)
-    return 500000;
+    // If we know the size of index files, we can estimate the number of local files
+    // from the total size of indexes. Useful on multi-installation (wow+wow_classic)
+    nNumberOfFiles3 = GetEstimatedNumberOfFilesFromIndexes(hs) + CASC_MAX_EXTRA_ITEMS;
+
+    // Return the number of items in indices plus bigger of the two values
+    return nNumberOfFiles3 + CASCLIB_MAX(nNumberOfFiles1, nNumberOfFiles2);
 }
 
 static DWORD InitCKeyArray(TCascStorage * hs)
@@ -373,7 +393,7 @@ static int LoadEncodingCKeyPage(TCascStorage * hs, CASC_ENCODING_HEADER & EnHead
         // Example of a file entry with multiple EKeys: 
         // Overwatch build 24919, CKey: 0e 90 94 fa d2 cb 85 ac d0 7c ea 09 f9 c5 ba 00 
 //      BREAKIF(pFileEntry->EKeyCount > 1);
-//      BREAK_ON_XKEY3(pFileEntry->EKey, 0x09, 0xF3, 0xCD);
+//      BREAK_ON_XKEY3(pFileEntry->CKey, 0xEB, 0x5D, 0x46);
 
         // Insert the entry to the central CKey table
         InsertCKeyEntry(hs, pFileEntry);
@@ -1133,6 +1153,12 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
     if (dwErrCode == ERROR_SUCCESS)
     {
         dwErrCode = LoadCdnBuildFile(hs);
+    }
+
+    // Scan the index directory
+    if(dwErrCode == ERROR_SUCCESS)
+    {
+        dwErrCode = ScanIndexFiles(hs);
     }
 
     // Create the central file array

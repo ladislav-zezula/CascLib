@@ -53,10 +53,8 @@ bool MakeDirectory(const TCHAR * szDirectory)
 }
 
 int ScanIndexDirectory(
-    const TCHAR * szIndexPath,
+    LPCTSTR szIndexPath,
     INDEX_FILE_FOUND pfnOnFileFound,
-    PDWORD MainIndexes,
-    PDWORD OldIndexArray,
     void * pvContext)
 {
 #ifdef PLATFORM_WINDOWS
@@ -81,7 +79,7 @@ int ScanIndexDirectory(
             if(!(wf.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
             {
                 // Let the callback scan the file name
-                pfnOnFileFound(wf.cFileName, MainIndexes, OldIndexArray, pvContext);
+                pfnOnFileFound(wf.cFileName, wf.nFileSizeLow, pvContext);
             }
         }
 
@@ -94,6 +92,7 @@ int ScanIndexDirectory(
 #else // PLATFORM_WINDOWS
 
     struct dirent * dir_entry;
+    struct stat st;
     DIR * dir;
 
     dir = opendir(szIndexPath);
@@ -103,7 +102,8 @@ int ScanIndexDirectory(
         {
             if(dir_entry->d_type != DT_DIR)
             {
-                pfnOnFileFound(dir_entry->d_name, MainIndexes, OldIndexArray, pvContext);
+                stat(filename, &st);
+                pfnOnFileFound(dir_entry->d_name, st.st_size, pvContext);
             }
         }
 

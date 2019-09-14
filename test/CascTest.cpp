@@ -1009,7 +1009,7 @@ int main(void)
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - New CASC\\00001");
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - New CASC\\00002");
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - Warcraft III\\11889");
-    LocalStorage_Test(Storage_EnumFiles, "g:\\2016 - WoW\\31478:wow_classic");
+    LocalStorage_Test(Storage_EnumFiles, "d:\\Hry\\World of Warcraft:wowt");
 //  LocalStorage_Test(Storage_SeekFiles, "2018 - CoD4\\3376209", NULL, NULL, "zone/base.xpak");
     //OnlineStorage_Test(Storage_OpenFiles, "agent", NULL, "PATCH");
     //OnlineStorage_Test(Storage_EnumFiles, "wow_classic_beta", "us");

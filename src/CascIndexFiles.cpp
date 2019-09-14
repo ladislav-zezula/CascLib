@@ -43,12 +43,12 @@ static bool IsIndexFileName_V2(const TCHAR * szFileName)
 }
 
 static bool IndexDirectory_OnFileFound(
-    const TCHAR * szFileName,
-    PDWORD IndexArray,
-    PDWORD OldIndexArray,
+    LPCTSTR szFileName,
+    ULONG FileSize,
     void * pvContext)
 {
     TCascStorage * hs = (TCascStorage *)pvContext;
+    PCASC_INDEX pIndexFile;
     DWORD IndexValue = 0;
     DWORD IndexVersion = 0;
 
@@ -97,17 +97,18 @@ static bool IndexDirectory_OnFileFound(
     // The index value must not be greater than 0x0F
     if(IndexValue >= CASC_INDEX_COUNT)
         return false;
+    pIndexFile = &hs->IndexFiles[IndexValue];
 
-    // If the new subindex is greater than the previous one,
-    // use this one instead
-    if(IndexVersion > IndexArray[IndexValue])
+    // If the new subindex is greater than the previous one, use this one instead
+    if(IndexVersion > pIndexFile->NewSubIndex)
     {
-        OldIndexArray[IndexValue] = IndexArray[IndexValue];
-        IndexArray[IndexValue] = IndexVersion;
+        pIndexFile->OldSubIndex = pIndexFile->NewSubIndex;
+        pIndexFile->NewSubIndex = IndexVersion;
+        pIndexFile->FileSize = FileSize;
     }
-    else if(IndexVersion > OldIndexArray[IndexValue])
+    else if(IndexVersion > pIndexFile->OldSubIndex)
     {
-        OldIndexArray[IndexValue] = IndexVersion;
+        pIndexFile->OldSubIndex = IndexVersion;
     }
 
     // Note: WoW6 only keeps last two index files
@@ -513,43 +514,43 @@ static DWORD LoadIndexFile(TCascStorage * hs, const TCHAR * szFileName, DWORD Bu
     return dwErrCode;
 }
 
+static DWORD ScanLocalIndexFiles(TCascStorage * hs)
+{
+    // Inform the user about what we are doing
+    if(InvokeProgressCallback(hs, "Scanning index files", NULL, 0, 0))
+        return ERROR_CANCELLED;
+
+    // Perform the directory scan
+    return ScanIndexDirectory(hs->szIndexPath, IndexDirectory_OnFileFound, hs);
+}
+
 static DWORD LoadLocalIndexFiles(TCascStorage * hs)
 {
-    TCHAR * szFileName;
-    DWORD OldIndexArray[CASC_INDEX_COUNT];
-    DWORD IndexArray[CASC_INDEX_COUNT];
-    DWORD dwErrCode;
+    LPTSTR szFileName;
+    DWORD dwErrCode = ERROR_SUCCESS;
 
-    // Scan all index files and load contained EKEY entries
-    memset(OldIndexArray, 0, sizeof(OldIndexArray));
-    memset(IndexArray, 0, sizeof(IndexArray));
-    dwErrCode = ScanIndexDirectory(hs->szIndexPath, IndexDirectory_OnFileFound, IndexArray, OldIndexArray, hs);
-    if(dwErrCode == ERROR_SUCCESS)
+    // Load each index file
+    for(DWORD i = 0; i < CASC_INDEX_COUNT; i++)
     {
-        // Load each index file
-        for(DWORD i = 0; i < CASC_INDEX_COUNT; i++)
+        // Create the name of the index file
+        if((szFileName = CreateIndexFileName(hs, i, hs->IndexFiles[i].NewSubIndex)) != NULL)
         {
-            // Create the name of the index file
-            if((szFileName = CreateIndexFileName(hs, i, IndexArray[i])) != NULL)
+            // Inform the user about what we are doing
+            if(InvokeProgressCallback(hs, "Loading index files", NULL, i, CASC_INDEX_COUNT))
             {
-                // Inform the user about what we are doing
-                if(InvokeProgressCallback(hs, "Loading index files", NULL, i, CASC_INDEX_COUNT))
-                {
-                    dwErrCode = ERROR_CANCELLED;
-                    break;
-                }
-
-                // Load the index file
-                if((dwErrCode = LoadIndexFile(hs, szFileName, i)) != ERROR_SUCCESS)
-                    break;
-                CASC_FREE(szFileName);
+                dwErrCode = ERROR_CANCELLED;
+                break;
             }
-        }
 
-        // Remember the number of files that are present locally
-        hs->LocalFiles = hs->CKeyArray.ItemCount();
+            // Load the index file
+            if((dwErrCode = LoadIndexFile(hs, szFileName, i)) != ERROR_SUCCESS)
+                break;
+            CASC_FREE(szFileName);
+        }
     }
 
+    // Remember the number of files that are present locally
+    hs->LocalFiles = hs->CKeyArray.ItemCount();
     return dwErrCode;
 }
 
@@ -784,6 +785,18 @@ static DWORD LoadArchiveIndexFiles(TCascStorage * hs)
 
 //-----------------------------------------------------------------------------
 // Public functions
+
+DWORD ScanIndexFiles(TCascStorage * hs)
+{
+    DWORD dwErrCode = ERROR_SUCCESS;
+
+    if ((hs->dwFeatures & CASC_FEATURE_ONLINE) == 0)
+    {
+        dwErrCode = ScanLocalIndexFiles(hs);
+    }
+
+    return dwErrCode;
+}
 
 DWORD LoadIndexFiles(TCascStorage * hs)
 {
