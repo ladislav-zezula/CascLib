@@ -282,18 +282,29 @@ static DWORD CopyBuildFileItemsToCKeyArray(TCascStorage * hs)
     return ERROR_SUCCESS;
 }
 
-static size_t GetEstimatedNumberOfFilesFromIndexes(TCascStorage * hs)
-{
-    ULONGLONG TotalSize = 0;
+//
+// Estimate the total number of files, so we won't have to re-allocate arrays and maps
+// and thus speed-up storage loading. In theory, we could guess the file count by
+// measuring size of ENCODING or DOWNLOAD manifests.
+//
+// There are few problems to that:
+//
+// 0) We must parse locally stored file indexes, otherwise we cannot find ENCODING manifest
+//
+// 1) Older storages (HOTS before 39445, WoW before 19116) don't state sizes of ENCODING
+//    and DOWNLOAD in the Build Config files. Solution: We can assume there is max 500k of files
+//
+// 2) TVFS root manifests reference files by EKey instead of CKey. The ENCODING manifest
+//    of such storages (Warcraft III) only contain limited number of files.
+//
+// 3) When loading WoW Classic storages installed together with WoW Retail, there are huge amount
+//    of items in local indexes, but only very few of them are really needed to load.
+//    But how to tell which ones do we need, when we must load local indexes to find ENCODING?
+//
 
-    for(size_t i = 0; i < CASC_INDEX_COUNT; i++)
-        TotalSize = TotalSize + hs->IndexFiles[i].FileSize;
-    return (size_t)(TotalSize / sizeof(FILE_EKEY_ENTRY));
-}
-
-// Estimate the total number of files, so we won't have to re-allocate the array
 static size_t GetEstimatedNumberOfFiles(TCascStorage * hs)
 {
+    ULONGLONG TotalIndexSize = 0;
     size_t nNumberOfFiles1 = 0;
     size_t nNumberOfFiles2 = 0;
     size_t nNumberOfFiles3 = 0;
@@ -313,7 +324,9 @@ static size_t GetEstimatedNumberOfFiles(TCascStorage * hs)
 
     // If we know the size of index files, we can estimate the number of local files
     // from the total size of indexes. Useful on multi-installation (wow+wow_classic)
-    nNumberOfFiles3 = GetEstimatedNumberOfFilesFromIndexes(hs) + CASC_MAX_EXTRA_ITEMS;
+    for(size_t i = 0; i < CASC_INDEX_COUNT; i++)
+        TotalIndexSize = TotalIndexSize + hs->IndexFiles[i].FileSize;
+    nNumberOfFiles3 = (size_t)(TotalIndexSize / sizeof(FILE_EKEY_ENTRY));
 
     // Return the number of items in indices plus bigger of the two values
     return nNumberOfFiles3 + CASCLIB_MAX(nNumberOfFiles1, nNumberOfFiles2);
