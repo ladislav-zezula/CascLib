@@ -877,6 +877,61 @@ static DWORD LocalStorage_Test(PFN_RUN_TEST PfnRunTest, LPCSTR szStorage, LPCSTR
     return dwErrCode;
 }
 
+static DWORD SpeedStorage_Test(PFN_RUN_TEST PfnRunTest, LPCSTR szStorage, LPCSTR szExpectedNameHash = NULL, LPCSTR szExpectedDataHash = NULL, LPCSTR szFileName = NULL)
+{
+    TLogHelper LogHelper(szStorage);
+    HANDLE hStorage;
+    TCHAR szFullPath[MAX_PATH];
+    DWORD dwErrCode = ERROR_SUCCESS;
+    int nOpenCount = 100;
+
+    // Keep compiler happy
+    UNREFERENCED_PARAMETER(PfnRunTest);
+    UNREFERENCED_PARAMETER(szExpectedNameHash);
+    UNREFERENCED_PARAMETER(szExpectedDataHash);
+    UNREFERENCED_PARAMETER(szFileName);
+
+    // Prepare the full path of the storage
+    MakeFullPath(szFullPath, _countof(szFullPath), szStorage);
+
+    // Open the storage for the first time to load all files to the cache
+    LogHelper.PrintProgress("Opening storage (caching-in) ...");
+    if(CascOpenStorage(szFullPath, 0, &hStorage))
+    {
+        // Close right away
+        CascCloseStorage(hStorage);
+        hStorage = NULL;
+
+        // Set the start time of the operation
+        LogHelper.SetStartTime();
+
+        // Now open the storage again, many times in order to measure how fast can we load it
+        for(int i = 0; i < nOpenCount; i++)
+        {
+            LogHelper.PrintProgress("Opening storage (%u /%u) ...", i, nOpenCount);
+            if(!CascOpenStorage(szFullPath, 0, &hStorage))
+            {
+                LogHelper.PrintError("Error: Failed to open storage %s", szStorage);
+                break;
+            }
+
+            CascCloseStorage(hStorage);
+            hStorage = NULL;
+        }
+
+        // Print the total time
+        LogHelper.PrintTotalTime();
+    }
+    else
+    {
+        LogHelper.PrintError("Error: Failed to open storage %s", szStorage);
+        assert(GetLastError() != ERROR_SUCCESS);
+        dwErrCode = GetLastError();
+    }
+
+    return dwErrCode;
+}
+
 static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, LPCSTR szCodeName, LPCSTR szRegion = NULL, LPCSTR szFileName = NULL)
 {
     TLogHelper LogHelper(szCodeName);
@@ -1000,29 +1055,9 @@ int main(void)
     // Single tests
     //
 
-//  LocalStorage_Test(Storage_ReadFiles, "2014 - Heroes of the Storm\\29049", NULL, NULL, "ENCODING");
-//  LocalStorage_Test(Storage_ReadFiles, "2014 - Heroes of the Storm\\30414", NULL, NULL, "84fd9825f313363fd2528cd999bcc852");
-//  LocalStorage_Test(Storage_EnumFiles, "2015 - Diablo III\\30013");
-//  LocalStorage_Test(Storage_ReadFiles, "2016 - WoW/31299:wow_classic", NULL, NULL, "PATCH");
-//  LocalStorage_Test(Storage_EnumFiles, "2018 - New CASC\\00001");
-//  LocalStorage_Test(Storage_EnumFiles, "2018 - New CASC\\00002");
-//  LocalStorage_Test(Storage_EnumFiles, "2018 - Warcraft III\\11889");
-    LocalStorage_Test(Storage_EnumFiles, "d:\\Hry\\World of Warcraft:wowt");
-//  LocalStorage_Test(Storage_SeekFiles, "2018 - CoD4\\3376209", NULL, NULL, "zone/base.xpak");
-    //OnlineStorage_Test(Storage_OpenFiles, "agent", NULL, "PATCH");
-    //OnlineStorage_Test(Storage_EnumFiles, "wow_classic_beta", "us");
-
-    //HANDLE hFile = NULL;
-    //LPBYTE Buffer;
-    //if(CascOpenLocalFile(_T("e:\\Multimedia\\CASC\\Work\\viper\\data\\28\\ec\\28ec71e6c754dda3b9d3017382a886d3"), 0, &hFile))
-    //{
-    //    if((Buffer = CASC_ALLOC<BYTE>(0x100000)) != NULL)
-    //    {
-    //        CascReadFile(hFile, Buffer, 0x100000, NULL);
-    //        CASC_FREE(Buffer);
-    //    }
-    //    CascCloseFile(hFile);
-    //}
+//  LocalStorage_Test(Storage_EnumFiles, "2016 - WoW\\31299");
+    SpeedStorage_Test(Storage_EnumFiles, "2016 - WoW\\31299");
+    SpeedStorage_Test(Storage_EnumFiles, "2016 - WoW\\31299:wow_classic");
 
     //
     // Run the tests for every local storage in my collection
@@ -1030,7 +1065,7 @@ int main(void)
     for(size_t i = 0; StorageInfo1[i].szPath != NULL; i++)
     {
         // Attempt to open the storage and extract single file
-        dwErrCode = LocalStorage_Test(Storage_ReadFiles, StorageInfo1[i].szPath, StorageInfo1[i].szNameHash, StorageInfo1[i].szDataHash);
+//      dwErrCode = LocalStorage_Test(Storage_ReadFiles, StorageInfo1[i].szPath, StorageInfo1[i].szNameHash, StorageInfo1[i].szDataHash);
 //      dwErrCode = LocalStorage_Test(Storage_EnumFiles, StorageInfo1[i].szPath, StorageInfo1[i].szNameHash);
         if(dwErrCode != ERROR_SUCCESS)
             break;

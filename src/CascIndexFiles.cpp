@@ -44,7 +44,6 @@ static bool IsIndexFileName_V2(const TCHAR * szFileName)
 
 static bool IndexDirectory_OnFileFound(
     LPCTSTR szFileName,
-    ULONG FileSize,
     void * pvContext)
 {
     TCascStorage * hs = (TCascStorage *)pvContext;
@@ -104,7 +103,6 @@ static bool IndexDirectory_OnFileFound(
     {
         pIndexFile->OldSubIndex = pIndexFile->NewSubIndex;
         pIndexFile->NewSubIndex = IndexVersion;
-        pIndexFile->FileSize = FileSize;
     }
     else if(IndexVersion > pIndexFile->OldSubIndex)
     {
@@ -217,7 +215,7 @@ static LPBYTE CaptureGuardedBlock3(LPBYTE pbFileData, LPBYTE pbFileEnd, size_t E
     // Give the output
     return (LPBYTE)(PtrEntryHash + 1);
 }
-
+/*
 static bool CaptureIndexEntry(CASC_INDEX_HEADER & InHeader, PCASC_EKEY_ENTRY pEKeyEntry, LPBYTE pbEKeyEntry)
 {
     // Copy the EKey of the variable length
@@ -279,24 +277,17 @@ static void InsertCKeyEntry(TCascStorage * hs, CASC_EKEY_ENTRY & EKeyEntry, DWOR
     // Add the extra flag
     pCKeyEntry->Flags |= Flags;
 }
-
-static DWORD LoadIndexItems(TCascStorage * hs, CASC_INDEX_HEADER & InHeader, LPBYTE pbEKeyEntry, LPBYTE pbEKeyEnd)
+*/
+static DWORD LoadIndexItems(TCascStorage * hs, CASC_INDEX_HEADER & InHeader, EKEY_ENTRY_CALLBACK PfnEKeyEntry, LPBYTE pbEKeyEntry, LPBYTE pbEKeyEnd)
 {
     size_t EntryLength = InHeader.EntryLength;
 
     while((pbEKeyEntry + EntryLength) <= pbEKeyEnd)
     {
-        CASC_EKEY_ENTRY EKeyEntry;
-
-        // Capture the index entry and verify it.
-        if(CaptureIndexEntry(InHeader, &EKeyEntry, pbEKeyEntry))
-        {
-            // DOWNLOAD in HOTS
-            //BREAK_ON_XKEY3(EKeyEntry.EKey, 0x09, 0xF3, 0xCD);
-
-            // Insert the index entry to the central table
-            InsertCKeyEntry(hs, EKeyEntry, CASC_CE_FILE_IS_LOCAL);
-        }
+        // DOWNLOAD in HOTS
+        //BREAK_ON_XKEY3(EKeyEntry.EKey, 0x09, 0xF3, 0xCD);
+        if(!PfnEKeyEntry(hs, InHeader, pbEKeyEntry))
+            break;
 
         pbEKeyEntry += EntryLength;
     }
@@ -304,7 +295,7 @@ static DWORD LoadIndexItems(TCascStorage * hs, CASC_INDEX_HEADER & InHeader, LPB
     return ERROR_SUCCESS;
 }
 
-static DWORD CaptureIndexHeader_V1(CASC_INDEX_HEADER & InHeader, LPBYTE pbFileData, DWORD cbFileData, DWORD BucketIndex)
+static DWORD CaptureIndexHeader_V1(CASC_INDEX_HEADER & InHeader, LPBYTE pbFileData, size_t cbFileData, DWORD BucketIndex)
 {
     PFILE_INDEX_HEADER_V1 pIndexHeader = (PFILE_INDEX_HEADER_V1)pbFileData;
     LPBYTE pbKeyEntries;
@@ -364,7 +355,7 @@ static DWORD CaptureIndexHeader_V1(CASC_INDEX_HEADER & InHeader, LPBYTE pbFileDa
     return ERROR_SUCCESS;
 }
 
-static DWORD CaptureIndexHeader_V2(CASC_INDEX_HEADER & InHeader, LPBYTE pbFileData, DWORD cbFileData, DWORD BucketIndex)
+static DWORD CaptureIndexHeader_V2(CASC_INDEX_HEADER & InHeader, LPBYTE pbFileData, size_t cbFileData, DWORD BucketIndex)
 {
     PFILE_INDEX_HEADER_V2 pIndexHeader;
     LPBYTE pbFileEnd = pbFileData + cbFileData;
@@ -398,7 +389,7 @@ static DWORD CaptureIndexHeader_V2(CASC_INDEX_HEADER & InHeader, LPBYTE pbFileDa
     return ERROR_SUCCESS;
 }    
 
-static DWORD LoadIndexFile_V1(TCascStorage * hs, CASC_INDEX_HEADER & InHeader, LPBYTE pbFileData, DWORD cbFileData)
+static DWORD LoadIndexFile_V1(TCascStorage * hs, CASC_INDEX_HEADER & InHeader, EKEY_ENTRY_CALLBACK PfnEKeyEntry, LPBYTE pbFileData, size_t cbFileData)
 {
     LPBYTE pbEKeyEntries = pbFileData + InHeader.HeaderLength + InHeader.HeaderPadding;
 
@@ -406,10 +397,10 @@ static DWORD LoadIndexFile_V1(TCascStorage * hs, CASC_INDEX_HEADER & InHeader, L
     SaveFileOffsetBitsAndEKeyLength(hs, InHeader.FileOffsetBits, InHeader.EKeyLength);
 
     // Load the entries from a continuous array
-    return LoadIndexItems(hs, InHeader, pbEKeyEntries, pbFileData + cbFileData);
+    return LoadIndexItems(hs, InHeader, PfnEKeyEntry, pbEKeyEntries, pbFileData + cbFileData);
 }
 
-static DWORD LoadIndexFile_V2(TCascStorage * hs, CASC_INDEX_HEADER & InHeader, LPBYTE pbFileData, DWORD cbFileData)
+static DWORD LoadIndexFile_V2(TCascStorage * hs, CASC_INDEX_HEADER & InHeader, EKEY_ENTRY_CALLBACK PfnEKeyEntry, LPBYTE pbFileData, size_t cbFileData)
 {
     LPBYTE pbEKeyEntry;
     LPBYTE pbFileEnd = pbFileData + cbFileData;
@@ -428,7 +419,7 @@ static DWORD LoadIndexFile_V2(TCascStorage * hs, CASC_INDEX_HEADER & InHeader, L
         InHeader.HeaderPadding += sizeof(FILE_INDEX_GUARDED_BLOCK);
 
         // Load the continuous array of EKeys
-        return LoadIndexItems(hs, InHeader, pbEKeyEntry, pbEKeyEntry + BlockSize);
+        return LoadIndexItems(hs, InHeader, PfnEKeyEntry, pbEKeyEntry, pbEKeyEntry + BlockSize);
     }
 
     // Get the pointer to the second block of EKey entries.
@@ -447,8 +438,6 @@ static DWORD LoadIndexFile_V2(TCascStorage * hs, CASC_INDEX_HEADER & InHeader, L
             
             while(pbEKeyEntry < pbEndPage)
             {
-                CASC_EKEY_ENTRY EKeyEntry;
-
                 // Check the EKey entry protected by 32-bit hash
                 if((pbEKeyEntry = CaptureGuardedBlock3(pbEKeyEntry, pbEndPage, InHeader.EntryLength)) == NULL)
                     break;
@@ -456,13 +445,10 @@ static DWORD LoadIndexFile_V2(TCascStorage * hs, CASC_INDEX_HEADER & InHeader, L
                 // CASC\\0001: Encoding
                 //BREAK_ON_XKEY3(pbEKeyEntry, 0xbc, 0xe8, 0x23);
 
-                // Capture the index entry and verify it.
-                if(CaptureIndexEntry(InHeader, &EKeyEntry, pbEKeyEntry))
-                {
-                    InsertCKeyEntry(hs, EKeyEntry, CASC_CE_FILE_IS_LOCAL);
-                }
+                // Call the EKey entry callback
+                if(!PfnEKeyEntry(hs, InHeader, pbEKeyEntry))
+                    return ERROR_SUCCESS;
 
-                // Move to the next entry
                 pbEKeyEntry += AlignedLength;
             }
 
@@ -475,78 +461,73 @@ static DWORD LoadIndexFile_V2(TCascStorage * hs, CASC_INDEX_HEADER & InHeader, L
     return dwErrCode;
 }
 
-static DWORD LoadIndexFile(TCascStorage * hs, LPBYTE pbFileData, DWORD cbFileData, DWORD BucketIndex)
+static DWORD LoadIndexFile(TCascStorage * hs, EKEY_ENTRY_CALLBACK PfnEKeyEntry, LPBYTE pbFileData, size_t cbFileData, DWORD BucketIndex)
 {
     CASC_INDEX_HEADER InHeader;
 
     // Check for CASC version 2
     if(CaptureIndexHeader_V2(InHeader, pbFileData, cbFileData, BucketIndex) == ERROR_SUCCESS)
-        return LoadIndexFile_V2(hs, InHeader, pbFileData, cbFileData);
+        return LoadIndexFile_V2(hs, InHeader, PfnEKeyEntry, pbFileData, cbFileData);
 
     // Check for CASC index version 1
     if(CaptureIndexHeader_V1(InHeader, pbFileData, cbFileData, BucketIndex) == ERROR_SUCCESS)
-        return LoadIndexFile_V1(hs, InHeader, pbFileData, cbFileData);
+        return LoadIndexFile_V1(hs, InHeader, PfnEKeyEntry, pbFileData, cbFileData);
 
     // Should never happen
     assert(false);
     return ERROR_BAD_FORMAT;
 }
 
-static DWORD LoadIndexFile(TCascStorage * hs, const TCHAR * szFileName, DWORD BucketIndex)
+static DWORD PreloadLocalIndexFiles(TCascStorage * hs)
 {
-    LPBYTE pbFileData;
-    DWORD cbFileData;
-    DWORD dwErrCode = ERROR_SUCCESS;
+    DWORD dwErrCode;
 
-    // WoW6 actually reads THE ENTIRE file to memory. Verified on Mac build (x64).
-    pbFileData = LoadFileToMemory(szFileName, &cbFileData);
-    if(pbFileData && cbFileData)
+    // Inform the user about what we are doing
+    if(InvokeProgressCallback(hs, "Preloading index files", NULL, 0, 0))
+        return ERROR_CANCELLED;
+
+    // Perform the directory scan
+    if((dwErrCode = ScanIndexDirectory(hs->szIndexPath, IndexDirectory_OnFileFound, hs)) == ERROR_SUCCESS)
     {
-        // Parse and load the index file
-        dwErrCode = LoadIndexFile(hs, pbFileData, cbFileData, BucketIndex);
-        CASC_FREE(pbFileData);
-    }
-    else
-    {
-        dwErrCode = GetLastError();
+        // Load each index file
+        for(DWORD i = 0; i < CASC_INDEX_COUNT; i++)
+        {
+            CASC_INDEX & IndexFile = hs->IndexFiles[i];
+            DWORD cbFileData = 0;
+
+            // Create the file name
+            if((IndexFile.szFileName = CreateIndexFileName(hs, i, IndexFile.NewSubIndex)) == NULL)
+                return ERROR_NOT_ENOUGH_MEMORY;
+
+            // WoW6 actually reads THE ENTIRE file to memory. Verified on Mac build (x64).
+            if((IndexFile.pbFileData = LoadFileToMemory(IndexFile.szFileName, &cbFileData)) == NULL)
+                return ERROR_NOT_ENOUGH_MEMORY;
+            IndexFile.cbFileData = cbFileData;
+        }
     }
 
     return dwErrCode;
 }
 
-static DWORD ScanLocalIndexFiles(TCascStorage * hs)
+static DWORD ProcessLocalIndexFiles(TCascStorage * hs, EKEY_ENTRY_CALLBACK PfnEKeyEntry)
 {
-    // Inform the user about what we are doing
-    if(InvokeProgressCallback(hs, "Scanning index files", NULL, 0, 0))
-        return ERROR_CANCELLED;
-
-    // Perform the directory scan
-    return ScanIndexDirectory(hs->szIndexPath, IndexDirectory_OnFileFound, hs);
-}
-
-static DWORD LoadLocalIndexFiles(TCascStorage * hs)
-{
-    LPTSTR szFileName;
     DWORD dwErrCode = ERROR_SUCCESS;
 
     // Load each index file
     for(DWORD i = 0; i < CASC_INDEX_COUNT; i++)
     {
-        // Create the name of the index file
-        if((szFileName = CreateIndexFileName(hs, i, hs->IndexFiles[i].NewSubIndex)) != NULL)
-        {
-            // Inform the user about what we are doing
-            if(InvokeProgressCallback(hs, "Loading index files", NULL, i, CASC_INDEX_COUNT))
-            {
-                dwErrCode = ERROR_CANCELLED;
-                break;
-            }
+        CASC_INDEX & IndexFile = hs->IndexFiles[i];
 
-            // Load the index file
-            if((dwErrCode = LoadIndexFile(hs, szFileName, i)) != ERROR_SUCCESS)
-                break;
-            CASC_FREE(szFileName);
+        // Inform the user about what we are doing
+        if(InvokeProgressCallback(hs, "Loading index files", NULL, i, CASC_INDEX_COUNT))
+        {
+            dwErrCode = ERROR_CANCELLED;
+            break;
         }
+
+        // Load the index file
+        if((dwErrCode = LoadIndexFile(hs, PfnEKeyEntry, IndexFile.pbFileData, IndexFile.cbFileData, i)) != ERROR_SUCCESS)
+            break;
     }
 
     // Remember the number of files that are present locally
@@ -786,19 +767,19 @@ static DWORD LoadArchiveIndexFiles(TCascStorage * hs)
 //-----------------------------------------------------------------------------
 // Public functions
 
-DWORD ScanIndexFiles(TCascStorage * hs)
+DWORD PreloadIndexFiles(TCascStorage * hs)
 {
     DWORD dwErrCode = ERROR_SUCCESS;
 
     if ((hs->dwFeatures & CASC_FEATURE_ONLINE) == 0)
     {
-        dwErrCode = ScanLocalIndexFiles(hs);
+        dwErrCode = PreloadLocalIndexFiles(hs);
     }
 
     return dwErrCode;
 }
 
-DWORD LoadIndexFiles(TCascStorage * hs)
+DWORD ProcessIndexFiles(TCascStorage * hs, EKEY_ENTRY_CALLBACK PfnEKeyEntry)
 {
     if (hs->dwFeatures & CASC_FEATURE_ONLINE)
     {
@@ -806,6 +787,21 @@ DWORD LoadIndexFiles(TCascStorage * hs)
     }
     else
     {
-        return LoadLocalIndexFiles(hs);
+        return ProcessLocalIndexFiles(hs, PfnEKeyEntry);
+    }
+}
+
+void CleanupIndexFiles(TCascStorage * hs)
+{
+    for(size_t i = 0; i < CASC_INDEX_COUNT; i++)
+    {
+        CASC_INDEX & IndexFile = hs->IndexFiles[i];
+
+        // Free the file data
+        CASC_FREE(IndexFile.pbFileData);
+        IndexFile.cbFileData = 0;
+
+        // Free the file name
+        CASC_FREE(IndexFile.szFileName);
     }
 }

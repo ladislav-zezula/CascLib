@@ -89,7 +89,9 @@ typedef struct _CASC_TAG_ENTRY
 // Information about index file
 typedef struct _CASC_INDEX
 {
-    ULONGLONG FileSize;                             // Size of the index file
+    LPTSTR szFileName;                              // Full name of the index file
+    LPBYTE pbFileData;                              // Loaded content of the index file
+    size_t cbFileData;                               // Size of the index file
     DWORD NewSubIndex;                              // New subindex
     DWORD OldSubIndex;                              // Old subindex
 } CASC_INDEX, *PCASC_INDEX;
@@ -475,8 +477,11 @@ DWORD CascDecrypt(TCascStorage * hs, LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LP
 //-----------------------------------------------------------------------------
 // Support for index files
 
-DWORD ScanIndexFiles(TCascStorage * hs);
-DWORD LoadIndexFiles(TCascStorage * hs);
+typedef bool (*EKEY_ENTRY_CALLBACK)(TCascStorage * hs, CASC_INDEX_HEADER & InHeader, LPBYTE pbEKeyEntry);
+
+DWORD PreloadIndexFiles(TCascStorage * hs);
+DWORD ProcessIndexFiles(TCascStorage * hs, EKEY_ENTRY_CALLBACK PfnEKeyEntry);
+void CleanupIndexFiles(TCascStorage * hs);
 
 //-----------------------------------------------------------------------------
 // Support for ROOT file

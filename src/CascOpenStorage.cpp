@@ -57,6 +57,9 @@ TCascStorage::~TCascStorage()
         DataFiles[i] = NULL;
     }
 
+    // Cleanup space occupied by index files
+    CleanupIndexFiles(this);
+
     // Free the file paths
     CASC_FREE(szDataPath);
     CASC_FREE(szRootPath);
@@ -165,6 +168,82 @@ static PCASC_CKEY_ENTRY InsertCKeyEntry(TCascStorage * hs, CASC_CKEY_ENTRY & CKe
     }
 
     return pCKeyEntry;
+}
+
+static void CopyEKeyToCKeyEntry(PCASC_CKEY_ENTRY pCKeyEntry, LPBYTE pbEKeyEntry)
+{
+    pCKeyEntry->EKey[0x00] = pbEKeyEntry[0x00];
+    pCKeyEntry->EKey[0x01] = pbEKeyEntry[0x01];
+    pCKeyEntry->EKey[0x02] = pbEKeyEntry[0x02];
+    pCKeyEntry->EKey[0x03] = pbEKeyEntry[0x03];
+    pCKeyEntry->EKey[0x04] = pbEKeyEntry[0x04];
+    pCKeyEntry->EKey[0x05] = pbEKeyEntry[0x05];
+    pCKeyEntry->EKey[0x06] = pbEKeyEntry[0x06];
+    pCKeyEntry->EKey[0x07] = pbEKeyEntry[0x07];
+    pCKeyEntry->EKey[0x08] = pbEKeyEntry[0x08];
+}
+
+// Inserts an entry from local index file
+static bool InsertEKeyEntry(TCascStorage * hs, CASC_INDEX_HEADER & InHeader, LPBYTE pbEKeyEntry)
+{
+    PCASC_CKEY_ENTRY pCKeyEntry;
+    LPBYTE pbStorageOffset = pbEKeyEntry + InHeader.EKeyLength;
+    LPBYTE pbEncodedSize = pbStorageOffset + InHeader.StorageOffsetLength;
+    DWORD EncodedSize = ConvertBytesToInteger_4_LE(pbEncodedSize);
+
+    // Ignore EKey entries whose Encoded Size is 0x1F or smaller
+    if(EncodedSize > FIELD_OFFSET(BLTE_ENCODED_HEADER, Signature))
+    {
+        ULONGLONG StorageOffset = ConvertBytesToInteger_5(pbStorageOffset);
+
+        // Multiple items with the same EKey in the index files may exist.
+        // Example: "2018 - New CASC\00001", EKey 37 89 16 5b 2d cc 71 c1 25 00 00 00 00 00 00 00
+        // Positions: 0x1D, 0x1E, 0x1F
+        // In that case, we only take the first one into account
+        // BREAK_ON_XKEY3(EKeyEntry.EKey, 0x09, 0xF3, 0xCD);
+
+        // If the item is not there yet, insert a new one
+        if((pCKeyEntry = FindCKeyEntry_EKey(hs, pbEKeyEntry)) == NULL)
+        {
+            // Insert a new entry to the array. DO NOT ALLOW enlarge array here
+            pCKeyEntry = (PCASC_CKEY_ENTRY)hs->CKeyArray.Insert(1, false);
+            if(pCKeyEntry == NULL)
+            {
+                assert(false);
+                return false;
+            }
+
+            // Clear the entire CKey entry
+            memset(pCKeyEntry, 0, sizeof(CASC_CKEY_ENTRY));
+
+            // Initialize the CKeyEntry with the partial EKey, storage offset and encoded size
+            CopyEKeyToCKeyEntry(pCKeyEntry, pbEKeyEntry);
+            pCKeyEntry->StorageOffset = StorageOffset;
+            pCKeyEntry->ContentSize = CASC_INVALID_SIZE;
+            pCKeyEntry->EncodedSize = EncodedSize;
+            pCKeyEntry->Flags = CASC_CE_HAS_EKEY | CASC_CE_HAS_EKEY_PARTIAL | CASC_CE_FILE_IS_LOCAL;
+            pCKeyEntry->SpanCount = 1;
+
+            // Insert the item to the EKey table
+            hs->EKeyMap.InsertObject(pCKeyEntry, pCKeyEntry->EKey);
+        }
+        else
+        {
+            // The entry already exists. True e.g. for ENCODING.
+            // Only copy the storage offset and sizes if not available yet
+            if(pCKeyEntry->StorageOffset == CASC_INVALID_OFFS64)
+            {
+                pCKeyEntry->StorageOffset = StorageOffset;
+                pCKeyEntry->EncodedSize = EncodedSize;
+            }
+
+            // Also update the local file flag
+            pCKeyEntry->Flags |= CASC_CE_FILE_IS_LOCAL;
+        }
+    }
+
+    // Continue going
+    return true;
 }
 
 // Inserts an entry from ENCODING
@@ -325,7 +404,7 @@ static size_t GetEstimatedNumberOfFiles(TCascStorage * hs)
     // If we know the size of index files, we can estimate the number of local files
     // from the total size of indexes. Useful on multi-installation (wow+wow_classic)
     for(size_t i = 0; i < CASC_INDEX_COUNT; i++)
-        TotalIndexSize = TotalIndexSize + hs->IndexFiles[i].FileSize;
+        TotalIndexSize = TotalIndexSize + hs->IndexFiles[i].cbFileData;
     nNumberOfFiles3 = (size_t)(TotalIndexSize / sizeof(FILE_EKEY_ENTRY));
 
     // Return the number of items in indices plus bigger of the two values
@@ -1171,7 +1250,7 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
     // Scan the index directory
     if(dwErrCode == ERROR_SUCCESS)
     {
-        dwErrCode = ScanIndexFiles(hs);
+        dwErrCode = PreloadIndexFiles(hs);
     }
 
     // Create the central file array
@@ -1183,7 +1262,7 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
     // Load the index files. Store information from the index files to the CKeyArray.
     if(dwErrCode == ERROR_SUCCESS)
     {
-        dwErrCode = LoadIndexFiles(hs);
+        dwErrCode = ProcessIndexFiles(hs, InsertEKeyEntry);
     }
 
     // Load the ENCODING manifest
@@ -1230,6 +1309,9 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
     {
         dwErrCode = CascLoadEncryptionKeys(hs);
     }
+
+    // Clear the memory occupied by index files
+    CleanupIndexFiles(hs);
 
     // Clear the arg structure
     hs->pArgs = pArgs;

@@ -79,7 +79,7 @@ int ScanIndexDirectory(
             if(!(wf.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
             {
                 // Let the callback scan the file name
-                pfnOnFileFound(wf.cFileName, wf.nFileSizeLow, pvContext);
+                pfnOnFileFound(wf.cFileName, pvContext);
             }
         }
 
@@ -92,7 +92,6 @@ int ScanIndexDirectory(
 #else // PLATFORM_WINDOWS
 
     struct dirent * dir_entry;
-    struct stat st;
     DIR * dir;
 
     dir = opendir(szIndexPath);
@@ -102,8 +101,7 @@ int ScanIndexDirectory(
         {
             if(dir_entry->d_type != DT_DIR)
             {
-                stat(filename, &st);
-                pfnOnFileFound(dir_entry->d_name, st.st_size, pvContext);
+                pfnOnFileFound(dir_entry->d_name, pvContext);
             }
         }
 

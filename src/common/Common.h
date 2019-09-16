@@ -438,7 +438,7 @@ bool CascVerifyDataBlockHash(void * pvDataBlock, DWORD cbDataBlock, LPBYTE expec
 //-----------------------------------------------------------------------------
 // Scanning a directory
 
-typedef bool (*INDEX_FILE_FOUND)(LPCTSTR szFileName, ULONG FileSize, void * pvContext);
+typedef bool (*INDEX_FILE_FOUND)(LPCTSTR szFileName, void * pvContext);
 
 bool DirectoryExists(LPCTSTR szDirectory);
 

@@ -41,7 +41,7 @@ class TLogHelper
 #endif
 
         // Remember the startup time
-        StartTime = GetCurrentThreadTime();
+        SetStartTime();
         TotalFiles = 1;
 
         // Print the initial information
@@ -333,6 +333,12 @@ class TLogHelper
         }
 
         return bResult;
+    }
+
+    ULONGLONG SetStartTime()
+    {
+        StartTime = GetCurrentThreadTime();
+        return StartTime;
     }
 
     DWORD SetEndTime()
