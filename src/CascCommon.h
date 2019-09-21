@@ -89,7 +89,9 @@ typedef struct _CASC_TAG_ENTRY
 // Information about index file
 typedef struct _CASC_INDEX
 {
-    ULONGLONG FileSize;                             // Size of the index file
+    LPTSTR szFileName;                              // Full name of the index file
+    LPBYTE pbFileData;                              // Loaded content of the index file
+    size_t cbFileData;                               // Size of the index file
     DWORD NewSubIndex;                              // New subindex
     DWORD OldSubIndex;                              // Old subindex
 } CASC_INDEX, *PCASC_INDEX;
@@ -301,6 +303,7 @@ struct TCascStorage
 
     TFileStream * DataFiles[CASC_MAX_DATA_FILES];   // Array of open data files
     CASC_INDEX IndexFiles[CASC_INDEX_COUNT];        // Array of found index files
+    CASC_MAP IndexEKeyMap;
 
     CASC_CKEY_ENTRY EncodingCKey;                   // Information about ENCODING file
     CASC_CKEY_ENTRY DownloadCKey;                   // Information about DOWNLOAD file
@@ -318,7 +321,6 @@ struct TCascStorage
     CASC_MAP IndexMap;                              // Map of EKey -> IndexArray (for online archives)
     CASC_MAP CKeyMap;                               // Map of CKey -> CKeyArray
     CASC_MAP EKeyMap;                               // Map of EKey -> CKeyArray
-    ULONGLONG TotalIndexSize;                       // Total size of all index files. Used for estimation of the maximum file count
     size_t LocalFiles;                              // Number of files that are present locally
     size_t TotalFiles;                              // Total number of files in the storage, some may not be present locally
     size_t EKeyEntries;                             // Number of CKeyEntry-ies loaded from text build file
@@ -475,8 +477,10 @@ DWORD CascDecrypt(TCascStorage * hs, LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LP
 //-----------------------------------------------------------------------------
 // Support for index files
 
-DWORD ScanIndexFiles(TCascStorage * hs);
+bool CopyEKeyEntry(TCascStorage * hs, PCASC_CKEY_ENTRY pCKeyEntry);
+
 DWORD LoadIndexFiles(TCascStorage * hs);
+void  FreeIndexFiles(TCascStorage * hs);
 
 //-----------------------------------------------------------------------------
 // Support for ROOT file

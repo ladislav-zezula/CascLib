@@ -21,6 +21,27 @@
 #define CASC_MAX_EXTRA_ITEMS 0x40
 
 //-----------------------------------------------------------------------------
+// DEBUG functions
+
+//#define CHECKED_KEY "2a378c"
+
+#if defined(_DEBUG) && defined(CHECKED_KEY)
+
+inline bool CheckForXKey(LPBYTE XKey)
+{
+    BYTE CheckedKey[4];
+    ConvertStringToBinary(CHECKED_KEY, 6, CheckedKey);
+    return (XKey[0] == CheckedKey[0] && XKey[1] == CheckedKey[1] && XKey[2] == CheckedKey[2]);
+}
+#define BREAK_ON_WATCHED(XKey)  if(CheckForXKey((LPBYTE)XKey))  { __debugbreak(); }
+
+#else
+
+#define BREAK_ON_WATCHED(XKey)  { /* NOTHING */ }
+
+#endif
+
+//-----------------------------------------------------------------------------
 // TCascStorage class functions
 
 TCascStorage::TCascStorage()
@@ -56,6 +77,9 @@ TCascStorage::~TCascStorage()
         FileStream_Close(DataFiles[i]);
         DataFiles[i] = NULL;
     }
+
+    // Cleanup space occupied by index files
+    FreeIndexFiles(this);
 
     // Free the file paths
     CASC_FREE(szDataPath);
@@ -114,9 +138,9 @@ void * ProbeOutputBuffer(void * pvBuffer, size_t cbLength, size_t cbMinLength, s
     return pvBuffer;
 }
 
-static TCHAR * CheckForIndexDirectory(TCascStorage * hs, const TCHAR * szSubDir)
+static LPTSTR CheckForIndexDirectory(TCascStorage * hs, LPCTSTR szSubDir)
 {
-    TCHAR * szIndexPath;
+    LPTSTR szIndexPath;
 
     // Combine the index path
     szIndexPath = CombinePath(hs->szDataPath, szSubDir);
@@ -132,6 +156,9 @@ static TCHAR * CheckForIndexDirectory(TCascStorage * hs, const TCHAR * szSubDir)
 static PCASC_CKEY_ENTRY InsertCKeyEntry(TCascStorage * hs, CASC_CKEY_ENTRY & CKeyEntry)
 {
     PCASC_CKEY_ENTRY pCKeyEntry = NULL;
+
+    // Stop on file-of-interest
+    BREAK_ON_WATCHED(CKeyEntry.EKey);
 
     // Skip entries without any key
     if(CKeyEntry.Flags & (CASC_CE_HAS_CKEY | CASC_CE_HAS_EKEY))
@@ -172,17 +199,14 @@ static PCASC_CKEY_ENTRY InsertCKeyEntry(TCascStorage * hs, PFILE_CKEY_ENTRY pFil
 {
     PCASC_CKEY_ENTRY pCKeyEntry;
 
-    // Check whether the entry is already there
-    if((pCKeyEntry = FindCKeyEntry_EKey(hs, pFileEntry->EKey)) == NULL)
-    {
-        // Insert a new entry to the array. DO NOT ALLOW enlarge array here
-        pCKeyEntry = (PCASC_CKEY_ENTRY)hs->CKeyArray.Insert(1, false);
-        if(pCKeyEntry == NULL)
-        {
-            assert(false);
-            return NULL;
-        }
+    // Stop on file-of-interest
+    BREAK_ON_WATCHED(pFileEntry->EKey);
 
+    // Insert a new entry to the array. DO NOT ALLOW enlarge array here
+    pCKeyEntry = (PCASC_CKEY_ENTRY)hs->CKeyArray.Insert(1, false);
+    if(pCKeyEntry != NULL)
+    {
+        // Initialize the entry
         CopyMemory16(pCKeyEntry->CKey, pFileEntry->CKey);
         CopyMemory16(pCKeyEntry->EKey, pFileEntry->EKey);
         pCKeyEntry->StorageOffset = CASC_INVALID_OFFS64;
@@ -194,24 +218,16 @@ static PCASC_CKEY_ENTRY InsertCKeyEntry(TCascStorage * hs, PFILE_CKEY_ENTRY pFil
         pCKeyEntry->SpanCount = 1;
         pCKeyEntry->Priority = 0;
 
+        // Copy the information from index files to the CKey entry
+        CopyEKeyEntry(hs, pCKeyEntry);
+
         // Insert the item into both maps
         hs->CKeyMap.InsertObject(pCKeyEntry, pCKeyEntry->CKey);
         hs->EKeyMap.InsertObject(pCKeyEntry, pCKeyEntry->EKey);
     }
     else
     {
-        // Supply both CKey and EKey. Rewrite EKey regardless, because ENCODING manifest contains a full one
-        CopyMemory16(pCKeyEntry->CKey, pFileEntry->CKey);
-        CopyMemory16(pCKeyEntry->EKey, pFileEntry->EKey);
-
-        // Supply the content size
-        if(pCKeyEntry->ContentSize == CASC_INVALID_SIZE)
-            pCKeyEntry->ContentSize = ConvertBytesToInteger_4(pFileEntry->ContentSize);
-        pCKeyEntry->Flags |= CASC_CE_HAS_CKEY | CASC_CE_HAS_EKEY | CASC_CE_IN_ENCODING;
-        pCKeyEntry->Flags &= ~CASC_CE_HAS_EKEY_PARTIAL;
-
-        // Insert the item into CKey map
-        hs->CKeyMap.InsertObject(pCKeyEntry, pCKeyEntry->CKey);
+        assert(false);
     }
 
     return pCKeyEntry;
@@ -222,13 +238,19 @@ static PCASC_CKEY_ENTRY InsertCKeyEntry(TCascStorage * hs, CASC_DOWNLOAD_ENTRY &
 {
     PCASC_CKEY_ENTRY pCKeyEntry;
 
+    // Stop on file-of-interest
+    BREAK_ON_WATCHED(DlEntry.EKey);
+
     // Check whether the entry is already there
     if((pCKeyEntry = FindCKeyEntry_EKey(hs, DlEntry.EKey)) == NULL)
     {
         // Insert dummy CKey entry to the array. DO NOT allow to enlarge the array
         pCKeyEntry = (PCASC_CKEY_ENTRY)hs->CKeyArray.Insert(1, false);
         if(pCKeyEntry == NULL)
+        {
+            assert(false);
             return NULL;
+        }
 
         // Copy the entry
         ZeroMemory16(pCKeyEntry->CKey);
@@ -240,6 +262,9 @@ static PCASC_CKEY_ENTRY InsertCKeyEntry(TCascStorage * hs, CASC_DOWNLOAD_ENTRY &
         pCKeyEntry->Flags = CASC_CE_HAS_EKEY | CASC_CE_IN_DOWNLOAD;
         pCKeyEntry->RefCount = 0;
         pCKeyEntry->SpanCount = 1;
+
+        // Copy the information from index files to the CKey entry
+        CopyEKeyEntry(hs, pCKeyEntry);
 
         // Insert the entry to the map. Only insert it to the EKey map, as there is no CKey present
         hs->EKeyMap.InsertObject(pCKeyEntry, pCKeyEntry->EKey);
@@ -282,32 +307,13 @@ static DWORD CopyBuildFileItemsToCKeyArray(TCascStorage * hs)
     return ERROR_SUCCESS;
 }
 
-//
 // Estimate the total number of files, so we won't have to re-allocate arrays and maps
 // and thus speed-up storage loading. In theory, we could guess the file count by
 // measuring size of ENCODING or DOWNLOAD manifests.
-//
-// There are few problems to that:
-//
-// 0) We must parse locally stored file indexes, otherwise we cannot find ENCODING manifest
-//
-// 1) Older storages (HOTS before 39445, WoW before 19116) don't state sizes of ENCODING
-//    and DOWNLOAD in the Build Config files. Solution: We can assume there is max 500k of files
-//
-// 2) TVFS root manifests reference files by EKey instead of CKey. The ENCODING manifest
-//    of such storages (Warcraft III) only contain limited number of files.
-//
-// 3) When loading WoW Classic storages installed together with WoW Retail, there are huge amount
-//    of items in local indexes, but only very few of them are really needed to load.
-//    But how to tell which ones do we need, when we must load local indexes to find ENCODING?
-//
-
 static size_t GetEstimatedNumberOfFiles(TCascStorage * hs)
 {
-    ULONGLONG TotalIndexSize = 0;
     size_t nNumberOfFiles1 = 0;
     size_t nNumberOfFiles2 = 0;
-    size_t nNumberOfFiles3 = 0;
 
     // If we know the size of DOWNLOAD at this point, we estimate number of files from it.
     // Size of one entry in DOWNLOAD is at least 22 bytes. This is the most reliable method.
@@ -322,14 +328,13 @@ static size_t GetEstimatedNumberOfFiles(TCascStorage * hs)
     if(hs->EncodingCKey.ContentSize != CASC_INVALID_SIZE)
         nNumberOfFiles2 = (hs->EncodingCKey.ContentSize / sizeof(FILE_CKEY_ENTRY)) + CASC_MAX_EXTRA_ITEMS;
 
-    // If we know the size of index files, we can estimate the number of local files
-    // from the total size of indexes. Useful on multi-installation (wow+wow_classic)
-    for(size_t i = 0; i < CASC_INDEX_COUNT; i++)
-        TotalIndexSize = TotalIndexSize + hs->IndexFiles[i].FileSize;
-    nNumberOfFiles3 = (size_t)(TotalIndexSize / sizeof(FILE_EKEY_ENTRY));
+    // Do we know any of them?
+    if(nNumberOfFiles1 || nNumberOfFiles2)
+        return CASCLIB_MAX(nNumberOfFiles1, nNumberOfFiles2);
 
-    // Return the number of items in indices plus bigger of the two values
-    return nNumberOfFiles3 + CASCLIB_MAX(nNumberOfFiles1, nNumberOfFiles2);
+    // Older storages (HOTS before 39445, WoW before 19116) don't state sizes of ENCODING
+    // and DOWNLOAD in the Build Config files. Solution: Assume there is max 1M of files
+    return 1000000;
 }
 
 static DWORD InitCKeyArray(TCascStorage * hs)
@@ -406,7 +411,7 @@ static int LoadEncodingCKeyPage(TCascStorage * hs, CASC_ENCODING_HEADER & EnHead
         // Example of a file entry with multiple EKeys: 
         // Overwatch build 24919, CKey: 0e 90 94 fa d2 cb 85 ac d0 7c ea 09 f9 c5 ba 00 
 //      BREAKIF(pFileEntry->EKeyCount > 1);
-//      BREAK_ON_XKEY3(pFileEntry->CKey, 0xEB, 0x5D, 0x46);
+//      BREAK_ON_XKEY3(pFileEntry->CKey, 0x34, 0x82, 0x1f);
 
         // Insert the entry to the central CKey table
         InsertCKeyEntry(hs, pFileEntry);
@@ -419,7 +424,7 @@ static int LoadEncodingCKeyPage(TCascStorage * hs, CASC_ENCODING_HEADER & EnHead
 
 static int LoadEncodingManifest(TCascStorage * hs)
 {
-    PCASC_CKEY_ENTRY pCKeyEntry = FindCKeyEntry_CKey(hs, hs->EncodingCKey.CKey);
+    CASC_CKEY_ENTRY & CKeyEntry = hs->EncodingCKey;
     LPBYTE pbEncodingFile;
     DWORD cbEncodingFile = 0;
     DWORD dwErrCode = ERROR_SUCCESS;
@@ -428,8 +433,12 @@ static int LoadEncodingManifest(TCascStorage * hs)
     if(InvokeProgressCallback(hs, "Loading ENCODING manifest", NULL, 0, 0))
         return ERROR_CANCELLED;
 
+    // Fill-in the information from the index entry
+    if(!CopyEKeyEntry(hs, &CKeyEntry))
+        return ERROR_FILE_NOT_FOUND;
+
     // Load the entire encoding file to memory
-    pbEncodingFile = LoadInternalFileToMemory(hs, pCKeyEntry, &cbEncodingFile);
+    pbEncodingFile = LoadInternalFileToMemory(hs, &hs->EncodingCKey, &cbEncodingFile);
     if(pbEncodingFile != NULL && cbEncodingFile != 0)
     {
         CASC_ENCODING_HEADER EnHeader;
@@ -483,12 +492,6 @@ static int LoadEncodingManifest(TCascStorage * hs)
         {
             dwErrCode = CopyBuildFileItemsToCKeyArray(hs);
         }
-
-        // Now supply all the entries from the index files
-        //if(dwErrCode == ERROR_SUCCESS)
-        //{
-        //    dwErrCode = CopyIndexItemsToCKeyArray(hs);
-        //}
 
         // Free the loaded ENCODING file
         CASC_FREE(pbEncodingFile);
@@ -1053,7 +1056,7 @@ static bool GetStoragePathProduct(TCascStorage * hs, void * pvStorageInfo, size_
 
 static DWORD InitializeLocalDirectories(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
 {
-    TCHAR * szWorkPath;
+    LPTSTR szWorkPath;
     DWORD dwErrCode = ERROR_NOT_ENOUGH_MEMORY;
 
     // Find the root directory of the storage. The root directory
@@ -1168,19 +1171,13 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
         dwErrCode = LoadCdnBuildFile(hs);
     }
 
-    // Scan the index directory
-    if(dwErrCode == ERROR_SUCCESS)
-    {
-        dwErrCode = ScanIndexFiles(hs);
-    }
-
-    // Create the central file array
+    // Create the array of CKey entries. Each entry represents a file in the storage
     if(dwErrCode == ERROR_SUCCESS)
     {
         dwErrCode = InitCKeyArray(hs);
     }
 
-    // Load the index files. Store information from the index files to the CKeyArray.
+    // Pre-load the local index files
     if(dwErrCode == ERROR_SUCCESS)
     {
         dwErrCode = LoadIndexFiles(hs);
@@ -1231,8 +1228,9 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
         dwErrCode = CascLoadEncryptionKeys(hs);
     }
 
-    // Clear the arg structure
-    hs->pArgs = pArgs;
+    // Cleanup and exit
+    FreeIndexFiles(hs);
+    hs->pArgs = NULL;
     return dwErrCode;
 }
 

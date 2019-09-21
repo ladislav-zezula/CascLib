@@ -263,6 +263,10 @@
 #define ERROR_CANCELLED                  1009
 #endif
 
+#ifndef ERROR_INDEX_PARSING_DONE
+#define ERROR_INDEX_PARSING_DONE         1010
+#endif
+
 #ifndef _countof
 #define _countof(x)   (sizeof(x) / sizeof(x[0]))  
 #endif

@@ -1449,7 +1449,7 @@ LPBYTE LoadInternalFileToMemory(TCascStorage * hs, PCASC_CKEY_ENTRY pCKeyEntry, 
             cbFileData = pCKeyEntry->ContentSize;
         }
 
-        // Retrieve the size of the ENCODING file
+        // Load the entire file to memory
         if(dwErrCode == ERROR_SUCCESS)
         {
             // Allocate space for the ENCODING file

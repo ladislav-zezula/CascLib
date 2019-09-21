@@ -94,7 +94,7 @@ class CASC_MAP
         Free();
     }
 
-    int Create(size_t MaxItems, size_t KeyLength, size_t KeyOffset, KEY_TYPE KeyType = KeyIsHash)
+    DWORD Create(size_t MaxItems, size_t KeyLength, size_t KeyOffset, KEY_TYPE KeyType = KeyIsHash)
     {
         // Set the class variables
         m_KeyLength = CASCLIB_MAX(KeyLength, 8);
