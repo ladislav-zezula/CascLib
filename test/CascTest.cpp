@@ -1060,6 +1060,7 @@ int main(void)
 //  LocalStorage_Test(Storage_EnumFiles, "2016 - WoW\\18125");
 //  LocalStorage_Test(Storage_EnumFiles, "2018 - New CASC\\00001");
 //  LocalStorage_Test(Storage_EnumFiles, "2016 - WoW\\18888");
+    LocalStorage_Test(Storage_EnumFiles, "2018 - CoD4\\3376209");
 //  SpeedStorage_Test(Storage_EnumFiles, "2016 - WoW\\31299:wow");
 //  SpeedStorage_Test(Storage_EnumFiles, "2016 - WoW\\31299:wow_classic");
 //  OnlineStorage_Test(Storage_EnumFiles, "wow_classic", "eu");

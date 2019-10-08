@@ -1244,7 +1244,9 @@ DWORD GetFileSpanInfo(PCASC_CKEY_ENTRY pCKeyEntry, PULONGLONG PtrContentSize, PU
     // Sanity check
     assert(pCKeyEntry->SpanCount != 0);
 
-    // Sum all span size
+    // Sum the file size over all file spans
+    // Note: The first file span, if referenced by the ROOT folder, gets the same size
+    // like the entire file (example: zone\base.xpak, zone\base.xpak_1)
     for(DWORD i = 0; i < dwSpanCount; i++, pCKeyEntry++)
     {
         if(pCKeyEntry->ContentSize == CASC_INVALID_SIZE)
