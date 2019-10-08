@@ -397,7 +397,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         return dwErrCode;
     }
 
-    PCASC_CKEY_ENTRY InsertUnknownCKeyEntry(TCascStorage * hs, LPBYTE pbEKey, size_t cbEKey, ULONG ContentSize)
+    PCASC_CKEY_ENTRY InsertUnknownCKeyEntry(TCascStorage * hs, LPBYTE pbEKey, size_t cbEKey, DWORD ContentSize)
     {
         PCASC_CKEY_ENTRY pCKeyEntry;
 
