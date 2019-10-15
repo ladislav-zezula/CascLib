@@ -1189,8 +1189,7 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
         dwErrCode = LoadEncodingManifest(hs);
     }
 
-    // We need to load the DOWNLOAD manifest. This will give us the information about
-    // how many physical files are in the storage, so we can start building file tables
+    // We need to load the DOWNLOAD manifest
     if(dwErrCode == ERROR_SUCCESS)
     {
         dwErrCode = LoadDownloadManifest(hs);
@@ -1199,10 +1198,17 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
     // Load the build manifest ("ROOT" file)
     if(dwErrCode == ERROR_SUCCESS)
     {
-        // If we fail to load the ROOT file, we take the file names from the INSTALL manifest
+        // For WoW storages, multiple files are present in the storage (same name, same file data ID, different locale).
+        // Failing to select storage on them will lead to the first-in-order file in the list being loaded.
+        // Example: WoW build 32144, file: DBFilesClient\Achievement.db2, file data ID: 1260179
+        // Locales: koKR frFR deDE zhCN esES zhTW enUS&enGB esMX ruRU itIT ptBT&ptPT (in order of appearance in the build manifest)
+        dwLocaleMask = (dwLocaleMask == 0) ? hs->dwDefaultLocale : 0;
+
+        // Continue loading the manifest
         dwErrCode = LoadBuildManifest(hs, dwLocaleMask);
         if (dwErrCode != ERROR_SUCCESS)
         {
+            // If we fail to load the ROOT file, we take the file names from the INSTALL manifest
             dwErrCode = LoadInstallManifest(hs);
         }
     }
