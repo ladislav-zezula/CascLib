@@ -86,6 +86,7 @@ extern "C" {
 #define CASC_OVERCOME_ENCRYPTED     0x00000020  // When CascReadFile encounters a block encrypted with a key that is missing, the block is filled with zeros and returned as success
 
 #define CASC_LOCALE_ALL             0xFFFFFFFF
+#define CASC_LOCALE_ALL_WOW         0x0001F3F6  // All except enCN and enTW
 #define CASC_LOCALE_NONE            0x00000000
 #define CASC_LOCALE_UNKNOWN1        0x00000001
 #define CASC_LOCALE_ENUS            0x00000002
