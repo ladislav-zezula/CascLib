@@ -329,6 +329,7 @@ struct TCascStorage
 
     CASC_ARRAY ExtraKeysList;                       // List additional encryption keys
     CASC_MAP   EncryptionKeys;                      // Map of encryption keys
+    ULONGLONG  LastFailKeyName;                     // The value of the encryption key that recently was NOT found.
 
 };
 
