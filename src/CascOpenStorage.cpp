@@ -1202,7 +1202,10 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
         // Failing to select storage on them will lead to the first-in-order file in the list being loaded.
         // Example: WoW build 32144, file: DBFilesClient\Achievement.db2, file data ID: 1260179
         // Locales: koKR frFR deDE zhCN esES zhTW enUS&enGB esMX ruRU itIT ptBT&ptPT (in order of appearance in the build manifest)
-        dwLocaleMask = (dwLocaleMask == 0) ? hs->dwDefaultLocale : 0;
+        if(dwLocaleMask == 0)
+        {
+            dwLocaleMask = hs->dwDefaultLocale;
+        }
 
         // Continue loading the manifest
         dwErrCode = LoadBuildManifest(hs, dwLocaleMask);
