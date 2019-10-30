@@ -37,7 +37,8 @@
     #define WIN32_LEAN_AND_MEAN
   #endif
 
-//#pragma warning(disable:4995)     // warning C4995: 'sprintf': name was marked as #pragma deprecated
+  // Suppress definitions of `min` and `max` macros by <windows.h>:
+  #define NOMINMAX 1
 
   #include <tchar.h>
   #include <assert.h>

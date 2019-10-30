@@ -287,7 +287,8 @@ static DWORD LoadIndexItems(TCascStorage * hs, CASC_INDEX_HEADER & InHeader, EKE
     while((pbEKeyEntry + EntryLength) <= pbEKeyEnd)
     {
         // DOWNLOAD in HOTS
-        //BREAK_ON_XKEY3(EKeyEntry.EKey, 0x09, 0xF3, 0xCD);
+        //BREAK_ON_XKEY3(pbEKeyEntry, 0x09, 0xF3, 0xCD);
+
         if(!PfnEKeyEntry(hs, InHeader, pbEKeyEntry))
             return ERROR_INDEX_PARSING_DONE;
 
