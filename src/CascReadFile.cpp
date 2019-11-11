@@ -1269,6 +1269,8 @@ bool WINAPI CascReadFile(HANDLE hFile, void * pvBuffer, DWORD dwBytesToRead, PDW
         if(PtrBytesRead != NULL)
             PtrBytesRead[0] = 0;
         hf->FilePointer = SaveFilePointer;
-        return false;
+        
+        // If 0 bytes were requested, it's actually a success
+        return (dwBytesToRead == 0);
     }
 }
