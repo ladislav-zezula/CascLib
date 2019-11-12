@@ -362,8 +362,6 @@ static DWORD InitCKeyArray(TCascStorage * hs)
     if(dwErrCode != ERROR_SUCCESS)
         return dwErrCode;
 
-    // Insert the entry of ENCODING file. This is vital for its opening and loading
-    InsertCKeyEntry(hs, hs->EncodingCKey);
     return ERROR_SUCCESS;
 }
 
@@ -433,9 +431,10 @@ static int LoadEncodingManifest(TCascStorage * hs)
     if(InvokeProgressCallback(hs, "Loading ENCODING manifest", NULL, 0, 0))
         return ERROR_CANCELLED;
 
-    // Fill-in the information from the index entry
+    // Fill-in the information from the index entry and insert it to the file tree
     if(!CopyEKeyEntry(hs, &CKeyEntry))
         return ERROR_FILE_NOT_FOUND;
+    InsertCKeyEntry(hs, CKeyEntry);
 
     // Load the entire encoding file to memory
     pbEncodingFile = LoadInternalFileToMemory(hs, &hs->EncodingCKey, &cbEncodingFile);
@@ -809,7 +808,9 @@ static bool InsertWellKnownFile(TCascStorage * hs, const char * szFileName, CASC
             // Insert the key to the root handler. Note that the file can already be referenced
             // ("index" vs "vfs-root" in Warcraft III storages)
             hs->pRootHandler->Insert(szFileName, pCKeyEntry);
-            pCKeyEntry->Flags |= (CASC_CE_IN_BUILD | dwFlags);
+
+            // Copy some flags
+            pCKeyEntry->Flags |= (dwFlags | CASC_CE_IN_BUILD);
             return true;
         }
     }
@@ -823,7 +824,7 @@ static bool InsertWellKnownFile(TCascStorage * hs, const char * szFileName, CASC
         if(pCKeyEntry != NULL)
         {
             hs->pRootHandler->Insert(szFileName, pCKeyEntry);
-            pCKeyEntry->Flags |= (CASC_CE_IN_BUILD | dwFlags);
+            pCKeyEntry->Flags |= (dwFlags | CASC_CE_IN_BUILD);
             return true;
         }
     }
