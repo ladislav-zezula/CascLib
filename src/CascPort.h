@@ -67,6 +67,12 @@
   
   #pragma intrinsic(memcmp, memcpy)
 
+  typedef RTL_CRITICAL_SECTION PLATFORM_LOCK;
+  #define LOCK_INIT(Lock) InitializeCriticalSection(Lock)
+  #define LOCK(Lock)      EnterCriticalSection(Lock)
+  #define UNLOCK(Lock)    LeaveCriticalSection(Lock)
+  #define LOCK_FREE(Lock) DeleteCriticalSection(Lock)
+
   #define PLATFORM_WINDOWS
   #define PLATFORM_DEFINED                  // The platform is known now
 
@@ -112,7 +118,13 @@
   #define URL_SEP_CHAR              '/'
   #define PATH_SEP_CHAR             '/'
   #define PATH_SEP_STRING           "/"
-  
+
+  typedef unsigned int PLATFORM_LOCK;
+  #define LOCK_INIT(Lock) { /* TODO */ }
+  #define LOCK(Lock)      { /* TODO */ }
+  #define UNLOCK(Lock)    { /* TODO */ }
+  #define LOCK_FREE(Lock) { /* TODO */ }
+
   #define PLATFORM_MAC
   #define PLATFORM_DEFINED                  // The platform is known now
 
@@ -143,7 +155,13 @@
   #define URL_SEP_CHAR              '/'
   #define PATH_SEP_CHAR             '/'
   #define PATH_SEP_STRING           "/"
-  
+
+  typedef unsigned int PLATFORM_LOCK;
+  #define LOCK_INIT(Lock) { /* TODO */ }
+  #define LOCK(Lock)      { /* TODO */ }
+  #define UNLOCK(Lock)    { /* TODO */ }
+  #define LOCK_FREE(Lock) { /* TODO */ }
+
   #define PLATFORM_LITTLE_ENDIAN
   #define PLATFORM_LINUX
   #define PLATFORM_DEFINED

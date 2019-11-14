@@ -83,6 +83,7 @@ struct TEST_PARAMS
     {
         memset(this, 0, sizeof(TEST_PARAMS));
         dwFileDataId = CASC_INVALID_ID;
+        LOCK_INIT(&Lock);
     }
 
     ~TEST_PARAMS()
@@ -98,8 +99,11 @@ struct TEST_PARAMS
         if(fp2 != NULL)
             fclose(fp2);
         fp2 = NULL;
+
+        LOCK_FREE(&Lock);
     }
 
+    PLATFORM_LOCK Lock;             // Platform lock
     HANDLE hStorage;                // Opened storage handle
     FILE * fp1;                     // Opened stream for writing list of file names
     FILE * fp2;                     // Opened stream for writing a content of a file
@@ -110,7 +114,7 @@ struct TEST_PARAMS
     DWORD dwFileDataId;
     DWORD dwOpenFlags;
     DWORD bOnlineStorage:1;
-    DWORD bExtractFiles:1;
+    DWORD bCheckFileData:1;
 };
 
 typedef struct _CASC_FIND_DATA_ARRAY
@@ -350,6 +354,7 @@ static DWORD ExtractFile(TLogHelper & LogHelper, TEST_PARAMS & Params, CASC_FIND
     DWORD dwErrCode = ERROR_SUCCESS;
     char szShortName[SHORT_NAME_SIZE];
     bool bHashFileContent = true;
+    bool bOpenResult;
     bool bReadOk = true;
 
     // Show the file name to the user if open succeeded
@@ -361,8 +366,13 @@ static DWORD ExtractFile(TLogHelper & LogHelper, TEST_PARAMS & Params, CASC_FIND
     // Show the progress, if open succeeded
     LogHelper.PrintProgress("Extracting: (%u of %u) %s ...", LogHelper.FileCount, LogHelper.TotalFiles, szShortName);
 
-    // Open the CASC file
-    if(CascOpenFile(Params.hStorage, szOpenName, 0, Params.dwOpenFlags | CASC_STRICT_DATA_CHECK, &hFile))
+    // Open the CASC file. Since it's not thread safe, we need to lock
+    LOCK(&Params.Lock);
+    bOpenResult = CascOpenFile(Params.hStorage, szOpenName, 0, Params.dwOpenFlags | CASC_STRICT_DATA_CHECK, &hFile);
+    UNLOCK(&Params.Lock);
+
+    // Did the open succeed?
+    if(bOpenResult)
     {
         // Retrieve the information about file spans
         if((pSpans = GetFileInfo(hFile, FileInfo)) != NULL)
@@ -757,16 +767,21 @@ static DWORD Storage_EnumFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
 
         // Iterate over the storage
         LogHelper.PrintProgress("Searching storage ...");
-        hFind = CascFindFirstFile(hStorage, "*", &pFiles->cf[dwFileIndex++], szListFile);
+        hFind = CascFindFirstFile(hStorage, "*", &pFiles->cf[dwFileIndex], szListFile);
         if (hFind != INVALID_HANDLE_VALUE)
         {
             // Keep searching as long as we found something
             while (bFileFound)
             {
+                // Increment the index
+//              if(!_stricmp(pFiles->cf[dwFileIndex].szFileName, "00000f8465973be812c8f2f7c105f02f"))
+//                  __debugbreak();
+                dwFileIndex++;
+
                 // Prevent array overflow
                 if(dwFileIndex < dwTotalFileCount)
                 {
-                    bFileFound = CascFindNextFile(hFind, &pFiles->cf[dwFileIndex++]);
+                    bFileFound = CascFindNextFile(hFind, &pFiles->cf[dwFileIndex]);
                 }
                 else
                 {
@@ -779,7 +794,7 @@ static DWORD Storage_EnumFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
             CascFindClose(hFind);
 
             // Extract the found file if available locally
-            if(pFiles->ItemCount && Params.bExtractFiles)
+            if(pFiles->ItemCount && Params.bCheckFileData)
             {
                 RunExtractWorkers(pFiles);
             }
@@ -798,7 +813,7 @@ static DWORD Storage_EnumFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
             }
 
             // Show the total number of extracted data
-            if(Params.bExtractFiles)
+            if(Params.bCheckFileData)
             {
                 LogHelper.FormatTotalBytes(szTotalBytes, _countof(szTotalBytes));
                 LogHelper.PrintMessage("Extracted: %u of %u files (%s bytes total)", LogHelper.FileCount, LogHelper.TotalFiles, szTotalBytes);
@@ -840,7 +855,7 @@ static DWORD Storage_EnumFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
 
 static DWORD Storage_ReadFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
 {
-    Params.bExtractFiles = true;
+    Params.bCheckFileData = true;
     return Storage_EnumFiles(LogHelper, Params);
 }
 
@@ -982,7 +997,7 @@ static STORAGE_INFO1 StorageInfo1[] =
     {"Beta TVFS/00001",             "44833489ccf495e78d3a8f2ee9688ba6", "96e6457b649b11bcee54d52fa4be12e5", "ROOT"},
     {"Beta TVFS/00002",             "0ada2ba6b0decfa4013e0465f577abf1", "4da83fa60e0e505d14a5c21284142127", "ENCODING"},
 
-    {"CoD4/3376209",                "e01180b36a8cfd82cb2daa862f5bbf3e", "79cd4cfc9eddad53e4b4d394c36b8b0c", "zone/base.xpak" },
+//  {"CoD4/3376209",                "e01180b36a8cfd82cb2daa862f5bbf3e", "79cd4cfc9eddad53e4b4d394c36b8b0c", "zone/base.xpak" },
 
     {"Diablo III/30013",            "86ba76b46c88eb7c6188d28a27d00f49", "19e37cc3c178ea0521369c09d67791ac", "ENCODING"},
     {"Diablo III/50649",            "18cd3eb87a46e2d3aa0c57d1d8f8b8ff", "9225b3fa85dd958209ad20495ff6457e", "ENCODING"},
@@ -1057,16 +1072,7 @@ int main(void)
     // Single tests
     //
 
-//  LocalStorage_Test(Storage_EnumFiles, "2014 - Heroes of the Storm\\29049");
-//  LocalStorage_Test(Storage_EnumFiles, "2014 - Heroes of the Storm\\30414");
-//  LocalStorage_Test(Storage_EnumFiles, "2016 - WoW\\18125");
-//  LocalStorage_Test(Storage_EnumFiles, "2018 - New CASC\\00001");
-//  LocalStorage_Test(Storage_EnumFiles, "2016 - WoW\\18888");
-//  LocalStorage_Test(Storage_EnumFiles, "2018 - CoD4\\3376209");
-//  LocalStorage_Test(Storage_EnumFiles, "2016 - WoW\\18125");
-//  LocalStorage_Test(Storage_OpenFiles, "e:\\Multimedia\\CASC\\2016 - WoW\\32144:wow_classic", NULL, NULL, "ENCODING");
-//  LocalStorage_Test(Storage_EnumFiles, "2016 - WoW\\32144:wowt");
-//  SpeedStorage_Test(Storage_EnumFiles, "2016 - WoW\\31299:wow_classic");
+    LocalStorage_Test(Storage_ReadFiles, "Diablo III/30013", NULL, NULL, "00000f8465973be812c8f2f7c105f02f");
 //  OnlineStorage_Test(Storage_EnumFiles, "wow_classic", "eu");
 
     //
@@ -1075,7 +1081,7 @@ int main(void)
     for(size_t i = 0; StorageInfo1[i].szPath != NULL; i++)
     {
         // Attempt to open the storage and extract single file
-        dwErrCode = LocalStorage_Test(Storage_ReadFiles, StorageInfo1[i].szPath, StorageInfo1[i].szNameHash, StorageInfo1[i].szDataHash);
+//      dwErrCode = LocalStorage_Test(Storage_ReadFiles, StorageInfo1[i].szPath, StorageInfo1[i].szNameHash, StorageInfo1[i].szDataHash);
 //      dwErrCode = LocalStorage_Test(Storage_EnumFiles, StorageInfo1[i].szPath, StorageInfo1[i].szNameHash);
         if(dwErrCode != ERROR_SUCCESS)
             break;

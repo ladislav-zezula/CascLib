@@ -15,7 +15,6 @@ if exist "%PROGRAM_FILES_DIR%\Microsoft Visual Studio\2017\Professional\VC\Auxil
 if exist "%PROGRAM_FILES_DIR%\Microsoft Visual Studio\2017\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" set VCVARS_BAT=%PROGRAM_FILES_DIR%\Microsoft Visual Studio\2017\Enterprise\VC\Auxiliary\Build\vcvarsall.bat
 
 :BUILD_32BIT
-call :RestoreEnvVars
 call "%VCVARS_BAT%" x86
 devenv.com CascLib_vs17.sln /project "CascLib" /rebuild "DebugAD|Win32"
 devenv.com CascLib_vs17.sln /project "CascLib" /rebuild "DebugAS|Win32"
@@ -25,9 +24,9 @@ devenv.com CascLib_vs17.sln /project "CascLib" /rebuild "ReleaseAD|Win32"
 devenv.com CascLib_vs17.sln /project "CascLib" /rebuild "ReleaseAS|Win32"
 devenv.com CascLib_vs17.sln /project "CascLib" /rebuild "ReleaseUD|Win32"
 devenv.com CascLib_vs17.sln /project "CascLib" /rebuild "ReleaseUS|Win32"
+call :RestoreEnvVars
 
 :BUILD_64BIT
-call :RestoreEnvVars
 call "%VCVARS_BAT%" x64
 devenv.com CascLib_vs17.sln /project "CascLib" /rebuild "DebugAD|x64"
 devenv.com CascLib_vs17.sln /project "CascLib" /rebuild "DebugAS|x64"
@@ -37,7 +36,7 @@ devenv.com CascLib_vs17.sln /project "CascLib" /rebuild "ReleaseAD|x64"
 devenv.com CascLib_vs17.sln /project "CascLib" /rebuild "ReleaseAS|x64"
 devenv.com CascLib_vs17.sln /project "CascLib" /rebuild "ReleaseUD|x64"
 devenv.com CascLib_vs17.sln /project "CascLib" /rebuild "ReleaseUS|x64"
-goto:eof
+call :RestoreEnvVars
 
 :RestoreEnvVars
 set INCLUDE=%SAVE_INCLUDE%

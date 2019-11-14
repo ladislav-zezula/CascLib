@@ -78,6 +78,7 @@
     <IntDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</IntDir>
     <LinkIncremental>true</LinkIncremental>
     <TargetName>CascLib</TargetName>
+    <IncludePath>$(VC_IncludePath);$(WindowsSdk_71A_IncludePath);</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</OutDir>
@@ -90,6 +91,7 @@
     <IntDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</IntDir>
     <LinkIncremental>false</LinkIncremental>
     <TargetName>CascLib</TargetName>
+    <IncludePath>$(VC_IncludePath);$(WindowsSdk_71A_IncludePath);</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -227,11 +229,11 @@
     <ClInclude Include="src\CascCommon.h" />
     <ClInclude Include="src\CascLib.h" />
     <ClInclude Include="src\CascPort.h" />
+    <ClInclude Include="src\CascStructs.h" />
     <ClInclude Include="src\common\Common.h" />
     <ClInclude Include="src\common\Directory.h" />
     <ClInclude Include="src\common\Csv.h" />
     <ClInclude Include="src\common\Array.h" />
-    <ClInclude Include="src\common\FileStream.h" />
     <ClInclude Include="src\common\FileTree.h" />
     <ClInclude Include="src\common\ListFile.h" />
     <ClInclude Include="src\common\Map.h" />

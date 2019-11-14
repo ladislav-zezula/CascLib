@@ -149,9 +149,6 @@
     <ClInclude Include="src\CascPort.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\common\FileStream.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\common\Array.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
@@ -160,6 +157,9 @@
     </ClInclude>
     <ClInclude Include="src\md5\md5.h">
       <Filter>Source Files\md5</Filter>
+    </ClInclude>
+    <ClInclude Include="src\CascStructs.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

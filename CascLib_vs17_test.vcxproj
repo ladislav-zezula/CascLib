@@ -84,6 +84,7 @@
     <IntDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</IntDir>
     <LinkIncremental>true</LinkIncremental>
     <GenerateManifest>false</GenerateManifest>
+    <IncludePath>$(VC_IncludePath);$(WindowsSdk_71A_IncludePath);</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</OutDir>
@@ -96,6 +97,7 @@
     <IntDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</IntDir>
     <LinkIncremental>false</LinkIncremental>
     <GenerateManifest>false</GenerateManifest>
+    <IncludePath>$(VC_IncludePath);$(WindowsSdk_71A_IncludePath);</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Midl>
@@ -354,6 +356,7 @@
     <ClInclude Include="src\CascCommon.h" />
     <ClInclude Include="src\CascLib.h" />
     <ClInclude Include="src\CascPort.h" />
+    <ClInclude Include="src\CascStructs.h" />
     <ClInclude Include="src\common\Common.h" />
     <ClInclude Include="src\common\Directory.h" />
     <ClInclude Include="src\common\Csv.h" />

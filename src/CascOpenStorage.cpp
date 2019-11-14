@@ -23,15 +23,21 @@
 //-----------------------------------------------------------------------------
 // DEBUG functions
 
-//#define CHECKED_KEY "2a378c"
+#define CHECKED_KEY {0x00, 0x00, 0x0F, 0x84}
 
 #if defined(_DEBUG) && defined(CHECKED_KEY)
 
 inline bool CheckForXKey(LPBYTE XKey)
 {
-    BYTE CheckedKey[4];
-    ConvertStringToBinary(CHECKED_KEY, 6, CheckedKey);
-    return (XKey[0] == CheckedKey[0] && XKey[1] == CheckedKey[1] && XKey[2] == CheckedKey[2]);
+    BYTE CheckedKey[] = CHECKED_KEY;
+
+    for(size_t i = 0; i < _countof(CheckedKey); i++)
+    {
+        if(XKey[i] != CheckedKey[i])
+            return false;
+    }
+
+    return true;
 }
 #define BREAK_ON_WATCHED(XKey)  if(CheckForXKey((LPBYTE)XKey))  { __debugbreak(); }
 

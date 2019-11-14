@@ -162,6 +162,9 @@
     <ClInclude Include="src\md5\md5.h">
       <Filter>Source Files\md5</Filter>
     </ClInclude>
+    <ClInclude Include="src\CascStructs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="doc\History.txt">
