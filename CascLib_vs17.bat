@@ -16,26 +16,26 @@ if exist "%PROGRAM_FILES_DIR%\Microsoft Visual Studio\2017\Enterprise\VC\Auxilia
 
 :BUILD_32BIT
 call "%VCVARS_BAT%" x86
-devenv.com CascLib_vs17.sln /project "CascLib" /rebuild "DebugAD|Win32"
-devenv.com CascLib_vs17.sln /project "CascLib" /rebuild "DebugAS|Win32"
-devenv.com CascLib_vs17.sln /project "CascLib" /rebuild "DebugUD|Win32"
-devenv.com CascLib_vs17.sln /project "CascLib" /rebuild "DebugUS|Win32"
-devenv.com CascLib_vs17.sln /project "CascLib" /rebuild "ReleaseAD|Win32"
-devenv.com CascLib_vs17.sln /project "CascLib" /rebuild "ReleaseAS|Win32"
-devenv.com CascLib_vs17.sln /project "CascLib" /rebuild "ReleaseUD|Win32"
-devenv.com CascLib_vs17.sln /project "CascLib" /rebuild "ReleaseUS|Win32"
+devenv.com CascLib_vs17.sln /project "CascLib" /build "DebugAD|Win32"
+devenv.com CascLib_vs17.sln /project "CascLib" /build "DebugAS|Win32"
+devenv.com CascLib_vs17.sln /project "CascLib" /build "DebugUD|Win32"
+devenv.com CascLib_vs17.sln /project "CascLib" /build "DebugUS|Win32"
+devenv.com CascLib_vs17.sln /project "CascLib" /build "ReleaseAD|Win32"
+devenv.com CascLib_vs17.sln /project "CascLib" /build "ReleaseAS|Win32"
+devenv.com CascLib_vs17.sln /project "CascLib" /build "ReleaseUD|Win32"
+devenv.com CascLib_vs17.sln /project "CascLib" /build "ReleaseUS|Win32"
 call :RestoreEnvVars
 
 :BUILD_64BIT
 call "%VCVARS_BAT%" x64
-devenv.com CascLib_vs17.sln /project "CascLib" /rebuild "DebugAD|x64"
-devenv.com CascLib_vs17.sln /project "CascLib" /rebuild "DebugAS|x64"
-devenv.com CascLib_vs17.sln /project "CascLib" /rebuild "DebugUD|x64"
-devenv.com CascLib_vs17.sln /project "CascLib" /rebuild "DebugUS|x64"
-devenv.com CascLib_vs17.sln /project "CascLib" /rebuild "ReleaseAD|x64"
-devenv.com CascLib_vs17.sln /project "CascLib" /rebuild "ReleaseAS|x64"
-devenv.com CascLib_vs17.sln /project "CascLib" /rebuild "ReleaseUD|x64"
-devenv.com CascLib_vs17.sln /project "CascLib" /rebuild "ReleaseUS|x64"
+devenv.com CascLib_vs17.sln /project "CascLib" /build "DebugAD|x64"
+devenv.com CascLib_vs17.sln /project "CascLib" /build "DebugAS|x64"
+devenv.com CascLib_vs17.sln /project "CascLib" /build "DebugUD|x64"
+devenv.com CascLib_vs17.sln /project "CascLib" /build "DebugUS|x64"
+devenv.com CascLib_vs17.sln /project "CascLib" /build "ReleaseAD|x64"
+devenv.com CascLib_vs17.sln /project "CascLib" /build "ReleaseAS|x64"
+devenv.com CascLib_vs17.sln /project "CascLib" /build "ReleaseUD|x64"
+devenv.com CascLib_vs17.sln /project "CascLib" /build "ReleaseUS|x64"
 call :RestoreEnvVars
 
 :RestoreEnvVars

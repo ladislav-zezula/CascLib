@@ -1504,7 +1504,7 @@ LPBYTE LoadFileToMemory(LPCTSTR szFileName, DWORD * pcbFileData)
     DWORD cbFileData = 0;
 
     // Open the stream for read-only access and read the file
-    pStream = FileStream_OpenFile(szFileName, STREAM_FLAG_READ_ONLY | STREAM_PROVIDER_FLAT | BASE_PROVIDER_FILE);
+    pStream = FileStream_OpenFile(szFileName, STREAM_FLAG_READ_ONLY | STREAM_FLAG_WRITE_SHARE | STREAM_PROVIDER_FLAT | BASE_PROVIDER_FILE);
     if(pStream != NULL)
     {
         // Retrieve the file size
