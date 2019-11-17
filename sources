@@ -1,0 +1,9 @@
+TARGETNAME=CascLibWDK
+TARGETTYPE=LIBRARY
+USE_MSVCRT=1
+
+C_DEFINES=$(C_DEFINES) -DUNICODE -D_UNICODE -DWDK_BUILD
+
+SOURCES=sources-c.c     \
+        sources-cpp.cpp
+

@@ -1898,13 +1898,6 @@ static const char * AuthCodeArray[] =
     NULL
 };
 
-static DWORD Rol32(DWORD dwValue, DWORD dwRolCount)
-{
-    DWORD dwShiftRight = 32 - dwRolCount;
-
-    return (dwValue << dwRolCount) | (dwValue >> dwShiftRight);
-}
-
 static void CreateKeyFromAuthCode(
     LPBYTE pbKeyBuffer,
     const char * szAuthCode)

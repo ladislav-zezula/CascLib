@@ -166,6 +166,14 @@ void CASC_FREE(T *& ptr)
 }
 
 //-----------------------------------------------------------------------------
+// 32-bit ROL
+
+inline DWORD Rol32(DWORD dwValue, DWORD dwRolCount)
+{
+    return (dwValue << dwRolCount) | (dwValue >> (32 - dwRolCount));
+}
+
+//-----------------------------------------------------------------------------
 // Big endian number manipulation
 
 inline DWORD ConvertBytesToInteger_2(LPBYTE ValueAsBytes)
@@ -246,18 +254,18 @@ inline ULONGLONG ConvertBytesToInteger_5(LPBYTE ValueAsBytes)
 
 inline void ConvertIntegerToBytes_4(DWORD Value, LPBYTE ValueAsBytes)
 {
-    ValueAsBytes[0] = (Value >> 0x18) & 0xFF;
-    ValueAsBytes[1] = (Value >> 0x10) & 0xFF;
-    ValueAsBytes[2] = (Value >> 0x08) & 0xFF;
-    ValueAsBytes[3] = (Value >> 0x00) & 0xFF;
+    ValueAsBytes[0] = (BYTE)((Value >> 0x18) & 0xFF);
+    ValueAsBytes[1] = (BYTE)((Value >> 0x10) & 0xFF);
+    ValueAsBytes[2] = (BYTE)((Value >> 0x08) & 0xFF);
+    ValueAsBytes[3] = (BYTE)((Value >> 0x00) & 0xFF);
 }
 
 inline void ConvertIntegerToBytes_4_LE(DWORD Value, LPBYTE ValueAsBytes)
 {
-    ValueAsBytes[0] = (Value >> 0x00) & 0xFF;
-    ValueAsBytes[1] = (Value >> 0x08) & 0xFF;
-    ValueAsBytes[2] = (Value >> 0x10) & 0xFF;
-    ValueAsBytes[3] = (Value >> 0x18) & 0xFF;
+    ValueAsBytes[0] = (BYTE)((Value >> 0x00) & 0xFF);
+    ValueAsBytes[1] = (BYTE)((Value >> 0x08) & 0xFF);
+    ValueAsBytes[2] = (BYTE)((Value >> 0x10) & 0xFF);
+    ValueAsBytes[3] = (BYTE)((Value >> 0x18) & 0xFF);
 }
 
 // Faster than memset(Buffer, 0, 0x10)

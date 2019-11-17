@@ -1504,7 +1504,6 @@ LPBYTE LoadFileToMemory(LPCTSTR szFileName, DWORD * pcbFileData)
     DWORD cbFileData = 0;
 
     // Open the stream for read-only access and read the file
-    // Note that this fails when the game is running (sharing violation).
     pStream = FileStream_OpenFile(szFileName, STREAM_FLAG_READ_ONLY | STREAM_PROVIDER_FLAT | BASE_PROVIDER_FILE);
     if(pStream != NULL)
     {

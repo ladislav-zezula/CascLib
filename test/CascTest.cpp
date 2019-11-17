@@ -83,7 +83,7 @@ struct TEST_PARAMS
     {
         memset(this, 0, sizeof(TEST_PARAMS));
         dwFileDataId = CASC_INVALID_ID;
-        LOCK_INIT(&Lock);
+        CascInitLock(Lock);
     }
 
     ~TEST_PARAMS()
@@ -100,10 +100,10 @@ struct TEST_PARAMS
             fclose(fp2);
         fp2 = NULL;
 
-        LOCK_FREE(&Lock);
+        CascFreeLock(Lock);
     }
 
-    PLATFORM_LOCK Lock;             // Platform lock
+    CASC_LOCK Lock;                 // Storage lock
     HANDLE hStorage;                // Opened storage handle
     FILE * fp1;                     // Opened stream for writing list of file names
     FILE * fp2;                     // Opened stream for writing a content of a file
@@ -315,22 +315,27 @@ static void TestStorageGetName(HANDLE hStorage)
     CascGetStorageInfo(hStorage, CascStoragePathProduct, szStorageParams, sizeof(szStorageParams), &nLength);
 }
 
-static PCASC_FILE_SPAN_INFO GetFileInfo(HANDLE hFile, CASC_FILE_FULL_INFO & FileInfo)
+static PCASC_FILE_SPAN_INFO GetFileInfo(CASC_LOCK & Lock, HANDLE hFile, CASC_FILE_FULL_INFO & FileInfo)
 {
     PCASC_FILE_SPAN_INFO pSpans = NULL;
 
-    // Retrieve the full file info
-    if(CascGetFileInfo(hFile, CascFileFullInfo, &FileInfo, sizeof(CASC_FILE_FULL_INFO), NULL))
+    // CascGetFileInfo is not thread safe, we need to lock here
+    CascLock(Lock);
     {
-        if((pSpans = CASC_ALLOC<CASC_FILE_SPAN_INFO>(FileInfo.SpanCount)) != NULL)
+        // Retrieve the full file info
+        if(CascGetFileInfo(hFile, CascFileFullInfo, &FileInfo, sizeof(CASC_FILE_FULL_INFO), NULL))
         {
-            if(!CascGetFileInfo(hFile, CascFileSpanInfo, pSpans, FileInfo.SpanCount * sizeof(CASC_FILE_SPAN_INFO), NULL))
+            if((pSpans = CASC_ALLOC<CASC_FILE_SPAN_INFO>(FileInfo.SpanCount)) != NULL)
             {
-                CASC_FREE(pSpans);
-                pSpans = NULL;
+                if(!CascGetFileInfo(hFile, CascFileSpanInfo, pSpans, FileInfo.SpanCount * sizeof(CASC_FILE_SPAN_INFO), NULL))
+                {
+                    CASC_FREE(pSpans);
+                    pSpans = NULL;
+                }
             }
         }
     }
+    CascUnlock(Lock);
 
     return pSpans;
 }
@@ -354,7 +359,6 @@ static DWORD ExtractFile(TLogHelper & LogHelper, TEST_PARAMS & Params, CASC_FIND
     DWORD dwErrCode = ERROR_SUCCESS;
     char szShortName[SHORT_NAME_SIZE];
     bool bHashFileContent = true;
-    bool bOpenResult;
     bool bReadOk = true;
 
     // Show the file name to the user if open succeeded
@@ -366,16 +370,11 @@ static DWORD ExtractFile(TLogHelper & LogHelper, TEST_PARAMS & Params, CASC_FIND
     // Show the progress, if open succeeded
     LogHelper.PrintProgress("Extracting: (%u of %u) %s ...", LogHelper.FileCount, LogHelper.TotalFiles, szShortName);
 
-    // Open the CASC file. Since it's not thread safe, we need to lock
-    LOCK(&Params.Lock);
-    bOpenResult = CascOpenFile(Params.hStorage, szOpenName, 0, Params.dwOpenFlags | CASC_STRICT_DATA_CHECK, &hFile);
-    UNLOCK(&Params.Lock);
-
     // Did the open succeed?
-    if(bOpenResult)
+    if(CascOpenFile(Params.hStorage, szOpenName, 0, Params.dwOpenFlags | CASC_STRICT_DATA_CHECK, &hFile))
     {
-        // Retrieve the information about file spans
-        if((pSpans = GetFileInfo(hFile, FileInfo)) != NULL)
+        // Retrieve the information about file spans.
+        if((pSpans = GetFileInfo(Params.Lock, hFile, FileInfo)) != NULL)
         {
             ULONGLONG FileSize = FileInfo.ContentSize;
             ULONGLONG TotalRead = 0;
@@ -524,6 +523,8 @@ static DWORD WINAPI Worker_ExtractFiles(PCASC_FIND_DATA_ARRAY pFiles)
     return 0;
 }
 
+#define MIN_CPU_FREE 2        // Number of CPUs (cores) to keep free
+
 static void RunExtractWorkers(PCASC_FIND_DATA_ARRAY pFiles)
 {
 #ifdef PLATFORM_WINDOWS
@@ -533,13 +534,14 @@ static void RunExtractWorkers(PCASC_FIND_DATA_ARRAY pFiles)
     HANDLE hThread;
     DWORD dwThreadCount = 0;
     DWORD dwThreadId = 0;
+    DWORD dwCoresUsed;
 
     // Retrieve the number of processors. Let one third of them to do the work.
     GetSystemInfo(&si);
-    si.dwNumberOfProcessors = (si.dwNumberOfProcessors > 2) ? (si.dwNumberOfProcessors - 2) : 1;
+    dwCoresUsed = (si.dwNumberOfProcessors > MIN_CPU_FREE) ? (si.dwNumberOfProcessors - MIN_CPU_FREE) : 1;
 
     // Create threads
-    for(DWORD i = 0; i < si.dwNumberOfProcessors; i++)
+    for(DWORD i = 0; i < dwCoresUsed; i++)
     {
         if((hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)Worker_ExtractFiles, pFiles, 0, &dwThreadId)) == NULL)
             break;
@@ -997,7 +999,7 @@ static STORAGE_INFO1 StorageInfo1[] =
     {"Beta TVFS/00001",             "44833489ccf495e78d3a8f2ee9688ba6", "96e6457b649b11bcee54d52fa4be12e5", "ROOT"},
     {"Beta TVFS/00002",             "0ada2ba6b0decfa4013e0465f577abf1", "4da83fa60e0e505d14a5c21284142127", "ENCODING"},
 
-//  {"CoD4/3376209",                "e01180b36a8cfd82cb2daa862f5bbf3e", "79cd4cfc9eddad53e4b4d394c36b8b0c", "zone/base.xpak" },
+    {"CoD4/3376209",                "e01180b36a8cfd82cb2daa862f5bbf3e", "79cd4cfc9eddad53e4b4d394c36b8b0c", "zone/base.xpak" },
 
     {"Diablo III/30013",            "86ba76b46c88eb7c6188d28a27d00f49", "19e37cc3c178ea0521369c09d67791ac", "ENCODING"},
     {"Diablo III/50649",            "18cd3eb87a46e2d3aa0c57d1d8f8b8ff", "9225b3fa85dd958209ad20495ff6457e", "ENCODING"},
@@ -1026,21 +1028,21 @@ static STORAGE_INFO1 StorageInfo1[] =
     {"Warcraft III/09655",          "f3f5470aa0ab4939fa234d3e29c3d347", "e45792b7459dc0c78ecb25130fa34d88", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
     {"Warcraft III/11889",          "ff36cd4f58aae23bd77d4a90c333bdb5", "4cba488e57f7dccfb77eca8c86578a37", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
 
-    {"Warcraft III Reforged/13369", "00000000000000000000000000000000", "00000000000000000000000000000000", "ENCODING" },
+    {"Warcraft III Reforged/13369", "9c3fce648bf75d93a8765e84dcd10377", "4ac831db9bf0734f01b9d20455a68ab6", "ENCODING" },
 
-    {"WoW/18125",                   "d259ca3ed110ed15eab4b1f878698ba9", "346b95c1c7719e72ef4fa69ace022bea", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/18379",                   "3a22f3327aeb32db099a82955814034c", "ebba035bc550b7eae653f672aeade01e", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/18865",                   "d7f194040b1f29bbdf1bdf17052ecfa4", "c3a83e9b81da336085945b6b3706f3bd", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/18888",                   "f77280b41126d11e3457012092a758c2", "1ad16432763de271e440f7fc6920e2bd", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/19116",                   "80d44137f73304aad50058bf7c9665db", "787d73b1974e18ebc1faf4d756f42e24", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/19342",                   "88c38a8bae64f96e7909242dca0bcbca", "e449bdc9b71258c16ec9334096f2b178", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/21742",                   "f2fae76c751f37ab96e055c29509d0b1", "773c3436ccf09c3749fc4beb1092d35e", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/22267",                   "34e9f126e4c20f904467e9eb4e78da0a", "858a519dad19635d15e6d11613b4eb81", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/23420",                   "86606a70b8ef7c6852fbeed74d12a76e", "3a965a1dd83e26eb71fac6d103ee80c8", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/29981",                   "10cfc2ab6cad8f10bb2d3d9d1af3a9c9", "47ee7f4d0ef040539ca02690a47dba5b", "dbfilesclient\\battlepetspeciesstate.db2"},
-    {"WoW/31299:wow",               "5c5d8651e3309cb071c99afbcea1b778", "466f61f869d4a7d551f2ae3cf9cb3cfe", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/31299:wowt",              "e7faac0e699ec3ac42aa006a3dae4bb0", "717a930ca42a09d9f0ec873b42f36123", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/31299:wow_classic",       "ff9377439f91605a17117bf8c89815b4", "995d895cb8ee694414dc36b711ce506e", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/18125",                   "b31531af094f78f58592249c4d216a8e", "e5c9b3f0da7806d8b239c13bff1d836e", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/18379",                   "fab30626cf94ed1523519729c3701812", "606e4bfd6f8100ae875eb4c00789233b", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/18865",                   "7f252a8c6001938f601b0c91abbb0f2a", "cee96fa43cddc008f564b4615fdbd109", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/18888",                   "a007d0433c71ddc6e9acaa45cbdc4e61", "a093c596240a6b71de125eaa83ea8568", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/19116",                   "a3be9cfd4a15ba184e21eed9ec90417b", "11a973871aef6ab3236676a25381a1e6", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/19342",                   "66f0de0cff477e1d8e982683771f1ada", "69b4c91c977b875fd0a6ffbf89b06408", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/21742",                   "a357c3cbed98e83ac5cd394ceabc01e8", "90ce1aac44299aa2ac6fb44d249d2561", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/22267",                   "101949dfbed06d417d24a65054e8a6b6", "4ef8df3cf9b00b5c7b2c1b9f4166ec0d", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/23420",                   "e62a798989e6db00044b079e74faa1eb", "854e58816e6eb2795d14fe81470ad19e", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/29981",                   "a35f7de61584644d4877aac1380ef090", "3cba30b5e439a6e59b0953d17da9ac6c", "dbfilesclient\\battlepetspeciesstate.db2"},
+    {"WoW/31299:wow",               "6220549f2b8936af6e63179f6ece78ab", "05627c131969bd9394fb345f4037e249", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/31299:wowt",              "959fa63cbcd9ced02a8977ed128df828", "423c1b99b14a615a02d8ffc7a7eff4ef", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/31299:wow_classic",       "184794b8a191429e2aae9b8a5334651b", "b46bd2f81ead285e810e5a049ca2db74", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
 
     {NULL}
 };
@@ -1072,7 +1074,7 @@ int main(void)
     // Single tests
     //
 
-    LocalStorage_Test(Storage_ReadFiles, "Diablo III/30013", NULL, NULL, "00000f8465973be812c8f2f7c105f02f");
+//  LocalStorage_Test(Storage_ReadFiles, "Diablo III/30013", NULL, NULL, "00000f8465973be812c8f2f7c105f02f");
 //  OnlineStorage_Test(Storage_EnumFiles, "wow_classic", "eu");
 
     //
@@ -1081,7 +1083,7 @@ int main(void)
     for(size_t i = 0; StorageInfo1[i].szPath != NULL; i++)
     {
         // Attempt to open the storage and extract single file
-//      dwErrCode = LocalStorage_Test(Storage_ReadFiles, StorageInfo1[i].szPath, StorageInfo1[i].szNameHash, StorageInfo1[i].szDataHash);
+        dwErrCode = LocalStorage_Test(Storage_ReadFiles, StorageInfo1[i].szPath, StorageInfo1[i].szNameHash, StorageInfo1[i].szDataHash);
 //      dwErrCode = LocalStorage_Test(Storage_EnumFiles, StorageInfo1[i].szPath, StorageInfo1[i].szNameHash);
         if(dwErrCode != ERROR_SUCCESS)
             break;

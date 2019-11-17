@@ -42,7 +42,6 @@
 
   #include <tchar.h>
   #include <assert.h>
-  #include <intrin.h>       // Support for intrinsic functions
   #include <ctype.h>
   #include <io.h>
   #include <stdio.h>
@@ -64,18 +63,19 @@
   #define URL_SEP_CHAR              '/'
   #define PATH_SEP_CHAR             '\\'
   #define PATH_SEP_STRING           "\\"
-  
-  #pragma intrinsic(memcmp, memcpy)
-
-  typedef RTL_CRITICAL_SECTION PLATFORM_LOCK;
-  #define LOCK_INIT(Lock) InitializeCriticalSection(Lock)
-  #define LOCK(Lock)      EnterCriticalSection(Lock)
-  #define UNLOCK(Lock)    LeaveCriticalSection(Lock)
-  #define LOCK_FREE(Lock) DeleteCriticalSection(Lock)
 
   #define PLATFORM_WINDOWS
   #define PLATFORM_DEFINED                  // The platform is known now
 
+#endif
+
+#if _MSC_VER >= 1500
+  #include <intrin.h>       // Support for intrinsic functions
+  #pragma intrinsic(memcmp, memcpy)
+#endif
+
+#ifndef FIELD_OFFSET
+#define FIELD_OFFSET(type, field)    ((LONG)(LONG_PTR)&(((type *)0)->field))
 #endif
 
 //-----------------------------------------------------------------------------
@@ -119,12 +119,6 @@
   #define PATH_SEP_CHAR             '/'
   #define PATH_SEP_STRING           "/"
 
-  typedef unsigned int PLATFORM_LOCK;
-  #define LOCK_INIT(Lock) { /* TODO */ }
-  #define LOCK(Lock)      { /* TODO */ }
-  #define UNLOCK(Lock)    { /* TODO */ }
-  #define LOCK_FREE(Lock) { /* TODO */ }
-
   #define PLATFORM_MAC
   #define PLATFORM_DEFINED                  // The platform is known now
 
@@ -155,12 +149,6 @@
   #define URL_SEP_CHAR              '/'
   #define PATH_SEP_CHAR             '/'
   #define PATH_SEP_STRING           "/"
-
-  typedef unsigned int PLATFORM_LOCK;
-  #define LOCK_INIT(Lock) { /* TODO */ }
-  #define LOCK(Lock)      { /* TODO */ }
-  #define UNLOCK(Lock)    { /* TODO */ }
-  #define LOCK_FREE(Lock) { /* TODO */ }
 
   #define PLATFORM_LITTLE_ENDIAN
   #define PLATFORM_LINUX
@@ -289,9 +277,9 @@
 #endif
 
 #ifndef _countof
-#define _countof(x)   (sizeof(x) / sizeof(x[0]))  
+#define _countof(x)   (sizeof(x) / sizeof(x[0]))
 #endif
-  
+
 //-----------------------------------------------------------------------------
 // Swapping functions
 
@@ -351,6 +339,51 @@ inline DWORD CascInterlockedDecrement(PDWORD PtrValue)
     return (DWORD)InterlockedDecrement((LONG *)(PtrValue));
 #else
     return --PtrValue[0];
+#endif
+}
+
+//-----------------------------------------------------------------------------
+// Lock functions
+
+#ifdef PLATFORM_WINDOWS
+typedef RTL_CRITICAL_SECTION CASC_LOCK;
+#else
+typedef unsigned int CASC_LOCK;
+#endif
+
+inline void CascInitLock(CASC_LOCK & Lock)
+{
+#ifdef PLATFORM_WINDOWS
+    InitializeCriticalSection(&Lock);
+#else
+    Lock = 0;   // TODO
+#endif
+}
+
+inline void CascFreeLock(CASC_LOCK & Lock)
+{
+#ifdef PLATFORM_WINDOWS
+    DeleteCriticalSection(&Lock);
+#else
+    Lock = 0;   // TODO
+#endif
+}
+
+inline void CascLock(CASC_LOCK & Lock)
+{
+#ifdef PLATFORM_WINDOWS
+    EnterCriticalSection(&Lock);
+#else
+    Lock = 0;   // TODO
+#endif
+}
+
+inline void CascUnlock(CASC_LOCK & Lock)
+{
+#ifdef PLATFORM_WINDOWS
+    LeaveCriticalSection(&Lock);
+#else
+    Lock = 0;   // TODO
 #endif
 }
 

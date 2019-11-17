@@ -40,7 +40,8 @@ static DWORD OpenDataStream(TCascFile * hf, PCASC_FILE_SPAN pFileSpan, PCASC_CKE
     {
         DWORD dwArchiveIndex = pFileSpan->ArchiveIndex;
 
-        // If the file is not open yet, do it
+        // If the data archive is not open yet, open it now.
+        // TODO: This is not thread safe, we need to implement locking here
         if(hs->DataFiles[dwArchiveIndex] == NULL)
         {
             // Prepare the name of the data file
@@ -1143,7 +1144,7 @@ bool WINAPI CascSetFilePointer64(HANDLE hFile, LONGLONG DistanceToMove, PULONGLO
         }
 
         // Do not allow the file pointer to move to negative values
-        if((FilePosition = FilePosition + DistanceToMove) < 0)
+        if((LONGLONG)(FilePosition = FilePosition + DistanceToMove) < 0)
             FilePosition = 0;
         hf->FilePointer = FilePosition;
     }

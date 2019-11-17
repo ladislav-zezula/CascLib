@@ -262,11 +262,6 @@ static CASC_ENCRYPTION_KEY CascKeys[] =
 //-----------------------------------------------------------------------------
 // Local functions
 
-static DWORD Rol32(DWORD dwValue, DWORD dwRolCount)
-{
-    return (dwValue << dwRolCount) | (dwValue >> (32 - dwRolCount));
-}
-
 static void Initialize(PCASC_SALSA20 pState, LPBYTE pbKey, DWORD cbKeyLength, LPBYTE pbVector)
 {
     const char * szConstants = (cbKeyLength == 32) ? szKeyConstant32 : szKeyConstant16;
