@@ -44,6 +44,7 @@
 #ifdef PLATFORM_LINUX
 #define CASC_PATH_ROOT "/mnt/casc"
 #define CASC_WORK_ROOT "/mnt/casc/Work"
+#define UNREFERENCED_PARAMETER(var) (void)var;
 #endif
 
 static const char szCircleChar[] = "|/-\\";
