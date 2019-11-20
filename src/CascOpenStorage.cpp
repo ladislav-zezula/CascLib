@@ -63,6 +63,7 @@ TCascStorage::TCascStorage()
     
     memset(DataFiles, 0, sizeof(DataFiles));
     memset(IndexFiles, 0, sizeof(IndexFiles));
+    CascInitLock(StorageLock);
     dwBuildNumber = 0;
     dwFeatures = 0;
     BuildFileType = CascBuildNone;
@@ -86,6 +87,9 @@ TCascStorage::~TCascStorage()
 
     // Cleanup space occupied by index files
     FreeIndexFiles(this);
+
+    // Cleanup the lock
+    CascFreeLock(StorageLock);
 
     // Free the file paths
     CASC_FREE(szDataPath);

@@ -83,7 +83,6 @@ struct TEST_PARAMS
     {
         memset(this, 0, sizeof(TEST_PARAMS));
         dwFileDataId = CASC_INVALID_ID;
-        CascInitLock(Lock);
     }
 
     ~TEST_PARAMS()
@@ -99,11 +98,8 @@ struct TEST_PARAMS
         if(fp2 != NULL)
             fclose(fp2);
         fp2 = NULL;
-
-        CascFreeLock(Lock);
     }
 
-    CASC_LOCK Lock;                 // Storage lock
     HANDLE hStorage;                // Opened storage handle
     FILE * fp1;                     // Opened stream for writing list of file names
     FILE * fp2;                     // Opened stream for writing a content of a file
@@ -315,27 +311,22 @@ static void TestStorageGetName(HANDLE hStorage)
     CascGetStorageInfo(hStorage, CascStoragePathProduct, szStorageParams, sizeof(szStorageParams), &nLength);
 }
 
-static PCASC_FILE_SPAN_INFO GetFileInfo(CASC_LOCK & Lock, HANDLE hFile, CASC_FILE_FULL_INFO & FileInfo)
+static PCASC_FILE_SPAN_INFO GetFileInfo(HANDLE hFile, CASC_FILE_FULL_INFO & FileInfo)
 {
     PCASC_FILE_SPAN_INFO pSpans = NULL;
 
-    // CascGetFileInfo is not thread safe, we need to lock here
-    CascLock(Lock);
+    // Retrieve the full file info
+    if(CascGetFileInfo(hFile, CascFileFullInfo, &FileInfo, sizeof(CASC_FILE_FULL_INFO), NULL))
     {
-        // Retrieve the full file info
-        if(CascGetFileInfo(hFile, CascFileFullInfo, &FileInfo, sizeof(CASC_FILE_FULL_INFO), NULL))
+        if((pSpans = CASC_ALLOC<CASC_FILE_SPAN_INFO>(FileInfo.SpanCount)) != NULL)
         {
-            if((pSpans = CASC_ALLOC<CASC_FILE_SPAN_INFO>(FileInfo.SpanCount)) != NULL)
+            if(!CascGetFileInfo(hFile, CascFileSpanInfo, pSpans, FileInfo.SpanCount * sizeof(CASC_FILE_SPAN_INFO), NULL))
             {
-                if(!CascGetFileInfo(hFile, CascFileSpanInfo, pSpans, FileInfo.SpanCount * sizeof(CASC_FILE_SPAN_INFO), NULL))
-                {
-                    CASC_FREE(pSpans);
-                    pSpans = NULL;
-                }
+                CASC_FREE(pSpans);
+                pSpans = NULL;
             }
         }
     }
-    CascUnlock(Lock);
 
     return pSpans;
 }
@@ -374,7 +365,7 @@ static DWORD ExtractFile(TLogHelper & LogHelper, TEST_PARAMS & Params, CASC_FIND
     if(CascOpenFile(Params.hStorage, szOpenName, 0, Params.dwOpenFlags | CASC_STRICT_DATA_CHECK, &hFile))
     {
         // Retrieve the information about file spans.
-        if((pSpans = GetFileInfo(Params.Lock, hFile, FileInfo)) != NULL)
+        if((pSpans = GetFileInfo(hFile, FileInfo)) != NULL)
         {
             ULONGLONG FileSize = FileInfo.ContentSize;
             ULONGLONG TotalRead = 0;
@@ -903,10 +894,10 @@ static DWORD SpeedStorage_Test(PFN_RUN_TEST PfnRunTest, LPCSTR szStorage, LPCSTR
     int nOpenCount = 100;
 
     // Keep compiler happy
-    UNREFERENCED_PARAMETER(PfnRunTest);
-    UNREFERENCED_PARAMETER(szExpectedNameHash);
-    UNREFERENCED_PARAMETER(szExpectedDataHash);
-    UNREFERENCED_PARAMETER(szFileName);
+    CASCLIB_UNUSED(PfnRunTest);
+    CASCLIB_UNUSED(szExpectedNameHash);
+    CASCLIB_UNUSED(szExpectedDataHash);
+    CASCLIB_UNUSED(szFileName);
 
     // Prepare the full path of the storage
     MakeFullPath(szFullPath, _countof(szFullPath), szStorage);

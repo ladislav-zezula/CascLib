@@ -75,7 +75,7 @@
 #endif
 
 #ifndef FIELD_OFFSET
-#define FIELD_OFFSET(type, field)    ((LONG)(LONG_PTR)&(((type *)0)->field))
+#define FIELD_OFFSET(type, field)    ((LONG)(size_t)&(((type *)0)->field))
 #endif
 
 //-----------------------------------------------------------------------------
@@ -122,7 +122,6 @@
   #define PLATFORM_MAC
   #define PLATFORM_DEFINED                  // The platform is known now
 
-  #define FIELD_OFFSET(t,f) offsetof(t,f)
 #endif
 
 //-----------------------------------------------------------------------------
@@ -145,6 +144,7 @@
   #include <wchar.h>
   #include <assert.h>
   #include <errno.h>
+  #include <pthread.h>
 
   #define URL_SEP_CHAR              '/'
   #define PATH_SEP_CHAR             '/'
@@ -154,7 +154,6 @@
   #define PLATFORM_LINUX
   #define PLATFORM_DEFINED
 
-  #define FIELD_OFFSET(t,f) offsetof(t,f)
 #endif
 
 //-----------------------------------------------------------------------------
@@ -346,46 +345,22 @@ inline DWORD CascInterlockedDecrement(PDWORD PtrValue)
 // Lock functions
 
 #ifdef PLATFORM_WINDOWS
+
 typedef RTL_CRITICAL_SECTION CASC_LOCK;
-#else
-typedef unsigned int CASC_LOCK;
-#endif
+#define CascInitLock(Lock)      InitializeCriticalSection(&Lock);
+#define CascFreeLock(Lock)      DeleteCriticalSection(&Lock);
+#define CascLock(Lock)          EnterCriticalSection(&Lock);
+#define CascUnlock(Lock)        LeaveCriticalSection(&Lock);
 
-inline void CascInitLock(CASC_LOCK & Lock)
-{
-#ifdef PLATFORM_WINDOWS
-    InitializeCriticalSection(&Lock);
 #else
-    Lock = 0;   // TODO
-#endif
-}
 
-inline void CascFreeLock(CASC_LOCK & Lock)
-{
-#ifdef PLATFORM_WINDOWS
-    DeleteCriticalSection(&Lock);
-#else
-    Lock = 0;   // TODO
-#endif
-}
+typedef pthread_mutex_t CASC_LOCK;
+#define CascInitLock(Lock)      pthread_mutex_init(&Lock, NULL);
+#define CascFreeLock(Lock)      pthread_mutex_destroy(&Lock);
+#define CascLock(Lock)          pthread_mutex_lock(&Lock);
+#define CascUnlock(Lock)        pthread_mutex_unlock(&Lock);
 
-inline void CascLock(CASC_LOCK & Lock)
-{
-#ifdef PLATFORM_WINDOWS
-    EnterCriticalSection(&Lock);
-#else
-    Lock = 0;   // TODO
 #endif
-}
-
-inline void CascUnlock(CASC_LOCK & Lock)
-{
-#ifdef PLATFORM_WINDOWS
-    LeaveCriticalSection(&Lock);
-#else
-    Lock = 0;   // TODO
-#endif
-}
 
 //-----------------------------------------------------------------------------
 // Forbidden functions, do not use

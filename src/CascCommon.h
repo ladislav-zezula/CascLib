@@ -275,6 +275,7 @@ struct TCascStorage
 
     // Class members
     PCASC_OPEN_STORAGE_ARGS pArgs;                  // Open storage arguments. Only valid during opening the storage
+    CASC_LOCK StorageLock;                          // Lock for multi-threaded operations
 
     LPCTSTR szIndexFormat;                          // Format of the index file name
     LPTSTR  szCodeName;                             // On local storage, this select a product in a multi-product storage. For online storage, this selects a product

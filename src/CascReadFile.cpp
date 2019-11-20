@@ -40,8 +40,10 @@ static DWORD OpenDataStream(TCascFile * hf, PCASC_FILE_SPAN pFileSpan, PCASC_CKE
     {
         DWORD dwArchiveIndex = pFileSpan->ArchiveIndex;
 
+        // Lock the storage to make the operation thread-safe
+        CascLock(hs->StorageLock);
+
         // If the data archive is not open yet, open it now.
-        // TODO: This is not thread safe, we need to implement locking here
         if(hs->DataFiles[dwArchiveIndex] == NULL)
         {
             // Prepare the name of the data file
@@ -53,6 +55,9 @@ static DWORD OpenDataStream(TCascFile * hf, PCASC_FILE_SPAN pFileSpan, PCASC_CKE
             pStream = FileStream_OpenFile(szDataFile, STREAM_FLAG_READ_ONLY | STREAM_FLAG_WRITE_SHARE | STREAM_PROVIDER_FLAT | STREAM_FLAG_FILL_MISSING | BASE_PROVIDER_FILE);
             hs->DataFiles[dwArchiveIndex] = pStream;
         }
+
+        // Unlock the storage
+        CascUnlock(hs->StorageLock);
 
         // Return error or success
         pFileSpan->pStream = hs->DataFiles[dwArchiveIndex];
