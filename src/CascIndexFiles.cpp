@@ -167,6 +167,7 @@ static LPBYTE CaptureGuardedBlock2(LPBYTE pbFileData, LPBYTE pbFileEnd, size_t E
     PFILE_INDEX_GUARDED_BLOCK pBlock = (PFILE_INDEX_GUARDED_BLOCK)pbFileData;
     LPBYTE pbEntryPtr;
     size_t EntryCount;
+    unsigned int HashBlizzGet = 0;
     unsigned int HashHigh = 0;
     unsigned int HashLow = 0;
 
@@ -177,7 +178,10 @@ static LPBYTE CaptureGuardedBlock2(LPBYTE pbFileData, LPBYTE pbFileEnd, size_t E
     if (pBlock->BlockSize == 0 || (pbFileData + sizeof(FILE_INDEX_GUARDED_BLOCK) + pBlock->BlockSize) > pbFileEnd)
         return NULL;
 
-    // Compute the hash entry-by-entry
+    //
+    // Verify the hash from the Blizzard Downloader
+    //
+
     pbEntryPtr = pbFileData + sizeof(FILE_INDEX_GUARDED_BLOCK);
     EntryCount = pBlock->BlockSize / EntryLength;
     for (size_t i = 0; i < EntryCount; i++)
@@ -187,13 +191,39 @@ static LPBYTE CaptureGuardedBlock2(LPBYTE pbFileData, LPBYTE pbFileEnd, size_t E
     }
 
     // Verify hash
-    if (HashHigh != pBlock->BlockHash)
-        return NULL;
+    if (HashHigh == pBlock->BlockHash)
+    {
+        // Give the output
+        if (PtrBlockSize != NULL)
+            PtrBlockSize[0] = pBlock->BlockSize;
+        return (LPBYTE)(pBlock + 1);
+    }
 
-    // Give the output
-    if (PtrBlockSize != NULL)
-        PtrBlockSize[0] = pBlock->BlockSize;
-    return (LPBYTE)(pBlock + 1);
+    //
+    // Verify the hash from the Blizzget tool, which calculates the hash differently
+    // https://github.com/d07RiV/blizzget/blob/master/src/ngdp.cpp
+    // Function void DataStorage::writeIndex()
+    //
+
+    pbEntryPtr = pbFileData + sizeof(FILE_INDEX_GUARDED_BLOCK);
+    EntryCount = pBlock->BlockSize / EntryLength;
+    for (size_t i = 0; i < EntryCount; i++)
+    {
+        HashBlizzGet = hashlittle(pbEntryPtr, EntryLength, HashBlizzGet);
+        pbEntryPtr += EntryLength;
+    }
+
+    // Verify hash
+    if (HashBlizzGet == pBlock->BlockHash)
+    {
+        // Give the output
+        if (PtrBlockSize != NULL)
+            PtrBlockSize[0] = pBlock->BlockSize;
+        return (LPBYTE)(pBlock + 1);
+    }
+
+    // Hash mismatch
+    return NULL;
 }
 
 // Third method of checking a guarded block; There is 32-bit hash, followed by EKey entry
@@ -488,17 +518,17 @@ static bool InsertEncodingEKeyToMap(TCascStorage * hs, CASC_INDEX_HEADER &, LPBY
     return true;
 }
 
-static DWORD ProcessLocalIndexFiles(TCascStorage * hs, EKEY_ENTRY_CALLBACK PfnEKeyEntry)
+static DWORD ProcessLocalIndexFiles(TCascStorage * hs, EKEY_ENTRY_CALLBACK PfnEKeyEntry, DWORD dwIndexCount)
 {
     DWORD dwErrCode = ERROR_SUCCESS;
 
     // Load each index file
-    for(DWORD i = 0; i < CASC_INDEX_COUNT; i++)
+    for(DWORD i = 0; i < dwIndexCount; i++)
     {
         CASC_INDEX & IndexFile = hs->IndexFiles[i];
 
         // Inform the user about what we are doing
-        if(InvokeProgressCallback(hs, "Loading index files", NULL, i, CASC_INDEX_COUNT))
+        if(InvokeProgressCallback(hs, "Loading index files", NULL, i, dwIndexCount))
         {
             dwErrCode = ERROR_CANCELLED;
             break;
@@ -521,6 +551,7 @@ static DWORD ProcessLocalIndexFiles(TCascStorage * hs, EKEY_ENTRY_CALLBACK PfnEK
 static DWORD LoadLocalIndexFiles(TCascStorage * hs)
 {
     ULONGLONG TotalSize = 0;
+    DWORD dwIndexCount = 0;
     DWORD dwErrCode;
 
     // Inform the user about what we are doing
@@ -542,16 +573,28 @@ static DWORD LoadLocalIndexFiles(TCascStorage * hs)
 
             // WoW6 actually reads THE ENTIRE file to memory. Verified on Mac build (x64).
             if((IndexFile.pbFileData = LoadFileToMemory(IndexFile.szFileName, &cbFileData)) == NULL)
-                return ERROR_NOT_ENOUGH_MEMORY;
+            {
+                // Storages downloaded by Blizzget tool don't have all inex files present
+                if((dwErrCode = GetLastError()) == ERROR_FILE_NOT_FOUND)
+                {
+                    dwErrCode = ERROR_SUCCESS;
+                    break;
+                }
+
+                return dwErrCode;
+            }
+
+            // Add to the total size of the index files
             IndexFile.cbFileData = cbFileData;
             TotalSize += cbFileData;
+            dwIndexCount++;
         }
 
         // Build the map of EKey -> IndexEKeyEntry
         dwErrCode = hs->IndexEKeyMap.Create((size_t)(TotalSize / sizeof(FILE_EKEY_ENTRY)), CASC_EKEY_SIZE, 0);
         if(dwErrCode == ERROR_SUCCESS)
         {
-            dwErrCode = ProcessLocalIndexFiles(hs, InsertEncodingEKeyToMap);
+            dwErrCode = ProcessLocalIndexFiles(hs, InsertEncodingEKeyToMap, dwIndexCount);
         }
     }
 

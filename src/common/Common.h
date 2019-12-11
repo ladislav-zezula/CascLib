@@ -321,8 +321,11 @@ size_t CascStrPrintf(wchar_t * buffer, size_t nCount, const wchar_t * format, ..
 //-----------------------------------------------------------------------------
 // String allocation
 
-char * CascNewStr(const char * szString, size_t nCharsToReserve = 0);
+char    * CascNewStr(const char * szString, size_t nCharsToReserve = 0);
 wchar_t * CascNewStr(const wchar_t * szString, size_t nCharsToReserve = 0);
+
+LPSTR  CascNewStrT2A(LPCTSTR szString, size_t nCharsToReserve = 0);
+LPTSTR CascNewStrA2T(LPCSTR szString, size_t nCharsToReserve = 0);
 
 size_t CombinePath(LPTSTR szBuffer, size_t nMaxChars, char chSeparator, va_list argList);
 size_t CombinePath(LPTSTR szBuffer, size_t nMaxChars, char chSeparator, ...);
@@ -336,10 +339,10 @@ size_t NormalizeFileName_LowerSlash(char * szNormName, const char * szFileName, 
 ULONGLONG CalcNormNameHash(const char * szNormName, size_t nLength);
 ULONGLONG CalcFileNameHash(const char * szFileName);
 
-int ConvertDigitToInt32(const TCHAR * szString, PDWORD PtrValue);
-int ConvertStringToInt08(const char * szString, PDWORD PtrValue);
-int ConvertStringToInt32(const TCHAR * szString, size_t nMaxDigits, PDWORD PtrValue);
-int ConvertStringToBinary(const char * szString, size_t nMaxDigits, LPBYTE pbBinary);
+DWORD ConvertDigitToInt32(LPCTSTR szString, PDWORD PtrValue);
+DWORD ConvertStringToInt08(LPCSTR szString, PDWORD PtrValue);
+DWORD ConvertStringToInt32(LPCTSTR szString, size_t nMaxDigits, PDWORD PtrValue);
+DWORD ConvertStringToBinary(LPCSTR szString, size_t nMaxDigits, LPBYTE pbBinary);
 
 //-----------------------------------------------------------------------------
 // Conversion from binary array to string. The caller must ensure that

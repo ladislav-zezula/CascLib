@@ -60,7 +60,8 @@ TCascStorage::TCascStorage()
     szRootPath = szDataPath = szIndexPath = szBuildFile = szCdnServers = szCdnPath = szCodeName = NULL;
     szIndexFormat = NULL;
     szRegion = NULL;
-    
+    szBuildKey = NULL;
+
     memset(DataFiles, 0, sizeof(DataFiles));
     memset(IndexFiles, 0, sizeof(IndexFiles));
     CascInitLock(StorageLock);
@@ -100,6 +101,7 @@ TCascStorage::~TCascStorage()
     CASC_FREE(szCdnPath);
     CASC_FREE(szCodeName);
     CASC_FREE(szRegion);
+    CASC_FREE(szBuildKey);
 
     // Free the blobs
     FreeCascBlob(&CdnConfigKey);
@@ -1134,7 +1136,7 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
 {
     LPCTSTR szCodeName = NULL;
     LPCTSTR szRegion = NULL;
-    char szRegionA[0x40];
+    LPCTSTR szBuildKey = NULL;
     DWORD dwLocaleMask = 0;
     DWORD dwErrCode = ERROR_SUCCESS;
 
@@ -1150,10 +1152,11 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
 
     // Extract the region (optional)
     if(ExtractVersionedArgument(pArgs, FIELD_OFFSET(CASC_OPEN_STORAGE_ARGS, szRegion), &szRegion) && szRegion != NULL)
-    {
-        CascStrCopy(szRegionA, _countof(szRegionA), szRegion);
-        hs->szRegion = CascNewStr(szRegionA);
-    }
+        hs->szRegion = CascNewStrT2A(szRegion);
+
+    // Extract the build key (optional)
+    if(ExtractVersionedArgument(pArgs, FIELD_OFFSET(CASC_OPEN_STORAGE_ARGS, szBuildKey), &szBuildKey) && szBuildKey != NULL)
+        hs->szBuildKey = CascNewStrT2A(szBuildKey);
 
     // For online storages, we need to load CDN servers
     if ((dwErrCode == ERROR_SUCCESS) && (hs->dwFeatures & CASC_FEATURE_ONLINE))
@@ -1282,6 +1285,7 @@ static LPTSTR ParseOpenParams(LPCTSTR szParams, PCASC_OPEN_STORAGE_ARGS pArgs)
         pArgs->szLocalPath = szParamsCopy;
         pArgs->szCodeName = NULL;
         pArgs->szRegion = NULL;
+        pArgs->szBuildKey = NULL;
 
         // Find the first ":". This will indicate the end of local path and also begin of product code
         if((szSeparator = _tcschr(szPlainName, _T(':'))) != NULL)
@@ -1295,6 +1299,13 @@ static LPTSTR ParseOpenParams(LPCTSTR szParams, PCASC_OPEN_STORAGE_ARGS pArgs)
             {
                 pArgs->szRegion = szSeparator + 1;
                 szSeparator[0] = 0;
+
+                // Try again. If found, it is a build key (MD5 of a build file)
+                if((szSeparator = _tcschr(szSeparator + 1, _T(':'))) != NULL)
+                {
+                    pArgs->szBuildKey = szSeparator + 1;
+                    szSeparator[0] = 0;
+                }
             }
         }
     }

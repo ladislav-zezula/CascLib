@@ -335,9 +335,11 @@ typedef struct _CASC_OPEN_STORAGE_ARGS
     // Any additional member from here on must be checked for availability using the ExtractVersionedArgument function.
     // Example:
     //
-    // DWORD dwMyExtraMember = 0;
-    // ExtractVersionedArgument(pArgs, offsetof(CASC_OPEN_STORAGE_ARGS, dwMyExtraMember), &dwMyExtraMember);
+    // LPCTSTR szBuildKey = NULL;
+    // ExtractVersionedArgument(pArgs, offsetof(CASC_OPEN_STORAGE_ARGS, szBuildId), &szBuildKey);
     //
+
+    LPCTSTR szBuildKey;                         // If non-null, this will specify a build key (aka MD5 of build config that is different that current online version)
 
 } CASC_OPEN_STORAGE_ARGS, *PCASC_OPEN_STORAGE_ARGS;
 

@@ -245,6 +245,30 @@ static LPTSTR MakeFullPath(LPTSTR szBuffer, size_t ccBuffer, LPCSTR szStorage)
     return CopyPath(szBuffer, szBufferEnd, szStorage);
 }
 
+static bool AppendParamSuffix(LPSTR szBuffer, size_t cchBuffer, LPCSTR szSuffix)
+{
+    LPSTR szBufferPtr = szBuffer + strlen(szBuffer);
+    LPSTR szBufferEnd = szBuffer + cchBuffer;
+
+    if(szSuffix && szSuffix[0])
+    {
+        // Append the colon
+        if((szBufferPtr + 1) < szBufferEnd)
+        {
+            *szBufferPtr++ = ':';
+        }
+
+        // Append the suffix
+        if((szBufferPtr + strlen(szSuffix)) < szBufferEnd)
+        {
+            CascStrCopy(szBufferPtr, (szBufferEnd - szBufferPtr), szSuffix);
+            return true;
+        }
+    }
+
+    return false;
+}
+
 static LPCTSTR GetTheProperListfile(HANDLE hStorage, LPCTSTR szListFile)
 {
     DWORD dwFeatures = 0;
@@ -941,21 +965,26 @@ static DWORD SpeedStorage_Test(PFN_RUN_TEST PfnRunTest, LPCSTR szStorage, LPCSTR
     return dwErrCode;
 }
 
-static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, LPCSTR szCodeName, LPCSTR szRegion = NULL, LPCSTR szFileName = NULL)
+static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, LPCSTR szCodeName, LPCSTR szRegion = NULL, LPCSTR szBuildKey = NULL, LPCSTR szFileName = NULL)
 {
     TLogHelper LogHelper(szCodeName);
     HANDLE hStorage;
-    TCHAR szParamsT[MAX_PATH];
-    char szParamsA[MAX_PATH];
-    size_t nLength;
+    TCHAR szParamsT[MAX_PATH+0x40];
+    char szParamsA[MAX_PATH+0x40];
     DWORD dwErrCode = ERROR_SUCCESS;
 
-    // Prepare the path and region
-    nLength = CascStrPrintf(szParamsA, _countof(szParamsA), "%s/%s:%s", CASC_WORK_ROOT, szCodeName, szCodeName);
-    if(szRegion  && szRegion[0])
+    // Prepare the path
+    CascStrPrintf(szParamsA, _countof(szParamsA), "%s/%s", CASC_WORK_ROOT, szCodeName);
+
+    // Append codename, if any
+    if(AppendParamSuffix(szParamsA, _countof(szParamsA), szCodeName))
     {
-        szParamsA[nLength++] = ':';
-        CascStrCopy(&szParamsA[nLength], _countof(szParamsA) - nLength, szRegion);
+        // Append region, if any
+        if(AppendParamSuffix(szParamsA, _countof(szParamsA), szRegion))
+        {
+            // Append build key, if any
+            AppendParamSuffix(szParamsA, _countof(szParamsA), szBuildKey);
+        }
     }
 
     CascStrCopy(szParamsT, _countof(szParamsT), szParamsA);
@@ -1066,8 +1095,8 @@ int main(void)
     // Single tests
     //
 
-//  LocalStorage_Test(Storage_ReadFiles, "Diablo III/30013", NULL, NULL, "00000f8465973be812c8f2f7c105f02f");
-//  OnlineStorage_Test(Storage_EnumFiles, "wow_classic", "eu");
+//  LocalStorage_Test(Storage_ReadFiles, "blizzget\\w3", NULL, NULL, "00000f8465973be812c8f2f7c105f02f");
+    OnlineStorage_Test(Storage_EnumFiles, "w3", "eu", "0836dab8d1f4bdb2cf61fe155de1ae7d");
 
     //
     // Run the tests for every local storage in my collection

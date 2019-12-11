@@ -494,23 +494,17 @@ static int LoadQueryKey(const CASC_CSV_COLUMN & Column, QUERY_KEY & Key)
 
 static void SetProductCodeName(TCascStorage * hs, LPCSTR szCodeName)
 {
-    TCHAR szCodeNameT[0x40];
-
     if(hs->szCodeName == NULL && szCodeName != NULL)
     {
-        CascStrCopy(szCodeNameT, _countof(szCodeNameT), szCodeName);
-        hs->szCodeName = CascNewStr(szCodeNameT);
+        hs->szCodeName = CascNewStrA2T(szCodeName);
     }
 }
 
 static DWORD GetDefaultCdnPath(TCascStorage * hs, const CASC_CSV_COLUMN & Column)
 {
-    TCHAR szCdnPath[MAX_PATH];
-
     if(hs->szCdnPath == NULL && Column.nLength != 0)
     {
-        CascStrCopy(szCdnPath, _countof(szCdnPath), Column.szValue);
-        hs->szCdnPath = CascNewStr(szCdnPath);
+        hs->szCdnPath = CascNewStrA2T(Column.szValue);
     }
 
     return ERROR_SUCCESS;
@@ -544,8 +538,6 @@ static DWORD GetDefaultLocaleMask(TCascStorage * hs, const CASC_CSV_COLUMN & Col
 static DWORD ParseFile_CDNS(TCascStorage * hs, CASC_CSV & Csv)
 {
     const char * szWantedRegion = hs->szRegion;
-    TCHAR szCdnServers[MAX_PATH];
-    TCHAR szCdnPath[MAX_PATH];
     size_t nLineCount;
 
     // Fix the region
@@ -562,12 +554,10 @@ static DWORD ParseFile_CDNS(TCascStorage * hs, CASC_CSV & Csv)
         if(!strcmp(Csv[i]["Name!STRING:0"].szValue, szWantedRegion))
         {
             // Save the list of CDN servers
-            CascStrCopy(szCdnServers, _countof(szCdnServers), Csv[i]["Hosts!STRING:0"].szValue);
-            hs->szCdnServers = CascNewStr(szCdnServers);
+            hs->szCdnServers = CascNewStrA2T(Csv[i]["Hosts!STRING:0"].szValue);
 
             // Save the CDN subpath
-            CascStrCopy(szCdnPath, _countof(szCdnPath), Csv[i]["Path!STRING:0"].szValue);
-            hs->szCdnPath = CascNewStr(szCdnPath);
+            hs->szCdnPath = CascNewStrA2T(Csv[i]["Path!STRING:0"].szValue);
 
             // Check and return result
             return (hs->szCdnServers && hs->szCdnPath) ? ERROR_SUCCESS : ERROR_BAD_FORMAT;
@@ -698,7 +688,7 @@ static DWORD ParseFile_BuildInfo(TCascStorage * hs, CASC_CSV & Csv)
 static DWORD ParseFile_VersionsDb(TCascStorage * hs, CASC_CSV & Csv)
 {
     size_t nLineCount = Csv.GetLineCount();
-    DWORD dwErrCode;
+    DWORD dwErrCode = ERROR_SUCCESS;
 
     // Find the active config
     for (size_t i = 0; i < nLineCount; i++)
@@ -723,7 +713,15 @@ static DWORD ParseFile_VersionsDb(TCascStorage * hs, CASC_CSV & Csv)
             }
 
             // Verify all variables
-            return (hs->CdnBuildKey.pbData != NULL && hs->CdnConfigKey.pbData != NULL) ? ERROR_SUCCESS : ERROR_BAD_FORMAT;
+            if(hs->CdnBuildKey.pbData != NULL && hs->CdnConfigKey.pbData != NULL)
+            {
+                // If we have manually given build key, override the value
+                if(hs->szBuildKey != NULL)
+                    dwErrCode = ConvertStringToBinary(hs->szBuildKey, MD5_STRING_SIZE, hs->CdnBuildKey.pbData);
+                return dwErrCode;
+            }
+
+            return ERROR_BAD_FORMAT;
         }
     }
 
@@ -1046,6 +1044,21 @@ static DWORD ForcePathExist(const TCHAR * szFileName, bool bIsFileName)
     return dwErrCode;
 }
 
+static bool FileAlreadyExists(LPCTSTR szFileName)
+{
+    TFileStream * pStream;
+    ULONGLONG FileSize = 0;
+
+    // The file open must succeed and also must be of non-zero size
+    if((pStream = FileStream_OpenFile(szFileName, 0)) != NULL)
+    {
+        FileStream_GetSize(pStream, &FileSize);
+        FileStream_Close(pStream);
+    }
+
+    return (FileSize != 0);
+}
+
 static DWORD DownloadFile(
     LPCTSTR szRemoteName,
     LPCTSTR szLocalName,
@@ -1118,7 +1131,7 @@ static DWORD DownloadFileFromCDN2(TCascStorage * hs, CASC_CDN_DOWNLOAD & CdnsInf
     CreateRemoteAndLocalPath(hs, CdnsInfo, RemotePath, LocalPath);
 
     // Check whether the local file exists
-    if((CdnsInfo.Flags & CASC_CDN_FORCE_DOWNLOAD) || (_taccess(LocalPath, 0) == -1))
+    if((CdnsInfo.Flags & CASC_CDN_FORCE_DOWNLOAD) || !FileAlreadyExists(LocalPath))
     {
         // Make sure that the path exists
         dwErrCode = ForcePathExist(LocalPath, true);
