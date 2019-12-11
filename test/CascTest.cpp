@@ -1095,8 +1095,8 @@ int main(void)
     // Single tests
     //
 
-//  LocalStorage_Test(Storage_ReadFiles, "blizzget\\w3", NULL, NULL, "00000f8465973be812c8f2f7c105f02f");
-    OnlineStorage_Test(Storage_EnumFiles, "w3", "eu", "0836dab8d1f4bdb2cf61fe155de1ae7d");
+//  LocalStorage_Test(Storage_ReadFiles, "Blizzget\\work\\w3\\Data", NULL, NULL, "00000f8465973be812c8f2f7c105f02f");
+//  OnlineStorage_Test(Storage_EnumFiles, "w3", "eu", "0836dab8d1f4bdb2cf61fe155de1ae7d");
 
     //
     // Run the tests for every local storage in my collection

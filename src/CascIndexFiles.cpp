@@ -561,6 +561,10 @@ static DWORD LoadLocalIndexFiles(TCascStorage * hs)
     // Perform the directory scan
     if((dwErrCode = ScanIndexDirectory(hs->szIndexPath, IndexDirectory_OnFileFound, hs)) == ERROR_SUCCESS)
     {
+        // If no index file was found, we cannot load anything
+        if(hs->szIndexFormat == NULL)
+            return ERROR_FILE_NOT_FOUND;
+
         // Load each index file
         for(DWORD i = 0; i < CASC_INDEX_COUNT; i++)
         {
