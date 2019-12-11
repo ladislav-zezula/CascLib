@@ -27,7 +27,7 @@ typedef DWORD (*PARSE_VARIABLE)(TCascStorage * hs, const char * szVariableName, 
 
 struct TBuildFileInfo
 {
-    const TCHAR * szFileName;
+    LPCTSTR szFileName;
     CBLD_TYPE BuildFileType;
 };
 
@@ -45,7 +45,7 @@ static const TBuildFileInfo BuildTypes[] =
     {NULL, CascBuildNone}
 };
 
-static const TCHAR * DataDirs[] =
+static LPCTSTR DataDirs[] =
 {
     _T("data") _T(PATH_SEP_STRING) _T("casc"),      // Overwatch
     _T("data"),                                     // TACT casc (for Linux systems)
@@ -858,9 +858,9 @@ static DWORD ParseFile_CdnBuild(TCascStorage * hs, void * pvListFile)
     return dwErrCode;
 }
 
-static DWORD CheckDataDirectory(TCascStorage * hs, TCHAR * szDirectory)
+static DWORD CheckDataDirectory(TCascStorage * hs, LPTSTR szDirectory)
 {
-    TCHAR * szDataPath;
+    LPTSTR szDataPath;
     DWORD dwErrCode = ERROR_FILE_NOT_FOUND;
 
     // Try all known subdirectories
@@ -886,7 +886,7 @@ static DWORD CheckDataDirectory(TCascStorage * hs, TCHAR * szDirectory)
     return dwErrCode;
 }
 
-static DWORD LoadCsvFile(TCascStorage * hs, const TCHAR * szFileName, PARSECSVFILE PfnParseProc, bool bHasHeader)
+static DWORD LoadCsvFile(TCascStorage * hs, LPCTSTR szFileName, PARSECSVFILE PfnParseProc, bool bHasHeader)
 {
     CASC_CSV Csv(0x40, bHasHeader);
     DWORD dwErrCode;
@@ -897,9 +897,9 @@ static DWORD LoadCsvFile(TCascStorage * hs, const TCHAR * szFileName, PARSECSVFI
     return dwErrCode;
 }
 
-static const TCHAR * ExtractCdnServerName(TCHAR * szServerName, size_t cchServerName, const TCHAR * szCdnServers)
+static LPCTSTR ExtractCdnServerName(LPTSTR szServerName, size_t cchServerName, LPCTSTR szCdnServers)
 {
-    const TCHAR * szSeparator;
+    LPCTSTR szSeparator;
 
     if(szCdnServers[0] != 0)
     {
@@ -980,9 +980,9 @@ static void CreateRemoteAndLocalPath(TCascStorage * hs, CASC_CDN_DOWNLOAD & Cdns
     LocalPath.AppendString(CdnsInfo.szExtension, false);
 }
 
-static DWORD ForcePathExist(const TCHAR * szFileName, bool bIsFileName)
+static DWORD ForcePathExist(LPCTSTR szFileName, bool bIsFileName)
 {
-    TCHAR * szLocalPath;
+    LPTSTR szLocalPath;
     size_t nIndex;
     bool bFirstSeparator = false;
     DWORD dwErrCode = ERROR_NOT_ENOUGH_MEMORY;
@@ -1280,10 +1280,10 @@ DWORD GetFileSpanInfo(PCASC_CKEY_ENTRY pCKeyEntry, PULONGLONG PtrContentSize, PU
 // Checks whether there is a ".build.info" or ".build.db".
 // If yes, the function sets "szDataPath" and "szIndexPath"
 // in the storage structure and returns ERROR_SUCCESS
-DWORD CheckGameDirectory(TCascStorage * hs, TCHAR * szDirectory)
+DWORD CheckGameDirectory(TCascStorage * hs, LPTSTR szDirectory)
 {
     TFileStream * pStream;
-    TCHAR * szBuildFile;
+    LPTSTR szBuildFile;
     DWORD dwErrCode = ERROR_FILE_NOT_FOUND;
 
     // Try to find any of the root files used in the history

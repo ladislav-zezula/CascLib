@@ -331,7 +331,7 @@ size_t CombinePath(LPTSTR szBuffer, size_t nMaxChars, char chSeparator, va_list 
 size_t CombinePath(LPTSTR szBuffer, size_t nMaxChars, char chSeparator, ...);
 LPTSTR CombinePath(LPCTSTR szPath, LPCTSTR szSubDir);
 LPTSTR GetLastPathPart(LPTSTR szWorkPath);
-bool CutLastPathPart(TCHAR * szWorkPath);
+bool CutLastPathPart(LPTSTR szWorkPath);
 
 size_t NormalizeFileName_UpperBkSlash(char * szNormName, const char * szFileName, size_t cchMaxChars);
 size_t NormalizeFileName_LowerSlash(char * szNormName, const char * szFileName, size_t cchMaxChars);

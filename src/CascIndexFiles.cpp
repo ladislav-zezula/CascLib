@@ -28,7 +28,7 @@ typedef bool (*EKEY_ENTRY_CALLBACK)(TCascStorage * hs, CASC_INDEX_HEADER & InHea
 // Local functions
 
 // "data.iXY"
-static bool IsIndexFileName_V1(const TCHAR * szFileName)
+static bool IsIndexFileName_V1(LPCTSTR szFileName)
 {
     // Check if the name looks like a valid index file
     return (_tcslen(szFileName) == 8 &&
@@ -36,7 +36,7 @@ static bool IsIndexFileName_V1(const TCHAR * szFileName)
             _tcsspn(szFileName + 6, szAllowedHexChars) == 2);
 }
 
-static bool IsIndexFileName_V2(const TCHAR * szFileName)
+static bool IsIndexFileName_V2(LPCTSTR szFileName)
 {
     // Check if the name looks like a valid index file
     return (_tcslen(szFileName) == 14 &&
@@ -116,7 +116,7 @@ static bool IndexDirectory_OnFileFound(
     return true;
 }
 
-static TCHAR * CreateIndexFileName(TCascStorage * hs, DWORD IndexValue, DWORD IndexVersion)
+static LPTSTR CreateIndexFileName(TCascStorage * hs, DWORD IndexValue, DWORD IndexVersion)
 {
     TCHAR szPlainName[0x40];
 

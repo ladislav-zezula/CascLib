@@ -89,7 +89,7 @@ static bool BaseFile_Create(TFileStream * pStream)
     return true;
 }
 
-static bool BaseFile_Open(TFileStream * pStream, const TCHAR * szFileName, DWORD dwStreamFlags)
+static bool BaseFile_Open(TFileStream * pStream, LPCTSTR szFileName, DWORD dwStreamFlags)
 {
 #ifdef PLATFORM_WINDOWS
     {
@@ -436,7 +436,7 @@ static void BaseFile_Init(TFileStream * pStream)
 //-----------------------------------------------------------------------------
 // Local functions - base memory-mapped file support
 
-static bool BaseMap_Open(TFileStream * pStream, const TCHAR * szFileName, DWORD dwStreamFlags)
+static bool BaseMap_Open(TFileStream * pStream, LPCTSTR szFileName, DWORD dwStreamFlags)
 {
 #ifdef PLATFORM_WINDOWS
 
@@ -584,7 +584,7 @@ static void BaseMap_Init(TFileStream * pStream)
 //-----------------------------------------------------------------------------
 // Local functions - base HTTP file support
 
-static const TCHAR * BaseHttp_ExtractServerName(const TCHAR * szFileName, TCHAR * szServerName)
+static LPCTSTR BaseHttp_ExtractServerName(LPCTSTR szFileName, LPTSTR szServerName)
 {
     // Check for HTTP
     if(!_tcsnicmp(szFileName, _T("http://"), 7))
@@ -607,7 +607,7 @@ static const TCHAR * BaseHttp_ExtractServerName(const TCHAR * szFileName, TCHAR 
     return szFileName;
 }
 
-static bool BaseHttp_Open(TFileStream * pStream, const TCHAR * szFileName, DWORD dwStreamFlags)
+static bool BaseHttp_Open(TFileStream * pStream, LPCTSTR szFileName, DWORD dwStreamFlags)
 {
 #ifdef PLATFORM_WINDOWS
 
@@ -1018,13 +1018,13 @@ static STREAM_INIT StreamBaseInit[4] =
 // The stream structure is created as flat block, variable length
 // The file name is placed after the end of the stream structure data
 static TFileStream * AllocateFileStream(
-    const TCHAR * szFileName,
+    LPCTSTR szFileName,
     size_t StreamSize,
     DWORD dwStreamFlags)
 {
     TFileStream * pMaster = NULL;
     TFileStream * pStream;
-    const TCHAR * szNextFile = szFileName;
+    LPCTSTR szNextFile = szFileName;
     size_t FileNameSize;
 
     // Sanity check
@@ -1063,7 +1063,7 @@ static TFileStream * AllocateFileStream(
         pStream->dwFlags = dwStreamFlags;
 
         // Initialize the file name
-        pStream->szFileName = (TCHAR *)((BYTE *)pStream + StreamSize);
+        pStream->szFileName = (LPTSTR)((BYTE *)pStream + StreamSize);
         memcpy(pStream->szFileName, szFileName, FileNameSize);
         pStream->szFileName[FileNameSize / sizeof(TCHAR)] = 0;
 
@@ -1367,7 +1367,7 @@ static bool FlatStream_CreateMirror(TBlockStream * pStream)
     return true;
 }
 
-static TFileStream * FlatStream_Open(const TCHAR * szFileName, DWORD dwStreamFlags)
+static TFileStream * FlatStream_Open(LPCTSTR szFileName, DWORD dwStreamFlags)
 {
     TBlockStream * pStream;
     ULONGLONG ByteOffset = 0;
@@ -1788,7 +1788,7 @@ static bool PartStream_CreateMirror(TBlockStream * pStream)
     return true;
 }
 
-static TFileStream * PartStream_Open(const TCHAR * szFileName, DWORD dwStreamFlags)
+static TFileStream * PartStream_Open(LPCTSTR szFileName, DWORD dwStreamFlags)
 {
     TBlockStream * pStream;
 
@@ -2098,7 +2098,7 @@ static bool EncrStream_BlockRead(
     return true;
 }
 
-static TFileStream * EncrStream_Open(const TCHAR * szFileName, DWORD dwStreamFlags)
+static TFileStream * EncrStream_Open(LPCTSTR szFileName, DWORD dwStreamFlags)
 {
     TEncryptedStream * pStream;
 
@@ -2225,14 +2225,14 @@ static void Block4Stream_Close(TBlockStream * pStream)
     return;
 }
 
-static TFileStream * Block4Stream_Open(const TCHAR * szFileName, DWORD dwStreamFlags)
+static TFileStream * Block4Stream_Open(LPCTSTR szFileName, DWORD dwStreamFlags)
 {
     TBaseProviderData * NewBaseArray = NULL;
     ULONGLONG RemainderBlock;
     ULONGLONG BlockCount;
     ULONGLONG FileSize;
     TBlockStream * pStream;
-    TCHAR * szNameBuff;
+    LPTSTR szNameBuff;
     size_t nNameLength;
     DWORD dwBaseFiles = 0;
     DWORD dwBaseFlags;
@@ -2451,7 +2451,7 @@ TFileStream * FileStream_OpenFile(
  *
  * \a pStream Pointer to an open stream
  */
-const TCHAR * FileStream_GetFileName(TFileStream * pStream)
+LPCTSTR FileStream_GetFileName(TFileStream * pStream)
 {
     assert(pStream != NULL);
     return pStream->szFileName;

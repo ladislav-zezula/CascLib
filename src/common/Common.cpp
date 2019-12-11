@@ -425,7 +425,7 @@ LPTSTR GetLastPathPart(LPTSTR szWorkPath)
     return NULL;
 }
 
-bool CutLastPathPart(TCHAR * szWorkPath)
+bool CutLastPathPart(LPTSTR szWorkPath)
 {
     // Get the last part of the path
     szWorkPath = GetLastPathPart(szWorkPath);
