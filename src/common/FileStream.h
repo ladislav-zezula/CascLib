@@ -205,7 +205,8 @@ struct TFileStream
     STREAM_CLOSE   BaseClose;               // Pointer to function closing the stream
 
     // Base provider data (file size, file position)
-    TBaseProviderData Base;
+    TBaseProviderData Base;                 // Stream information, like size or current position
+    CASC_LOCK Lock;                         // For multi-threaded synchronization
 
     // Stream provider data
     TFileStream * pMaster;                  // Master stream (e.g. MPQ on a web server)
