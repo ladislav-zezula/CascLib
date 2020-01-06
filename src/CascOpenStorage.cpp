@@ -117,13 +117,35 @@ TCascStorage::~TCascStorage()
 
 TCascStorage * TCascStorage::AddRef()
 {
-    CascInterlockedIncrement(&dwRefCount);
+    // Need this to be atomic. On Windows, we use fast interlocked operations,
+    // on other systems, we need to lock the storage
+#ifdef PLATFORM_WINDOWS
+    CascInterlockedIncrement(dwRefCount);
+#else
+    CascLock(StorageLock);
+    dwRefCount++;
+    CascUnlock(StorageLock);
+#endif
+
     return this;
 }
 
 TCascStorage * TCascStorage::Release()
 {
-    if(CascInterlockedDecrement(&dwRefCount) == 0)
+    DWORD dwNewRefCount;
+
+    // Need this to be atomic. On Windows, we use fast interlocked operations,
+    // on other systems, we need to lock the storage
+#ifdef PLATFORM_WINDOWS
+    dwNewRefCount = CascInterlockedDecrement(dwRefCount);
+#else
+    CascLock(StorageLock);
+    dwNewRefCount = --dwRefCount;
+    CascUnlock(StorageLock);
+#endif
+
+    // If the reference count reached zero, we close the archive
+    if(dwNewRefCount == 0)
     {
         delete this;
         return NULL;

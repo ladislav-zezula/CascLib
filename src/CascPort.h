@@ -323,21 +323,21 @@
 //-----------------------------------------------------------------------------
 // Interlocked operations
 
-inline DWORD CascInterlockedIncrement(PDWORD PtrValue)
+inline DWORD CascInterlockedIncrement(DWORD & Value)
 {
 #ifdef PLATFORM_WINDOWS
-    return (DWORD)InterlockedIncrement((LONG *)(PtrValue));
+    return (DWORD)InterlockedIncrement((LONG *)(&Value));
 #else
-    return ++PtrValue[0];
+    return ++Value;
 #endif
 }
 
-inline DWORD CascInterlockedDecrement(PDWORD PtrValue)
+inline DWORD CascInterlockedDecrement(DWORD & Value)
 {
 #ifdef PLATFORM_WINDOWS
-    return (DWORD)InterlockedDecrement((LONG *)(PtrValue));
+    return (DWORD)InterlockedDecrement((LONG *)(&Value));
 #else
-    return --PtrValue[0];
+    return --Value;
 #endif
 }
 

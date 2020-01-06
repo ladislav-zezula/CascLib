@@ -15,6 +15,9 @@
 #include <stdio.h>
 #include <time.h>
 
+#include <vector>
+#include <thread>
+
 #ifdef _MSC_VER
 #include <io.h>
 #include <crtdbg.h>
@@ -42,8 +45,8 @@
 #endif
 
 #ifdef PLATFORM_LINUX
-#define CASC_PATH_ROOT "/mnt/casc"
-#define CASC_WORK_ROOT "/mnt/casc/Work"
+#define CASC_PATH_ROOT "/media/ladik/CascStorages"
+#define CASC_WORK_ROOT "/media/ladik/CascStorages/Work"
 #define UNREFERENCED_PARAMETER(var) (void)var;
 #endif
 
@@ -389,6 +392,7 @@ static DWORD ExtractFile(TLogHelper & LogHelper, TEST_PARAMS & Params, CASC_FIND
     // Did the open succeed?
     if(CascOpenFile(Params.hStorage, szOpenName, 0, Params.dwOpenFlags | CASC_STRICT_DATA_CHECK, &hFile))
     {
+/*
         // Retrieve the information about file spans.
         if((pSpans = GetFileInfo(hFile, FileInfo)) != NULL)
         {
@@ -498,8 +502,8 @@ static DWORD ExtractFile(TLogHelper & LogHelper, TEST_PARAMS & Params, CASC_FIND
         }
 
         // Increment the number of files processed
-        CascInterlockedIncrement(&LogHelper.FileCount);
-
+        CascInterlockedIncrement(LogHelper.FileCount);
+*/
         // Close the handle
         CascCloseFile(hFile);
     }
@@ -518,7 +522,7 @@ static PCASC_FIND_DATA GetNextInLine(PCASC_FIND_DATA_ARRAY pFiles)
     DWORD ItemIndex;
 
     // Atomically increment the value in the file array
-    ItemIndex = CascInterlockedIncrement(&pFiles->ItemIndex) - 1;
+    ItemIndex = CascInterlockedIncrement(pFiles->ItemIndex) - 1;
     if(ItemIndex < pFiles->ItemCount)
         return &pFiles->cf[ItemIndex];
 
@@ -531,9 +535,15 @@ static DWORD WINAPI Worker_ExtractFiles(PCASC_FIND_DATA_ARRAY pFiles)
     PCASC_FIND_DATA pFindData;
 
     // Retrieve the next-in-line found file
-    while((pFindData = GetNextInLine(pFiles)) != NULL)
+//  while((pFindData = GetNextInLine(pFiles)) != NULL)
+//  {
+//      ExtractFile(*pFiles->pLogHelper, *pFiles->pTestParams, *pFindData);
+//  }
+
+    // Keep extracting files for a very long time
+    for (size_t i = 0; i < 1000000; i++)
     {
-        ExtractFile(*pFiles->pLogHelper, *pFiles->pTestParams, *pFindData);
+        ExtractFile(*pFiles->pLogHelper, *pFiles->pTestParams, pFiles->cf[rand() % pFiles->ItemCount]);
     }
 
     return 0;
@@ -543,40 +553,26 @@ static DWORD WINAPI Worker_ExtractFiles(PCASC_FIND_DATA_ARRAY pFiles)
 
 static void RunExtractWorkers(PCASC_FIND_DATA_ARRAY pFiles)
 {
+    std::vector<std::thread> threads;
+    size_t dwCoresUsed = 40;
+
 #ifdef PLATFORM_WINDOWS
+//  SYSTEM_INFO si = { 0 };
+//  GetSystemInfo(&si);
+//  dwCoresUsed = (si.dwNumberOfProcessors > MIN_CPU_FREE) ? (si.dwNumberOfProcessors - MIN_CPU_FREE) : 1;
+#endif
 
-    SYSTEM_INFO si;
-    HANDLE WaitHandles[MAXIMUM_WAIT_OBJECTS];
-    HANDLE hThread;
-    DWORD dwThreadCount = 0;
-    DWORD dwThreadId = 0;
-    DWORD dwCoresUsed;
-
-    // Retrieve the number of processors. Let one third of them to do the work.
-    GetSystemInfo(&si);
-    dwCoresUsed = (si.dwNumberOfProcessors > MIN_CPU_FREE) ? (si.dwNumberOfProcessors - MIN_CPU_FREE) : 1;
-
-    // Create threads
-    for(DWORD i = 0; i < dwCoresUsed; i++)
+    // Run up to 40 worker threads
+    for (size_t i = 0; i < dwCoresUsed; i++)
     {
-        if((hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)Worker_ExtractFiles, pFiles, 0, &dwThreadId)) == NULL)
-            break;
-        WaitHandles[dwThreadCount++] = hThread;
+        threads.emplace_back(&Worker_ExtractFiles, pFiles);
     }
 
-    // Wait for all threads to complete
-    WaitForMultipleObjects(dwThreadCount, WaitHandles, TRUE, INFINITE);
-
-    // Close all threads
-    for(DWORD i = 0; i < dwThreadCount; i++)
-        CloseHandle(WaitHandles[i]);
-
-#else
-
-    // For non-Windows systems, directly call one thread
-    Worker_ExtractFiles(pFiles);
-
-#endif
+    // Let them threads finish their job
+    for (auto &thread : threads)
+    {
+        thread.join();
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -780,6 +776,7 @@ static DWORD Storage_EnumFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
         // Init the structure
         pFiles->pTestParams = &Params;
         pFiles->pLogHelper = &LogHelper;
+        pFiles->hStorage = hStorage;
         pFiles->ItemIndex = 0;
         pFiles->ItemCount = 0;
 
@@ -1102,13 +1099,13 @@ int main(void)
     //
     // Run the tests for every local storage in my collection
     //
-    for(size_t i = 0; StorageInfo1[i].szPath != NULL; i++)
-    {
-        // Attempt to open the storage and extract single file
-        dwErrCode = LocalStorage_Test(Storage_ReadFiles, StorageInfo1[i].szPath, StorageInfo1[i].szNameHash, StorageInfo1[i].szDataHash);
-        if(dwErrCode != ERROR_SUCCESS && dwErrCode != ERROR_FILE_NOT_FOUND)
-            break;
-    }
+//  for(size_t i = 0; StorageInfo1[i].szPath != NULL; i++)
+//  {
+//      // Attempt to open the storage and extract single file
+//      dwErrCode = LocalStorage_Test(Storage_ReadFiles, StorageInfo1[i].szPath, StorageInfo1[i].szNameHash, StorageInfo1[i].szDataHash);
+//      if(dwErrCode != ERROR_SUCCESS && dwErrCode != ERROR_FILE_NOT_FOUND)
+//          break;
+//  }
 
     //
     // Run the tests for every available online storage in my collection
