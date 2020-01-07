@@ -128,11 +128,9 @@ TCascStorage * TCascStorage::AddRef()
 
 TCascStorage * TCascStorage::Release()
 {
-    // Need this to be atomic to make multi-threaded file opens work
-    DWORD dwNewRefCount = CascInterlockedDecrement(dwRefCount);
-
     // If the reference count reached zero, we close the archive
-    if(dwNewRefCount == 0)
+    // Need this to be atomic to make multi-threaded file opens work
+    if(CascInterlockedDecrement(dwRefCount) == 0)
     {
         delete this;
         return NULL;
