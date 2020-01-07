@@ -392,7 +392,6 @@ static DWORD ExtractFile(TLogHelper & LogHelper, TEST_PARAMS & Params, CASC_FIND
     // Did the open succeed?
     if(CascOpenFile(Params.hStorage, szOpenName, 0, Params.dwOpenFlags | CASC_STRICT_DATA_CHECK, &hFile))
     {
-/*
         // Retrieve the information about file spans.
         if((pSpans = GetFileInfo(hFile, FileInfo)) != NULL)
         {
@@ -503,7 +502,7 @@ static DWORD ExtractFile(TLogHelper & LogHelper, TEST_PARAMS & Params, CASC_FIND
 
         // Increment the number of files processed
         CascInterlockedIncrement(LogHelper.FileCount);
-*/
+
         // Close the handle
         CascCloseFile(hFile);
     }
@@ -535,16 +534,16 @@ static DWORD WINAPI Worker_ExtractFiles(PCASC_FIND_DATA_ARRAY pFiles)
     PCASC_FIND_DATA pFindData;
 
     // Retrieve the next-in-line found file
-//  while((pFindData = GetNextInLine(pFiles)) != NULL)
-//  {
-//      ExtractFile(*pFiles->pLogHelper, *pFiles->pTestParams, *pFindData);
-//  }
+    while((pFindData = GetNextInLine(pFiles)) != NULL)
+    {
+        ExtractFile(*pFiles->pLogHelper, *pFiles->pTestParams, *pFindData);
+    }
 
     // Keep extracting files for a very long time
-    for (size_t i = 0; i < 1000000; i++)
-    {
-        ExtractFile(*pFiles->pLogHelper, *pFiles->pTestParams, pFiles->cf[rand() % pFiles->ItemCount]);
-    }
+//  for (size_t i = 0; i < 1000000; i++)
+//  {
+//      ExtractFile(*pFiles->pLogHelper, *pFiles->pTestParams, pFiles->cf[rand() % pFiles->ItemCount]);
+//  }
 
     return 0;
 }

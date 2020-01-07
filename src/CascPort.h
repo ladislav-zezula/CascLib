@@ -327,7 +327,10 @@ inline DWORD CascInterlockedIncrement(DWORD & Value)
 {
 #ifdef PLATFORM_WINDOWS
     return (DWORD)InterlockedIncrement((LONG *)(&Value));
+#elif defined(__GNUC__)
+    return __sync_add_and_fetch(&Value, 1);
 #else
+    #define INTERLOCKED_NOT_SUPPORTED
     return ++Value;
 #endif
 }
@@ -336,6 +339,8 @@ inline DWORD CascInterlockedDecrement(DWORD & Value)
 {
 #ifdef PLATFORM_WINDOWS
     return (DWORD)InterlockedDecrement((LONG *)(&Value));
+#elif defined(__GNUC__)
+    return __sync_sub_and_fetch(&Value, 1);
 #else
     return --Value;
 #endif
