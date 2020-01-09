@@ -15,6 +15,9 @@
 #include <stdio.h>
 #include <time.h>
 
+#include <vector>
+#include <thread>
+
 #ifdef _MSC_VER
 #include <io.h>
 #include <crtdbg.h>
@@ -42,8 +45,8 @@
 #endif
 
 #ifdef PLATFORM_LINUX
-#define CASC_PATH_ROOT "/mnt/casc"
-#define CASC_WORK_ROOT "/mnt/casc/Work"
+#define CASC_PATH_ROOT "/media/ladik/CascStorages"
+#define CASC_WORK_ROOT "/media/ladik/CascStorages/Work"
 #define UNREFERENCED_PARAMETER(var) (void)var;
 #endif
 
@@ -498,7 +501,7 @@ static DWORD ExtractFile(TLogHelper & LogHelper, TEST_PARAMS & Params, CASC_FIND
         }
 
         // Increment the number of files processed
-        CascInterlockedIncrement(&LogHelper.FileCount);
+        CascInterlockedIncrement(LogHelper.FileCount);
 
         // Close the handle
         CascCloseFile(hFile);
@@ -518,7 +521,7 @@ static PCASC_FIND_DATA GetNextInLine(PCASC_FIND_DATA_ARRAY pFiles)
     DWORD ItemIndex;
 
     // Atomically increment the value in the file array
-    ItemIndex = CascInterlockedIncrement(&pFiles->ItemIndex) - 1;
+    ItemIndex = CascInterlockedIncrement(pFiles->ItemIndex) - 1;
     if(ItemIndex < pFiles->ItemCount)
         return &pFiles->cf[ItemIndex];
 
@@ -536,6 +539,12 @@ static DWORD WINAPI Worker_ExtractFiles(PCASC_FIND_DATA_ARRAY pFiles)
         ExtractFile(*pFiles->pLogHelper, *pFiles->pTestParams, *pFindData);
     }
 
+    // Keep extracting files for a very long time
+//  for (size_t i = 0; i < 1000000; i++)
+//  {
+//      ExtractFile(*pFiles->pLogHelper, *pFiles->pTestParams, pFiles->cf[rand() % pFiles->ItemCount]);
+//  }
+
     return 0;
 }
 
@@ -543,40 +552,26 @@ static DWORD WINAPI Worker_ExtractFiles(PCASC_FIND_DATA_ARRAY pFiles)
 
 static void RunExtractWorkers(PCASC_FIND_DATA_ARRAY pFiles)
 {
+    std::vector<std::thread> threads;
+    size_t dwCoresUsed = 40;
+
 #ifdef PLATFORM_WINDOWS
+//  SYSTEM_INFO si = { 0 };
+//  GetSystemInfo(&si);
+//  dwCoresUsed = (si.dwNumberOfProcessors > MIN_CPU_FREE) ? (si.dwNumberOfProcessors - MIN_CPU_FREE) : 1;
+#endif
 
-    SYSTEM_INFO si;
-    HANDLE WaitHandles[MAXIMUM_WAIT_OBJECTS];
-    HANDLE hThread;
-    DWORD dwThreadCount = 0;
-    DWORD dwThreadId = 0;
-    DWORD dwCoresUsed;
-
-    // Retrieve the number of processors. Let one third of them to do the work.
-    GetSystemInfo(&si);
-    dwCoresUsed = (si.dwNumberOfProcessors > MIN_CPU_FREE) ? (si.dwNumberOfProcessors - MIN_CPU_FREE) : 1;
-
-    // Create threads
-    for(DWORD i = 0; i < dwCoresUsed; i++)
+    // Run up to 40 worker threads
+    for (size_t i = 0; i < dwCoresUsed; i++)
     {
-        if((hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)Worker_ExtractFiles, pFiles, 0, &dwThreadId)) == NULL)
-            break;
-        WaitHandles[dwThreadCount++] = hThread;
+        threads.emplace_back(&Worker_ExtractFiles, pFiles);
     }
 
-    // Wait for all threads to complete
-    WaitForMultipleObjects(dwThreadCount, WaitHandles, TRUE, INFINITE);
-
-    // Close all threads
-    for(DWORD i = 0; i < dwThreadCount; i++)
-        CloseHandle(WaitHandles[i]);
-
-#else
-
-    // For non-Windows systems, directly call one thread
-    Worker_ExtractFiles(pFiles);
-
-#endif
+    // Let them threads finish their job
+    for (auto &thread : threads)
+    {
+        thread.join();
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -780,6 +775,7 @@ static DWORD Storage_EnumFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
         // Init the structure
         pFiles->pTestParams = &Params;
         pFiles->pLogHelper = &LogHelper;
+        pFiles->hStorage = hStorage;
         pFiles->ItemIndex = 0;
         pFiles->ItemCount = 0;
 
@@ -1019,7 +1015,7 @@ static STORAGE_INFO1 StorageInfo1[] =
     //- Name of the storage folder -------- Compound file name hash ----------- Compound file data hash ----------- Example file to extract -----------------------------------------------------------
     {"Beta TVFS/00001",             "44833489ccf495e78d3a8f2ee9688ba6", "96e6457b649b11bcee54d52fa4be12e5", "ROOT"},
     {"Beta TVFS/00002",             "0ada2ba6b0decfa4013e0465f577abf1", "4da83fa60e0e505d14a5c21284142127", "ENCODING"},
-
+/*
     {"CoD4/3376209",                "e01180b36a8cfd82cb2daa862f5bbf3e", "79cd4cfc9eddad53e4b4d394c36b8b0c", "zone/base.xpak" },
 
     {"Diablo III/30013",            "86ba76b46c88eb7c6188d28a27d00f49", "19e37cc3c178ea0521369c09d67791ac", "ENCODING"},
@@ -1045,7 +1041,8 @@ static STORAGE_INFO1 StorageInfo1[] =
 
     {"Starcraft II/45364/\\/",      "28f8b15b5bbd87c16796246eac3f800c", "f9cd7fc20fa53701846109d3d6947d08", "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
     {"Starcraft II/75025",          "79c044e1286b7b18478556e571901294", "e290febb90e06e97b4db6f0eb519ca91", "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
-
+*/
+    {"Warcraft III/09231",          "8147106d7c05eaaf3f3611cc6f5314fe", "1b47c84d9b4ce58beeb2604a934cf83c", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
     {"Warcraft III/09655",          "f3f5470aa0ab4939fa234d3e29c3d347", "e45792b7459dc0c78ecb25130fa34d88", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
     {"Warcraft III/11889",          "ff36cd4f58aae23bd77d4a90c333bdb5", "4cba488e57f7dccfb77eca8c86578a37", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
 
@@ -1095,20 +1092,19 @@ int main(void)
     // Single tests
     //
 
-//  LocalStorage_Test(Storage_ReadFiles, "Blizzget\\work\\w3\\Data", NULL, NULL, "00000f8465973be812c8f2f7c105f02f");
-//  OnlineStorage_Test(Storage_EnumFiles, "w3", "eu", "0836dab8d1f4bdb2cf61fe155de1ae7d");
+    LocalStorage_Test(Storage_ReadFiles, "Heroes of the Storm/29049");
+//  OnlineStorage_Test(Storage_EnumFiles, "w3", "us", "2aa787736e88e43f6ace0a4ac897fc8f");
 
     //
     // Run the tests for every local storage in my collection
     //
-    for(size_t i = 0; StorageInfo1[i].szPath != NULL; i++)
-    {
-        // Attempt to open the storage and extract single file
-        dwErrCode = LocalStorage_Test(Storage_ReadFiles, StorageInfo1[i].szPath, StorageInfo1[i].szNameHash, StorageInfo1[i].szDataHash);
-//      dwErrCode = LocalStorage_Test(Storage_EnumFiles, StorageInfo1[i].szPath, StorageInfo1[i].szNameHash);
-        if(dwErrCode != ERROR_SUCCESS)
-            break;
-    }
+//  for(size_t i = 0; StorageInfo1[i].szPath != NULL; i++)
+//  {
+//      // Attempt to open the storage and extract single file
+//      dwErrCode = LocalStorage_Test(Storage_ReadFiles, StorageInfo1[i].szPath, StorageInfo1[i].szNameHash, StorageInfo1[i].szDataHash);
+//      if(dwErrCode != ERROR_SUCCESS && dwErrCode != ERROR_FILE_NOT_FOUND)
+//          break;
+//  }
 
     //
     // Run the tests for every available online storage in my collection
