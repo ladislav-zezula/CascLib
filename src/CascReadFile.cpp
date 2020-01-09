@@ -263,7 +263,7 @@ static LPBYTE CaptureBlteFileFrame(CASC_FILE_FRAME & Frame, LPBYTE pbFramePtr, L
     return pbFramePtr + sizeof(BLTE_FRAME);
 }
 
-static DWORD LoadSpanFrames(PCASC_FILE_SPAN pFileSpan, PCASC_CKEY_ENTRY pCKeyEntry, DWORD DataFileOffset, LPBYTE pbFramePtr, LPBYTE pbFrameEnd, size_t cbHeaderSize)
+static DWORD LoadSpanFrames(PCASC_FILE_SPAN pFileSpan, PCASC_CKEY_ENTRY pCKeyEntry, ULONGLONG DataFileOffset, LPBYTE pbFramePtr, LPBYTE pbFrameEnd, size_t cbHeaderSize)
 {
     PCASC_FILE_FRAME pFrames = NULL;
     DWORD ContentSize = 0;
@@ -426,8 +426,8 @@ static DWORD LoadEncodedHeaderAndSpanFrames(PCASC_FILE_SPAN pFileSpan, PCASC_CKE
                 // Load the array of frame headers
                 if (dwErrCode == ERROR_SUCCESS)
                 {
-                    assert((DWORD)(ReadOffset + cbHeaderSize) > (DWORD)ReadOffset);
-                    dwErrCode = LoadSpanFrames(pFileSpan, pCKeyEntry, (DWORD)(ReadOffset + cbHeaderSize), pbEncodedBuffer + cbHeaderSize, pbEncodedBuffer + cbEncodedBuffer, cbHeaderSize);
+                    assert((ReadOffset + cbHeaderSize) > ReadOffset);
+                    dwErrCode = LoadSpanFrames(pFileSpan, pCKeyEntry, ReadOffset + cbHeaderSize, pbEncodedBuffer + cbHeaderSize, pbEncodedBuffer + cbEncodedBuffer, cbHeaderSize);
                 }
             }
             else
@@ -827,7 +827,6 @@ static DWORD ReadFile_FrameCached(TCascFile * hf, LPBYTE pbBuffer, ULONGLONG Sta
     PCASC_CKEY_ENTRY pCKeyEntry = hf->pCKeyEntry;
     PCASC_FILE_SPAN pFileSpan = hf->pFileSpan;
     PCASC_FILE_FRAME pFileFrame = NULL;
-    ULONGLONG ByteOffset;
     LPBYTE pbSaveBuffer = pbBuffer;
     LPBYTE pbEncoded = NULL;
     LPBYTE pbDecoded = NULL;
@@ -882,8 +881,7 @@ static DWORD ReadFile_FrameCached(TCascFile * hf, LPBYTE pbBuffer, ULONGLONG Sta
                     }
 
                     // Load the frame to the encoded buffer
-                    ByteOffset = pFileFrame->DataFileOffset;
-                    if(FileStream_Read(pFileSpan->pStream, &ByteOffset, pbEncoded, pFileFrame->EncodedSize))
+                    if(FileStream_Read(pFileSpan->pStream, &pFileFrame->DataFileOffset, pbEncoded, pFileFrame->EncodedSize))
                     {
                         ULONGLONG EndOfCopy = CASCLIB_MIN(pFileFrame->EndOffset, EndOffset);
                         DWORD dwBytesToCopy = (DWORD)(EndOfCopy - StartOffset);

@@ -207,7 +207,7 @@ typedef struct _CASC_FILE_FRAME
     CONTENT_KEY FrameHash;                          // MD5 hash of the file frame
     ULONGLONG StartOffset;                          // Starting offset of the file span
     ULONGLONG EndOffset;                            // Ending offset of the file span
-    DWORD DataFileOffset;                           // Offset in the data file (data.###)
+    ULONGLONG DataFileOffset;                       // Offset in the data file (data.###)
     DWORD EncodedSize;                              // Encoded size of the frame
     DWORD ContentSize;                              // Content size of the frame
 } CASC_FILE_FRAME, *PCASC_FILE_FRAME;

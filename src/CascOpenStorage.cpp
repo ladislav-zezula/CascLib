@@ -14,6 +14,10 @@
 #include "CascLib.h"
 #include "CascCommon.h"
 
+#ifdef INTERLOCKED_NOT_SUPPORTED
+#pragma error Interlocked operations are not supported on this architecture. Multi-threaded access to CASC storages will not work properly.
+#endif
+
 //-----------------------------------------------------------------------------
 // Local defines
 
@@ -117,13 +121,16 @@ TCascStorage::~TCascStorage()
 
 TCascStorage * TCascStorage::AddRef()
 {
-    CascInterlockedIncrement(&dwRefCount);
+    // Need this to be atomic to make multi-threaded file opens work
+    CascInterlockedIncrement(dwRefCount);
     return this;
 }
 
 TCascStorage * TCascStorage::Release()
 {
-    if(CascInterlockedDecrement(&dwRefCount) == 0)
+    // If the reference count reached zero, we close the archive
+    // Need this to be atomic to make multi-threaded file opens work
+    if(CascInterlockedDecrement(dwRefCount) == 0)
     {
         delete this;
         return NULL;
