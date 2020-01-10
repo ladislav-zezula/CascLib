@@ -501,7 +501,7 @@ static DWORD ExtractFile(TLogHelper & LogHelper, TEST_PARAMS & Params, CASC_FIND
         }
 
         // Increment the number of files processed
-        CascInterlockedIncrement(LogHelper.FileCount);
+        CascInterlockedIncrement(&LogHelper.FileCount);
 
         // Close the handle
         CascCloseFile(hFile);
@@ -521,7 +521,7 @@ static PCASC_FIND_DATA GetNextInLine(PCASC_FIND_DATA_ARRAY pFiles)
     DWORD ItemIndex;
 
     // Atomically increment the value in the file array
-    ItemIndex = CascInterlockedIncrement(pFiles->ItemIndex) - 1;
+    ItemIndex = CascInterlockedIncrement(&pFiles->ItemIndex) - 1;
     if(ItemIndex < pFiles->ItemCount)
         return &pFiles->cf[ItemIndex];
 

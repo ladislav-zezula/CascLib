@@ -323,26 +323,26 @@
 //-----------------------------------------------------------------------------
 // Interlocked operations
 
-inline DWORD CascInterlockedIncrement(DWORD & Value)
+inline DWORD CascInterlockedIncrement(DWORD * PtrValue)
 {
 #ifdef PLATFORM_WINDOWS
-    return (DWORD)InterlockedIncrement((LONG *)(&Value));
+    return (DWORD)InterlockedIncrement((LONG *)(PtrValue));
 #elif defined(__GNUC__)
-    return __sync_add_and_fetch(&Value, 1);
+    return __sync_add_and_fetch(PtrValue, 1);
 #else
     #define INTERLOCKED_NOT_SUPPORTED
-    return ++Value;
+    return ++(*PtrValue);
 #endif
 }
 
-inline DWORD CascInterlockedDecrement(DWORD & Value)
+inline DWORD CascInterlockedDecrement(DWORD * PtrValue)
 {
 #ifdef PLATFORM_WINDOWS
-    return (DWORD)InterlockedDecrement((LONG *)(&Value));
+    return (DWORD)InterlockedDecrement((LONG *)(PtrValue));
 #elif defined(__GNUC__)
-    return __sync_sub_and_fetch(&Value, 1);
+    return __sync_sub_and_fetch(PtrValue, 1);
 #else
-    return --Value;
+    return --(*PtrValue);
 #endif
 }
 
