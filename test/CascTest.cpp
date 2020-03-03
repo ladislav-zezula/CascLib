@@ -1015,7 +1015,7 @@ static STORAGE_INFO1 StorageInfo1[] =
     //- Name of the storage folder -------- Compound file name hash ----------- Compound file data hash ----------- Example file to extract -----------------------------------------------------------
     {"Beta TVFS/00001",             "44833489ccf495e78d3a8f2ee9688ba6", "96e6457b649b11bcee54d52fa4be12e5", "ROOT"},
     {"Beta TVFS/00002",             "0ada2ba6b0decfa4013e0465f577abf1", "4da83fa60e0e505d14a5c21284142127", "ENCODING"},
-/*
+
     {"CoD4/3376209",                "e01180b36a8cfd82cb2daa862f5bbf3e", "79cd4cfc9eddad53e4b4d394c36b8b0c", "zone/base.xpak" },
 
     {"Diablo III/30013",            "86ba76b46c88eb7c6188d28a27d00f49", "19e37cc3c178ea0521369c09d67791ac", "ENCODING"},
@@ -1041,7 +1041,7 @@ static STORAGE_INFO1 StorageInfo1[] =
 
     {"Starcraft II/45364/\\/",      "28f8b15b5bbd87c16796246eac3f800c", "f9cd7fc20fa53701846109d3d6947d08", "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
     {"Starcraft II/75025",          "79c044e1286b7b18478556e571901294", "e290febb90e06e97b4db6f0eb519ca91", "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
-*/
+
     {"Warcraft III/09231",          "8147106d7c05eaaf3f3611cc6f5314fe", "1b47c84d9b4ce58beeb2604a934cf83c", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
     {"Warcraft III/09655",          "f3f5470aa0ab4939fa234d3e29c3d347", "e45792b7459dc0c78ecb25130fa34d88", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
     {"Warcraft III/11889",          "ff36cd4f58aae23bd77d4a90c333bdb5", "4cba488e57f7dccfb77eca8c86578a37", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
@@ -1098,13 +1098,13 @@ int main(void)
     //
     // Run the tests for every local storage in my collection
     //
-//  for(size_t i = 0; StorageInfo1[i].szPath != NULL; i++)
-//  {
-//      // Attempt to open the storage and extract single file
-//      dwErrCode = LocalStorage_Test(Storage_ReadFiles, StorageInfo1[i].szPath, StorageInfo1[i].szNameHash, StorageInfo1[i].szDataHash);
-//      if(dwErrCode != ERROR_SUCCESS && dwErrCode != ERROR_FILE_NOT_FOUND)
-//          break;
-//  }
+    for(size_t i = 0; StorageInfo1[i].szPath != NULL; i++)
+    {
+        // Attempt to open the storage and extract single file
+        dwErrCode = LocalStorage_Test(Storage_ReadFiles, StorageInfo1[i].szPath, StorageInfo1[i].szNameHash, StorageInfo1[i].szDataHash);
+        if(dwErrCode != ERROR_SUCCESS && dwErrCode != ERROR_FILE_NOT_FOUND)
+            break;
+    }
 
     //
     // Run the tests for every available online storage in my collection
