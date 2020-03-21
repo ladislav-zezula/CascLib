@@ -144,7 +144,7 @@ if(CASC_BUILD_STATIC_LIB)
 	install(TARGETS casc_static RUNTIME DESTINATION bin LIBRARY DESTINATION lib${LIB_SUFFIX} ARCHIVE DESTINATION lib${LIB_SUFFIX} FRAMEWORK DESTINATION /Library/Frameworks)
 
 	if(APPLE)
-    set_target_properties(casc_static PROPERTIES FRAMEWORK true)
+    set_target_properties(casc_static PROPERTIES FRAMEWORK false)
     set_target_properties(casc_static PROPERTIES PUBLIC_HEADER "src/CascLib.h src/CascPort.h")
     set_target_properties(casc_static PROPERTIES LINK_FLAGS "-framework Carbon")
 endif()
