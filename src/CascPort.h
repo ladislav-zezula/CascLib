@@ -100,6 +100,7 @@
   #include <wchar.h>
   #include <cassert>
   #include <errno.h>
+  #include <pthread.h>
 
   // Support for PowerPC on Max OS X
   #if (__ppc__ == 1) || (__POWERPC__ == 1) || (_ARCH_PPC == 1)
