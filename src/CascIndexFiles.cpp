@@ -316,8 +316,10 @@ static DWORD LoadIndexItems(TCascStorage * hs, CASC_INDEX_HEADER & InHeader, EKE
 
     while((pbEKeyEntry + EntryLength) <= pbEKeyEnd)
     {
-        // DOWNLOAD in HOTS
-        //BREAK_ON_XKEY3(pbEKeyEntry, 0x09, 0xF3, 0xCD);
+        // ENCODING, DOWNLOAD, ROOT in Warcraft III Reforged build 14481
+        BREAK_ON_XKEY3(pbEKeyEntry, 0xcd, 0x3b, 0xd8);
+        BREAK_ON_XKEY3(pbEKeyEntry, 0xdb, 0xfa, 0x35);
+        BREAK_ON_XKEY3(pbEKeyEntry, 0x5c, 0xe8, 0x48);
 
         if(!PfnEKeyEntry(hs, InHeader, pbEKeyEntry))
             return ERROR_INDEX_PARSING_DONE;
@@ -578,7 +580,7 @@ static DWORD LoadLocalIndexFiles(TCascStorage * hs)
             // WoW6 actually reads THE ENTIRE file to memory. Verified on Mac build (x64).
             if((IndexFile.pbFileData = LoadFileToMemory(IndexFile.szFileName, &cbFileData)) == NULL)
             {
-                // Storages downloaded by Blizzget tool don't have all inex files present
+                // Storages downloaded by Blizzget tool don't have all index files present
                 if((dwErrCode = GetLastError()) == ERROR_FILE_NOT_FOUND)
                 {
                     dwErrCode = ERROR_SUCCESS;
