@@ -227,7 +227,7 @@
     <OutDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</OutDir>
     <IntDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)DAD</TargetName>
-    <IncludePath>$(VC_IncludePath);$(WindowsSdk_71A_IncludePath);</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugAS|Win32'">
     <OutDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</OutDir>
@@ -238,7 +238,7 @@
     <OutDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</OutDir>
     <IntDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)DAS</TargetName>
-    <IncludePath>$(VC_IncludePath);$(WindowsSdk_71A_IncludePath);</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseAD|Win32'">
     <OutDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</OutDir>
@@ -249,7 +249,7 @@
     <OutDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</OutDir>
     <IntDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)RAD</TargetName>
-    <IncludePath>$(VC_IncludePath);$(WindowsSdk_71A_IncludePath);</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseAS|Win32'">
     <OutDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</OutDir>
@@ -260,7 +260,7 @@
     <OutDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</OutDir>
     <IntDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)RAS</TargetName>
-    <IncludePath>$(VC_IncludePath);$(WindowsSdk_71A_IncludePath);</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugUD|Win32'">
     <OutDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</OutDir>
@@ -271,7 +271,7 @@
     <OutDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</OutDir>
     <IntDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)DUD</TargetName>
-    <IncludePath>$(VC_IncludePath);$(WindowsSdk_71A_IncludePath);</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugUS|Win32'">
     <OutDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</OutDir>
@@ -282,7 +282,7 @@
     <OutDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</OutDir>
     <IntDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)DUS</TargetName>
-    <IncludePath>$(VC_IncludePath);$(WindowsSdk_71A_IncludePath);</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseUD|Win32'">
     <OutDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</OutDir>
@@ -293,7 +293,7 @@
     <OutDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</OutDir>
     <IntDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)RUD</TargetName>
-    <IncludePath>$(VC_IncludePath);$(WindowsSdk_71A_IncludePath);</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseUS|Win32'">
     <OutDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</OutDir>
@@ -304,7 +304,7 @@
     <OutDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</OutDir>
     <IntDir>./bin/$(ProjectName)/$(Platform)/$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)RUS</TargetName>
-    <IncludePath>$(VC_IncludePath);$(WindowsSdk_71A_IncludePath);</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugAD|Win32'">
     <ClCompile>

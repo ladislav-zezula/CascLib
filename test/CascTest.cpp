@@ -1092,7 +1092,7 @@ int main(int argc, char * argv[])
     // Single tests
     //
 
-    //LocalStorage_Test(Storage_SeekFiles, "e:\\Multimedia\\CASC\\Warcraft III\\14722", NULL, "86dee6f1b0ee3663ae4c855a1305f0be", "war3.w3mod:campaign\\reforged\\tft\\orcx01_05.w3x");
+    LocalStorage_Test(Storage_SeekFiles, "e:\\Multimedia\\CASC\\Warcraft III\\14722", NULL, "86dee6f1b0ee3663ae4c855a1305f0be", "war3.w3mod:campaign\\reforged\\tft\\orcx01_05.w3x");
     //OnlineStorage_Test(Storage_EnumFiles, "w3", "us", "2aa787736e88e43f6ace0a4ac897fc8f");
 
     //

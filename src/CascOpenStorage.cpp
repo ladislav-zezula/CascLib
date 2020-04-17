@@ -69,11 +69,14 @@ TCascStorage::TCascStorage()
     memset(DataFiles, 0, sizeof(DataFiles));
     memset(IndexFiles, 0, sizeof(IndexFiles));
     CascInitLock(StorageLock);
+    dwDefaultLocale = 0;
     dwBuildNumber = 0;
     dwFeatures = 0;
     BuildFileType = CascBuildNone;
 
+    LastFailKeyName = 0;
     LocalFiles = TotalFiles = EKeyEntries = EKeyLength = FileOffsetBits = 0;
+    pArgs = NULL;
 }
 
 TCascStorage::~TCascStorage()
