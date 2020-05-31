@@ -206,8 +206,12 @@ HANDLE WINAPI CascFindFirstFile(
     // Check parameters
     if((hs = TCascStorage::IsValid(hStorage)) == NULL)
         dwErrCode = ERROR_INVALID_HANDLE;
-    if(szMask == NULL || pFindData == NULL)
+    if(pFindData == NULL)
         dwErrCode = ERROR_INVALID_PARAMETER;
+
+    // Supply default mask, if needed
+    if(szMask == NULL || szMask[0] == 0)
+        szMask = "*";
 
     // Init the search structure and search handle
     if(dwErrCode == ERROR_SUCCESS)
