@@ -50,8 +50,8 @@ static bool IndexDirectory_OnFileFound(
 {
     TCascStorage * hs = (TCascStorage *)pvContext;
     PCASC_INDEX pIndexFile;
-    DWORD IndexValue = 0;
     DWORD IndexVersion = 0;
+    DWORD IndexValue = 0;
 
     // Auto-detect the format of the index file name
     if(hs->szIndexFormat == NULL)
@@ -71,9 +71,9 @@ static bool IndexDirectory_OnFileFound(
             return false;
 
         // Get the main index from the first two digits
-        if(ConvertStringToInt32(szFileName, 2, &IndexValue) != ERROR_SUCCESS)
+        if(ConvertStringToInt(szFileName + 0, 2, IndexValue) != ERROR_SUCCESS)
             return false;
-        if(ConvertStringToInt32(szFileName + 2, 8, &IndexVersion) != ERROR_SUCCESS)
+        if(ConvertStringToInt(szFileName + 2, 8, IndexVersion) != ERROR_SUCCESS)
             return false;
     }
     else if(hs->szIndexFormat == szIndexFormat_V1)
@@ -83,9 +83,9 @@ static bool IndexDirectory_OnFileFound(
             return false;
 
         // Get the main index from the first two digits
-        if(ConvertDigitToInt32(szFileName + 6, &IndexValue) != ERROR_SUCCESS)
+        if(ConvertStringToInt(szFileName + 6, 1, IndexValue) != ERROR_SUCCESS)
             return false;
-        if(ConvertDigitToInt32(szFileName + 7, &IndexVersion) != ERROR_SUCCESS)
+        if(ConvertStringToInt(szFileName + 7, 1, IndexVersion) != ERROR_SUCCESS)
             return false;
     }
     else

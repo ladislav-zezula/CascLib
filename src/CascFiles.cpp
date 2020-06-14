@@ -153,7 +153,7 @@ static const char * CaptureSingleHash(const char * szDataPtr, const char * szDat
         return NULL;
 
     // Give the values
-    ConvertStringToBinary(szHashString, HashStringLength, HashValue);
+    BinaryFromString(szHashString, HashStringLength, HashValue);
     return szDataPtr;
 }
 
@@ -717,7 +717,7 @@ static DWORD ParseFile_VersionsDb(TCascStorage * hs, CASC_CSV & Csv)
             {
                 // If we have manually given build key, override the value
                 if(hs->szBuildKey != NULL)
-                    dwErrCode = ConvertStringToBinary(hs->szBuildKey, MD5_STRING_SIZE, hs->CdnBuildKey.pbData);
+                    dwErrCode = BinaryFromString(hs->szBuildKey, MD5_STRING_SIZE, hs->CdnBuildKey.pbData);
                 return dwErrCode;
             }
 

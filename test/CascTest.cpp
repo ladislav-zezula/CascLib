@@ -152,7 +152,7 @@ static bool IsFileKey(LPCSTR szFileName)
             return false;
 
         // Convert the BLOB to binary.
-        bIsKey = (ConvertStringToBinary(szFileName, MD5_STRING_SIZE, KeyBuffer) == ERROR_SUCCESS);
+        bIsKey = (BinaryFromString(szFileName, MD5_STRING_SIZE, KeyBuffer) == ERROR_SUCCESS);
     }
 
     return bIsKey;
@@ -889,6 +889,9 @@ static DWORD LocalStorage_Test(PFN_RUN_TEST PfnRunTest, LPCSTR szStorage, LPCSTR
     {
         TEST_PARAMS Params;
 
+        // Import test encryption keys
+        CascImportKeysFromFile(hStorage, _T("e:\\tactkeys.txt"));
+
         // Configure the test parameters
         Params.hStorage = hStorage;
         Params.szExpectedNameHash = szExpectedNameHash;
@@ -1093,6 +1096,7 @@ int main(int argc, char * argv[])
     //
 
     LocalStorage_Test(Storage_SeekFiles, "e:\\Multimedia\\CASC\\Warcraft III\\14722", NULL, "86dee6f1b0ee3663ae4c855a1305f0be", "war3.w3mod:campaign\\reforged\\tft\\orcx01_05.w3x");
+    
     //OnlineStorage_Test(Storage_EnumFiles, "w3", "us", "2aa787736e88e43f6ace0a4ac897fc8f");
 
     //

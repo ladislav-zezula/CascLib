@@ -15,7 +15,7 @@
 //-----------------------------------------------------------------------------
 // Local structures
 
-#define CASC_EXTRA_KEYS 0x80
+#define CASC_EXTRA_KEYS 0x800
 
 typedef struct _CASC_ENCRYPTION_KEY
 {
@@ -831,7 +831,7 @@ bool WINAPI CascAddStringEncryptionKey(HANDLE hStorage, ULONGLONG KeyName, LPCST
     }
 
     // Convert the string key to the binary array
-    if(ConvertStringToBinary(szKey, CASC_KEY_LENGTH * 2, Key) != ERROR_SUCCESS)
+    if(BinaryFromString(szKey, CASC_KEY_LENGTH * 2, Key) != ERROR_SUCCESS)
     {
         SetLastError(ERROR_INVALID_PARAMETER);
         return false;
@@ -876,4 +876,93 @@ bool WINAPI CascGetNotFoundEncryptionKey(HANDLE hStorage, ULONGLONG * KeyName)
     // Give the name of the key that failed most recently
     KeyName[0] = hs->LastFailKeyName;
     return true;
+}
+
+bool WINAPI CascImportKeysFromString(HANDLE hStorage, LPCSTR szKeyList)
+{
+    // Verify parameters
+    if(TCascStorage::IsValid(hStorage) == NULL || szKeyList == NULL || szKeyList[0] == 0)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return false;
+    }
+
+    // Parse text file
+    while(szKeyList[0])
+    {
+        ULONGLONG KeyName = 0;
+        DWORD dwErrCode;
+        BYTE KeyValue[CASC_KEY_LENGTH];
+
+        // Capture key name
+        dwErrCode = ConvertStringToInt(szKeyList, 0, KeyName, &szKeyList);
+        if(dwErrCode != ERROR_SUCCESS)
+        {
+            SetLastError(dwErrCode);
+            return false;
+        }
+
+        // Skip the spaces
+        while(0 < szKeyList[0] && szKeyList[0] <= 0x20)
+            szKeyList++;
+
+        // Convert the string to binary
+        dwErrCode = BinaryFromString(szKeyList, CASC_KEY_LENGTH * 2, KeyValue);
+        if(dwErrCode != ERROR_SUCCESS)
+        {
+            SetLastError(dwErrCode);
+            return false;
+        }
+
+        // Add the encryption key
+        if(!CascAddEncryptionKey(hStorage, KeyName, KeyValue))
+        {
+            if(GetLastError() != ERROR_ALREADY_EXISTS)
+                return false;
+        }
+
+        // Move to the next key
+        while(szKeyList[0] != 0 && szKeyList[0] != 0x0A && szKeyList[0] != 0x0D)
+            szKeyList++;
+        while(szKeyList[0] == 0x0A || szKeyList[0] == 0x0D)
+            szKeyList++;
+    }
+
+    return true;
+}
+
+bool WINAPI CascImportKeysFromFile(HANDLE hStorage, LPCTSTR szFileName)
+{
+    TFileStream * pFileStream;
+    ULONGLONG FileSize = 0;
+    LPSTR szKeyList;
+    bool bResult = false;
+
+    // Open the file
+    if((pFileStream = FileStream_OpenFile(szFileName, STREAM_FLAG_READ_ONLY)) != NULL)
+    {
+        // Load the entire file to memory, up to 10 MB
+        if(FileStream_GetSize(pFileStream, &FileSize) && FileSize < 0xA00000)
+        {
+            DWORD FileSize32 = (DWORD)FileSize;
+
+            // Allocate buffer for the key stream
+            if((szKeyList = CASC_ALLOC<char>(FileSize32 + 1)) != NULL)
+            {
+                // Read the entire file and terminate it with zero
+                FileStream_Read(pFileStream, NULL, szKeyList, FileSize32);
+                szKeyList[FileSize] = 0;
+
+                // Import the buffer
+                bResult = CascImportKeysFromString(hStorage, szKeyList);
+                CASC_FREE(szKeyList);
+            }
+        }
+        else
+            SetLastError(ERROR_FILE_TOO_LARGE);
+
+        FileStream_Close(pFileStream);
+    }
+
+    return bResult;
 }
