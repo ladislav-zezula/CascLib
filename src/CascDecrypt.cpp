@@ -779,6 +779,7 @@ DWORD CascDirectCopy(LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBYTE pbInBuffer,
 
 bool WINAPI CascAddEncryptionKey(HANDLE hStorage, ULONGLONG KeyName, LPBYTE Key)
 {
+    PCASC_ENCRYPTION_KEY pExistingKey;
     PCASC_ENCRYPTION_KEY pEncKey;
     TCascStorage * hs;
 
@@ -790,30 +791,37 @@ bool WINAPI CascAddEncryptionKey(HANDLE hStorage, ULONGLONG KeyName, LPBYTE Key)
         return false;
     }
 
-    // Don't allow more than CASC_EXTRA_KEYS keys
-    if (hs->ExtraKeysList.ItemCount() >= CASC_EXTRA_KEYS)
+    // Check if the key is already there
+    pExistingKey = (PCASC_ENCRYPTION_KEY)hs->EncryptionKeys.FindObject(&KeyName);
+    if(pExistingKey != NULL)
     {
-        SetLastError(ERROR_INSUFFICIENT_BUFFER);
-        return false;
+        // If the key value is identical, we consider it OK
+        if(memcmp(pExistingKey->Key, Key, CASC_KEY_LENGTH))
+        {
+            SetLastError(ERROR_ALREADY_EXISTS);
+            return false;
+        }
     }
-
-    // Insert the key to the array
-    pEncKey = (PCASC_ENCRYPTION_KEY)hs->ExtraKeysList.Insert(1);
-    if (pEncKey == NULL)
+    else
     {
-        SetLastError(ERROR_NOT_ENOUGH_MEMORY);
-        return false;
-    }
+        // Insert the key to the array. Do not allow array enlarging
+        pEncKey = (PCASC_ENCRYPTION_KEY)hs->ExtraKeysList.Insert(1, false);
+        if (pEncKey == NULL)
+        {
+            SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+            return false;
+        }
 
-    // Fill the key
-    memcpy(pEncKey->Key, Key, sizeof(pEncKey->Key));
-    pEncKey->KeyName = KeyName;
+        // Fill the key
+        memcpy(pEncKey->Key, Key, sizeof(pEncKey->Key));
+        pEncKey->KeyName = KeyName;
 
-    // Also insert the key to the map
-    if (!hs->EncryptionKeys.InsertObject(pEncKey, &pEncKey->KeyName))
-    {
-        SetLastError(ERROR_ALREADY_EXISTS);
-        return false;
+        // Also insert the key to the map
+        if (!hs->EncryptionKeys.InsertObject(pEncKey, &pEncKey->KeyName))
+        {
+            SetLastError(ERROR_ALREADY_EXISTS);
+            return false;
+        }
     }
 
     return true;
@@ -914,12 +922,10 @@ bool WINAPI CascImportKeysFromString(HANDLE hStorage, LPCSTR szKeyList)
             return false;
         }
 
-        // Add the encryption key
+        // Add the encryption key. Note that if the key already exists with the same value,
+        // CascAddEncryptionKey will consider it success.
         if(!CascAddEncryptionKey(hStorage, KeyName, KeyValue))
-        {
-            if(GetLastError() != ERROR_ALREADY_EXISTS)
-                return false;
-        }
+            return false;
 
         // Move to the next key
         while(szKeyList[0] != 0 && szKeyList[0] != 0x0A && szKeyList[0] != 0x0D)
