@@ -533,68 +533,6 @@ ULONGLONG CalcFileNameHash(const char * szFileName)
     return CalcNormNameHash(szNormName, nLength);
 }
 
-DWORD ConvertDigitToInt32(LPCTSTR szString, PDWORD PtrValue)
-{
-    BYTE Digit;
-
-    Digit = (BYTE)(AsciiToUpperTable_BkSlash[szString[0]] - _T('0'));
-    if(Digit > 9)
-        Digit -= 'A' - '9' - 1;
-
-    PtrValue[0] = Digit;
-    return (Digit > 0x0F) ? ERROR_BAD_FORMAT : ERROR_SUCCESS;
-}
-/*
-DWORD ConvertStringToInt08(LPCSTR szString, PDWORD PtrValue)
-{
-    BYTE DigitOne = AsciiToUpperTable_BkSlash[szString[0]] - '0';
-    BYTE DigitTwo = AsciiToUpperTable_BkSlash[szString[1]] - '0';
-
-    // Fix the digits
-    if(DigitOne > 9)
-        DigitOne -= 'A' - '9' - 1;
-    if(DigitTwo > 9)
-        DigitTwo -= 'A' - '9' - 1;
-
-    // Combine them into a value
-    PtrValue[0] = (DigitOne << 0x04) | DigitTwo;
-    return (DigitOne <= 0x0F && DigitTwo <= 0x0F) ? ERROR_SUCCESS : ERROR_BAD_FORMAT;
-}
-*/
-DWORD ConvertStringToInt32(LPCTSTR szString, size_t nMaxDigits, PDWORD PtrValue)
-{
-    // The number of digits must be even
-    assert((nMaxDigits & 0x01) == 0);
-    assert(nMaxDigits <= 8);
-
-    // Prepare the variables
-    PtrValue[0] = 0;
-    nMaxDigits >>= 1;
-
-    // Convert the string up to the number of digits
-    for(size_t i = 0; i < nMaxDigits; i++)
-    {
-        BYTE DigitOne;
-        BYTE DigitTwo;
-
-        DigitOne = (BYTE)(AsciiToUpperTable_BkSlash[szString[0]] - _T('0'));
-        if(DigitOne > 9)
-            DigitOne -= 'A' - '9' - 1;
-
-        DigitTwo = (BYTE)(AsciiToUpperTable_BkSlash[szString[1]] - _T('0'));
-        if(DigitTwo > 9)
-            DigitTwo -= 'A' - '9' - 1;
-
-        if(DigitOne > 0x0F || DigitTwo > 0x0F)
-            return ERROR_BAD_FORMAT;
-
-        PtrValue[0] = (PtrValue[0] << 0x08) | (DigitOne << 0x04) | DigitTwo;
-        szString += 2;
-    }
-
-    return ERROR_SUCCESS;
-}
-
 //-----------------------------------------------------------------------------
 // File name utilities
 

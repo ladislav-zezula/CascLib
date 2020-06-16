@@ -889,9 +889,6 @@ static DWORD LocalStorage_Test(PFN_RUN_TEST PfnRunTest, LPCSTR szStorage, LPCSTR
     {
         TEST_PARAMS Params;
 
-        // Import test encryption keys
-        CascImportKeysFromFile(hStorage, _T("e:\\tactkeys.txt"));
-
         // Configure the test parameters
         Params.hStorage = hStorage;
         Params.szExpectedNameHash = szExpectedNameHash;
