@@ -369,6 +369,8 @@ bool  WINAPI CascFindClose(HANDLE hFind);
 
 bool   WINAPI CascAddEncryptionKey(HANDLE hStorage, ULONGLONG KeyName, LPBYTE Key);
 bool   WINAPI CascAddStringEncryptionKey(HANDLE hStorage, ULONGLONG KeyName, LPCSTR szKey);
+bool   WINAPI CascImportKeysFromString(HANDLE hStorage, LPCSTR szKeyList);
+bool   WINAPI CascImportKeysFromFile(HANDLE hStorage, LPCTSTR szFileName);
 LPBYTE WINAPI CascFindEncryptionKey(HANDLE hStorage, ULONGLONG KeyName);
 bool   WINAPI CascGetNotFoundEncryptionKey(HANDLE hStorage, ULONGLONG * KeyName);
 

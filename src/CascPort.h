@@ -254,6 +254,8 @@
   #define ERROR_CAN_NOT_COMPLETE         1003       // No such error code under Linux
   #define ERROR_FILE_CORRUPT             1004       // No such error code under Linux
   #define ERROR_FILE_ENCRYPTED           1005       // Returned by encrypted stream when can't find file key
+  #define ERROR_FILE_TOO_LARGE           1006       // No such error code under Linux
+  #define ERROR_ARITHMETIC_OVERFLOW      1007       // The string value is too large to fit in the given type
 #endif
 
 #ifndef ERROR_FILE_INCOMPLETE
