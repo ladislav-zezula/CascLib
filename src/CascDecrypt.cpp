@@ -910,6 +910,10 @@ bool WINAPI CascImportKeysFromString(HANDLE hStorage, LPCSTR szKeyList)
             return false;
         }
 
+        // TACT key list downloaded from https://wow.tools/api.php?type=tactkeys ends with a single zero
+        if(KeyName == 0)
+            break;
+
         // Skip the spaces
         while(0 < szKeyList[0] && szKeyList[0] <= 0x20)
             szKeyList++;
