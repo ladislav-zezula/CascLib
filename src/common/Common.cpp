@@ -75,21 +75,26 @@ unsigned char AsciiToHexTable[128] =
 unsigned char IntToHexChar[] = "0123456789abcdef";
 
 //-----------------------------------------------------------------------------
-// GetLastError/SetLastError support for non-Windows platform
+// GetCascError/SetCascError support for non-Windows platform
 
-#ifndef PLATFORM_WINDOWS
 static DWORD dwLastError = ERROR_SUCCESS;
 
-DWORD GetLastError()
+DWORD GetCascError()
 {
+#ifdef PLATFORM_WINDOWS
+    return GetLastError();
+#else
     return dwLastError;
+#endif
 }
 
-void SetLastError(DWORD dwErrCode)
+void SetCascError(DWORD dwErrCode)
 {
+#ifdef PLATFORM_WINDOWS
+    SetLastError(dwErrCode);
+#endif
     dwLastError = dwErrCode;
 }
-#endif
 
 //-----------------------------------------------------------------------------
 // Linear data stream manipulation

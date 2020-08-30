@@ -787,7 +787,7 @@ bool WINAPI CascAddEncryptionKey(HANDLE hStorage, ULONGLONG KeyName, LPBYTE Key)
     hs = TCascStorage::IsValid(hStorage);
     if (hs == NULL)
     {
-        SetLastError(ERROR_INVALID_HANDLE);
+        SetCascError(ERROR_INVALID_HANDLE);
         return false;
     }
 
@@ -798,7 +798,7 @@ bool WINAPI CascAddEncryptionKey(HANDLE hStorage, ULONGLONG KeyName, LPBYTE Key)
         // If the key value is identical, we consider it OK
         if(memcmp(pExistingKey->Key, Key, CASC_KEY_LENGTH))
         {
-            SetLastError(ERROR_ALREADY_EXISTS);
+            SetCascError(ERROR_ALREADY_EXISTS);
             return false;
         }
     }
@@ -808,7 +808,7 @@ bool WINAPI CascAddEncryptionKey(HANDLE hStorage, ULONGLONG KeyName, LPBYTE Key)
         pEncKey = (PCASC_ENCRYPTION_KEY)hs->ExtraKeysList.Insert(1, false);
         if (pEncKey == NULL)
         {
-            SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+            SetCascError(ERROR_NOT_ENOUGH_MEMORY);
             return false;
         }
 
@@ -819,7 +819,7 @@ bool WINAPI CascAddEncryptionKey(HANDLE hStorage, ULONGLONG KeyName, LPBYTE Key)
         // Also insert the key to the map
         if (!hs->EncryptionKeys.InsertObject(pEncKey, &pEncKey->KeyName))
         {
-            SetLastError(ERROR_ALREADY_EXISTS);
+            SetCascError(ERROR_ALREADY_EXISTS);
             return false;
         }
     }
@@ -834,14 +834,14 @@ bool WINAPI CascAddStringEncryptionKey(HANDLE hStorage, ULONGLONG KeyName, LPCST
     // Check the length of the string key
     if(strlen(szKey) != CASC_KEY_LENGTH * 2)
     {
-        SetLastError(ERROR_INVALID_PARAMETER);
+        SetCascError(ERROR_INVALID_PARAMETER);
         return false;
     }
 
     // Convert the string key to the binary array
     if(BinaryFromString(szKey, CASC_KEY_LENGTH * 2, Key) != ERROR_SUCCESS)
     {
-        SetLastError(ERROR_INVALID_PARAMETER);
+        SetCascError(ERROR_INVALID_PARAMETER);
         return false;
     }
 
@@ -856,7 +856,7 @@ LPBYTE WINAPI CascFindEncryptionKey(HANDLE hStorage, ULONGLONG KeyName)
     hs = TCascStorage::IsValid(hStorage);
     if (hs == NULL)
     {
-        SetLastError(ERROR_INVALID_HANDLE);
+        SetCascError(ERROR_INVALID_HANDLE);
         return NULL;
     }
 
@@ -870,14 +870,14 @@ bool WINAPI CascGetNotFoundEncryptionKey(HANDLE hStorage, ULONGLONG * KeyName)
     // Validate the storage handle
     if ((hs = TCascStorage::IsValid(hStorage)) == NULL)
     {
-        SetLastError(ERROR_INVALID_HANDLE);
+        SetCascError(ERROR_INVALID_HANDLE);
         return false;
     }
 
     // If there was no decryption key error, just return false with ERROR_SUCCESS
     if(hs->LastFailKeyName == 0)
     {
-        SetLastError(ERROR_SUCCESS);
+        SetCascError(ERROR_SUCCESS);
         return false;
     }
 
@@ -891,7 +891,7 @@ bool WINAPI CascImportKeysFromString(HANDLE hStorage, LPCSTR szKeyList)
     // Verify parameters
     if(TCascStorage::IsValid(hStorage) == NULL || szKeyList == NULL || szKeyList[0] == 0)
     {
-        SetLastError(ERROR_INVALID_PARAMETER);
+        SetCascError(ERROR_INVALID_PARAMETER);
         return false;
     }
 
@@ -906,7 +906,7 @@ bool WINAPI CascImportKeysFromString(HANDLE hStorage, LPCSTR szKeyList)
         dwErrCode = ConvertStringToInt(szKeyList, 0, KeyName, &szKeyList);
         if(dwErrCode != ERROR_SUCCESS)
         {
-            SetLastError(dwErrCode);
+            SetCascError(dwErrCode);
             return false;
         }
 
@@ -922,7 +922,7 @@ bool WINAPI CascImportKeysFromString(HANDLE hStorage, LPCSTR szKeyList)
         dwErrCode = BinaryFromString(szKeyList, CASC_KEY_LENGTH * 2, KeyValue);
         if(dwErrCode != ERROR_SUCCESS)
         {
-            SetLastError(dwErrCode);
+            SetCascError(dwErrCode);
             return false;
         }
 
@@ -969,7 +969,7 @@ bool WINAPI CascImportKeysFromFile(HANDLE hStorage, LPCTSTR szFileName)
             }
         }
         else
-            SetLastError(ERROR_FILE_TOO_LARGE);
+            SetCascError(ERROR_FILE_TOO_LARGE);
 
         FileStream_Close(pFileStream);
     }

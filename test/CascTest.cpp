@@ -466,7 +466,7 @@ static DWORD ExtractFile(TLogHelper & LogHelper, TEST_PARAMS & Params, CASC_FIND
                 {
                     // Do not report some errors; for example, when the file is encrypted,
                     // we can't do much about it. Only report it if we are going to extract one file
-                    switch(dwErrCode = GetLastError())
+                    switch(dwErrCode = GetCascError())
                     {
                         case ERROR_SUCCESS:
                             break;
@@ -509,8 +509,8 @@ static DWORD ExtractFile(TLogHelper & LogHelper, TEST_PARAMS & Params, CASC_FIND
     else
     {
         LogHelper.PrintError("Warning: %s: Open error", szShortName);
-        assert(GetLastError() != ERROR_SUCCESS);
-        dwErrCode = GetLastError();
+        assert(GetCascError() != ERROR_SUCCESS);
+        dwErrCode = GetCascError();
     }
 
     return dwErrCode;
@@ -648,7 +648,7 @@ static DWORD Storage_SeekFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
                 if(dwBytesRead != dwBytesToRead)
                 {
                     LogHelper.PrintMessage("Error: Failed to read %u bytes at offset %llX.", dwBytesToRead, TotalRead);
-                    dwErrCode = GetLastError();
+                    dwErrCode = GetCascError();
                     break;
                 }
 
@@ -656,7 +656,7 @@ static DWORD Storage_SeekFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
                 if(!FileStream_Write(pStream, &TotalRead, Buffer, dwBytesRead))
                 {
                     LogHelper.PrintMessage("Error: Failed to write %u bytes at offset %llX.", dwBytesToRead, TotalRead);
-                    dwErrCode = GetLastError();
+                    dwErrCode = GetCascError();
                     break;
                 }
 
@@ -695,7 +695,7 @@ static DWORD Storage_SeekFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
                     if(dwBytesRead != Length)
                     {
                         LogHelper.PrintMessage("Error: Failed to read %u bytes from CASC file (offset %llX).", Length, ByteOffset);
-                        dwErrCode = GetLastError();
+                        dwErrCode = GetCascError();
                         break;
                     }
 
@@ -703,7 +703,7 @@ static DWORD Storage_SeekFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
                     if(!FileStream_Read(pStream, &ByteOffset, Buffer2, Length))
                     {
                         LogHelper.PrintMessage("Error: Failed to read %u bytes from LOCAL file (offset %llX).", Length, ByteOffset);
-                        dwErrCode = GetLastError();
+                        dwErrCode = GetCascError();
                         break;
                     }
 
@@ -711,7 +711,7 @@ static DWORD Storage_SeekFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
                     if(memcmp(Buffer, Buffer2, Length))
                     {
                         LogHelper.PrintMessage("Error: Data mismatchat offset %llX, length %u.", ByteOffset, Length);
-                        dwErrCode = GetLastError();
+                        dwErrCode = GetCascError();
                         break;
                     }
                 }
@@ -850,7 +850,7 @@ static DWORD Storage_EnumFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
         else
         {
             LogHelper.PrintMessage("Error: Failed to enumerate the storage.");
-            dwErrCode = GetLastError();
+            dwErrCode = GetCascError();
         }
 
         // Free the file array
@@ -859,7 +859,7 @@ static DWORD Storage_EnumFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
     else
     {
         LogHelper.PrintMessage("Error: Failed to allocate buffer for files enumeration.");
-        dwErrCode = GetLastError();
+        dwErrCode = GetCascError();
     }
 
     if(Params.fp1)
@@ -899,8 +899,8 @@ static DWORD LocalStorage_Test(PFN_RUN_TEST PfnRunTest, LPCSTR szStorage, LPCSTR
     else
     {
         LogHelper.PrintError("Error: Failed to open storage %s", szStorage);
-        assert(GetLastError() != ERROR_SUCCESS);
-        dwErrCode = GetLastError();
+        assert(GetCascError() != ERROR_SUCCESS);
+        dwErrCode = GetCascError();
     }
 
     return dwErrCode;
@@ -954,8 +954,8 @@ static DWORD SpeedStorage_Test(PFN_RUN_TEST PfnRunTest, LPCSTR szStorage, LPCSTR
     else
     {
         LogHelper.PrintError("Error: Failed to open storage %s", szStorage);
-        assert(GetLastError() != ERROR_SUCCESS);
-        dwErrCode = GetLastError();
+        assert(GetCascError() != ERROR_SUCCESS);
+        dwErrCode = GetCascError();
     }
 
     return dwErrCode;
@@ -1000,8 +1000,8 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, LPCSTR szCodeName, LPCS
     else
     {
         LogHelper.PrintError("Error: Failed to open storage %s", szCodeName);
-        assert(GetLastError() != ERROR_SUCCESS);
-        dwErrCode = GetLastError();
+        assert(GetCascError() != ERROR_SUCCESS);
+        dwErrCode = GetCascError();
     }
 
     return dwErrCode;

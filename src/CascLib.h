@@ -375,14 +375,10 @@ LPBYTE WINAPI CascFindEncryptionKey(HANDLE hStorage, ULONGLONG KeyName);
 bool   WINAPI CascGetNotFoundEncryptionKey(HANDLE hStorage, ULONGLONG * KeyName);
 
 //-----------------------------------------------------------------------------
-// GetLastError/SetLastError support for non-Windows platform
+// Error code support
 
-#ifndef PLATFORM_WINDOWS
-
-DWORD GetLastError();
-void SetLastError(DWORD dwErrCode);
-
-#endif  // PLATFORM_WINDOWS
+void SetCascError(DWORD dwErrCode);
+DWORD GetCascError();
 
 #ifdef __cplusplus
 }   // extern "C"
