@@ -15,8 +15,6 @@
 //-----------------------------------------------------------------------------
 // Local structures
 
-#define CASC_EXTRA_KEYS 0x1000
-
 typedef struct _CASC_ENCRYPTION_KEY
 {
     ULONGLONG KeyName;                  // "Name" of the key
@@ -36,7 +34,7 @@ typedef struct _CASC_SALSA20
 static const char * szKeyConstant16 = "expand 16-byte k";
 static const char * szKeyConstant32 = "expand 32-byte k";
 
-static CASC_ENCRYPTION_KEY CascKeys[] =
+static CASC_ENCRYPTION_KEY StaticCascKeys[] =
 {
     // Key Name               Encryption key                                                                                         Seen in
     // ---------------------- ---------------------------------------------------------------------------------------------------    -----------
@@ -644,12 +642,107 @@ static int Decrypt_Salsa20(LPBYTE pbOutBuffer, LPBYTE pbInBuffer, size_t cbInBuf
     return Decrypt(&SalsaState, pbOutBuffer, pbInBuffer, cbInBuffer);
 }
 
-static LPBYTE CascFindKey(TCascStorage * hs, ULONGLONG KeyName)
-{
-    PCASC_ENCRYPTION_KEY pKey;
+//-----------------------------------------------------------------------------
+// Key map implementation
 
-    pKey = (PCASC_ENCRYPTION_KEY)hs->EncryptionKeys.FindObject(&KeyName);
-    return (pKey != NULL) ? pKey->Key : NULL;
+typedef struct _CASC_ENCRYPTION_KEY_ITEM
+{
+    struct _CASC_ENCRYPTION_KEY_ITEM * pNext;
+    ULONGLONG KeyName;
+    BYTE Key[CASC_KEY_LENGTH];
+} CASC_ENCRYPTION_KEY_ITEM, *PCASC_ENCRYPTION_KEY_ITEM;
+
+static PCASC_ENCRYPTION_KEY_ITEM CreateKeyItem(ULONGLONG KeyName, LPBYTE Key)
+{
+    PCASC_ENCRYPTION_KEY_ITEM pNewItem;
+
+    if((pNewItem = new CASC_ENCRYPTION_KEY_ITEM) != NULL)
+    {
+        memset(pNewItem, 0, sizeof(CASC_ENCRYPTION_KEY_ITEM));
+        pNewItem->KeyName = KeyName;
+        memcpy(pNewItem->Key, Key, CASC_KEY_LENGTH);
+    }
+
+    return pNewItem;
+}
+
+CASC_KEY_MAP::CASC_KEY_MAP()
+{
+    memset(HashTable, 0, sizeof(HashTable));
+}
+
+CASC_KEY_MAP::~CASC_KEY_MAP()
+{
+    PCASC_ENCRYPTION_KEY_ITEM pNextItem;
+    PCASC_ENCRYPTION_KEY_ITEM pKeyItem;
+
+    for(size_t i = 0; i < CASC_KEY_TABLE_SIZE; i++)
+    {
+        if((pKeyItem = (PCASC_ENCRYPTION_KEY_ITEM)HashTable[i]) != NULL)
+        {
+            while(pKeyItem != NULL)
+            {
+                pNextItem = pKeyItem->pNext;
+                delete pKeyItem;
+                pKeyItem = pNextItem;
+            }
+        }
+    }
+}
+
+LPBYTE CASC_KEY_MAP::FindKey(ULONGLONG KeyName)
+{
+    PCASC_ENCRYPTION_KEY_ITEM pKeyItem = NULL;
+    size_t HashIndex = KeyName & CASC_KEY_TABLE_MASK;
+
+    if(HashTable[HashIndex] != NULL)
+    {
+        pKeyItem = (PCASC_ENCRYPTION_KEY_ITEM)HashTable[HashIndex];
+        while(pKeyItem != NULL)
+        {
+            if(pKeyItem->KeyName == KeyName)
+                return pKeyItem->Key;
+            pKeyItem = pKeyItem->pNext;
+        }
+    }
+
+    // Not found
+    return NULL;
+}
+
+bool CASC_KEY_MAP::AddKey(ULONGLONG KeyName, LPBYTE Key)
+{
+    PCASC_ENCRYPTION_KEY_ITEM pKeyItem;
+    PCASC_ENCRYPTION_KEY_ITEM pNewItem;
+    size_t HashIndex = KeyName & CASC_KEY_TABLE_MASK;
+
+    // Is the key already there?
+    if(FindKey(KeyName) == NULL)
+    {
+        // Create new key item
+        if((pNewItem = CreateKeyItem(KeyName, Key)) == NULL)
+            return false;
+
+        if(HashTable[HashIndex] != NULL)
+        {
+            // Get the last-in-chain key item
+            pKeyItem = (PCASC_ENCRYPTION_KEY_ITEM)(HashTable[HashIndex]);
+            while(pKeyItem->pNext != NULL)
+                pKeyItem = pKeyItem->pNext;
+
+            // Insert the key to the chain
+            pKeyItem->pNext = pNewItem;
+            return true;
+        }
+        else
+        {
+            HashTable[HashIndex] = pNewItem;
+            return true;
+        }
+    }
+
+    // Already exists, it's OK
+    return true;
 }
 
 //-----------------------------------------------------------------------------
@@ -657,22 +750,15 @@ static LPBYTE CascFindKey(TCascStorage * hs, ULONGLONG KeyName)
 
 DWORD CascLoadEncryptionKeys(TCascStorage * hs)
 {
-    size_t nKeyCount = (sizeof(CascKeys) / sizeof(CASC_ENCRYPTION_KEY));
-    size_t nMaxItems = nKeyCount + CASC_EXTRA_KEYS;
-    DWORD dwErrCode;
+    for(size_t i = 0; i < _countof(StaticCascKeys); i++)
+    {
+        if(!hs->KeyMap.AddKey(StaticCascKeys[i].KeyName, StaticCascKeys[i].Key))
+        {
+            return ERROR_NOT_ENOUGH_MEMORY;
+        }
+    }
 
-    // Create fast map of KeyName -> Key
-    dwErrCode = hs->EncryptionKeys.Create(nMaxItems, sizeof(ULONGLONG), FIELD_OFFSET(CASC_ENCRYPTION_KEY, KeyName));
-    if(dwErrCode != ERROR_SUCCESS)
-        return dwErrCode;
-
-    // Insert all static keys
-    for (size_t i = 0; i < nKeyCount; i++)
-        hs->EncryptionKeys.InsertObject(&CascKeys[i], &CascKeys[i].KeyName);
-
-    // Create array for extra keys
-    dwErrCode = hs->ExtraKeysList.Create<CASC_ENCRYPTION_KEY>(CASC_EXTRA_KEYS);
-    return dwErrCode;
+    return ERROR_SUCCESS;
 }
 
 DWORD CascDecrypt(TCascStorage * hs, LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBYTE pbInBuffer, DWORD cbInBuffer, DWORD dwFrameIndex)
@@ -726,7 +812,7 @@ DWORD CascDecrypt(TCascStorage * hs, LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LP
         return ERROR_INSUFFICIENT_BUFFER;
 
     // Check if we know the key
-    pbKey = CascFindKey(hs, KeyName);
+    pbKey = hs->KeyMap.FindKey(KeyName);
     if(pbKey == NULL)
     {
         hs->LastFailKeyName = KeyName;
@@ -779,8 +865,6 @@ DWORD CascDirectCopy(LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBYTE pbInBuffer,
 
 bool WINAPI CascAddEncryptionKey(HANDLE hStorage, ULONGLONG KeyName, LPBYTE Key)
 {
-    PCASC_ENCRYPTION_KEY pExistingKey;
-    PCASC_ENCRYPTION_KEY pEncKey;
     TCascStorage * hs;
 
     // Validate the storage handle
@@ -791,40 +875,8 @@ bool WINAPI CascAddEncryptionKey(HANDLE hStorage, ULONGLONG KeyName, LPBYTE Key)
         return false;
     }
 
-    // Check if the key is already there
-    pExistingKey = (PCASC_ENCRYPTION_KEY)hs->EncryptionKeys.FindObject(&KeyName);
-    if(pExistingKey != NULL)
-    {
-        // If the key value is identical, we consider it OK
-        if(memcmp(pExistingKey->Key, Key, CASC_KEY_LENGTH))
-        {
-            SetCascError(ERROR_ALREADY_EXISTS);
-            return false;
-        }
-    }
-    else
-    {
-        // Insert the key to the array. Do not allow array enlarging
-        pEncKey = (PCASC_ENCRYPTION_KEY)hs->ExtraKeysList.Insert(1, false);
-        if (pEncKey == NULL)
-        {
-            SetCascError(ERROR_NOT_ENOUGH_MEMORY);
-            return false;
-        }
-
-        // Fill the key
-        memcpy(pEncKey->Key, Key, sizeof(pEncKey->Key));
-        pEncKey->KeyName = KeyName;
-
-        // Also insert the key to the map
-        if (!hs->EncryptionKeys.InsertObject(pEncKey, &pEncKey->KeyName))
-        {
-            SetCascError(ERROR_ALREADY_EXISTS);
-            return false;
-        }
-    }
-
-    return true;
+    // Add the key to the map and return result
+    return hs->KeyMap.AddKey(KeyName, Key);
 }
 
 bool WINAPI CascAddStringEncryptionKey(HANDLE hStorage, ULONGLONG KeyName, LPCSTR szKey)
@@ -860,7 +912,8 @@ LPBYTE WINAPI CascFindEncryptionKey(HANDLE hStorage, ULONGLONG KeyName)
         return NULL;
     }
 
-    return CascFindKey(hs, KeyName);
+    // Return the result from the map's search function
+    return hs->KeyMap.FindKey(KeyName);
 }
 
 bool WINAPI CascGetNotFoundEncryptionKey(HANDLE hStorage, ULONGLONG * KeyName)
