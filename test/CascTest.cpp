@@ -15,12 +15,9 @@
 #include <stdio.h>
 #include <time.h>
 
-#include <vector>
+#ifndef _WIN32
+#include <vector>                           // STD implementaion of threads
 #include <thread>
-
-#ifdef _MSC_VER
-#include <io.h>
-#include <crtdbg.h>
 #endif
 
 #include "../src/CascLib.h"
@@ -30,6 +27,7 @@
 
 #ifdef _MSC_VER
 #pragma warning(disable: 4505)              // 'XXX' : unreferenced local function has been removed
+#include <crtdbg.h>
 #endif
 
 #ifdef PLATFORM_LINUX
@@ -548,18 +546,38 @@ static DWORD WINAPI Worker_ExtractFiles(PCASC_FIND_DATA_ARRAY pFiles)
     return 0;
 }
 
-#define MIN_CPU_FREE 2        // Number of CPUs (cores) to keep free
-
 static void RunExtractWorkers(PCASC_FIND_DATA_ARRAY pFiles)
 {
-    std::vector<std::thread> threads;
-    size_t dwCoresUsed = 40;
+#ifdef _WIN32
 
-#ifdef PLATFORM_WINDOWS
-//  SYSTEM_INFO si = { 0 };
-//  GetSystemInfo(&si);
-//  dwCoresUsed = (si.dwNumberOfProcessors > MIN_CPU_FREE) ? (si.dwNumberOfProcessors - MIN_CPU_FREE) : 1;
-#endif
+    SYSTEM_INFO si = { 0 };
+    HANDLE ThreadHandles[MAXIMUM_WAIT_OBJECTS];
+    DWORD dwCoresUsed;
+    DWORD dwThreadId;
+    DWORD dwFreeCpus = 2;
+    DWORD dwThreads = 0;
+
+    // Retrieve the number of available cores
+    GetSystemInfo(&si);
+    dwCoresUsed = (si.dwNumberOfProcessors > dwFreeCpus) ? (si.dwNumberOfProcessors - dwFreeCpus) : 1;
+    if(dwCoresUsed > _countof(ThreadHandles))
+        dwCoresUsed = _countof(ThreadHandles);
+
+    // Run up to 40 worker threads
+    for (DWORD i = 0; i < dwCoresUsed; i++)
+    {
+        ThreadHandles[dwThreads] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)Worker_ExtractFiles, pFiles, 0, &dwThreadId); 
+        if(ThreadHandles[dwThreads] != NULL)
+            dwThreads++;
+    }
+
+    // Let them threads finish their job
+    WaitForMultipleObjects(dwThreads, ThreadHandles, TRUE, INFINITE);
+
+#else
+
+    std::vector<std::thread> threads;
+    size_t dwCoresUsed = 10;
 
     // Run up to 40 worker threads
     for (size_t i = 0; i < dwCoresUsed; i++)
@@ -572,6 +590,8 @@ static void RunExtractWorkers(PCASC_FIND_DATA_ARRAY pFiles)
     {
         thread.join();
     }
+
+#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -1013,8 +1033,8 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, LPCSTR szCodeName, LPCS
 static STORAGE_INFO1 StorageInfo1[] =
 {
     //- Name of the storage folder -------- Compound file name hash ----------- Compound file data hash ----------- Example file to extract -----------------------------------------------------------
-    {"Beta TVFS/00001",             "44833489ccf495e78d3a8f2ee9688ba6", "96e6457b649b11bcee54d52fa4be12e5", "ROOT"},
-    {"Beta TVFS/00002",             "0ada2ba6b0decfa4013e0465f577abf1", "4da83fa60e0e505d14a5c21284142127", "ENCODING"},
+    //{"Beta TVFS/00001",             "44833489ccf495e78d3a8f2ee9688ba6", "96e6457b649b11bcee54d52fa4be12e5", "ROOT"},
+    //{"Beta TVFS/00002",             "0ada2ba6b0decfa4013e0465f577abf1", "4da83fa60e0e505d14a5c21284142127", "ENCODING"},
 
     //{"CoD4/3376209",                "e01180b36a8cfd82cb2daa862f5bbf3e", "79cd4cfc9eddad53e4b4d394c36b8b0c", "zone/base.xpak" },
 
@@ -1031,21 +1051,21 @@ static STORAGE_INFO1 StorageInfo1[] =
     //{"Heroes of the Storm/65943",   "c5d75f4e12dbc05d4560fe61c4b88773", "f046b2ed9ecc7b27d2a114e16c34c8fd", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
     //{"Heroes of the Storm/75589",   "ae2209f1fcb26c730e9757a42bcce17e", "a7f7fbf1e04c87ead423fb567cd6fa5c", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
 
-    //{"Overwatch/24919/data/casc",   "53afa15570c29bd40bba4707b607657e", "6f9131fc0e7ad558328bbded2c996959", "ROOT"},
-    //{"Overwatch/47161",             "53db1f3da005211204997a6b50aa71e1", "12be32a2f86ea1f4e0bf2b62fe4b7f6e", "TactManifest\\Win_SPWin_RCN_LesMX_EExt.apm"},
+    {"Overwatch/24919/data/casc",   "53afa15570c29bd40bba4707b607657e", "6f9131fc0e7ad558328bbded2c996959", "ROOT"},
+    {"Overwatch/47161",             "53db1f3da005211204997a6b50aa71e1", "12be32a2f86ea1f4e0bf2b62fe4b7f6e", "TactManifest\\Win_SPWin_RCN_LesMX_EExt.apm"},
 
-    //{"Starcraft/2457",              "3eabb81825735cf66c0fc10990f423fa", "ce752a323819c369fba03401ba400332", "music\\radiofreezerg.ogg"},
-    //{"Starcraft/4037",              "bb2b76d657a841953fe093b75c2bdaf6", "2f1e9df40da0f6f682ffecbbd920d4fc", "music\\radiofreezerg.ogg"},
-    //{"Starcraft/4261",              "59ea96addacccb73938fdf688d7aa29b", "4e07a768999c7887c8c21364961ab07a", "music\\radiofreezerg.ogg"},
-    //{"Starcraft/6434",              "e3f929b881ad07028578d202f97c107e", "9bf9597b1f10d32944194334e8dc442a", "music\\radiofreezerg.ogg"},
+    {"Starcraft/2457",              "3eabb81825735cf66c0fc10990f423fa", "ce752a323819c369fba03401ba400332", "music\\radiofreezerg.ogg"},
+    {"Starcraft/4037",              "bb2b76d657a841953fe093b75c2bdaf6", "2f1e9df40da0f6f682ffecbbd920d4fc", "music\\radiofreezerg.ogg"},
+    {"Starcraft/4261",              "59ea96addacccb73938fdf688d7aa29b", "4e07a768999c7887c8c21364961ab07a", "music\\radiofreezerg.ogg"},
+    {"Starcraft/6434",              "e3f929b881ad07028578d202f97c107e", "9bf9597b1f10d32944194334e8dc442a", "music\\radiofreezerg.ogg"},
 
-    //{"Starcraft II/45364/\\/",      "28f8b15b5bbd87c16796246eac3f800c", "f9cd7fc20fa53701846109d3d6947d08", "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
-    //{"Starcraft II/75025",          "79c044e1286b7b18478556e571901294", "e290febb90e06e97b4db6f0eb519ca91", "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
+    {"Starcraft II/45364/\\/",      "28f8b15b5bbd87c16796246eac3f800c", "f9cd7fc20fa53701846109d3d6947d08", "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
+    {"Starcraft II/75025",          "79c044e1286b7b18478556e571901294", "e290febb90e06e97b4db6f0eb519ca91", "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
 
-    //{"Warcraft III/09231",          "8147106d7c05eaaf3f3611cc6f5314fe", "1b47c84d9b4ce58beeb2604a934cf83c", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
-    //{"Warcraft III/09655",          "f3f5470aa0ab4939fa234d3e29c3d347", "e45792b7459dc0c78ecb25130fa34d88", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
-    //{"Warcraft III/11889",          "ff36cd4f58aae23bd77d4a90c333bdb5", "4cba488e57f7dccfb77eca8c86578a37", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
-    //{"Warcraft III/13369",          "9c3fce648bf75d93a8765e84dcd10377", "4ac831db9bf0734f01b9d20455a68ab6", "ENCODING" },
+    {"Warcraft III/09231",          "8147106d7c05eaaf3f3611cc6f5314fe", "1b47c84d9b4ce58beeb2604a934cf83c", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
+    {"Warcraft III/09655",          "f3f5470aa0ab4939fa234d3e29c3d347", "e45792b7459dc0c78ecb25130fa34d88", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
+    {"Warcraft III/11889",          "ff36cd4f58aae23bd77d4a90c333bdb5", "4cba488e57f7dccfb77eca8c86578a37", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
+    {"Warcraft III/13369",          "9c3fce648bf75d93a8765e84dcd10377", "4ac831db9bf0734f01b9d20455a68ab6", "ENCODING" },
     {"Warcraft III/14883",          "a4b269415f1f4adec4df8bb736dc1297", "3fd108674117ad4f93885bdd1a525f30", NULL },
 
     //{"WoW/18125",                   "b31531af094f78f58592249c4d216a8e", "e5c9b3f0da7806d8b239c13bff1d836e", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
@@ -1078,7 +1098,7 @@ static STORAGE_INFO2 StorageInfo2[] =
 //-----------------------------------------------------------------------------
 // Main
 
-int main(int argc, char * argv[])
+int main()
 {
     DWORD dwErrCode = ERROR_SUCCESS;
 
@@ -1092,20 +1112,20 @@ int main(int argc, char * argv[])
     // Single tests
     //
 
-    LocalStorage_Test(Storage_SeekFiles, "e:\\Multimedia\\CASC\\Warcraft III\\14722", NULL, "86dee6f1b0ee3663ae4c855a1305f0be", "war3.w3mod:campaign\\reforged\\tft\\orcx01_05.w3x");
+    //LocalStorage_Test(Storage_SeekFiles, "e:\\Multimedia\\CASC\\Warcraft III\\14722", NULL, "86dee6f1b0ee3663ae4c855a1305f0be", "war3.w3mod:campaign\\reforged\\tft\\orcx01_05.w3x");
     
     //OnlineStorage_Test(Storage_EnumFiles, "w3", "us", "2aa787736e88e43f6ace0a4ac897fc8f");
 
     //
     // Run the tests for every local storage in my collection
     //
-    //for(size_t i = 0; StorageInfo1[i].szPath != NULL; i++)
-    //{
-    //    // Attempt to open the storage and extract single file
-    //    dwErrCode = LocalStorage_Test(Storage_ReadFiles, StorageInfo1[i].szPath, StorageInfo1[i].szNameHash, StorageInfo1[i].szDataHash);
-    //    if(dwErrCode != ERROR_SUCCESS && dwErrCode != ERROR_FILE_NOT_FOUND)
-    //        break;
-    //}
+    for(size_t i = 0; StorageInfo1[i].szPath != NULL; i++)
+    {
+        // Attempt to open the storage and extract single file
+        dwErrCode = LocalStorage_Test(Storage_ReadFiles, StorageInfo1[i].szPath, StorageInfo1[i].szNameHash, StorageInfo1[i].szDataHash);
+        if(dwErrCode != ERROR_SUCCESS && dwErrCode != ERROR_FILE_NOT_FOUND)
+            break;
+    }
 
     //
     // Run the tests for every available online storage in my collection

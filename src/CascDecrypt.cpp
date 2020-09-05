@@ -15,18 +15,27 @@
 //-----------------------------------------------------------------------------
 // Local structures
 
-typedef struct _CASC_ENCRYPTION_KEY
-{
-    ULONGLONG KeyName;                  // "Name" of the key
-    BYTE Key[CASC_KEY_LENGTH];          // The key itself
-} CASC_ENCRYPTION_KEY, *PCASC_ENCRYPTION_KEY;
-
+// For Salsa20 decryption process
 typedef struct _CASC_SALSA20
 {
     DWORD Key[CASC_KEY_LENGTH];
     DWORD dwRounds;
 
 } CASC_SALSA20, *PCASC_SALSA20;
+
+// For static-stored keys
+struct CASC_ENCRYPTION_KEY
+{
+    ULONGLONG KeyName;                          // "Name" of the key
+    BYTE Key[CASC_KEY_LENGTH];                  // The key itself
+};
+
+// For keys inside the key map
+struct CASC_ENCRYPTION_KEY2 : public CASC_ENCRYPTION_KEY
+{
+    CASC_ENCRYPTION_KEY2 * pNext;               // Pointer to the next key wihh the same hash
+};
+typedef CASC_ENCRYPTION_KEY2 * PCASC_ENCRYPTION_KEY2;
 
 //-----------------------------------------------------------------------------
 // Known encryption keys. See https://wowdev.wiki/CASC for updates
@@ -645,20 +654,13 @@ static int Decrypt_Salsa20(LPBYTE pbOutBuffer, LPBYTE pbInBuffer, size_t cbInBuf
 //-----------------------------------------------------------------------------
 // Key map implementation
 
-typedef struct _CASC_ENCRYPTION_KEY_ITEM
+static PCASC_ENCRYPTION_KEY2 CreateKeyItem(ULONGLONG KeyName, LPBYTE Key)
 {
-    struct _CASC_ENCRYPTION_KEY_ITEM * pNext;
-    ULONGLONG KeyName;
-    BYTE Key[CASC_KEY_LENGTH];
-} CASC_ENCRYPTION_KEY_ITEM, *PCASC_ENCRYPTION_KEY_ITEM;
+    PCASC_ENCRYPTION_KEY2 pNewItem;
 
-static PCASC_ENCRYPTION_KEY_ITEM CreateKeyItem(ULONGLONG KeyName, LPBYTE Key)
-{
-    PCASC_ENCRYPTION_KEY_ITEM pNewItem;
-
-    if((pNewItem = new CASC_ENCRYPTION_KEY_ITEM) != NULL)
+    if((pNewItem = new CASC_ENCRYPTION_KEY2) != NULL)
     {
-        memset(pNewItem, 0, sizeof(CASC_ENCRYPTION_KEY_ITEM));
+        memset(pNewItem, 0, sizeof(CASC_ENCRYPTION_KEY2));
         pNewItem->KeyName = KeyName;
         memcpy(pNewItem->Key, Key, CASC_KEY_LENGTH);
     }
@@ -673,12 +675,12 @@ CASC_KEY_MAP::CASC_KEY_MAP()
 
 CASC_KEY_MAP::~CASC_KEY_MAP()
 {
-    PCASC_ENCRYPTION_KEY_ITEM pNextItem;
-    PCASC_ENCRYPTION_KEY_ITEM pKeyItem;
+    PCASC_ENCRYPTION_KEY2 pNextItem;
+    PCASC_ENCRYPTION_KEY2 pKeyItem;
 
     for(size_t i = 0; i < CASC_KEY_TABLE_SIZE; i++)
     {
-        if((pKeyItem = (PCASC_ENCRYPTION_KEY_ITEM)HashTable[i]) != NULL)
+        if((pKeyItem = (PCASC_ENCRYPTION_KEY2)HashTable[i]) != NULL)
         {
             while(pKeyItem != NULL)
             {
@@ -692,18 +694,16 @@ CASC_KEY_MAP::~CASC_KEY_MAP()
 
 LPBYTE CASC_KEY_MAP::FindKey(ULONGLONG KeyName)
 {
-    PCASC_ENCRYPTION_KEY_ITEM pKeyItem = NULL;
-    size_t HashIndex = KeyName & CASC_KEY_TABLE_MASK;
+    PCASC_ENCRYPTION_KEY2 pKeyItem = NULL;
+    size_t HashIndex = (size_t)(KeyName & CASC_KEY_TABLE_MASK);
 
-    if(HashTable[HashIndex] != NULL)
+    // Check the key chain beginning at the hash table
+    pKeyItem = (PCASC_ENCRYPTION_KEY2)HashTable[HashIndex];
+    while(pKeyItem != NULL)
     {
-        pKeyItem = (PCASC_ENCRYPTION_KEY_ITEM)HashTable[HashIndex];
-        while(pKeyItem != NULL)
-        {
-            if(pKeyItem->KeyName == KeyName)
-                return pKeyItem->Key;
-            pKeyItem = pKeyItem->pNext;
-        }
+        if(pKeyItem->KeyName == KeyName)
+            return pKeyItem->Key;
+        pKeyItem = pKeyItem->pNext;
     }
 
     // Not found
@@ -712,9 +712,9 @@ LPBYTE CASC_KEY_MAP::FindKey(ULONGLONG KeyName)
 
 bool CASC_KEY_MAP::AddKey(ULONGLONG KeyName, LPBYTE Key)
 {
-    PCASC_ENCRYPTION_KEY_ITEM pKeyItem;
-    PCASC_ENCRYPTION_KEY_ITEM pNewItem;
-    size_t HashIndex = KeyName & CASC_KEY_TABLE_MASK;
+    PCASC_ENCRYPTION_KEY2 pKeyItem;
+    PCASC_ENCRYPTION_KEY2 pNewItem;
+    size_t HashIndex = (size_t)(KeyName & CASC_KEY_TABLE_MASK);
 
     // Is the key already there?
     if(FindKey(KeyName) == NULL)
@@ -726,7 +726,7 @@ bool CASC_KEY_MAP::AddKey(ULONGLONG KeyName, LPBYTE Key)
         if(HashTable[HashIndex] != NULL)
         {
             // Get the last-in-chain key item
-            pKeyItem = (PCASC_ENCRYPTION_KEY_ITEM)(HashTable[HashIndex]);
+            pKeyItem = (PCASC_ENCRYPTION_KEY2)(HashTable[HashIndex]);
             while(pKeyItem->pNext != NULL)
                 pKeyItem = pKeyItem->pNext;
 
@@ -760,108 +760,6 @@ DWORD CascLoadEncryptionKeys(TCascStorage * hs)
 
     return ERROR_SUCCESS;
 }
-
-DWORD CascDecrypt(TCascStorage * hs, LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBYTE pbInBuffer, DWORD cbInBuffer, DWORD dwFrameIndex)
-{
-    ULONGLONG KeyName = 0;
-    LPBYTE pbBufferEnd = pbInBuffer + cbInBuffer;
-    LPBYTE pbKey;
-    DWORD KeyNameSize;
-    DWORD dwShift = 0;
-    DWORD IVSize;
-    BYTE Vector[0x08];
-    BYTE EncryptionType;
-    DWORD dwErrCode;
-
-    // Verify and retrieve the key name size
-    if(pbInBuffer >= pbBufferEnd)
-        return ERROR_FILE_CORRUPT;
-    if(pbInBuffer[0] != 0 && pbInBuffer[0] != 8)
-        return ERROR_NOT_SUPPORTED;
-    KeyNameSize = *pbInBuffer++;
-
-    // Copy the key name
-    if((pbInBuffer + KeyNameSize) >= pbBufferEnd)
-        return ERROR_FILE_CORRUPT;
-    memcpy(&KeyName, pbInBuffer, KeyNameSize);
-    pbInBuffer += KeyNameSize;
-
-    // Verify and retrieve the Vector size
-    if(pbInBuffer >= pbBufferEnd)
-        return ERROR_FILE_CORRUPT;
-    if(pbInBuffer[0] != 4 && pbInBuffer[0] != 8)
-        return ERROR_NOT_SUPPORTED;
-    IVSize = *pbInBuffer++;
-
-    // Copy the initialization vector
-    if((pbInBuffer + IVSize) >= pbBufferEnd)
-        return ERROR_FILE_CORRUPT;
-    memset(Vector, 0, sizeof(Vector));
-    memcpy(Vector, pbInBuffer, IVSize);
-    pbInBuffer += IVSize;
-
-    // Verify and retrieve the encryption type
-    if(pbInBuffer >= pbBufferEnd)
-        return ERROR_FILE_CORRUPT;
-    if(pbInBuffer[0] != 'S' && pbInBuffer[0] != 'A')
-        return ERROR_NOT_SUPPORTED;
-    EncryptionType = *pbInBuffer++;
-
-    // Do we have enough space in the output buffer?
-    if((DWORD)(pbBufferEnd - pbInBuffer) > pcbOutBuffer[0])
-        return ERROR_INSUFFICIENT_BUFFER;
-
-    // Check if we know the key
-    pbKey = hs->KeyMap.FindKey(KeyName);
-    if(pbKey == NULL)
-    {
-        hs->LastFailKeyName = KeyName;
-        return ERROR_FILE_ENCRYPTED;
-    }
-
-    // Shuffle the Vector with the block index
-    // Note that there's no point to go beyond 32 bits, unless the file has
-    // more than 0xFFFFFFFF frames.
-    for(size_t i = 0; i < sizeof(dwFrameIndex); i++)
-    {
-        Vector[i] = Vector[i] ^ (BYTE)((dwFrameIndex >> dwShift) & 0xFF);
-        dwShift += 8;
-    }
-
-    // Perform the decryption-specific action
-    switch(EncryptionType)
-    {
-        case 'S':   // Salsa20
-            dwErrCode = Decrypt_Salsa20(pbOutBuffer, pbInBuffer, (pbBufferEnd - pbInBuffer), pbKey, 0x10, Vector);
-            if(dwErrCode != ERROR_SUCCESS)
-                return dwErrCode;
-
-            // Supply the size of the output buffer
-            pcbOutBuffer[0] = (DWORD)(pbBufferEnd - pbInBuffer);
-            return ERROR_SUCCESS;
-
-//      case 'A':
-//          return ERROR_NOT_SUPPORTED;
-    }
-
-    assert(false);
-    return ERROR_NOT_SUPPORTED;
-}
-
-DWORD CascDirectCopy(LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBYTE pbInBuffer, DWORD cbInBuffer)
-{
-    // Check the buffer size
-    if((cbInBuffer - 1) > pcbOutBuffer[0])
-        return ERROR_INSUFFICIENT_BUFFER;
-
-    // Copy the data
-    memcpy(pbOutBuffer, pbInBuffer, cbInBuffer);
-    pcbOutBuffer[0] = cbInBuffer;
-    return ERROR_SUCCESS;
-}
-
-//-----------------------------------------------------------------------------
-// Public functions
 
 bool WINAPI CascAddEncryptionKey(HANDLE hStorage, ULONGLONG KeyName, LPBYTE Key)
 {
@@ -1028,4 +926,103 @@ bool WINAPI CascImportKeysFromFile(HANDLE hStorage, LPCTSTR szFileName)
     }
 
     return bResult;
+}
+
+DWORD CascDirectCopy(LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBYTE pbInBuffer, DWORD cbInBuffer)
+{
+    // Check the buffer size
+    if((cbInBuffer - 1) > pcbOutBuffer[0])
+        return ERROR_INSUFFICIENT_BUFFER;
+
+    // Copy the data
+    memcpy(pbOutBuffer, pbInBuffer, cbInBuffer);
+    pcbOutBuffer[0] = cbInBuffer;
+    return ERROR_SUCCESS;
+}
+
+DWORD CascDecrypt(TCascStorage * hs, LPBYTE pbOutBuffer, PDWORD pcbOutBuffer, LPBYTE pbInBuffer, DWORD cbInBuffer, DWORD dwFrameIndex)
+{
+    ULONGLONG KeyName = 0;
+    LPBYTE pbBufferEnd = pbInBuffer + cbInBuffer;
+    LPBYTE pbKey;
+    DWORD KeyNameSize;
+    DWORD dwShift = 0;
+    DWORD IVSize;
+    BYTE Vector[0x08];
+    BYTE EncryptionType;
+    DWORD dwErrCode;
+
+    // Verify and retrieve the key name size
+    if(pbInBuffer >= pbBufferEnd)
+        return ERROR_FILE_CORRUPT;
+    if(pbInBuffer[0] != 0 && pbInBuffer[0] != 8)
+        return ERROR_NOT_SUPPORTED;
+    KeyNameSize = *pbInBuffer++;
+
+    // Copy the key name
+    if((pbInBuffer + KeyNameSize) >= pbBufferEnd)
+        return ERROR_FILE_CORRUPT;
+    memcpy(&KeyName, pbInBuffer, KeyNameSize);
+    pbInBuffer += KeyNameSize;
+
+    // Verify and retrieve the Vector size
+    if(pbInBuffer >= pbBufferEnd)
+        return ERROR_FILE_CORRUPT;
+    if(pbInBuffer[0] != 4 && pbInBuffer[0] != 8)
+        return ERROR_NOT_SUPPORTED;
+    IVSize = *pbInBuffer++;
+
+    // Copy the initialization vector
+    if((pbInBuffer + IVSize) >= pbBufferEnd)
+        return ERROR_FILE_CORRUPT;
+    memset(Vector, 0, sizeof(Vector));
+    memcpy(Vector, pbInBuffer, IVSize);
+    pbInBuffer += IVSize;
+
+    // Verify and retrieve the encryption type
+    if(pbInBuffer >= pbBufferEnd)
+        return ERROR_FILE_CORRUPT;
+    if(pbInBuffer[0] != 'S' && pbInBuffer[0] != 'A')
+        return ERROR_NOT_SUPPORTED;
+    EncryptionType = *pbInBuffer++;
+
+    // Do we have enough space in the output buffer?
+    if((DWORD)(pbBufferEnd - pbInBuffer) > pcbOutBuffer[0])
+        return ERROR_INSUFFICIENT_BUFFER;
+
+    // Check if we know the key
+    pbKey = hs->KeyMap.FindKey(KeyName);
+    if(pbKey == NULL)
+    {
+        hs->LastFailKeyName = KeyName;
+        return ERROR_FILE_ENCRYPTED;
+    }
+
+    // Shuffle the Vector with the block index
+    // Note that there's no point to go beyond 32 bits, unless the file has
+    // more than 0xFFFFFFFF frames.
+    for(size_t i = 0; i < sizeof(dwFrameIndex); i++)
+    {
+        Vector[i] = Vector[i] ^ (BYTE)((dwFrameIndex >> dwShift) & 0xFF);
+        dwShift += 8;
+    }
+
+    // Perform the decryption-specific action
+    switch(EncryptionType)
+    {
+        case 'S':   // Salsa20
+            dwErrCode = Decrypt_Salsa20(pbOutBuffer, pbInBuffer, (pbBufferEnd - pbInBuffer), pbKey, 0x10, Vector);
+            if(dwErrCode != ERROR_SUCCESS)
+                return dwErrCode;
+
+            // Supply the size of the output buffer
+            pcbOutBuffer[0] = (DWORD)(pbBufferEnd - pbInBuffer);
+            return ERROR_SUCCESS;
+
+            //      case 'A':
+            //          return ERROR_NOT_SUPPORTED;
+    }
+
+    assert(false);
+    return ERROR_NOT_SUPPORTED;
 }

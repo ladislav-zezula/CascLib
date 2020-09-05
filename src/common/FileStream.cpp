@@ -185,8 +185,11 @@ static bool BaseFile_Read(
                 Overlapped.OffsetHigh = (DWORD)(ByteOffset >> 32);
                 Overlapped.Offset = (DWORD)ByteOffset;
                 Overlapped.hEvent = NULL;
-                if (!ReadFile(pStream->Base.File.hFile, pvBuffer, dwBytesToRead, &dwBytesRead, &Overlapped))
+                if(!ReadFile(pStream->Base.File.hFile, pvBuffer, dwBytesToRead, &dwBytesRead, &Overlapped))
+                {
+                    CascUnlock(pStream->Lock);
                     return false;
+                }
             }
         }
 #endif
@@ -201,6 +204,7 @@ static bool BaseFile_Read(
             {
                 if (lseek64((intptr_t)pStream->Base.File.hFile, (off64_t)(ByteOffset), SEEK_SET) == (off64_t)-1)
                 {
+                    CascUnlock(pStream->Lock);
                     SetCascError(errno);
                     return false;
                 }
@@ -213,6 +217,7 @@ static bool BaseFile_Read(
                 bytes_read = read((intptr_t)pStream->Base.File.hFile, pvBuffer, (size_t)dwBytesToRead);
                 if (bytes_read == -1)
                 {
+                    CascUnlock(pStream->Lock);
                     SetCascError(errno);
                     return false;
                 }
@@ -280,8 +285,11 @@ static bool BaseFile_Write(TFileStream * pStream, ULONGLONG * pByteOffset, const
                 Overlapped.OffsetHigh = (DWORD)(ByteOffset >> 32);
                 Overlapped.Offset = (DWORD)ByteOffset;
                 Overlapped.hEvent = NULL;
-                if (!WriteFile(pStream->Base.File.hFile, pvBuffer, dwBytesToWrite, &dwBytesWritten, &Overlapped))
+                if(!WriteFile(pStream->Base.File.hFile, pvBuffer, dwBytesToWrite, &dwBytesWritten, &Overlapped))
+                {
+                    CascUnlock(pStream->Lock);
                     return false;
+                }
             }
         }
 #endif
@@ -296,6 +304,7 @@ static bool BaseFile_Write(TFileStream * pStream, ULONGLONG * pByteOffset, const
             {
                 if (lseek64((intptr_t)pStream->Base.File.hFile, (off64_t)(ByteOffset), SEEK_SET) == (off64_t)-1)
                 {
+                    CascUnlock(pStream->Lock);
                     SetCascError(errno);
                     return false;
                 }
@@ -306,6 +315,7 @@ static bool BaseFile_Write(TFileStream * pStream, ULONGLONG * pByteOffset, const
             bytes_written = write((intptr_t)pStream->Base.File.hFile, pvBuffer, (size_t)dwBytesToWrite);
             if (bytes_written == -1)
             {
+                CascUnlock(pStream->Lock);
                 SetCascError(errno);
                 return false;
             }
