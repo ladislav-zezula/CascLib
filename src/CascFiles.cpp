@@ -1113,7 +1113,7 @@ static DWORD DownloadFile(
     }
     else
     {
-        dwErrCode = GetLastError();
+        dwErrCode = GetCascError();
     }
 
     return dwErrCode;
@@ -1489,7 +1489,7 @@ LPBYTE LoadInternalFileToMemory(TCascStorage * hs, PCASC_CKEY_ENTRY pCKeyEntry, 
     }
     else
     {
-        dwErrCode = GetLastError();
+        dwErrCode = GetCascError();
     }
 
     // Handle errors
@@ -1500,7 +1500,7 @@ LPBYTE LoadInternalFileToMemory(TCascStorage * hs, PCASC_CKEY_ENTRY pCKeyEntry, 
         cbFileData = 0;
 
         // Set the last error
-        SetLastError(dwErrCode);
+        SetCascError(dwErrCode);
     }
 
     // Give the loaded file length
@@ -1540,13 +1540,13 @@ LPBYTE LoadFileToMemory(LPCTSTR szFileName, DWORD * pcbFileData)
             }
             else
             {
-                SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+                SetCascError(ERROR_NOT_ENOUGH_MEMORY);
                 cbFileData = 0;
             }
         }
         else
         {
-            SetLastError(ERROR_BAD_FORMAT);
+            SetCascError(ERROR_BAD_FORMAT);
             cbFileData = 0;
             assert(false);
         }

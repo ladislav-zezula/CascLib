@@ -581,7 +581,7 @@ static DWORD LoadLocalIndexFiles(TCascStorage * hs)
             if((IndexFile.pbFileData = LoadFileToMemory(IndexFile.szFileName, &cbFileData)) == NULL)
             {
                 // Storages downloaded by Blizzget tool don't have all index files present
-                if((dwErrCode = GetLastError()) == ERROR_FILE_NOT_FOUND)
+                if((dwErrCode = GetCascError()) == ERROR_FILE_NOT_FOUND)
                 {
                     dwErrCode = ERROR_SUCCESS;
                     break;

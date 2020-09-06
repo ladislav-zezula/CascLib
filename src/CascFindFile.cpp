@@ -247,7 +247,7 @@ bool WINAPI CascFindNextFile(
     pSearch = TCascSearch::IsValid(hFind);
     if(pSearch == NULL || pFindData == NULL)
     {
-        SetLastError(ERROR_INVALID_PARAMETER);
+        SetCascError(ERROR_INVALID_PARAMETER);
         return false;
     }
 
@@ -262,7 +262,7 @@ bool WINAPI CascFindClose(HANDLE hFind)
     pSearch = TCascSearch::IsValid(hFind);
     if(pSearch == NULL)
     {
-        SetLastError(ERROR_INVALID_PARAMETER);
+        SetCascError(ERROR_INVALID_PARAMETER);
         return false;
     }
 
