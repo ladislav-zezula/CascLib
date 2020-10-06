@@ -316,10 +316,8 @@ static DWORD LoadIndexItems(TCascStorage * hs, CASC_INDEX_HEADER & InHeader, EKE
 
     while((pbEKeyEntry + EntryLength) <= pbEKeyEnd)
     {
-        // ENCODING, DOWNLOAD, ROOT in Warcraft III Reforged build 14481
-        BREAK_ON_XKEY3(pbEKeyEntry, 0xcd, 0x3b, 0xd8);
-        BREAK_ON_XKEY3(pbEKeyEntry, 0xdb, 0xfa, 0x35);
-        BREAK_ON_XKEY3(pbEKeyEntry, 0x5c, 0xe8, 0x48);
+        // ENCODING for Starcraft II Beta
+        BREAK_ON_XKEY3(pbEKeyEntry, 0x8b, 0x0d, 0x9a);
 
         if(!PfnEKeyEntry(hs, InHeader, pbEKeyEntry))
             return ERROR_INDEX_PARSING_DONE;

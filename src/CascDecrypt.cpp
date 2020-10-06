@@ -865,9 +865,12 @@ bool WINAPI CascImportKeysFromString(HANDLE hStorage, LPCSTR szKeyList)
         if(KeyName == 0)
             break;
 
-        // Skip the spaces
-        while(0 < szKeyList[0] && szKeyList[0] <= 0x20)
+        // We only expect spaces and tabs at this point. Anything else will lead
+        // to end of the loop.
+        while(szKeyList[0] == 0x09 || szKeyList[0] == 0x20)
             szKeyList++;
+        if(szKeyList[0] == 0x0A || szKeyList[0] == 0x0D)
+            break;
 
         // Convert the string to binary
         dwErrCode = BinaryFromString(szKeyList, CASC_KEY_LENGTH * 2, KeyValue);

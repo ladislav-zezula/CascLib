@@ -357,22 +357,21 @@ DWORD ConvertStringToInt(const xchar * szString, size_t nMaxDigits, INTXX & RefV
     // Convert the string up to the number of digits
     for(size_t i = 0; i < nMaxDigits; i++, szString++)
     {
-        // Check overflow. If OK, shift the value by 4 to the left
-        if(Accumulator & MaxValueMask)
-            return ERROR_ARITHMETIC_OVERFLOW;
-        Accumulator <<= 4;
-
-        // Extract the next digit
+        // Check for the end of the string
         if(szString[0] > sizeof(AsciiToHexTable))
             return ERROR_BAD_FORMAT;
         if(szString[0] <= 0x20)
             break;
-        DigitOne = AsciiToHexTable[szString[0]];
 
-        // Verify the digit and add it to the Add the digit to the 
+        // Extract the next digit
+        DigitOne = AsciiToHexTable[szString[0]];
         if(DigitOne == 0xFF)
             return ERROR_BAD_FORMAT;
-        Accumulator |= DigitOne;
+
+        // Check overflow. If OK, shift the value by 4 to the left
+        if(Accumulator & MaxValueMask)
+            return ERROR_ARITHMETIC_OVERFLOW;
+        Accumulator = (Accumulator << 4) | DigitOne;
     }
 
     // Give the results
