@@ -65,7 +65,7 @@
 				Name="VCLinkerTool"
 				OutputFile="$(OutDir)\CascLib.dll"
 				LinkIncremental="2"
-				ModuleDefinitionFile=".\src\CascLib.def"
+				ModuleDefinitionFile=".\src\DllMain.def"
 				GenerateDebugInformation="true"
 				SubSystem="2"
 				RandomizedBaseAddress="1"
@@ -142,7 +142,7 @@
 				Name="VCLinkerTool"
 				OutputFile="$(OutDir)\CascLib.dll"
 				LinkIncremental="2"
-				ModuleDefinitionFile=".\src\CascLib.def"
+				ModuleDefinitionFile=".\src\DllMain.def"
 				GenerateDebugInformation="true"
 				SubSystem="2"
 				RandomizedBaseAddress="1"
@@ -214,9 +214,10 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalOptions="/PDBALTPATH:%_PDB%"
 				OutputFile="$(OutDir)\CascLib.dll"
 				LinkIncremental="1"
-				ModuleDefinitionFile=".\src\CascLib.def"
+				ModuleDefinitionFile=".\src\DllMain.def"
 				GenerateDebugInformation="true"
 				SubSystem="2"
 				OptimizeReferences="2"
@@ -291,9 +292,10 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalOptions="/PDBALTPATH:%_PDB%"
 				OutputFile="$(OutDir)\CascLib.dll"
 				LinkIncremental="1"
-				ModuleDefinitionFile=".\src\CascLib.def"
+				ModuleDefinitionFile=".\src\DllMain.def"
 				GenerateDebugInformation="true"
 				SubSystem="2"
 				OptimizeReferences="2"
@@ -541,6 +543,10 @@
 				>
 			</File>
 		</Filter>
+		<File
+			RelativePath=".\src\resource.h"
+			>
+		</File>
 	</Files>
 	<Globals>
 	</Globals>

@@ -81,7 +81,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName)"
+				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName) vs2008"
 			/>
 		</Configuration>
 		<Configuration
@@ -147,7 +147,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName)"
+				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName) vs2008"
 			/>
 		</Configuration>
 		<Configuration
@@ -212,7 +212,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName)"
+				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName) vs2008"
 			/>
 		</Configuration>
 		<Configuration
@@ -278,7 +278,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName)"
+				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName) vs2008"
 			/>
 		</Configuration>
 		<Configuration
@@ -341,7 +341,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName)"
+				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName) vs2008"
 			/>
 		</Configuration>
 		<Configuration
@@ -405,7 +405,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName)"
+				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName) vs2008"
 			/>
 		</Configuration>
 		<Configuration
@@ -468,7 +468,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName)"
+				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName) vs2008"
 			/>
 		</Configuration>
 		<Configuration
@@ -532,7 +532,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName)"
+				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName) vs2008"
 			/>
 		</Configuration>
 		<Configuration
@@ -597,7 +597,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName)"
+				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName) vs2008"
 			/>
 		</Configuration>
 		<Configuration
@@ -663,7 +663,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName)"
+				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName) vs2008"
 			/>
 		</Configuration>
 		<Configuration
@@ -728,7 +728,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName)"
+				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName) vs2008"
 			/>
 		</Configuration>
 		<Configuration
@@ -794,7 +794,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName)"
+				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName) vs2008"
 			/>
 		</Configuration>
 		<Configuration
@@ -857,7 +857,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName)"
+				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName) vs2008"
 			/>
 		</Configuration>
 		<Configuration
@@ -921,7 +921,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName)"
+				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName) vs2008"
 			/>
 		</Configuration>
 		<Configuration
@@ -984,7 +984,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName)"
+				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName) vs2008"
 			/>
 		</Configuration>
 		<Configuration
@@ -1048,7 +1048,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName)"
+				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName) vs2008"
 			/>
 		</Configuration>
 	</Configurations>

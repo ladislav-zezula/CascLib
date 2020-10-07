@@ -1,37 +1,34 @@
 @echo off
 rem Post-build batch for CascLib project
-rem Called as PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName)
-rem Example: CascLib.bat x64 Debug
+rem Called as PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName) [vs2008]
+rem Example: PostBuild.bat CascLib_dll x64 Debug vs2008
 
-if "%1" == "CascLib" goto PostBuild_LIB
-if "%1" == "CascLib_dll" goto PostBuild_DLL
-
-:PostBuild_LIB
-rem Copy the public headers target include directory
-if not exist ..\aaa goto:eof
-copy /Y .\src\CascPort.h ..\aaa\inc
-copy /Y .\src\CascLib.h  ..\aaa\inc
-if "x%2" == "xWin32" goto PostBuild_LIB_Win32
-if "x%2" == "xx64" goto PostBuild_LIB_Win64
-goto:eof
-
-:PostBuild_LIB_Win32
-rem Copy the compiled LIB to the target library directory
-copy  /Y .\bin\%1\%2\%3\*.lib    ..\aaa\lib32
-goto:eof
-
-:PostBuild_LIB_Win64
-rem Copy the compiled LIB to the target library directory
-copy  /Y .\bin\%1\%2\%3\*.lib    ..\aaa\lib64
+rem Select build type
+if "%1" == "CascLib_dll"  goto PostBuild_DLL
+if "%1" == "CascLib"      goto PostBuild_LIB
 goto:eof
 
 :PostBuild_DLL
-rem On 32-bit Release version, increment the build number
-if not "x%2" == "xWin32" goto PostBuild_DLL_NoRC
-if not "x%3" == "xRelease" goto PostBuild_DLL_NoRC
-PostBuild.exe .\bin\%1\%2\%3\CascLib.dll .\src\DllMain.rc /pdb
+
+rem Build steps for the DLL. On 32-bit Release version, increment the build number
+if not "x%2" == "xWin32" goto:eof
+if not "x%3" == "xRelease" goto:eof
+PostBuild.exe .\src\DllMain.rc
 goto:eof
 
-:PostBuild_DLL_NoRC
-PostBuild.exe .\bin\%1\%2\%3\CascLib.dll /pdb
-goto:eof
+:PostBuild_LIB
+
+rem Set target folders
+if "x%2" == "xWin32"  set TARGET_DIR_LEVEL2=lib32
+if "x%2" == "xx64"    set TARGET_DIR_LEVEL2=lib64
+if "x%4" == "xvs2008" set TARGET_DIR_LEVEL3=vs2008
+
+rem Check & create target folder structure
+if not exist ..\aaa goto:eof
+if not exist ..\aaa\%TARGET_DIR_LEVEL2% md ..\aaa\%TARGET_DIR_LEVEL2%
+if not exist ..\aaa\%TARGET_DIR_LEVEL2%\%TARGET_DIR_LEVEL3% md ..\aaa\%TARGET_DIR_LEVEL2%\%TARGET_DIR_LEVEL3%
+
+rem Copy include and LIB files to the target folder
+copy /Y .\src\CascLib.h   ..\aaa\inc >nul
+copy /Y .\src\CascPort.h  ..\aaa\inc >nul
+copy /Y .\bin\%1\%2\%3\CascLib???.lib  ..\aaa\%TARGET_DIR_LEVEL2%\%TARGET_DIR_LEVEL3% >nul
