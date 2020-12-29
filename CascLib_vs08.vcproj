@@ -1246,6 +1246,10 @@
 					>
 				</File>
 				<File
+					RelativePath=".\src\zlib\deflate.c"
+					>
+				</File>
+				<File
 					RelativePath=".\src\zlib\inffast.c"
 					>
 				</File>
@@ -1255,6 +1259,10 @@
 				</File>
 				<File
 					RelativePath=".\src\zlib\inftrees.c"
+					>
+				</File>
+				<File
+					RelativePath=".\src\zlib\trees.c"
 					>
 				</File>
 				<File

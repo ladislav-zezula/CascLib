@@ -117,6 +117,9 @@
     <ClCompile Include="src\md5\md5.cpp">
       <Filter>Source Files\md5</Filter>
     </ClCompile>
+    <ClCompile Include="src\zlib\trees.c">
+      <Filter>Source Files\zlib</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\common\Common.h">
@@ -160,6 +163,9 @@
     </ClInclude>
     <ClInclude Include="src\CascStructs.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\zlib\deflate.h">
+      <Filter>Source Files\zlib</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

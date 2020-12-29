@@ -506,6 +506,10 @@
 					>
 				</File>
 				<File
+					RelativePath=".\src\zlib\deflate.c"
+					>
+				</File>
+				<File
 					RelativePath=".\src\zlib\inffast.c"
 					>
 				</File>
@@ -515,6 +519,10 @@
 				</File>
 				<File
 					RelativePath=".\src\zlib\inftrees.c"
+					>
+				</File>
+				<File
+					RelativePath=".\src\zlib\trees.c"
 					>
 				</File>
 				<File
@@ -542,11 +550,11 @@
 				RelativePath=".\src\common\FileStream.h"
 				>
 			</File>
+			<File
+				RelativePath=".\src\resource.h"
+				>
+			</File>
 		</Filter>
-		<File
-			RelativePath=".\src\resource.h"
-			>
-		</File>
 	</Files>
 	<Globals>
 	</Globals>

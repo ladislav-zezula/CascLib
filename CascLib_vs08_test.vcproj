@@ -617,6 +617,10 @@
 					</FileConfiguration>
 				</File>
 				<File
+					RelativePath=".\src\zlib\deflate.c"
+					>
+				</File>
+				<File
 					RelativePath=".\src\zlib\inffast.c"
 					>
 					<FileConfiguration
@@ -723,6 +727,10 @@
 							WarningLevel="3"
 						/>
 					</FileConfiguration>
+				</File>
+				<File
+					RelativePath=".\src\zlib\trees.c"
+					>
 				</File>
 				<File
 					RelativePath=".\src\zlib\zutil.c"
