@@ -13,6 +13,10 @@
 #include "CascLib.h"
 #include "CascCommon.h"
 
+#ifdef _MSC_VER
+#pragma comment(lib, "ws2_32.lib")          // Internet functions for HTTP stream
+#endif
+
 //-----------------------------------------------------------------------------
 // Local defines
 
@@ -886,6 +890,17 @@ static DWORD CheckDataDirectory(TCascStorage * hs, LPTSTR szDirectory)
     return dwErrCode;
 }
 
+static DWORD LoadCsvFile(TCascStorage * hs, LPBYTE pbFileData, size_t cbFileData, PARSECSVFILE PfnParseProc, bool bHasHeader)
+{
+    CASC_CSV Csv(0x40, bHasHeader);
+    DWORD dwErrCode;
+
+    // Load the external file to memory
+    if ((dwErrCode = Csv.Load(pbFileData, cbFileData)) == ERROR_SUCCESS)
+        dwErrCode = PfnParseProc(hs, Csv);
+    return dwErrCode;
+}
+
 static DWORD LoadCsvFile(TCascStorage * hs, LPCTSTR szFileName, PARSECSVFILE PfnParseProc, bool bHasHeader)
 {
     CASC_CSV Csv(0x40, bHasHeader);
@@ -1114,6 +1129,32 @@ static DWORD DownloadFile(
     else
     {
         dwErrCode = GetCascError();
+    }
+
+    return dwErrCode;
+}
+
+static DWORD RibbitDownloadFile(CASC_REMOTE_INFO & RemoteInfo, const char * szHostName, const char * szProduct, const char * szFileName, QUERY_KEY & FileData)
+{
+    CASC_SOCKET sock;
+    size_t ribbit_length;
+    DWORD dwErrCode = ERROR_NETWORK_NOT_AVAILABLE;
+    char ribbit_request[0x80];
+
+    // Connect to the remote server
+    if((sock = sockets_remote_connect(RemoteInfo, szHostName, "1119")) != 0)
+    {
+        // Construct the Ribbit request. Note that if this is malformed,
+        // then the "send" function will hang.
+        ribbit_length = CascStrPrintf(ribbit_request, _countof(ribbit_request), "v1/products/%s/%s\r\n", szProduct, szFileName);
+        if(send(sock, ribbit_request, strlen(ribbit_request), 0) > 0)
+        {
+            // Load the entire response form the server
+            dwErrCode = sockets_read_response(sock, ResponseRibbit, FileData);
+        }
+
+        // Close the socket
+        closesocket(sock);
     }
 
     return dwErrCode;
@@ -1378,8 +1419,10 @@ DWORD LoadBuildInfo(TCascStorage * hs)
 
 DWORD LoadCdnsFile(TCascStorage * hs)
 {
-    CASC_CDN_DOWNLOAD CdnsInfo = {0};
-    TCHAR szLocalPath[MAX_PATH];
+//  CASC_CDN_DOWNLOAD CdnsInfo = {0};
+//  TCHAR szLocalPath[MAX_PATH];
+    QUERY_KEY FileData;
+    CHAR  szProduct[16];
     DWORD dwErrCode = ERROR_SUCCESS;
 
     // Sanity checks
@@ -1389,7 +1432,19 @@ DWORD LoadCdnsFile(TCascStorage * hs)
     if(InvokeProgressCallback(hs, "Downloading the \"cdns\" file", NULL, 0, 0))
         return ERROR_CANCELLED;
 
-    // Prepare the download structure
+    // Download the file using Ribbit protocol
+    CascStrCopy(szProduct, _countof(szProduct), hs->szCodeName);
+    dwErrCode = RibbitDownloadFile(hs->RibbitInfo, "us.version.battle.net", szProduct, "cdns", FileData);
+
+    // Parse the downloaded file
+    if(dwErrCode == ERROR_SUCCESS)
+    {
+        dwErrCode = LoadCsvFile(hs, FileData.pbData, FileData.cbData, ParseFile_CDNS, true);
+        CASC_FREE(FileData.pbData);
+    }
+
+/*
+    // Download the 'cdns' file via the Ribbit protocol
     CdnsInfo.szCdnsHost = _T("us.patch.battle.net");
     CdnsInfo.szCdnsPath = hs->szCodeName;
     CdnsInfo.szPathType = _T("");
@@ -1403,7 +1458,7 @@ DWORD LoadCdnsFile(TCascStorage * hs)
     {
         dwErrCode = LoadCsvFile(hs, szLocalPath, ParseFile_CDNS, true);
     }
-
+*/
     return dwErrCode;
 }
 

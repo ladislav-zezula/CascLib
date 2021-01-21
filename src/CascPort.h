@@ -42,10 +42,11 @@
   #include <stdlib.h>
   #include <direct.h>
   #include <malloc.h>
+  #include <ws2tcpip.h>
   #include <windows.h>
   #include <wininet.h>
   #include <strsafe.h>
-  #include <sys/types.h>
+
   #define PLATFORM_LITTLE_ENDIAN
 
   #pragma intrinsic(memset, memcmp, memcpy)     // Make these functions intrinsic (inline)
@@ -56,6 +57,9 @@
 
   #define PLATFORM_WINDOWS
   #define PLATFORM_DEFINED                      // The platform is known now
+
+  typedef SOCKET CASC_SOCKET;
+
 #endif
 
 #ifndef FIELD_OFFSET
@@ -70,6 +74,7 @@
   // Macintosh
   #include <sys/types.h>
   #include <sys/stat.h>
+  #include <sys/socket.h>
   #include <sys/mman.h>
   #include <fcntl.h>
   #include <dirent.h>
@@ -85,6 +90,7 @@
   #include <cassert>
   #include <errno.h>
   #include <pthread.h>
+  #include <netdb.h>
 
   // Support for PowerPC on Max OS X
   #if (__ppc__ == 1) || (__POWERPC__ == 1) || (_ARCH_PPC == 1)
@@ -115,6 +121,7 @@
 #if !defined(PLATFORM_DEFINED)
   #include <sys/types.h>
   #include <sys/stat.h>
+  #include <sys/socket.h>
   #include <sys/mman.h>
   #include <fcntl.h>
   #include <dirent.h>
@@ -130,6 +137,7 @@
   #include <assert.h>
   #include <errno.h>
   #include <pthread.h>
+  #include <netdb.h>
 
   #define URL_SEP_CHAR              '/'
   #define PATH_SEP_CHAR             '/'
@@ -166,6 +174,7 @@
   typedef const char   * LPCSTR;
   typedef TCHAR        * LPTSTR;
   typedef const TCHAR  * LPCTSTR;
+  typedef int CASC_SOCKET;
 
   #ifndef __LP64__
     #define _LZMA_UINT32_IS_ULONG
@@ -183,6 +192,7 @@
   #define FILE_END      SEEK_END
 
   #define INVALID_HANDLE_VALUE ((HANDLE)-1)
+  #define INVALID_SOCKET 0
 
   #define _T(x)     x
   #define _tcslen   strlen
@@ -201,6 +211,8 @@
   #define _strnicmp strncasecmp
   #define _tcsicmp  strcasecmp
   #define _tcsnicmp strncasecmp
+
+  #define closesocket close
 
 #endif // !PLATFORM_WINDOWS
 
@@ -235,6 +247,7 @@
   #define ERROR_FILE_ENCRYPTED           1005       // Returned by encrypted stream when can't find file key
   #define ERROR_FILE_TOO_LARGE           1006       // No such error code under Linux
   #define ERROR_ARITHMETIC_OVERFLOW      1007       // The string value is too large to fit in the given type
+  #define ERROR_NETWORK_NOT_AVAILABLE    1008       // Cannot connect to the internet
 #endif
 
 #ifndef ERROR_FILE_INCOMPLETE

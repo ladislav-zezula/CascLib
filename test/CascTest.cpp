@@ -1087,18 +1087,16 @@ static STORAGE_INFO1 StorageInfo1[] =
     //{"WoW/31299:wow",               "6220549f2b8936af6e63179f6ece78ab", "05627c131969bd9394fb345f4037e249", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     //{"WoW/31299:wowt",              "959fa63cbcd9ced02a8977ed128df828", "423c1b99b14a615a02d8ffc7a7eff4ef", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     //{"WoW/31299:wow_classic",       "184794b8a191429e2aae9b8a5334651b", "b46bd2f81ead285e810e5a049ca2db74", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-
-    {NULL}
 };
 
 static STORAGE_INFO2 StorageInfo2[] =
 {
-//  {"agent",    "us"},
-//  {"bna",      "us"},
-//  {"catalogs", NULL},
-//  {"clnt",     "us"},
-//  {"hsb",      "us"},
-    {NULL}
+//  {"agent",       "us"},
+//  {"bna",         "us"},
+//  {"catalogs",    NULL},
+//  {"clnt",        "us"},
+//  {"hsb",         "us"},
+    {"wow_classic", "us"},
 };
 
 //-----------------------------------------------------------------------------
@@ -1129,7 +1127,7 @@ int main(int argc, char * argv[])
     //
     // Run the tests for every local storage in my collection
     //
-    //for(size_t i = 0; StorageInfo1[i].szPath != NULL; i++)
+    //for(size_t i = 0; i < _countof(StorageInfo1); i++)
     //{
     //    // Attempt to open the storage and extract single file
     //    dwErrCode = LocalStorage_Test(Storage_ReadFiles, StorageInfo1[i].szPath, StorageInfo1[i].szNameHash, StorageInfo1[i].szDataHash);
@@ -1140,13 +1138,13 @@ int main(int argc, char * argv[])
     //
     // Run the tests for every available online storage in my collection
     //
-    //for (size_t i = 0; StorageInfo2[i].szCodeName != NULL; i++)
-    //{
-    //    // Attempt to open the storage and extract single file
-    //    dwErrCode = OnlineStorage_Test(Storage_EnumFiles, StorageInfo2[i].szCodeName, StorageInfo2[i].szRegion, StorageInfo2[i].szFile);
-    //    if (dwErrCode != ERROR_SUCCESS)
-    //        break;
-    //}
+    for (size_t i = 0; i < _countof(StorageInfo2); i++)
+    {
+        // Attempt to open the storage and extract single file
+        dwErrCode = OnlineStorage_Test(Storage_EnumFiles, StorageInfo2[i].szCodeName, StorageInfo2[i].szRegion, StorageInfo2[i].szFile);
+        if (dwErrCode != ERROR_SUCCESS)
+            break;
+    }
 
 #ifdef _MSC_VER
     _CrtDumpMemoryLeaks();

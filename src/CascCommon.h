@@ -32,6 +32,7 @@
 #include "common/Csv.h"
 #include "common/Path.h"
 #include "common/RootHandler.h"
+#include "common/Sockets.h"
 
 // Headers from Alexander Peslyak's MD5 implementation
 #include "md5/md5.h"
@@ -302,6 +303,9 @@ struct TCascStorage
     QUERY_KEY PatchArchivesKey;                     // Key array of the "patch-archives"
     QUERY_KEY PatchArchivesGroup;                   // Key array of the "patch-archive-group"
     QUERY_KEY BuildFiles;                           // List of supported build files
+
+    CASC_REMOTE_INFO RibbitInfo;                    // Remote host information (online storages, Ribbit)
+    CASC_REMOTE_INFO SocketInfo;                    // Remote host information (online storages, CDN)
 
     TFileStream * DataFiles[CASC_MAX_DATA_FILES];   // Array of open data files
     CASC_INDEX IndexFiles[CASC_INDEX_COUNT];        // Array of found index files

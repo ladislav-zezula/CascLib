@@ -215,6 +215,7 @@
     <ClCompile Include="src\common\FileTree.cpp" />
     <ClCompile Include="src\common\ListFile.cpp" />
     <ClCompile Include="src\common\RootHandler.cpp" />
+    <ClCompile Include="src\common\Sockets.cpp" />
     <ClCompile Include="src\DllMain.c" />
     <ClCompile Include="src\jenkins\lookup3.c" />
     <ClCompile Include="src\md5\md5.cpp" />
@@ -239,6 +240,7 @@
     <ClInclude Include="src\common\ListFile.h" />
     <ClInclude Include="src\common\Map.h" />
     <ClInclude Include="src\common\RootHandler.h" />
+    <ClInclude Include="src\common\Sockets.h" />
     <ClInclude Include="src\FileStream.h" />
     <ClInclude Include="src\md5\md5.h" />
     <ClInclude Include="src\zlib\deflate.h" />

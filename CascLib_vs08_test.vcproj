@@ -68,6 +68,7 @@
 				WarningLevel="4"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="4"
+				DisableSpecificWarnings="4127; 4131; 4244"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -168,6 +169,7 @@
 				WarningLevel="4"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="3"
+				DisableSpecificWarnings="4127; 4131; 4244"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -268,6 +270,7 @@
 				WarningLevel="4"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="3"
+				DisableSpecificWarnings="4127; 4131; 4244"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -369,6 +372,7 @@
 				WarningLevel="4"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="3"
+				DisableSpecificWarnings="4127; 4131; 4244"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -619,6 +623,14 @@
 				<File
 					RelativePath=".\src\zlib\deflate.c"
 					>
+					<FileConfiguration
+						Name="Debug|Win32"
+						>
+						<Tool
+							Name="VCCLCompilerTool"
+							DisableSpecificWarnings="4131"
+						/>
+					</FileConfiguration>
 				</File>
 				<File
 					RelativePath=".\src\zlib\inffast.c"
@@ -834,6 +846,14 @@
 				</File>
 				<File
 					RelativePath=".\src\common\RootHandler.h"
+					>
+				</File>
+				<File
+					RelativePath=".\src\common\Sockets.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\src\common\Sockets.h"
 					>
 				</File>
 			</Filter>

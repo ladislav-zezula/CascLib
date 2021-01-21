@@ -66,6 +66,9 @@ TCascStorage::TCascStorage()
     szRegion = NULL;
     szBuildKey = NULL;
 
+    memset(&RibbitInfo, 0, sizeof(CASC_REMOTE_INFO));
+    memset(&SocketInfo, 0, sizeof(CASC_REMOTE_INFO));
+
     memset(DataFiles, 0, sizeof(DataFiles));
     memset(IndexFiles, 0, sizeof(IndexFiles));
     CascInitLock(StorageLock);
@@ -1130,6 +1133,9 @@ static DWORD InitializeLocalDirectories(TCascStorage * hs, PCASC_OPEN_STORAGE_AR
 
 static DWORD InitializeOnlineDirectories(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
 {
+    // On Windows, we need to initialize Winsock
+    sockets_initialize();
+
     // Create the root path
     hs->szRootPath = CascNewStr(pArgs->szLocalPath);
     if (hs->szRootPath != NULL)
