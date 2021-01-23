@@ -542,6 +542,7 @@ static DWORD GetDefaultLocaleMask(TCascStorage * hs, const CASC_CSV_COLUMN & Col
 static DWORD ParseFile_CDNS(TCascStorage * hs, CASC_CSV & Csv)
 {
     const char * szWantedRegion = hs->szRegion;
+    const char * szRegion;
     size_t nLineCount;
 
     // Fix the region
@@ -552,19 +553,23 @@ static DWORD ParseFile_CDNS(TCascStorage * hs, CASC_CSV & Csv)
     nLineCount = Csv.GetLineCount();
 
     // Find the active config
-    for (size_t i = 0; i < nLineCount; i++)
+    for(size_t i = 0; i < nLineCount; i++)
     {
-        // Is it the version we are looking for?
-        if(!strcmp(Csv[i]["Name!STRING:0"].szValue, szWantedRegion))
+        // Retrieve the region
+        if((szRegion = Csv[i]["Name!STRING:0"].szValue) != NULL)
         {
-            // Save the list of CDN servers
-            hs->szCdnServers = CascNewStrA2T(Csv[i]["Hosts!STRING:0"].szValue);
+            // Is it the version we are looking for?
+            if(!strcmp(Csv[i]["Name!STRING:0"].szValue, szWantedRegion))
+            {
+                // Save the list of CDN servers
+                hs->szCdnServers = CascNewStrA2T(Csv[i]["Hosts!STRING:0"].szValue);
 
-            // Save the CDN subpath
-            hs->szCdnPath = CascNewStrA2T(Csv[i]["Path!STRING:0"].szValue);
+                // Save the CDN subpath
+                hs->szCdnPath = CascNewStrA2T(Csv[i]["Path!STRING:0"].szValue);
 
-            // Check and return result
-            return (hs->szCdnServers && hs->szCdnPath) ? ERROR_SUCCESS : ERROR_BAD_FORMAT;
+                // Check and return result
+                return (hs->szCdnServers && hs->szCdnPath) ? ERROR_SUCCESS : ERROR_BAD_FORMAT;
+            }
         }
     }
 
@@ -1134,19 +1139,23 @@ static DWORD DownloadFile(
     return dwErrCode;
 }
 
-static DWORD RibbitDownloadFile(CASC_REMOTE_INFO & RemoteInfo, const char * szHostName, const char * szProduct, const char * szFileName, QUERY_KEY & FileData)
+static DWORD RibbitDownloadFile(CASC_REMOTE_INFO & RemoteInfo, const char * szHostName, const TCHAR * szProduct, const char * szFileName, QUERY_KEY & FileData)
 {
     CASC_SOCKET sock;
     size_t ribbit_length;
     DWORD dwErrCode = ERROR_NETWORK_NOT_AVAILABLE;
+    char szProductA[0x20];
     char ribbit_request[0x80];
 
     // Connect to the remote server
     if((sock = sockets_remote_connect(RemoteInfo, szHostName, "1119")) != 0)
     {
+        // Copy the product name
+        CascStrCopy(szProductA, _countof(szProductA), szProduct);
+
         // Construct the Ribbit request. Note that if this is malformed,
         // then the "send" function will hang.
-        ribbit_length = CascStrPrintf(ribbit_request, _countof(ribbit_request), "v1/products/%s/%s\r\n", szProduct, szFileName);
+        ribbit_length = CascStrPrintf(ribbit_request, _countof(ribbit_request), "v1/products/%s/%s\r\n", szProductA, szFileName);
         if(send(sock, ribbit_request, strlen(ribbit_request), 0) > 0)
         {
             // Load the entire response form the server
@@ -1364,35 +1373,6 @@ DWORD LoadBuildInfo(TCascStorage * hs)
     DWORD dwErrCode;
     bool bHasHeader = true;
 
-    // If the storage is online storage, we need to download "versions"
-    if(hs->dwFeatures & CASC_FEATURE_ONLINE)
-    {
-        CASC_CDN_DOWNLOAD CdnsInfo = {0};
-        TCHAR szLocalFile[MAX_PATH];
-
-        // Inform the user about loading the build.info/build.db/versions
-        if(InvokeProgressCallback(hs, "Downloading the \"versions\" file", NULL, 0, 0))
-            return ERROR_CANCELLED;
-
-        // Prepare the download structure for "us.patch.battle.net/%CODENAME%/versions" file
-        CdnsInfo.szCdnsHost = _T("us.patch.battle.net");
-        CdnsInfo.szCdnsPath = hs->szCodeName;
-        CdnsInfo.szPathType = _T("");
-        CdnsInfo.szFileName = _T("versions");
-        CdnsInfo.szLocalPath = szLocalFile;
-        CdnsInfo.ccLocalPath = _countof(szLocalFile);
-        CdnsInfo.Flags = CASC_CDN_FLAG_PORT1119 | CASC_CDN_FORCE_DOWNLOAD;
-
-        // Attempt to download the "versions" file
-        dwErrCode = DownloadFileFromCDN(hs, CdnsInfo);
-        if(dwErrCode != ERROR_SUCCESS)
-            return dwErrCode;
-
-        // Retrieve the name of the "versions" file
-        if((hs->szBuildFile = CascNewStr(szLocalFile)) == NULL)
-            return ERROR_NOT_ENOUGH_MEMORY;
-    }
-
     // We support ".build.info", ".build.db" or "versions"
     switch (hs->BuildFileType)
     {
@@ -1413,16 +1393,35 @@ DWORD LoadBuildInfo(TCascStorage * hs)
             return ERROR_NOT_SUPPORTED;
     }
 
-    assert(hs->szBuildFile != NULL);
-    return LoadCsvFile(hs, hs->szBuildFile, PfnParseProc, bHasHeader);
+    // If the storage is online storage, we need to download "versions"
+    if(hs->dwFeatures & CASC_FEATURE_ONLINE)
+    {
+        QUERY_KEY FileData;
+
+        // Inform the user about loading the build.info/build.db/versions
+        if(InvokeProgressCallback(hs, "Downloading the \"versions\" file", NULL, 0, 0))
+            return ERROR_CANCELLED;
+
+        // Download the file using Ribbit protocol
+        dwErrCode = RibbitDownloadFile(hs->RibbitInfo, "us.version.battle.net", hs->szCodeName, "versions", FileData);
+        if(dwErrCode == ERROR_SUCCESS)
+        {
+            // Parse the downloaded file
+            dwErrCode = LoadCsvFile(hs, FileData.pbData, FileData.cbData, ParseFile_VersionsDb, true);
+        }
+    }
+    else
+    {
+        assert(hs->szBuildFile != NULL);
+        dwErrCode = LoadCsvFile(hs, hs->szBuildFile, PfnParseProc, bHasHeader);
+    }
+
+    return dwErrCode;
 }
 
 DWORD LoadCdnsFile(TCascStorage * hs)
 {
-//  CASC_CDN_DOWNLOAD CdnsInfo = {0};
-//  TCHAR szLocalPath[MAX_PATH];
     QUERY_KEY FileData;
-    CHAR  szProduct[16];
     DWORD dwErrCode = ERROR_SUCCESS;
 
     // Sanity checks
@@ -1433,32 +1432,13 @@ DWORD LoadCdnsFile(TCascStorage * hs)
         return ERROR_CANCELLED;
 
     // Download the file using Ribbit protocol
-    CascStrCopy(szProduct, _countof(szProduct), hs->szCodeName);
-    dwErrCode = RibbitDownloadFile(hs->RibbitInfo, "us.version.battle.net", szProduct, "cdns", FileData);
-
-    // Parse the downloaded file
+    dwErrCode = RibbitDownloadFile(hs->RibbitInfo, "us.version.battle.net", hs->szCodeName, "cdns", FileData);
     if(dwErrCode == ERROR_SUCCESS)
     {
+        // Parse the downloaded file
         dwErrCode = LoadCsvFile(hs, FileData.pbData, FileData.cbData, ParseFile_CDNS, true);
-        CASC_FREE(FileData.pbData);
     }
 
-/*
-    // Download the 'cdns' file via the Ribbit protocol
-    CdnsInfo.szCdnsHost = _T("us.patch.battle.net");
-    CdnsInfo.szCdnsPath = hs->szCodeName;
-    CdnsInfo.szPathType = _T("");
-    CdnsInfo.szFileName = _T("cdns");
-    CdnsInfo.szLocalPath = szLocalPath;
-    CdnsInfo.ccLocalPath = _countof(szLocalPath);
-    CdnsInfo.Flags = CASC_CDN_FLAG_PORT1119 | CASC_CDN_FORCE_DOWNLOAD;
-
-    // Download file and parse it
-    if((dwErrCode = DownloadFileFromCDN(hs, CdnsInfo)) == ERROR_SUCCESS)
-    {
-        dwErrCode = LoadCsvFile(hs, szLocalPath, ParseFile_CDNS, true);
-    }
-*/
     return dwErrCode;
 }
 

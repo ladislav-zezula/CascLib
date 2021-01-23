@@ -575,7 +575,7 @@ static void RunExtractWorkers(PCASC_FIND_DATA_ARRAY pFiles)
     WaitForMultipleObjects(dwThreads, ThreadHandles, TRUE, INFINITE);
 
 #else
-
+/*
     std::vector<std::thread> threads;
     size_t dwCoresUsed = 10;
 
@@ -590,6 +590,8 @@ static void RunExtractWorkers(PCASC_FIND_DATA_ARRAY pFiles)
     {
         thread.join();
     }
+*/
+    Worker_ExtractFiles(pFiles);
 
 #endif
 }

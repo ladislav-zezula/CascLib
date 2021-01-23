@@ -454,6 +454,16 @@ struct QUERY_KEY
         cbData = 0;
     }
 
+    DWORD SetData(const void * pv, size_t cb)
+    {
+        if((pbData = CASC_ALLOC<BYTE>(cb)) == NULL)
+            return ERROR_NOT_ENOUGH_MEMORY;
+
+        memcpy(pbData, pv, cb);
+        cbData = cb;
+        return ERROR_SUCCESS;
+    }
+
     LPBYTE pbData;
     size_t cbData;
 };
