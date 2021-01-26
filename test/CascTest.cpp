@@ -15,9 +15,12 @@
 #include <stdio.h>
 #include <time.h>
 
-#ifndef _WIN32
-#include <vector>                           // STD implementaion of threads
-#include <thread>
+#ifdef __has_include
+  #if __has_include(<thread>)
+    #define PLATFORM_STD_THREAD
+    #include <vector>
+    #include <thread>
+  #endif
 #endif
 
 #include "../src/CascLib.h"
@@ -548,7 +551,35 @@ static DWORD WINAPI Worker_ExtractFiles(PCASC_FIND_DATA_ARRAY pFiles)
 
 static void RunExtractWorkers(PCASC_FIND_DATA_ARRAY pFiles)
 {
-#ifdef _WIN32
+#ifdef PLATFORM_STD_THREAD
+
+    std::vector<std::thread> threads;
+    size_t dwCoresUsed = 10;
+
+#ifdef PLATFORM_WINDOWS
+    // Retrieve the number of available cores
+    SYSTEM_INFO si = {0};
+    DWORD dwFreeCPUs = 2;
+
+    GetSystemInfo(&si);
+    dwCoresUsed = (si.dwNumberOfProcessors > dwFreeCPUs) ? (si.dwNumberOfProcessors - dwFreeCPUs) : 1;
+    if(dwCoresUsed > MAXIMUM_WAIT_OBJECTS)
+        dwCoresUsed = MAXIMUM_WAIT_OBJECTS;
+#endif
+
+    // Run up to 40 worker threads
+    for (size_t i = 0; i < dwCoresUsed; i++)
+    {
+        threads.emplace_back(&Worker_ExtractFiles, pFiles);
+    }
+
+    // Let them threads finish their job
+    for (auto &thread : threads)
+    {
+        thread.join();
+    }
+
+#else
 
     SYSTEM_INFO si = { 0 };
     HANDLE ThreadHandles[MAXIMUM_WAIT_OBJECTS];
@@ -573,25 +604,6 @@ static void RunExtractWorkers(PCASC_FIND_DATA_ARRAY pFiles)
 
     // Let them threads finish their job
     WaitForMultipleObjects(dwThreads, ThreadHandles, TRUE, INFINITE);
-
-#else
-/*
-    std::vector<std::thread> threads;
-    size_t dwCoresUsed = 10;
-
-    // Run up to 40 worker threads
-    for (size_t i = 0; i < dwCoresUsed; i++)
-    {
-        threads.emplace_back(&Worker_ExtractFiles, pFiles);
-    }
-
-    // Let them threads finish their job
-    for (auto &thread : threads)
-    {
-        thread.join();
-    }
-*/
-    Worker_ExtractFiles(pFiles);
 
 #endif
 }

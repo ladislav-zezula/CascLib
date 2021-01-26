@@ -1139,31 +1139,53 @@ static DWORD DownloadFile(
     return dwErrCode;
 }
 
-static DWORD RibbitDownloadFile(CASC_REMOTE_INFO & RemoteInfo, const char * szHostName, const TCHAR * szProduct, const char * szFileName, QUERY_KEY & FileData)
+static DWORD RibbitDownloadFile(LPCTSTR szProduct, LPCTSTR szFileName, QUERY_KEY & FileData)
 {
-    CASC_SOCKET sock;
-    size_t ribbit_length;
-    DWORD dwErrCode = ERROR_NETWORK_NOT_AVAILABLE;
-    char szProductA[0x20];
-    char ribbit_request[0x80];
+    TFileStream * pStream;
+    ULONGLONG FileSize = 0;
+    TCHAR szRemoteUrl[256];
+    DWORD dwErrCode = ERROR_CAN_NOT_COMPLETE;
 
-    // Connect to the remote server
-    if((sock = sockets_remote_connect(RemoteInfo, szHostName, "1119")) != 0)
+    // Construct the full URL (https://wowdev.wiki/Ribbit)
+    CascStrPrintf(szRemoteUrl, _countof(szRemoteUrl), _T("ribbit://us.version.battle.net/v1/%s/%s"), szProduct, szFileName);
+
+    // Open the file stream
+    if((pStream = FileStream_OpenFile(szRemoteUrl, BASE_PROVIDER_RIBBIT | STREAM_PROVIDER_FLAT)) != NULL)
     {
-        // Copy the product name
-        CascStrCopy(szProductA, _countof(szProductA), szProduct);
-
-        // Construct the Ribbit request. Note that if this is malformed,
-        // then the "send" function will hang.
-        ribbit_length = CascStrPrintf(ribbit_request, _countof(ribbit_request), "v1/products/%s/%s\r\n", szProductA, szFileName);
-        if(send(sock, ribbit_request, strlen(ribbit_request), 0) > 0)
+        if(FileStream_GetSize(pStream, &FileSize) && FileSize <= 0x04000000)
         {
-            // Load the entire response form the server
-            dwErrCode = sockets_read_response(sock, ResponseRibbit, FileData);
+            // Fill-in the file pointer and size
+            FileData.pbData = CASC_ALLOC<BYTE>((size_t)FileSize);
+            if(FileData.pbData != NULL)
+            {
+                if(FileStream_Read(pStream, NULL, FileData.pbData, (DWORD)FileSize))
+                {
+                    FileData.cbData = (size_t)FileSize;
+                    dwErrCode = ERROR_SUCCESS;
+                }
+                else
+                {
+                    dwErrCode = GetCascError();
+                    CASC_FREE(FileData.pbData);
+                    FileData.pbData = NULL;
+                }
+            }
+            else
+            {
+                dwErrCode = ERROR_NOT_ENOUGH_MEMORY;
+            }
+        }
+        else
+        {
+            dwErrCode = GetCascError();
         }
 
-        // Close the socket
-        closesocket(sock);
+        // Close the remote stream
+        FileStream_Close(pStream);
+    }
+    else
+    {
+        dwErrCode = GetCascError();
     }
 
     return dwErrCode;
@@ -1173,7 +1195,6 @@ static DWORD DownloadFileFromCDN2(TCascStorage * hs, CASC_CDN_DOWNLOAD & CdnsInf
 {
     CASC_PATH<TCHAR> RemotePath(URL_SEP_CHAR);
     CASC_PATH<TCHAR> LocalPath(PATH_SEP_CHAR);
-    DWORD dwPortFlags = (CdnsInfo.Flags & CASC_CDN_FLAG_PORT1119) ? STREAM_FLAG_USE_PORT_1119 : 0;
     DWORD dwErrCode;
 
     // Assemble both the remote and local path
@@ -1189,7 +1210,7 @@ static DWORD DownloadFileFromCDN2(TCascStorage * hs, CASC_CDN_DOWNLOAD & CdnsInf
             return dwErrCode;
 
         // Attempt to download the file
-        dwErrCode = DownloadFile(RemotePath, LocalPath, NULL, 0, dwPortFlags);
+        dwErrCode = DownloadFile(RemotePath, LocalPath, NULL, 0, 0);
         if(dwErrCode != ERROR_SUCCESS)
             return dwErrCode;
     }
@@ -1403,7 +1424,7 @@ DWORD LoadBuildInfo(TCascStorage * hs)
             return ERROR_CANCELLED;
 
         // Download the file using Ribbit protocol
-        dwErrCode = RibbitDownloadFile(hs->RibbitInfo, "us.version.battle.net", hs->szCodeName, "versions", FileData);
+        dwErrCode = RibbitDownloadFile(hs->szCodeName, _T("versions"), FileData);
         if(dwErrCode == ERROR_SUCCESS)
         {
             // Parse the downloaded file
@@ -1432,7 +1453,7 @@ DWORD LoadCdnsFile(TCascStorage * hs)
         return ERROR_CANCELLED;
 
     // Download the file using Ribbit protocol
-    dwErrCode = RibbitDownloadFile(hs->RibbitInfo, "us.version.battle.net", hs->szCodeName, "cdns", FileData);
+    dwErrCode = RibbitDownloadFile(hs->szCodeName, _T("cdns"), FileData);
     if(dwErrCode == ERROR_SUCCESS)
     {
         // Parse the downloaded file

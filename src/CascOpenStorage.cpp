@@ -66,9 +66,6 @@ TCascStorage::TCascStorage()
     szRegion = NULL;
     szBuildKey = NULL;
 
-    memset(&RibbitInfo, 0, sizeof(CASC_REMOTE_INFO));
-    memset(&SocketInfo, 0, sizeof(CASC_REMOTE_INFO));
-
     memset(DataFiles, 0, sizeof(DataFiles));
     memset(IndexFiles, 0, sizeof(IndexFiles));
     CascInitLock(StorageLock);

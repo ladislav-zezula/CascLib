@@ -235,69 +235,7 @@ DWORD sockets_initialize()
     return ERROR_SUCCESS;
 }
 
-CASC_SOCKET sockets_remote_connect(CASC_REMOTE_INFO & RemoteInfo, const char * szHostName, const char * szHostPort)
-{
-    // Do we already have a connection?
-    if(RemoteInfo.remoteList == NULL)
-    {
-        addrinfo hints = {0};
-
-        // Retrieve the incormation about the remote host
-        // This will fail immediately if there is no connection to the internet
-        hints.ai_family = AF_INET;
-        hints.ai_socktype = SOCK_STREAM;
-        if(getaddrinfo(szHostName, szHostPort, &hints, &RemoteInfo.remoteList) != 0)
-            return ERROR_NETWORK_NOT_AVAILABLE;
-    }
-
-    // If we already have remote entry, then we use that entry.
-    // Otherwise, we try any item from the entry list until we succeed
-    if(RemoteInfo.remoteHost == NULL)
-    {
-        addrinfo * remoteHost;
-        CASC_SOCKET sock;
-
-        // Try to connect to any address provided by the getaddrinfo()
-        for(remoteHost = RemoteInfo.remoteList; remoteHost != NULL; remoteHost = remoteHost->ai_next)
-        {
-            // Windows: returns INVALID_SOCKET (0) on error
-            // Linux: return -1 on error
-            if((sock = socket(remoteHost->ai_family, remoteHost->ai_socktype, remoteHost->ai_protocol)) > 0)
-            {
-                // Windows: Returns 0 on success, SOCKET_ERROR (-1) on failure
-                // Linux: Returns 0 on success, (-1) on failure
-                if(connect(sock, remoteHost->ai_addr, remoteHost->ai_addrlen) == 0)
-                {
-                    // Remember the remote host entry for the next connection
-                    RemoteInfo.remoteHost = remoteHost;
-                    return sock;
-                }
-                
-                // Close the socket and try again
-                closesocket(sock);
-            }
-        }
-    }
-    else
-    {
-        // Reuse already known host info
-        addrinfo * remoteHost = RemoteInfo.remoteHost;
-        CASC_SOCKET sock;
-
-        // Create a socked to a known host
-        if((sock = socket(remoteHost->ai_family, remoteHost->ai_socktype, remoteHost->ai_protocol)) > 0)
-        {
-            if(connect(sock, remoteHost->ai_addr, remoteHost->ai_addrlen) == 0)
-            {
-                return sock;
-            }
-        }
-    }
-
-    return ERROR_NETWORK_NOT_AVAILABLE;
-}
-
-DWORD sockets_read_response(CASC_SOCKET sock, CASC_RESPONSE_TYPE ResponseType, QUERY_KEY & FileData)
+LPBYTE sockets_read_response(CASC_SOCKET sock, const char * request, size_t requestLength, size_t * PtrLength)
 {
     LPBYTE server_response = NULL;
     size_t bytes_received = 0;
@@ -315,7 +253,11 @@ DWORD sockets_read_response(CASC_SOCKET sock, CASC_RESPONSE_TYPE ResponseType, Q
             if(total_received == buffer_size)
             {
                 if((server_response = CASC_REALLOC(BYTE, server_response, buffer_size + block_increment)) == NULL)
-                    return ERROR_NOT_ENOUGH_MEMORY;
+                {
+                    SetCascError(ERROR_NOT_ENOUGH_MEMORY);
+                    return NULL;
+                }
+
                 buffer_size += block_increment;
                 block_increment *= 2;
             }
@@ -327,29 +269,15 @@ DWORD sockets_read_response(CASC_SOCKET sock, CASC_RESPONSE_TYPE ResponseType, Q
         }
     }
 
-    // Parse the response and convert it to plain data
+    // Parse the response and convert it from MIME to plain data
     if(server_response && total_received)
     {
-        // Convert the response into raw data based on response type
-        switch(ResponseType)
-        {
-            case ResponseRaw:
-                FileData.pbData = server_response;
-                FileData.cbData = total_received;
-                return ERROR_SUCCESS;
-
-            case ResponseRibbit:
-                dwErrCode = mime_to_raw(server_response, total_received, FileData);
-                CASC_FREE(server_response);
-                return dwErrCode;
-
-            case ResponseHttp:
-                assert(false);
-                break;
-        }
+        //dwErrCode = mime_to_raw(server_response, total_received, FileData);
+        //CASC_FREE(server_response);
+        //return dwErrCode;
     }
 
-    return ERROR_BAD_FORMAT;
+    return NULL;
 }
 
 void sockets_free()

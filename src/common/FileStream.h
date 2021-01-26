@@ -16,7 +16,8 @@
 
 #define BASE_PROVIDER_FILE          0x00000000  // Base data source is a file
 #define BASE_PROVIDER_MAP           0x00000001  // Base data source is memory-mapped file
-#define BASE_PROVIDER_HTTP          0x00000002  // Base data source is a file on web server
+#define BASE_PROVIDER_HTTP          0x00000002  // Base data source is a file on web server via the HTTP protocol
+#define BASE_PROVIDER_RIBBIT        0x00000003  // Base data source is a file on web server via the Ribbit protocol
 #define BASE_PROVIDER_MASK          0x0000000F  // Mask for base provider value
 
 #define STREAM_PROVIDER_FLAT        0x00000000  // Stream is linear with no offset mapping
@@ -29,7 +30,6 @@
 #define STREAM_FLAG_WRITE_SHARE     0x00000200  // Allow write sharing when open for write
 #define STREAM_FLAG_USE_BITMAP      0x00000400  // If the file has a file bitmap, load it and use it
 #define STREAM_FLAG_FILL_MISSING    0x00000800  // If less than expected was read from the file, fill the missing part with zeros
-#define STREAM_FLAG_USE_PORT_1119   0x00001000  // For HTTP streams, use port 1119
 #define STREAM_OPTIONS_MASK         0x0000FF00  // Mask for stream options
 
 #define STREAM_PROVIDERS_MASK       0x000000FF  // Mask to get stream providers
@@ -169,6 +169,18 @@ union TBaseProviderData
         ULONGLONG FileTime;                 // Last write time
         LPBYTE pbFile;                      // Pointer to mapped view
     } Map;
+
+    struct
+    {
+        struct addrinfo * remoteList;       // List of the remote host informations
+        struct addrinfo * remoteHost;       // The particular host picked during the last connection attempt
+        unsigned char * fileData;           // Raw response converted to file data
+        char * hostName;                    // Name of the remote host
+        char * rsrcName;                    // Name of the remote resource
+        size_t fileDataLength;              // Length of the file data, in bytes
+        size_t fileDataPos;                 // Current position in the data
+        CASC_SOCKET sock;                   // Handle to an open socket
+    } Socket;
 
     struct
     {
