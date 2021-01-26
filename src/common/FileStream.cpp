@@ -981,8 +981,8 @@ static void BaseHttp_Close(TFileStream * pStream)
         CASC_FREE(pStream->Base.Socket.hostName);
     if(pStream->Base.Socket.rsrcName != NULL)
         CASC_FREE(pStream->Base.Socket.rsrcName);
-    if(pStream->Base.Socket.sock != NULL)
-        closesocket((CASC_SOCKET)pStream->Base.Socket.sock);
+    if(pStream->Base.Socket.sock != 0)
+        closesocket(pStream->Base.Socket.sock);
     memset(&pStream->Base.Socket, 0, sizeof(pStream->Base.Socket));
 
 /*
