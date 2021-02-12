@@ -214,8 +214,7 @@ DWORD CASC_CSV::Load(LPCTSTR szFileName)
     m_szCsvFile = (char *)LoadFileToMemory(szFileName, &cbFileData);
     if (m_szCsvFile != NULL)
     {
-        // There is one extra byte reserved by LoadFileToMemory, so we can put zero there
-        m_szCsvFile[cbFileData] = 0;
+        // Assign the data to the CSV object
         m_szCsvPtr = m_szCsvFile;
         m_nCsvFile = cbFileData;
 

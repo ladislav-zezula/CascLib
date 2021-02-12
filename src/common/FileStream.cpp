@@ -686,10 +686,14 @@ static DWORD BaseHttp_Connect(TFileStream * pStream, const char * port)
 
 static bool BaseHttp_Download(TFileStream * pStream)
 {
-    LPBYTE fileData;
+    CASC_MIME Mime;
+    char * server_response;
+    char * raw_data;
+    char * rsrcName = pStream->Base.Socket.rsrcName;
     char request[0x80];
+    size_t response_length = 0;
     size_t request_length = 0;
-    size_t fileDataLength = 0;
+    DWORD dwErrCode;
 
     // If we already have the data, it's success
     if(pStream->Base.Socket.fileData)
@@ -698,7 +702,10 @@ static bool BaseHttp_Download(TFileStream * pStream)
     // Construct the request
     if(pStream->dwFlags & BASE_PROVIDER_RIBBIT)
     {
-        request_length = CascStrPrintf(request, _countof(request), "%s\r\n", pStream->Base.Socket.rsrcName);
+        // https://wowdev.wiki/Ribbit
+        while(rsrcName[0] == '/')
+            rsrcName++;
+        request_length = CascStrPrintf(request, _countof(request), "%s\r\n", rsrcName);
     }
     else
     {
@@ -706,13 +713,33 @@ static bool BaseHttp_Download(TFileStream * pStream)
     }
 
     // Send the request and receive decoded response
-    fileData = sockets_read_response(pStream->Base.Socket.sock, request, request_length, &fileDataLength);
+    server_response = sockets_read_response(pStream->Base.Socket.sock, request, request_length, &response_length);
+    if(server_response == NULL)
+        return false;
 
-
-
-
+    // Decode the MIME document
+    if((dwErrCode = Mime.Load(server_response, response_length)) != ERROR_SUCCESS)
+    {
+        SetCascError(dwErrCode);
+        return false;
+    }
 
     return false;
+/*
+    // Store the raw data
+    if(Mime.GetItems() != 0)
+    {
+        CASC_MIME_ELEMENT & Element = Mine.Elements[0];
+
+        pStream->Base.Socket.fileData = Element.GetRawData(&pStream->Base.Socket.fileDataLength);
+        return true;
+    }
+    else
+    {
+        SetCascError(ERROR_BAD_FORMAT);
+        return false;
+    }
+*/
 }
 
 static bool BaseHttp_Open(TFileStream * pStream, LPCTSTR szFileName, DWORD dwStreamFlags)

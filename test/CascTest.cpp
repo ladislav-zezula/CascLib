@@ -1126,6 +1126,11 @@ int main(int argc, char * argv[])
     _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif  // defined(_MSC_VER) && defined(_DEBUG)
 
+#ifdef _DEBUG
+    CASC_MIME Mime;
+    Mime.Load(_T("e:\\e-mail.eml"));
+    Mime.Print();
+#endif
 
     //
     // Run tests for each storage entered on command line
@@ -1152,16 +1157,16 @@ int main(int argc, char * argv[])
     //
     // Run the tests for every available online storage in my collection
     //
-    for (size_t i = 0; i < _countof(StorageInfo2); i++)
-    {
-        // Attempt to open the storage and extract single file
-        dwErrCode = OnlineStorage_Test(Storage_EnumFiles, StorageInfo2[i].szCodeName, StorageInfo2[i].szRegion, StorageInfo2[i].szFile);
-        if (dwErrCode != ERROR_SUCCESS)
-            break;
-    }
+    //for (size_t i = 0; i < _countof(StorageInfo2); i++)
+    //{
+    //    // Attempt to open the storage and extract single file
+    //    dwErrCode = OnlineStorage_Test(Storage_EnumFiles, StorageInfo2[i].szCodeName, StorageInfo2[i].szRegion, StorageInfo2[i].szFile);
+    //    if (dwErrCode != ERROR_SUCCESS)
+    //        break;
+    //}
 
 #ifdef _MSC_VER
-    _CrtDumpMemoryLeaks();
+    //_CrtDumpMemoryLeaks();
 #endif  // _MSC_VER
 
     return (int)dwErrCode;

@@ -849,11 +849,11 @@
 					>
 				</File>
 				<File
-					RelativePath=".\src\common\Sockets.cpp"
+					RelativePath=".\src\common\Mime.cpp"
 					>
 				</File>
 				<File
-					RelativePath=".\src\common\Sockets.h"
+					RelativePath=".\src\common\Mime.h"
 					>
 				</File>
 			</Filter>

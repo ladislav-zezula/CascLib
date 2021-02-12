@@ -438,7 +438,7 @@ xchar * StringFromBinary(LPBYTE pbBinary, size_t cbBinary, xchar * szBuffer)
 }
 
 //-----------------------------------------------------------------------------
-// Structure query key
+// Structures for data blobs
 
 struct QUERY_KEY
 {

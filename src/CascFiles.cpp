@@ -1147,7 +1147,7 @@ static DWORD RibbitDownloadFile(LPCTSTR szProduct, LPCTSTR szFileName, QUERY_KEY
     DWORD dwErrCode = ERROR_CAN_NOT_COMPLETE;
 
     // Construct the full URL (https://wowdev.wiki/Ribbit)
-    CascStrPrintf(szRemoteUrl, _countof(szRemoteUrl), _T("ribbit://us.version.battle.net/v1/%s/%s"), szProduct, szFileName);
+    CascStrPrintf(szRemoteUrl, _countof(szRemoteUrl), _T("ribbit://us.version.battle.net/v1/products/%s/%s"), szProduct, szFileName);
 
     // Open the file stream
     if((pStream = FileStream_OpenFile(szRemoteUrl, BASE_PROVIDER_RIBBIT | STREAM_PROVIDER_FLAT)) != NULL)
@@ -1580,7 +1580,7 @@ LPBYTE LoadFileToMemory(LPCTSTR szFileName, DWORD * pcbFileData)
         FileStream_GetSize(pStream, &FileSize);
         cbFileData = (DWORD)FileSize;
 
-        // Do not load zero files or too larget files
+        // Do not load zero files or too large files
         if(0 < FileSize && FileSize <= 0x2000000)
         {
             // Allocate file data buffer. Make it 1 byte longer
@@ -1588,7 +1588,12 @@ LPBYTE LoadFileToMemory(LPCTSTR szFileName, DWORD * pcbFileData)
             pbFileData = CASC_ALLOC<BYTE>(cbFileData + 1);
             if(pbFileData != NULL)
             {
-                if(!FileStream_Read(pStream, NULL, pbFileData, cbFileData))
+                if(FileStream_Read(pStream, NULL, pbFileData, cbFileData))
+                {
+                    // Terminate the data with zero so various string-based functions can process it
+                    pbFileData[cbFileData] = 0;
+                }
+                else
                 {
                     CASC_FREE(pbFileData);
                     cbFileData = 0;

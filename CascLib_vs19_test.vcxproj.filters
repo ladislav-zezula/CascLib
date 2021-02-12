@@ -127,7 +127,7 @@
     <ClCompile Include="src\zlib\trees.c">
       <Filter>Source Files\zlib</Filter>
     </ClCompile>
-    <ClCompile Include="src\common\Sockets.cpp">
+    <ClCompile Include="src\common\Mime.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>
   </ItemGroup>
@@ -174,7 +174,7 @@
     <ClInclude Include="src\CascStructs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\common\Sockets.h">
+    <ClInclude Include="src\common\Mime.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
   </ItemGroup>

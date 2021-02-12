@@ -308,7 +308,7 @@
     <ClCompile Include="src\common\FileTree.cpp" />
     <ClCompile Include="src\common\ListFile.cpp" />
     <ClCompile Include="src\common\RootHandler.cpp" />
-    <ClCompile Include="src\common\Sockets.cpp" />
+    <ClCompile Include="src\common\Mime.cpp" />
     <ClCompile Include="src\jenkins\lookup3.c">
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Level1</WarningLevel>
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Level1</WarningLevel>
@@ -369,7 +369,7 @@
     <ClInclude Include="src\common\ListFile.h" />
     <ClInclude Include="src\common\Map.h" />
     <ClInclude Include="src\common\RootHandler.h" />
-    <ClInclude Include="src\common\Sockets.h" />
+    <ClInclude Include="src\common\Mime.h" />
     <ClInclude Include="src\md5\md5.h" />
   </ItemGroup>
   <ItemGroup>
