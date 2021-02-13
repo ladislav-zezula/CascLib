@@ -856,6 +856,14 @@
 					RelativePath=".\src\common\Mime.h"
 					>
 				</File>
+				<File
+					RelativePath=".\src\common\Socket.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\src\common\Socket.h"
+					>
+				</File>
 			</Filter>
 		</Filter>
 		<Filter

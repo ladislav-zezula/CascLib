@@ -580,6 +580,7 @@
     <ClInclude Include="src\common\Map.h" />
     <ClInclude Include="src\common\RootHandler.h" />
     <ClInclude Include="src\common\Mime.h" />
+    <ClInclude Include="src\common\Socket.h" />
     <ClInclude Include="src\FileStream.h" />
     <ClInclude Include="src\md5\md5.h" />
   </ItemGroup>
@@ -608,6 +609,7 @@
     <ClCompile Include="src\common\ListFile.cpp" />
     <ClCompile Include="src\common\RootHandler.cpp" />
     <ClCompile Include="src\common\Mime.cpp" />
+    <ClInclude Include="src\common\Socket.cpp" />
     <ClCompile Include="src\jenkins\lookup3.c" />
     <ClCompile Include="src\md5\md5.cpp" />
     <ClCompile Include="src\zlib\adler32.c" />

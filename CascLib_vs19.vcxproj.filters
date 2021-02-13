@@ -74,6 +74,12 @@
     <ClInclude Include="src\common\Mime.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
+    <ClInclude Include="src\common\Socket.cpp">
+      <Filter>Source Files\common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\common\Socket.h">
+      <Filter>Source Files\common</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\CascFiles.cpp">

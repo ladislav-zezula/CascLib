@@ -43,67 +43,6 @@ static DWORD StringToInt(const char * szString)
     return dwValue;
 }
 
-// Guarantees that there is zero terminator after the response
-static char * sockets_read_response(CASC_SOCKET sock, const char * request, size_t request_length, size_t * PtrLength)
-{
-    char * server_response = NULL;
-    size_t total_received = 0;
-    size_t block_increment = 0x1000;
-    size_t buffer_size = block_increment;
-    int bytes_received = 0;
-
-    // Pre-set the result length
-    if(PtrLength != NULL)
-        PtrLength[0] = 0;
-
-    // On Windows, returns SOCKET_ERROR (-1)
-    // On Linux, returns -1
-    if(send(sock, request, (int)request_length, 0) == -1)
-    {
-        SetCascError(ERROR_NETWORK_NOT_AVAILABLE);
-        return NULL;
-    }
-
-    // Allocate buffer for server response. Allocate one extra byte for zero terminator
-    if((server_response = CASC_ALLOC<char>(buffer_size + 1)) != NULL)
-    {
-        for(;;)
-        {
-            // Reallocate the buffer size, if needed
-            if(total_received == buffer_size)
-            {
-                if((server_response = CASC_REALLOC(char, server_response, buffer_size + block_increment + 1)) == NULL)
-                {
-                    SetCascError(ERROR_NOT_ENOUGH_MEMORY);
-                    return NULL;
-                }
-
-                buffer_size += block_increment;
-                block_increment *= 2;
-            }
-
-            // Receive the next part of the response, up to buffer size
-            // Returns -1 if error, 0 if closed, nonzero if something was received
-            bytes_received = recv(sock, server_response + total_received, (int)(buffer_size - total_received), 0);
-            if(bytes_received <= 0)
-                break;
-
-            // Append the number of bytes received
-            total_received += bytes_received;
-        }
-    }
-
-    // Terminate the response with zero. The space for EOS is guaranteed to be there,
-    // because we always allocated one byte more than necessary
-    if(server_response != NULL)
-        server_response[total_received] = 0;
-
-    // Give the result to the caller
-    if(PtrLength != NULL)
-        PtrLength[0] = total_received;
-    return server_response;
-}
-
 //-----------------------------------------------------------------------------
 // Dummy init function
 

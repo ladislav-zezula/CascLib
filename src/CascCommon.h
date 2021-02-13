@@ -33,6 +33,7 @@
 #include "common/Mime.h"
 #include "common/Path.h"
 #include "common/RootHandler.h"
+#include "common/Socket.h"
 
 // Headers from Alexander Peslyak's MD5 implementation
 #include "md5/md5.h"

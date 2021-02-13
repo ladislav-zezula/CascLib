@@ -123,6 +123,9 @@
     <ClCompile Include="src\common\Mime.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>
+    <ClCompile Include="src\common\Socket.cpp">
+      <Filter>Source Files\common</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\common\Common.h">
@@ -171,6 +174,9 @@
       <Filter>Source Files\zlib</Filter>
     </ClInclude>
     <ClInclude Include="src\common\Mime.h">
+      <Filter>Source Files\common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\common\Socket.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
   </ItemGroup>

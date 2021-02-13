@@ -1002,7 +1002,6 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, LPCSTR szCodeName, LPCS
     TCHAR szParamsT[MAX_PATH+0x40];
     char szParamsA[MAX_PATH+0x40];
     DWORD dwErrCode = ERROR_SUCCESS;
-    DWORD dwElapsedTime;
 
     // Prepare the path
     CascStrPrintf(szParamsA, _countof(szParamsA), "%s/%s", CASC_WORK_ROOT, szCodeName);

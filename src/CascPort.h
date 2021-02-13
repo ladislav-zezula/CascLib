@@ -55,10 +55,10 @@
   #define PATH_SEP_CHAR             '\\'
   #define PATH_SEP_STRING           "\\"
 
+  typedef SOCKET CASC_SOCKET;
+
   #define PLATFORM_WINDOWS
   #define PLATFORM_DEFINED                      // The platform is known now
-
-  typedef SOCKET CASC_SOCKET;
 
 #endif
 
@@ -110,6 +110,8 @@
   #define PATH_SEP_CHAR             '/'
   #define PATH_SEP_STRING           "/"
 
+  typedef int CASC_SOCKET;
+
   #define PLATFORM_MAC
   #define PLATFORM_DEFINED                  // The platform is known now
 
@@ -143,6 +145,8 @@
   #define PATH_SEP_CHAR             '/'
   #define PATH_SEP_STRING           "/"
 
+  typedef int CASC_SOCKET;
+
   #define PLATFORM_LITTLE_ENDIAN
   #define PLATFORM_LINUX
   #define PLATFORM_DEFINED
@@ -174,7 +178,6 @@
   typedef const char   * LPCSTR;
   typedef TCHAR        * LPTSTR;
   typedef const TCHAR  * LPCTSTR;
-  typedef int CASC_SOCKET;
 
   #ifndef __LP64__
     #define _LZMA_UINT32_IS_ULONG
@@ -192,7 +195,6 @@
   #define FILE_END      SEEK_END
 
   #define INVALID_HANDLE_VALUE ((HANDLE)-1)
-  #define INVALID_SOCKET 0
 
   #define _T(x)     x
   #define _tcslen   strlen
