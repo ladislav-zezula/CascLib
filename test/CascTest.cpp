@@ -1002,6 +1002,7 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, LPCSTR szCodeName, LPCS
     TCHAR szParamsT[MAX_PATH+0x40];
     char szParamsA[MAX_PATH+0x40];
     DWORD dwErrCode = ERROR_SUCCESS;
+    DWORD dwElapsedTime;
 
     // Prepare the path
     CascStrPrintf(szParamsA, _countof(szParamsA), "%s/%s", CASC_WORK_ROOT, szCodeName);
@@ -1127,9 +1128,30 @@ int main(int argc, char * argv[])
 #endif  // defined(_MSC_VER) && defined(_DEBUG)
 
 #ifdef _DEBUG
-    CASC_MIME Mime;
-    Mime.Load(_T("e:\\e-mail.eml"));
-    Mime.Print();
+//  CASC_MIME Mime;
+//  Mime.Load(_T("e:\\ribbit_response.txt"));
+//  Mime.Print();
+/*
+    ULONGLONG ByteOffset;
+    TFileStream * pStream;
+    LPBYTE pbBuffer = CASC_ALLOC<BYTE>(100);
+
+    if((pbBuffer = CASC_ALLOC<BYTE>(100)) != NULL)
+    {
+        if((pStream = FileStream_OpenFile(_T("http://www.zezula.net/download/bellavista_en.zip"), 0)) != NULL)
+        {
+            ByteOffset = 1751;
+            FileStream_Read(pStream, &ByteOffset, pbBuffer, 100);
+
+            ByteOffset = 1750;
+            FileStream_Read(pStream, &ByteOffset, pbBuffer, 100);
+
+            FileStream_Close(pStream);
+        }
+
+        CASC_FREE(pbBuffer);
+    }
+*/
 #endif
 
     //
@@ -1157,13 +1179,13 @@ int main(int argc, char * argv[])
     //
     // Run the tests for every available online storage in my collection
     //
-    //for (size_t i = 0; i < _countof(StorageInfo2); i++)
-    //{
-    //    // Attempt to open the storage and extract single file
-    //    dwErrCode = OnlineStorage_Test(Storage_EnumFiles, StorageInfo2[i].szCodeName, StorageInfo2[i].szRegion, StorageInfo2[i].szFile);
-    //    if (dwErrCode != ERROR_SUCCESS)
-    //        break;
-    //}
+    for (size_t i = 0; i < _countof(StorageInfo2); i++)
+    {
+        // Attempt to open the storage and extract single file
+        dwErrCode = OnlineStorage_Test(Storage_EnumFiles, StorageInfo2[i].szCodeName, StorageInfo2[i].szRegion, StorageInfo2[i].szFile);
+        if (dwErrCode != ERROR_SUCCESS)
+            break;
+    }
 
 #ifdef _MSC_VER
     //_CrtDumpMemoryLeaks();

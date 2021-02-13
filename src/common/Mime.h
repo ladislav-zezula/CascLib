@@ -48,7 +48,11 @@ class CASC_MIME_ELEMENT
     CASC_MIME_ELEMENT();
     ~CASC_MIME_ELEMENT();
 
+    unsigned char * GiveAway(size_t * ptr_data_length);
+
     DWORD Load(char * mime_data_begin, char * mime_data_end, const char * boundary_ptr = NULL);
+
+    CASC_MIME_ELEMENT * GetChild()  { return folder.pChild; }
 
 #ifdef _DEBUG
     void Print(size_t nLevel, size_t nIndex);
@@ -86,6 +90,8 @@ class CASC_MIME
     CASC_MIME();
     ~CASC_MIME();
 
+    unsigned char * GiveAway(size_t * ptr_data_length);
+
     DWORD Load(char * data, size_t length);
     DWORD Load(LPCTSTR fileName);
 
@@ -97,13 +103,5 @@ class CASC_MIME
 
     CASC_MIME_ELEMENT root;
 };
-
-//-----------------------------------------------------------------------------
-// Socket helper functions
-
-// Initialize sockets library
-DWORD sockets_initialize();
-char *sockets_read_response(CASC_SOCKET sock, const char * request, size_t requestLength, size_t * PtrLength);
-void  sockets_free();
 
 #endif // __MIME_H__

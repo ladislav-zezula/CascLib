@@ -261,7 +261,7 @@ struct TEncryptedStream : public TBlockStream
 // Public functions for file stream
 
 TFileStream * FileStream_CreateFile(LPCTSTR szFileName, DWORD dwStreamFlags);
-TFileStream * FileStream_OpenFile(LPCTSTR szFileName, DWORD dwStreamFlags);
+TFileStream * FileStream_OpenFile(LPCTSTR szFileName, DWORD dwStreamFlags = 0);
 LPCTSTR FileStream_GetFileName(TFileStream * pStream);
 size_t FileStream_Prefix(LPCTSTR szFileName, DWORD * pdwProvider);
 

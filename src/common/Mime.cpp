@@ -91,17 +91,33 @@ CASC_MIME_ELEMENT::~CASC_MIME_ELEMENT()
     data.begin = NULL;
 }
 
+unsigned char * CASC_MIME_ELEMENT::GiveAway(size_t * ptr_data_length)
+{
+    unsigned char * give_away_data = data.begin;
+    size_t give_away_length = data.length;
+
+    // Clear the data (DO NOT FREE)
+    data.begin = NULL;
+    data.length = 0;
+
+    // Copy the data to local buffer
+    if(ptr_data_length != NULL)
+        ptr_data_length[0] = give_away_length;
+    return give_away_data;
+}
+
 DWORD CASC_MIME_ELEMENT::Load(char * mime_data_begin, char * mime_data_end, const char * boundary_ptr)
 {
     CASC_MIME_ENCODING Encoding = MimeEncodingTextPlain;
     CASC_MIME_BLOB mime_data(mime_data_begin, mime_data_end);
+    size_t terminator_length = 2;
     size_t length_begin;
     size_t length_end;
     char * mime_line;
     char boundary_begin[MAX_LENGTH_BOUNDARY + 2];
     char boundary_end[MAX_LENGTH_BOUNDARY + 4];
-    bool mime_version = false;
     DWORD dwErrCode = ERROR_SUCCESS;
+    bool mime_version = false;
 
     // Reset the boundary
     boundary[0] = 0;
@@ -117,10 +133,19 @@ DWORD CASC_MIME_ELEMENT::Load(char * mime_data_begin, char * mime_data_end, cons
         }
 
         // Root nodes are required to have MIME version
-        if(boundary_ptr == NULL && !strcmp(mime_line, "MIME-Version: 1.0"))
+        if(boundary_ptr == NULL && mime_version == false)
         {
-            mime_version = true;
-            continue;
+            if(!strcmp(mime_line, "MIME-Version: 1.0"))
+            {
+                mime_version = true;
+                continue;
+            }
+            if(!strcmp(mime_line, "HTTP/1.1 200 OK"))
+            {
+                terminator_length = 0;
+                mime_version = true;
+                continue;
+            }
         }
 
         // Get the encoding
@@ -223,17 +248,17 @@ DWORD CASC_MIME_ELEMENT::Load(char * mime_data_begin, char * mime_data_end, cons
             }
             else
             {
-                content.end = mime_data_end - 2;
-                if(content.end[0] != 0x0D || content.end[1] != 0x0A)
+                content.end = mime_data_end - terminator_length;
+                if((terminator_length >= 2) && (content.end[0] != 0x0D || content.end[1] != 0x0A))
                     return ERROR_BAD_FORMAT;
-                if((content.ptr + 2) >= content.end)
+                if((content.ptr + terminator_length) >= content.end)
                     return ERROR_BAD_FORMAT;
             }
 
             // Allocate buffer for decoded data.
             // Make it the same size like source data plus zero at the end
             raw_length = (content.end - content.ptr);
-            data_buffer = CASC_ALLOC<unsigned char>(raw_length + 1);
+            data_buffer = CASC_ALLOC<unsigned char>(raw_length);
             if(data_buffer != NULL)
             {
                 // Decode the data
@@ -389,7 +414,7 @@ bool CASC_MIME_ELEMENT::ExtractBoundary(const char * line, char * boundary, size
     return false;
 }
 
-DWORD CASC_MIME_ELEMENT::DecodeTextPlain(char * content_begin, char * content_end, unsigned char * data_ptr, size_t * ptr_length)
+DWORD CASC_MIME_ELEMENT::DecodeTextPlain(char * content_begin, char * content_end, unsigned char * data_buffer, size_t * ptr_length)
 {
     size_t data_length = (size_t)(content_end - content_begin);
 
@@ -398,7 +423,7 @@ DWORD CASC_MIME_ELEMENT::DecodeTextPlain(char * content_begin, char * content_en
     assert(content_end > content_begin);
 
     // Plain copy
-    memcpy(data_ptr, content_begin, data_length);
+    memcpy(data_buffer, content_begin, data_length);
 
     // Give the result
     if(ptr_length != NULL)
@@ -407,9 +432,9 @@ DWORD CASC_MIME_ELEMENT::DecodeTextPlain(char * content_begin, char * content_en
 }
 
 
-DWORD CASC_MIME_ELEMENT::DecodeQuotedPrintable(char * content_begin, char * content_end, unsigned char * data_ptr, size_t * ptr_length)
+DWORD CASC_MIME_ELEMENT::DecodeQuotedPrintable(char * content_begin, char * content_end, unsigned char * data_buffer, size_t * ptr_length)
 {
-    unsigned char * save_data_ptr = data_ptr;
+    unsigned char * save_data_buffer = data_buffer;
     char * content_ptr;
     DWORD dwErrCode;
 
@@ -431,29 +456,28 @@ DWORD CASC_MIME_ELEMENT::DecodeQuotedPrintable(char * content_begin, char * cont
             }
 
             // Is there hexa number after the equal sign?
-            dwErrCode = BinaryFromString(content_ptr + 1, 2, data_ptr);
+            dwErrCode = BinaryFromString(content_ptr + 1, 2, data_buffer);
             if(dwErrCode != ERROR_SUCCESS)
                 return dwErrCode;
 
             content_ptr += 3;
-            data_ptr++;
+            data_buffer++;
             continue;
         }
         else
         {
-            *data_ptr++ = (unsigned char)(*content_ptr++);
+            *data_buffer++ = (unsigned char)(*content_ptr++);
         }
     }
 
     if(ptr_length != NULL)
-        ptr_length[0] = (size_t)(data_ptr - save_data_ptr);
-    data_ptr[0] = 0;
+        ptr_length[0] = (size_t)(data_buffer - save_data_buffer);
     return ERROR_SUCCESS;
 }
 
-DWORD CASC_MIME_ELEMENT::DecodeBase64(char * content_begin, char * content_end, unsigned char * data_ptr, size_t * ptr_length)
+DWORD CASC_MIME_ELEMENT::DecodeBase64(char * content_begin, char * content_end, unsigned char * data_buffer, size_t * ptr_length)
 {
-    unsigned char * save_data_ptr = data_ptr;
+    unsigned char * save_data_buffer = data_buffer;
     DWORD BitBuffer = 0;
     DWORD BitCount = 0;
     BYTE OneByte;
@@ -503,13 +527,13 @@ DWORD CASC_MIME_ELEMENT::DecodeBase64(char * content_begin, char * content_end, 
 
             // Put the byte value. The buffer can not overflow,
             // because it is guaranteed to be equal to the length of the base64 string
-            *data_ptr++ = OneByte;
+            *data_buffer++ = OneByte;
         }
     }
 
     // Return the decoded length
     if(ptr_length != NULL)
-        ptr_length[0] = (data_ptr - save_data_ptr);
+        ptr_length[0] = (data_buffer - save_data_buffer);
     return ERROR_SUCCESS;
 }
 
@@ -522,10 +546,37 @@ CASC_MIME::CASC_MIME()
 CASC_MIME::~CASC_MIME()
 {}
 
+unsigned char * CASC_MIME::GiveAway(size_t * ptr_data_length)
+{
+    CASC_MIME_ELEMENT * pElement = &root;
+    unsigned char * data;
+
+    // 1) Give the data from the root
+    if((data = root.GiveAway(ptr_data_length)) != NULL)
+        return data;
+
+    // 2) If we have children, then give away from the first child
+    pElement = root.GetChild();
+    if(pElement && (data = pElement->GiveAway(ptr_data_length)) != NULL)
+        return data;
+
+    // Return NULL
+    if(ptr_data_length != NULL)
+        ptr_data_length[0] = 0;
+    return NULL;
+}
+
 DWORD CASC_MIME::Load(char * data, size_t length)
 {
     // Clear the root element
     memset(&root, 0, sizeof(CASC_MIME_ELEMENT));
+
+    //FILE * fp = fopen("E:\\html_response.txt", "wb");
+    //if(fp != NULL)
+    //{
+    //    fwrite(data, 1, length, fp);
+    //    fclose(fp);
+    //}
 
     // Load the root element
     return root.Load(data, data + length);
@@ -559,298 +610,3 @@ void CASC_MIME::Print()
     root.Print(0, 0);
 }
 #endif
-
-//-----------------------------------------------------------------------------
-// Local functions
-
-enum MIME_PHASE
-{
-    MimePhaseHeader = 0,
-    MimePhaseDataHeader,
-    MimePhaseContent,
-    MimePhaseDecoding,
-};
-
-enum BOUNDARY_PHASE
-{
-    BoundaryNone = 0,
-    BoundaryBegin,
-    BoundaryEnd
-};
-
-// Check whether the next line in the MIME file is a boundary
-static BOUNDARY_PHASE CheckForBoundary(const char * szColumn, const char * szBoundary, size_t nBoundaryLength)
-{
-    if(szColumn[0] == '-' && szColumn[1] == '-')
-    {
-        if(!strncmp(szColumn + 2, szBoundary, nBoundaryLength))
-        {
-            // Check for end of the boundary
-            if(szColumn[2 + nBoundaryLength] == '-' && szColumn[2 + nBoundaryLength + 1] == '-')
-                return BoundaryEnd;
-            else
-                return BoundaryBegin;
-        }
-    }
-
-    return BoundaryNone;
-}
-
-static BOUNDARY_PHASE CheckForBoundary(CASC_CSV & MimeFile, const char * szBoundary, size_t nBoundaryLength)
-{
-    BOUNDARY_PHASE BoundaryPhase = BoundaryNone;
-
-    // Load one line of the MIME file
-    if(MimeFile.LoadNextLine())
-    {
-        const CASC_CSV_COLUMN & Column = MimeFile[CSV_ZERO][CSV_ZERO];
-        const char * szColumn = Column.szValue;
-
-        BoundaryPhase = CheckForBoundary(szColumn, szBoundary, nBoundaryLength);
-    }
-
-    return BoundaryPhase;
-}
-
-// End-of_line finder for MIME data. We are looking strictly for \x0D\x0A
-static char * NextLine_Mime(void * pvUserData, char * szLine)
-{
-    const char * szBoundary = (const char *)pvUserData;
-
-    // Do we have the end of the boundary?
-    if(szBoundary == NULL)
-    {
-        // Keep processing until the end
-        while(szLine[0] != 0)
-        {
-            // Strictly check for MIME new line
-            if(szLine[0] == 0x0D && szLine[1] == 0x0A)
-            {
-                szLine[0] = 0;
-                szLine[1] = 0;
-                return szLine + 2;
-            }
-
-            // Next character, please
-            szLine++;
-        }
-    }
-    else
-    {
-        // Calculate the length of the boundary
-        BOUNDARY_PHASE BPhase;
-        size_t nBoundaryLength = strlen(szBoundary);
-        size_t nFillLength;
-
-        // Keep processing until we find the sequence of EOL+Boundary
-        while(szLine[0] != 0)
-        {
-            // Strictly check for MIME new line
-            if(szLine[0] == 0x0D && szLine[1] == 0x0A && (BPhase = CheckForBoundary(szLine + 2, szBoundary, nBoundaryLength)) != BoundaryNone)
-            {
-                nFillLength = 4 + nBoundaryLength + ((BPhase == BoundaryEnd) ? 4 : 2);
-
-                memset(szLine, 0, nFillLength);
-                return szLine + nFillLength;
-            }
-
-            // Next character, please
-            szLine++;
-        }
-    }
-
-    return NULL;
-}
-
-// There is no next column for Ribbit files. The entire line is a single column
-static char * NextColumn_Mime(void * /* pvUserData */, char * /* szColumn */)
-{
-    return NULL;
-}
-
-static size_t ExtractBoundary(char * szBuffer, size_t cchBuffer, const char * szBoundaryPtr)
-{
-    const char * szBoundaryEnd = strchr(szBoundaryPtr, '\"');
-
-    // Find the end of the boundary text
-    if((szBoundaryEnd = strchr(szBoundaryPtr, '\"')) == NULL)
-        return 0;
-    
-    // Check buffer size
-    if((size_t)(szBoundaryEnd - szBoundaryPtr) >= cchBuffer)
-        return 0;
-
-    // Copy the boundary
-    memcpy(szBuffer, szBoundaryPtr, szBoundaryEnd - szBoundaryPtr);
-    szBuffer[szBoundaryEnd - szBoundaryPtr] = 0;
-    return (szBoundaryEnd - szBoundaryPtr);
-}
-
-static LPBYTE mime_to_raw(LPBYTE mime_response, size_t mime_length, size_t * PtrLength)
-{
-    QUERY_KEY MimeContent;
-    QUERY_KEY RawContent;
-    CASC_CSV MimeFile(0, false);
-    MIME_PHASE nPhase = MimePhaseHeader;
-    size_t nBoundaryLength = 0;
-    DWORD dwErrCode;
-    char szBoundary[0x80];
-
-    FILE * fp = fopen("E:\\ribbit_response.txt", "wb");
-    if(fp != NULL)
-    {
-        fwrite(mime_response, 1, mime_length, fp);
-        fclose(fp);
-    }
-
-    // Initialize the parser to detect Ribbit newlines
-    MimeFile.SetNextLineProc(NextLine_Mime, NextColumn_Mime);
-    szBoundary[0] = 0;
-
-    // Set the Ribbit parser
-    dwErrCode = MimeFile.Load(mime_response, mime_length);
-    if(dwErrCode == ERROR_SUCCESS)
-    {
-        // 1) Keep loading lines until we find boundary
-        if(nPhase == MimePhaseHeader)
-        {
-            while(MimeFile.LoadNextLine())
-            {
-                const CASC_CSV_COLUMN & Column = MimeFile[CSV_ZERO][CSV_ZERO];
-                const char * szBoundaryPtr;
-
-                // Get the boundary
-                if(szBoundary[0] == 0 && (szBoundaryPtr = strstr(Column.szValue, "boundary=\"")) != NULL)
-                {
-                    nBoundaryLength = ExtractBoundary(szBoundary, _countof(szBoundary), szBoundaryPtr + 10);
-                    continue;
-                }
-
-                // Is the line the boundary one?
-                if(Column.nLength == 0 && CheckForBoundary(MimeFile, szBoundary, nBoundaryLength) == BoundaryBegin)
-                {
-                    nPhase = MimePhaseDataHeader;
-                    break;
-                }
-            }
-        }
-
-        // 2) If we are at the boundary pointer, keep reading until we find an empty line
-        if(nPhase == MimePhaseDataHeader)
-        {
-            while(MimeFile.LoadNextLine())
-            {
-                const CASC_CSV_COLUMN & Column = MimeFile[CSV_ZERO][CSV_ZERO];
-
-                // Is that an empty line?
-                if(Column.nLength == 0)
-                {
-                    MimeFile.SetNextLineProc(NextLine_Mime, NextColumn_Mime, szBoundary);
-                    nPhase = MimePhaseContent;
-                    break;
-                }
-            }
-        }
-
-        // 3) Load the content of the MIME response
-        if(nPhase == MimePhaseContent)
-        {
-            if(MimeFile.LoadNextLine())
-            {
-                // Get the single "line" from the MIME file
-                const CASC_CSV_COLUMN & Column = MimeFile[CSV_ZERO][CSV_ZERO];
-
-                // Give the "line" to the caller
-                MimeContent.SetData(Column.szValue, Column.nLength);
-                nPhase = MimePhaseDecoding;
-            }
-        }
-
-        // 4) Decode the MIME content
-        if(nPhase == MimePhaseDecoding)
-        {
-            // TODO
-        }
-    }
-
-    // Give the result to the caller
-    if(PtrLength != NULL)
-        PtrLength[0] = RawContent.cbData;
-    return RawContent.pbData;
-}
-
-//-----------------------------------------------------------------------------
-// Public functions - sockets
-
-DWORD sockets_initialize()
-{
-#ifdef PLATFORM_WINDOWS
-    // Windows-specific initialize function
-    WSADATA wsd;
-    if(WSAStartup(MAKEWORD(2, 2), &wsd) != 0)
-        return ERROR_CAN_NOT_COMPLETE;
-#endif
-
-    return ERROR_SUCCESS;
-}
-
-// Guarantees that there is zero terminator after the response
-char * sockets_read_response(CASC_SOCKET sock, const char * request, size_t request_length, size_t * PtrLength)
-{
-    char * server_response = NULL;
-    size_t bytes_received = 0;
-    size_t total_received = 0;
-    size_t block_increment = 0x1000;
-    size_t buffer_size = block_increment;
-
-    // Pre-set the result length
-    if(PtrLength != NULL)
-        PtrLength[0] = 0;
-
-    // On Windows, returns SOCKET_ERROR (-1)
-    // On Linux, returns -1
-    if(send(sock, request, (int)request_length, 0) == -1)
-    {
-        SetCascError(ERROR_NETWORK_NOT_AVAILABLE);
-        return NULL;
-    }
-
-    // Allocate buffer for server response. Allocate one extra byte for zero terminator
-    if((server_response = CASC_ALLOC<char>(buffer_size + 1)) != NULL)
-    {
-        for(;;)
-        {
-            // Reallocate the buffer size, if needed
-            if(total_received == buffer_size)
-            {
-                if((server_response = CASC_REALLOC(char, server_response, buffer_size + block_increment + 1)) == NULL)
-                {
-                    SetCascError(ERROR_NOT_ENOUGH_MEMORY);
-                    return NULL;
-                }
-
-                buffer_size += block_increment;
-                block_increment *= 2;
-            }
-
-            // Receive the next part of the response, up to buffer size
-            if((bytes_received = recv(sock, server_response + total_received, (int)(buffer_size - total_received), 0)) <= 0)
-                break;
-            total_received += bytes_received;
-        }
-    }
-
-    // Terminate the response with zero. The space for EOS is guaranteed to be there,
-    // because we always allocated one byte more than necessary
-    if(server_response != NULL)
-        server_response[total_received] = 0;
-
-    // Give the result to the caller
-    if(PtrLength != NULL)
-        PtrLength[0] = total_received;
-    return server_response;
-}
-
-void sockets_free()
-{}
-

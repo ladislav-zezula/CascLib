@@ -1130,9 +1130,6 @@ static DWORD InitializeLocalDirectories(TCascStorage * hs, PCASC_OPEN_STORAGE_AR
 
 static DWORD InitializeOnlineDirectories(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
 {
-    // On Windows, we need to initialize Winsock
-    sockets_initialize();
-
     // Create the root path
     hs->szRootPath = CascNewStr(pArgs->szLocalPath);
     if (hs->szRootPath != NULL)

@@ -60,6 +60,8 @@ static LPCTSTR DataDirs[] =
     NULL,
 };
 
+static LPCTSTR bnet_region = _T("us");
+
 //-----------------------------------------------------------------------------
 // Local functions
 
@@ -97,12 +99,12 @@ static const char * CaptureDecimalInteger(const char * szDataPtr, const char * s
     while (szDataPtr < szDataEnd && szDataPtr[0] != ' ')
     {
         // Must only contain decimal digits ('0' - '9')
-        if (!IsCharDigit(szDataPtr[0]))
+        if(!IsCharDigit(szDataPtr[0]))
             break;
 
         // Get the next value and verify overflow
         AddValue = szDataPtr[0] - '0';
-        if ((TotalValue + AddValue) < TotalValue)
+        if((TotalValue + AddValue) < TotalValue)
             return NULL;
 
         TotalValue = (TotalValue * 10) + AddValue;
@@ -147,13 +149,13 @@ static const char * CaptureSingleHash(const char * szDataPtr, const char * szDat
     // Count all hash characters
     for (size_t i = 0; i < HashStringLength; i++)
     {
-        if (szDataPtr >= szDataEnd || isxdigit(szDataPtr[0]) == 0)
+        if(szDataPtr >= szDataEnd || isxdigit(szDataPtr[0]) == 0)
             return NULL;
         szDataPtr++;
     }
 
     // There must be a separator or end-of-string
-    if (szDataPtr > szDataEnd || IsWhiteSpace(szDataPtr) == false)
+    if(szDataPtr > szDataEnd || IsWhiteSpace(szDataPtr) == false)
         return NULL;
 
     // Give the values
@@ -171,7 +173,7 @@ static const char * CaptureHashCount(const char * szDataPtr, const char * szData
     {
         // Check one hash
         szDataPtr = CaptureSingleHash(szDataPtr, szDataEnd, HashValue, MD5_HASH_SIZE);
-        if (szDataPtr == NULL)
+        if(szDataPtr == NULL)
             return NULL;
 
         // Skip all whitespaces
@@ -231,11 +233,11 @@ static bool CheckConfigFileVariable(
 
     // Capture the variable from the line
     szLinePtr = CaptureSingleString(szLinePtr, szLineEnd, szVariableName, sizeof(szVariableName));
-    if (szLinePtr == NULL)
+    if(szLinePtr == NULL)
         return false;
 
     // Verify whether this is the variable
-    if (!CascCheckWildCard(szVariableName, szVarName))
+    if(!CascCheckWildCard(szVariableName, szVarName))
         return false;
 
     // Skip the spaces and '='
@@ -243,7 +245,7 @@ static bool CheckConfigFileVariable(
         szLinePtr++;
 
     // Call the parsing function only if there is some data
-    if (szLinePtr >= szLineEnd)
+    if(szLinePtr >= szLineEnd)
         return false;
 
     return (PfnParseProc(hs, szVariableName, szLinePtr, szLineEnd, pvParseParam) == ERROR_SUCCESS);
@@ -260,7 +262,7 @@ static DWORD LoadHashArray(
     // Allocate the blob buffer
     pBlob->cbData = (DWORD)(HashCount * MD5_HASH_SIZE);
     pBlob->pbData = CASC_ALLOC<BYTE>(pBlob->cbData);
-    if (pBlob->pbData != NULL)
+    if(pBlob->pbData != NULL)
     {
         LPBYTE pbBuffer = pBlob->pbData;
 
@@ -268,7 +270,7 @@ static DWORD LoadHashArray(
         {
             // Capture the hash value
             szLinePtr = CaptureSingleHash(szLinePtr, szLineEnd, pbBuffer, MD5_HASH_SIZE);
-            if (szLinePtr == NULL)
+            if(szLinePtr == NULL)
                 return ERROR_BAD_FORMAT;
 
             // Move buffer
@@ -287,7 +289,7 @@ static DWORD LoadMultipleHashes(PQUERY_KEY pBlob, const char * szLineBegin, cons
     DWORD dwErrCode = ERROR_SUCCESS;
 
     // Retrieve the hash count
-    if (CaptureHashCount(szLineBegin, szLineEnd, &HashCount) == NULL)
+    if(CaptureHashCount(szLineBegin, szLineEnd, &HashCount) == NULL)
         return ERROR_BAD_FORMAT;
 
     // Do nothing if there is no data
@@ -402,10 +404,10 @@ static DWORD LoadVfsRootEntry(TCascStorage * hs, const char * szVariableName, co
     DWORD VfsRootIndex = CASC_INVALID_INDEX;
 
     // Skip the "vfs-" part
-    if (!strncmp(szVariableName, "vfs-", 4))
+    if(!strncmp(szVariableName, "vfs-", 4))
     {
         // Then, there must be a decimal number as index
-        if ((szVarPtr = CaptureDecimalInteger(szVarPtr + 4, szVarEnd, &VfsRootIndex)) != NULL)
+        if((szVarPtr = CaptureDecimalInteger(szVarPtr + 4, szVarEnd, &VfsRootIndex)) != NULL)
         {
             // We expect the array to be initialized
             assert(pArray->IsInitialized());
@@ -488,9 +490,9 @@ static DWORD LoadBuildNumber(TCascStorage * hs, const char * /* szVariableName *
 static int LoadQueryKey(const CASC_CSV_COLUMN & Column, QUERY_KEY & Key)
 {
     // Check the input data
-    if (Column.szValue == NULL)
+    if(Column.szValue == NULL)
         return ERROR_BUFFER_OVERFLOW;
-    if (Column.nLength != MD5_STRING_SIZE)
+    if(Column.nLength != MD5_STRING_SIZE)
         return ERROR_BAD_FORMAT;
 
     return LoadHashArray(&Key, Column.szValue, Column.szValue + Column.nLength, 1);
@@ -666,12 +668,12 @@ static DWORD ParseFile_BuildInfo(TCascStorage * hs, CASC_CSV & Csv)
     {
         // Extract the CDN build key
         dwErrCode = LoadQueryKey(Csv[nSelected]["Build Key!HEX:16"], hs->CdnBuildKey);
-        if (dwErrCode != ERROR_SUCCESS)
+        if(dwErrCode != ERROR_SUCCESS)
             return dwErrCode;
 
         // Extract the CDN config key
         dwErrCode = LoadQueryKey(Csv[nSelected]["CDN Key!HEX:16"], hs->CdnConfigKey);
-        if (dwErrCode != ERROR_SUCCESS)
+        if(dwErrCode != ERROR_SUCCESS)
             return dwErrCode;
 
         // Get the CDN path
@@ -703,20 +705,20 @@ static DWORD ParseFile_VersionsDb(TCascStorage * hs, CASC_CSV & Csv)
     for (size_t i = 0; i < nLineCount; i++)
     {
         // Either take the version required or take the first one
-        if (hs->szRegion == NULL || !strcmp(Csv[i]["Region!STRING:0"].szValue, hs->szRegion))
+        if(hs->szRegion == NULL || !strcmp(Csv[i]["Region!STRING:0"].szValue, hs->szRegion))
         {
             // Extract the CDN build key
             dwErrCode = LoadQueryKey(Csv[i]["BuildConfig!HEX:16"], hs->CdnBuildKey);
-            if (dwErrCode != ERROR_SUCCESS)
+            if(dwErrCode != ERROR_SUCCESS)
                 return dwErrCode;
 
             // Extract the CDN config key
             dwErrCode = LoadQueryKey(Csv[i]["CDNConfig!HEX:16"], hs->CdnConfigKey);
-            if (dwErrCode != ERROR_SUCCESS)
+            if(dwErrCode != ERROR_SUCCESS)
                 return dwErrCode;
 
             const CASC_CSV_COLUMN & VerColumn = Csv[i]["VersionsName!String:0"];
-            if (VerColumn.szValue && VerColumn.nLength)
+            if(VerColumn.szValue && VerColumn.nLength)
             {
                 LoadBuildNumber(hs, NULL, VerColumn.szValue, VerColumn.szValue + VerColumn.nLength, NULL);
             }
@@ -748,7 +750,7 @@ static DWORD ParseFile_BuildDb(TCascStorage * hs, CASC_CSV & Csv)
 
     // Extract the CDN config key
     dwErrCode = LoadQueryKey(Csv[CSV_ZERO][1], hs->CdnConfigKey);
-    if (dwErrCode != ERROR_SUCCESS)
+    if(dwErrCode != ERROR_SUCCESS)
         return dwErrCode;
 
     // Verify all variables
@@ -807,7 +809,7 @@ static DWORD ParseFile_CdnBuild(TCascStorage * hs, void * pvListFile)
 
     // Initialize the empty VFS array
     dwErrCode = hs->VfsRootList.Create<CASC_CKEY_ENTRY>(0x10);
-    if (dwErrCode != ERROR_SUCCESS)
+    if(dwErrCode != ERROR_SUCCESS)
         return dwErrCode;
 
     // Parse all variables
@@ -901,7 +903,7 @@ static DWORD LoadCsvFile(TCascStorage * hs, LPBYTE pbFileData, size_t cbFileData
     DWORD dwErrCode;
 
     // Load the external file to memory
-    if ((dwErrCode = Csv.Load(pbFileData, cbFileData)) == ERROR_SUCCESS)
+    if((dwErrCode = Csv.Load(pbFileData, cbFileData)) == ERROR_SUCCESS)
         dwErrCode = PfnParseProc(hs, Csv);
     return dwErrCode;
 }
@@ -912,7 +914,7 @@ static DWORD LoadCsvFile(TCascStorage * hs, LPCTSTR szFileName, PARSECSVFILE Pfn
     DWORD dwErrCode;
 
     // Load the external file to memory
-    if ((dwErrCode = Csv.Load(szFileName)) == ERROR_SUCCESS)
+    if((dwErrCode = Csv.Load(szFileName)) == ERROR_SUCCESS)
         dwErrCode = PfnParseProc(hs, Csv);
     return dwErrCode;
 }
@@ -960,7 +962,7 @@ static void CreateRemoteAndLocalPath(TCascStorage * hs, CASC_CDN_DOWNLOAD & Cdns
     {
         // The file is given by EKey. It's either a loose file, or it's stored in an archive.
         // We check that using the EKey map
-        if ((pEKeyEntry = (PCASC_EKEY_ENTRY)hs->IndexMap.FindObject(CdnsInfo.pbEKey)) != NULL)
+        if((pEKeyEntry = (PCASC_EKEY_ENTRY)hs->IndexMap.FindObject(CdnsInfo.pbEKey)) != NULL)
         {
             // Change the path type to "data"
             RemotePath.AppendString(_T("data"), true);
@@ -1093,15 +1095,15 @@ static DWORD DownloadFile(
 
     // Open the remote stream
     pRemStream = FileStream_OpenFile(szRemoteName, BASE_PROVIDER_HTTP | STREAM_PROVIDER_FLAT | dwPortFlags);
-    if (pRemStream != NULL)
+    if(pRemStream != NULL)
     {
         // Will we download the entire file or just a part of it?
-        if (PtrByteOffset == NULL)
+        if(PtrByteOffset == NULL)
         {
             ULONGLONG FileSize = 0;
 
             // Retrieve the file size, but not longer than 1 GB
-            if (FileStream_GetSize(pRemStream, &FileSize) && 0 < FileSize && FileSize < 0x40000000)
+            if(FileStream_GetSize(pRemStream, &FileSize) && 0 < FileSize && FileSize < 0x40000000)
             {
                 // Cut the file size down to 32 bits
                 cbReadSize = (DWORD)FileSize;
@@ -1109,15 +1111,15 @@ static DWORD DownloadFile(
         }
 
         // Shall we read something?
-        if ((cbReadSize != 0) && (pbFileData = CASC_ALLOC<BYTE>(cbReadSize)) != NULL)
+        if((cbReadSize != 0) && (pbFileData = CASC_ALLOC<BYTE>(cbReadSize)) != NULL)
         {
             // Read all required data from the remote file
-            if (FileStream_Read(pRemStream, PtrByteOffset, pbFileData, cbReadSize))
+            if(FileStream_Read(pRemStream, PtrByteOffset, pbFileData, cbReadSize))
             {
                 pLocStream = FileStream_CreateFile(szLocalName, BASE_PROVIDER_FILE | STREAM_PROVIDER_FLAT);
-                if (pLocStream != NULL)
+                if(pLocStream != NULL)
                 {
-                    if (FileStream_Write(pLocStream, NULL, pbFileData, cbReadSize))
+                    if(FileStream_Write(pLocStream, NULL, pbFileData, cbReadSize))
                         dwErrCode = ERROR_SUCCESS;
 
                     FileStream_Close(pLocStream);
@@ -1147,10 +1149,11 @@ static DWORD RibbitDownloadFile(LPCTSTR szProduct, LPCTSTR szFileName, QUERY_KEY
     DWORD dwErrCode = ERROR_CAN_NOT_COMPLETE;
 
     // Construct the full URL (https://wowdev.wiki/Ribbit)
-    CascStrPrintf(szRemoteUrl, _countof(szRemoteUrl), _T("ribbit://us.version.battle.net/v1/products/%s/%s"), szProduct, szFileName);
+    // Old (HTTP) download: wget http://us.patch.battle.net:1119/wow_classic/cdns
+    CascStrPrintf(szRemoteUrl, _countof(szRemoteUrl), _T("ribbit://%s.version.battle.net/v1/products/%s/%s"), bnet_region, szProduct, szFileName);
 
     // Open the file stream
-    if((pStream = FileStream_OpenFile(szRemoteUrl, BASE_PROVIDER_RIBBIT | STREAM_PROVIDER_FLAT)) != NULL)
+    if((pStream = FileStream_OpenFile(szRemoteUrl, 0)) != NULL)
     {
         if(FileStream_GetSize(pStream, &FileSize) && FileSize <= 0x04000000)
         {
@@ -1284,9 +1287,9 @@ static DWORD FetchAndLoadConfigFile(TCascStorage * hs, PQUERY_KEY pFileKey, PARS
 
     // Load and verify the external listfile
     pvListFile = ListFile_OpenExternal(szLocalPath);
-    if (pvListFile != NULL)
+    if(pvListFile != NULL)
     {
-        if (ListFile_VerifyMD5(pvListFile, pFileKey->pbData))
+        if(ListFile_VerifyMD5(pvListFile, pFileKey->pbData))
         {
             dwErrCode = PfnParseProc(hs, pvListFile);
         }
@@ -1362,18 +1365,18 @@ DWORD CheckGameDirectory(TCascStorage * hs, LPTSTR szDirectory)
     {
         // Create the full name of the .agent.db file
         szBuildFile = CombinePath(szDirectory, BuildTypes[i].szFileName);
-        if (szBuildFile != NULL)
+        if(szBuildFile != NULL)
         {
             // Attempt to open the file
             pStream = FileStream_OpenFile(szBuildFile, STREAM_FLAG_READ_ONLY);
-            if (pStream != NULL)
+            if(pStream != NULL)
             {
                 // Free the stream
                 FileStream_Close(pStream);
 
                 // Check for the data directory
                 dwErrCode = CheckDataDirectory(hs, szDirectory);
-                if (dwErrCode == ERROR_SUCCESS)
+                if(dwErrCode == ERROR_SUCCESS)
                 {
                     hs->szBuildFile = szBuildFile;
                     hs->BuildFileType = BuildTypes[i].BuildFileType;
