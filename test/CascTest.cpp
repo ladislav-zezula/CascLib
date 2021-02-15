@@ -1093,11 +1093,12 @@ static STORAGE_INFO1 StorageInfo1[] =
 
 static STORAGE_INFO2 StorageInfo2[] =
 {
-//  {"agent",    "us"},
-//  {"bna",      "us"},
-//  {"catalogs", NULL},
-//  {"clnt",     "us"},
-//  {"hsb",      "us"},
+//  {"agent",       "us"},
+//  {"bna",         "us"},
+//  {"catalogs",     NULL},
+//  {"clnt",        "us"},
+//  {"hsb",         "us"},
+    {"wow_classic", "us"},
     {NULL}
 };
 
@@ -1140,13 +1141,13 @@ int main(int argc, char * argv[])
     //
     // Run the tests for every available online storage in my collection
     //
-    //for (size_t i = 0; StorageInfo2[i].szCodeName != NULL; i++)
-    //{
-    //    // Attempt to open the storage and extract single file
-    //    dwErrCode = OnlineStorage_Test(Storage_EnumFiles, StorageInfo2[i].szCodeName, StorageInfo2[i].szRegion, StorageInfo2[i].szFile);
-    //    if (dwErrCode != ERROR_SUCCESS)
-    //        break;
-    //}
+    for (size_t i = 0; StorageInfo2[i].szCodeName != NULL; i++)
+    {
+        // Attempt to open the storage and extract single file
+        dwErrCode = OnlineStorage_Test(Storage_EnumFiles, StorageInfo2[i].szCodeName, StorageInfo2[i].szRegion, StorageInfo2[i].szFile);
+        if (dwErrCode != ERROR_SUCCESS)
+            break;
+    }
 
 #ifdef _MSC_VER
     _CrtDumpMemoryLeaks();
