@@ -28,7 +28,6 @@ char * CASC_SOCKET::ReadResponse(const char * request, size_t request_length, si
     size_t block_increment = 0x1000;
     size_t buffer_size = block_increment;
     int bytes_received = 0;
-    bool need_reconnect = false;
 
     // Pre-set the result length
     if(PtrLength != NULL)
@@ -39,7 +38,8 @@ char * CASC_SOCKET::ReadResponse(const char * request, size_t request_length, si
     // Lock the socket
     CascLock(Lock);
 
-    // Send the request to the remote host
+    // Send the request to the remote host. On Linux, this call may send signal(SIGPIPE),
+    // we need to prevend that by using the MSG_NOSIGNAL flag. On Windows, it fails normally.
     while(send(sock, request, (int)request_length, MSG_NOSIGNAL) == SOCKET_ERROR)
     {
         // If the connection was closed by the remote host, we must reconnect the socket
@@ -150,7 +150,7 @@ PCASC_SOCKET CASC_SOCKET::Connect(const char * hostName, unsigned portNum)
     // This will fail immediately if there is no connection to the internet
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
-    nErrCode = GetAddrInfo(hostName, portNum, &hints, &remoteList);
+    nErrCode = GetAddrInfoWrapper(hostName, portNum, &hints, &remoteList);
 
     // Handle error code
     if(nErrCode == 0)
@@ -263,7 +263,7 @@ SOCKET CASC_SOCKET::CreateAndConnect(SOCKET old_sock, addrinfo * remoteItem)
     return sock;
 }
 
-DWORD CASC_SOCKET::GetAddrInfo(const char * hostName, unsigned portNum, PADDRINFO hints, PADDRINFO * ppResult)
+DWORD CASC_SOCKET::GetAddrInfoWrapper(const char * hostName, unsigned portNum, PADDRINFO hints, PADDRINFO * ppResult)
 {
     char portNumString[16];
 

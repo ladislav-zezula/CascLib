@@ -50,7 +50,7 @@ class CASC_SOCKET
     static PCASC_SOCKET New(addrinfo * remoteList, addrinfo * remoteItem, const char * hostName, unsigned portNum, SOCKET sock);
     static PCASC_SOCKET Connect(const char * hostName, unsigned portNum);
     static SOCKET CreateAndConnect(SOCKET old_sock, addrinfo * remoteItem);
-    static DWORD GetAddrInfo(const char * hostName, unsigned portNum, PADDRINFO hints, PADDRINFO * ppResult);
+    static DWORD GetAddrInfoWrapper(const char * hostName, unsigned portNum, PADDRINFO hints, PADDRINFO * ppResult);
     static bool NeedReconnect();
 
     // Frees all resources and deletes the socket
