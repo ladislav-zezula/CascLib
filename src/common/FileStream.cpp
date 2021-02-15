@@ -616,7 +616,7 @@ static DWORD BaseHttp_ParseURL(TFileStream * pStream, LPCTSTR szFileName)
 {
     LPCTSTR szFilePtr = szFileName;
     char * hostName;
-    char * rsrcName;
+    char * fileName;
 
     // Find the end od the host name
     if((szFilePtr = _tcschr(szFileName, '/')) == NULL)
@@ -628,10 +628,10 @@ static DWORD BaseHttp_ParseURL(TFileStream * pStream, LPCTSTR szFileName)
         CascStrCopy(hostName, 256, szFileName, (szFilePtr - szFileName));
 
         // Allocate and copy the resource name
-        if((rsrcName = CascNewStrT2A(szFilePtr)) != NULL)
+        if((fileName = CascNewStrT2A(szFilePtr)) != NULL)
         {
             pStream->Base.Socket.hostName = hostName;
-            pStream->Base.Socket.rsrcName = rsrcName;
+            pStream->Base.Socket.fileName = fileName;
             return ERROR_SUCCESS;
         }
 
@@ -641,73 +641,16 @@ static DWORD BaseHttp_ParseURL(TFileStream * pStream, LPCTSTR szFileName)
     return ERROR_NOT_ENOUGH_MEMORY;
 }
 
-static DWORD BaseHttp_Connect(TFileStream * pStream, const char * port)
-{
-    addrinfo * remoteList;
-    addrinfo * remoteHost;
-    addrinfo hints = {0};
-    CASC_SOCKET sock;
-    int nError;
-
-    // Retrieve the information about the remote host
-    // This will fail immediately if there is no connection to the internet
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
-    nError = getaddrinfo(pStream->Base.Socket.hostName, port, &hints, &remoteList);
-
-#ifdef PLATFORM_WINDOWS
-    // Under Windows, we need to call WSAStartup to make sockets work
-    if(nError == WSANOTINITIALISED)
-    {
-        WSADATA wsd;
-
-        WSAStartup(MAKEWORD(2, 2), &wsd);
-        nError = getaddrinfo(pStream->Base.Socket.hostName, port, &hints, &remoteList);
-    }
-#endif
-
-    // Handle error code
-    if(nError != 0)
-        return ERROR_NETWORK_NOT_AVAILABLE;
-
-    // Try to connect to any address provided by the getaddrinfo()
-    for(remoteHost = remoteList; remoteHost != NULL; remoteHost = remoteHost->ai_next)
-    {
-        // Windows: returns INVALID_SOCKET (0) on error
-        // Linux: return -1 on error
-        if((sock = socket(remoteHost->ai_family, remoteHost->ai_socktype, remoteHost->ai_protocol)) > 0)
-        {
-            // Windows: Returns 0 on success, SOCKET_ERROR (-1) on failure
-            // Linux: Returns 0 on success, (-1) on failure
-            if(connect(sock, remoteHost->ai_addr, remoteHost->ai_addrlen) == 0)
-            {
-                // Remember the remote host entry for the next connection
-                pStream->Base.Socket.remoteList = remoteList;
-                pStream->Base.Socket.remoteHost = remoteHost;
-                pStream->Base.Socket.sock = sock;
-                return ERROR_SUCCESS;
-            }
-            
-            // Close the socket and try again
-            closesocket(sock);
-        }
-    }
-
-    // Couldn't connect to any server
-    return ERROR_NETWORK_NOT_AVAILABLE;
-}
-
 static bool BaseHttp_Download(TFileStream * pStream)
 {
     CASC_MIME Mime;
-    const char * request_mask = "GET %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n";
+    const char * request_mask = "GET %s HTTP/1.1\r\nHost: %s\r\nConnection: Keep-Alive\r\n\r\n";
     char * server_response;
-    char * rsrcName = pStream->Base.Socket.rsrcName;
+    char * fileName = pStream->Base.Socket.fileName;
     char request[0x100];
     size_t response_length = 0;
     size_t request_length = 0;
     DWORD dwErrCode;
-    bool bResult = false;
 
     // If we already have the data, it's success
     if(pStream->Base.Socket.fileData == NULL)
@@ -716,14 +659,14 @@ static bool BaseHttp_Download(TFileStream * pStream)
         // Note that Ribbit requests don't start with slash
         if((pStream->dwFlags & BASE_PROVIDER_MASK) == BASE_PROVIDER_RIBBIT)
         {
-            if(rsrcName[0] == '/')
-                rsrcName++;
+            if(fileName[0] == '/')
+                fileName++;
             request_mask = "%s\r\n";
         }
 
         // Send the request and receive decoded response
-        request_length = CascStrPrintf(request, _countof(request), request_mask, rsrcName, pStream->Base.Socket.hostName);
-        server_response = sockets_read_response(pStream->Base.Socket.sock, request, request_length, &response_length);
+        request_length = CascStrPrintf(request, _countof(request), request_mask, fileName, pStream->Base.Socket.hostName);
+        server_response = pStream->Base.Socket.pSocket->ReadResponse(request, request_length, &response_length);
         if(server_response != NULL)
         {
             // Decode the MIME document
@@ -749,11 +692,13 @@ static bool BaseHttp_Open(TFileStream * pStream, LPCTSTR szFileName, DWORD dwStr
     if((dwErrCode = BaseHttp_ParseURL(pStream, szFileName)) == ERROR_SUCCESS)
     {
         // Determine the proper port
-        const char * port = ((dwStreamFlags & BASE_PROVIDER_MASK) == BASE_PROVIDER_RIBBIT) ? "1119" : "80";
+        PCASC_SOCKET pSocket;
+        int portNum = ((dwStreamFlags & BASE_PROVIDER_MASK) == BASE_PROVIDER_RIBBIT) ? CASC_PORT_RIBBIT : CASC_PORT_HTTP;
 
         // Initiate the remote connection
-        if((dwErrCode = BaseHttp_Connect(pStream, port)) == ERROR_SUCCESS)
+        if((pSocket = sockets_connect(pStream->Base.Socket.hostName, portNum)) != NULL)
         {
+            pStream->Base.Socket.pSocket = pSocket;
             return true;
         }
     }
@@ -1040,10 +985,10 @@ static void BaseHttp_Close(TFileStream * pStream)
         CASC_FREE(pStream->Base.Socket.fileData);
     if(pStream->Base.Socket.hostName != NULL)
         CASC_FREE(pStream->Base.Socket.hostName);
-    if(pStream->Base.Socket.rsrcName != NULL)
-        CASC_FREE(pStream->Base.Socket.rsrcName);
-    if(pStream->Base.Socket.sock != 0)
-        closesocket(pStream->Base.Socket.sock);
+    if(pStream->Base.Socket.fileName != NULL)
+        CASC_FREE(pStream->Base.Socket.fileName);
+    if(pStream->Base.Socket.pSocket != NULL)
+        pStream->Base.Socket.pSocket->Release();
     memset(&pStream->Base.Socket, 0, sizeof(pStream->Base.Socket));
 
 /*

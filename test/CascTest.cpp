@@ -47,17 +47,11 @@
 
 #ifdef PLATFORM_LINUX
 #define CASC_PATH_ROOT "/media/ladik/CascStorages"
-#define CASC_WORK_ROOT "/media/ladik/CascStorages/Work"
-#define UNREFERENCED_PARAMETER(var) (void)var;
+#define CASC_WORK_ROOT "/home/ladik/CASC/Work"
+//#define UNREFERENCED_PARAMETER(var) (void)var;
 #endif
 
 static const char szCircleChar[] = "|/-\\";
-
-#if defined(_MSC_VER) && defined(_DEBUG)
-#define GET_TICK_COUNT()  GetTickCount()
-#else
-#define GET_TICK_COUNT()  0
-#endif
 
 #define SHORT_NAME_SIZE 59
 
@@ -1149,6 +1143,26 @@ int main(int argc, char * argv[])
         }
 
         CASC_FREE(pbBuffer);
+    }
+*/
+/*
+    PCASC_SOCKET pSocket;
+    const char * request;
+    char * response;
+
+    if((pSocket = sockets_connect("www.zezula.net", CASC_PORT_HTTP)) != NULL)
+    {
+        request = "GET /index.html HTTP/1.1\r\nHost: www.zezula.net\r\nConnection: Keep-Alive\r\n\r\n";
+        response = pSocket->ReadResponse(request);
+        if(response != NULL)
+            CASC_FREE(response);
+
+        request = "GET /fstools.html HTTP/1.1\r\nHost: www.zezula.net\r\nConnection: Keep-Alive\r\n\r\n";
+        response = pSocket->ReadResponse(request);
+        if(response != NULL)
+            CASC_FREE(response);
+
+        pSocket->Release();
     }
 */
 #endif

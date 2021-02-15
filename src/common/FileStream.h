@@ -172,14 +172,12 @@ union TBaseProviderData
 
     struct
     {
-        struct addrinfo * remoteList;       // List of the remote host informations
-        struct addrinfo * remoteHost;       // The particular host picked during the last connection attempt
+        class CASC_SOCKET * pSocket;        // An open socket
         unsigned char * fileData;           // Raw response converted to file data
         char * hostName;                    // Name of the remote host
-        char * rsrcName;                    // Name of the remote resource
+        char * fileName;                    // Name of the remote resource
         size_t fileDataLength;              // Length of the file data, in bytes
         size_t fileDataPos;                 // Current position in the data
-        CASC_SOCKET sock;                   // Handle to an open socket
     } Socket;
 
     struct

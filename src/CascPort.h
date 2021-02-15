@@ -13,8 +13,8 @@
 #define __CASCPORT_H__
 
 #ifndef __cplusplus
-  #define bool char
-  #define true 1
+  #define bool  char
+  #define true  1
   #define false 0
 #endif
 
@@ -54,8 +54,6 @@
   #define URL_SEP_CHAR              '/'
   #define PATH_SEP_CHAR             '\\'
   #define PATH_SEP_STRING           "\\"
-
-  typedef SOCKET CASC_SOCKET;
 
   #define PLATFORM_WINDOWS
   #define PLATFORM_DEFINED                      // The platform is known now
@@ -110,7 +108,7 @@
   #define PATH_SEP_CHAR             '/'
   #define PATH_SEP_STRING           "/"
 
-  typedef int CASC_SOCKET;
+  typedef int SOCKET;
 
   #define PLATFORM_MAC
   #define PLATFORM_DEFINED                  // The platform is known now
@@ -145,7 +143,7 @@
   #define PATH_SEP_CHAR             '/'
   #define PATH_SEP_STRING           "/"
 
-  typedef int CASC_SOCKET;
+  typedef int SOCKET;
 
   #define PLATFORM_LITTLE_ENDIAN
   #define PLATFORM_LINUX
