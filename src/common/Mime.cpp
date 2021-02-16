@@ -58,7 +58,7 @@ bool CASC_MIME_HTTP::IsDataComplete(const char * response, size_t response_lengt
                     if(content_length_ptr < content_begin_ptr)
                     {
                         // Fill the HTTP info cache
-                        response_valid = 'HTTP';
+                        response_valid = 0x48545450;    // 'HTTP'
                         content_offset = (content_begin_ptr + 4) - response;
                         content_length = DecodeValueInt32(content_length_ptr + 16, content_begin_ptr);
                         total_length = content_offset + content_length;
