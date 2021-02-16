@@ -11,6 +11,8 @@
 #ifndef __COMMON_H__
 #define __COMMON_H__
 
+#include <initializer_list>
+
 //-----------------------------------------------------------------------------
 // Common macros
 
@@ -328,8 +330,7 @@ wchar_t * CascNewStr(const wchar_t * szString, size_t nCharsToReserve = 0);
 LPSTR  CascNewStrT2A(LPCTSTR szString, size_t nCharsToReserve = 0);
 LPTSTR CascNewStrA2T(LPCSTR szString, size_t nCharsToReserve = 0);
 
-size_t CombinePath(LPTSTR szBuffer, size_t nMaxChars, char chSeparator, va_list argList);
-size_t CombinePath(LPTSTR szBuffer, size_t nMaxChars, char chSeparator, ...);
+size_t CombinePath(LPTSTR szBuffer, size_t nMaxChars, char chSeparator, std::initializer_list<LPCTSTR> parts);
 LPTSTR CombinePath(LPCTSTR szPath, LPCTSTR szSubDir);
 LPTSTR GetLastPathPart(LPTSTR szWorkPath);
 bool CutLastPathPart(LPTSTR szWorkPath);

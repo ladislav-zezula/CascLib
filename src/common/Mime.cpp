@@ -337,6 +337,9 @@ DWORD CASC_MIME_ELEMENT::Load(char * mime_data_begin, char * mime_data_end, cons
                     case MimeEncodingBase64:
                         dwErrCode = DecodeBase64(content.ptr, content.end, data_buffer, &data_length);
                         break;
+                    
+                    default:;
+                        // to remove warning
                 }
 
                 // If failed, free the buffer back

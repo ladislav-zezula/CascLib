@@ -454,32 +454,20 @@ bool CutLastPathPart(LPTSTR szWorkPath)
     return true;
 }
 
-size_t CombinePath(LPTSTR szBuffer, size_t nMaxChars, char chSeparator, va_list argList)
+size_t CombinePath(LPTSTR szBuffer, size_t nMaxChars, char chSeparator, std::initializer_list<LPCTSTR> argList)
 {
     CASC_PATH<TCHAR> Path(chSeparator);
     LPCTSTR szFragment;
     bool bWithSeparator = false;
 
     // Combine all parts of the path here
-    while((szFragment = va_arg(argList, LPTSTR)) != NULL)
+    for (LPCTSTR szFragment: argList)
     {
         Path.AppendString(szFragment, bWithSeparator);
         bWithSeparator = true;
     }
 
     return Path.Copy(szBuffer, nMaxChars);
-}
-
-size_t CombinePath(LPTSTR szBuffer, size_t nMaxChars, char chSeparator, ...)
-{
-    va_list argList;
-    size_t nLength;
-
-    va_start(argList, chSeparator);
-    nLength = CombinePath(szBuffer, nMaxChars, chSeparator, argList);
-    va_end(argList);
-
-    return nLength;
 }
 
 LPTSTR CombinePath(LPCTSTR szDirectory, LPCTSTR szSubDir)
