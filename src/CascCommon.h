@@ -33,7 +33,7 @@
 #include "common/Mime.h"
 #include "common/Path.h"
 #include "common/RootHandler.h"
-#include "common/Socket.h"
+#include "common/Sockets.h"
 
 // Headers from Alexander Peslyak's MD5 implementation
 #include "md5/md5.h"
@@ -102,7 +102,7 @@ typedef struct _CASC_INDEX
 typedef struct _CASC_INDEX_HEADER
 {
     USHORT IndexVersion;                            // 5 for index v 1.0, 7 for index version 2.0
-    BYTE   BucketIndex;                             // Should be the same as the first byte of the hex filename. 
+    BYTE   BucketIndex;                             // Should be the same as the first byte of the hex filename.
     BYTE   StorageOffsetLength;                     // Length, in bytes, of the StorageOffset field in the EKey entry
     BYTE   EncodedSizeLength;                       // Length, in bytes, of the EncodedSize in the EKey entry
     BYTE   EKeyLength;                              // Length, in bytes, of the (trimmed) EKey in the EKey entry
@@ -368,7 +368,7 @@ struct TCascFile
     DWORD bVerifyIntegrity:1;                       // If true, then the data are validated more strictly when read
     DWORD bDownloadFileIf:1;                        // If true, then the data will be downloaded from the online storage if missing
     DWORD bCloseFileStream:1;                       // If true, file stream needs to be closed during CascCloseFile
-    DWORD bOvercomeEncrypted:1;                     // If true, then CascReadFile will fill the part that is encrypted (and key was not found) with zeros 
+    DWORD bOvercomeEncrypted:1;                     // If true, then CascReadFile will fill the part that is encrypted (and key was not found) with zeros
     DWORD bFreeCKeyEntries:1;                       // If true, dectructor will free the array of CKey entries
 
     ULONGLONG FileCacheStart;                       // Starting offset of the file cached area

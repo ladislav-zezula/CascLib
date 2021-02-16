@@ -74,10 +74,7 @@
     <ClInclude Include="src\common\Mime.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
-    <ClInclude Include="src\common\Socket.cpp">
-      <Filter>Source Files\common</Filter>
-    </ClInclude>
-    <ClInclude Include="src\common\Socket.h">
+    <ClInclude Include="src\common\Sockets.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
   </ItemGroup>
@@ -182,6 +179,9 @@
       <Filter>Source Files\zlib</Filter>
     </ClCompile>
     <ClCompile Include="src\common\Mime.cpp">
+      <Filter>Source Files\common</Filter>
+    </ClCompile>
+    <ClCompile Include="src\common\Sockets.cpp">
       <Filter>Source Files\common</Filter>
     </ClCompile>
   </ItemGroup>

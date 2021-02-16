@@ -16,7 +16,7 @@ set(HEADER_FILES
     src/common/Mime.h
     src/common/Path.h
     src/common/RootHandler.h
-    src/common/Socket.h
+    src/common/Sockets.h
     src/jenkins/lookup.h
 )
 
@@ -29,7 +29,7 @@ set(SRC_FILES
     src/common/ListFile.cpp
     src/common/Mime.cpp
     src/common/RootHandler.cpp
-    src/common/Socket.cpp
+    src/common/Sockets.cpp
     src/jenkins/lookup3.c
     src/md5/md5.cpp
     src/CascDecompress.cpp

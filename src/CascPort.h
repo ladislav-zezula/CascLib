@@ -42,9 +42,8 @@
   #include <stdlib.h>
   #include <direct.h>
   #include <malloc.h>
-  #include <ws2tcpip.h>
   #include <windows.h>
-  #include <wininet.h>
+  #include <ws2tcpip.h>
   #include <strsafe.h>
 
   #define PLATFORM_LITTLE_ENDIAN

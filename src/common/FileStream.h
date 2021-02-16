@@ -179,15 +179,6 @@ union TBaseProviderData
         size_t fileDataLength;              // Length of the file data, in bytes
         size_t fileDataPos;                 // Current position in the data
     } Socket;
-
-    struct
-    {
-        ULONGLONG FileSize;                 // Size of the file
-        ULONGLONG FilePos;                  // Current file position
-        ULONGLONG FileTime;                 // Last write time
-        HANDLE hInternet;                   // Internet handle
-        HANDLE hConnect;                    // Connection to the internet server
-    } Http;
 };
 
 struct TFileStream

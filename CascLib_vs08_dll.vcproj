@@ -482,11 +482,11 @@
 					>
 				</File>
 				<File
-					RelativePath=".\src\common\Socket.cpp"
+					RelativePath=".\src\common\Sockets.cpp"
 					>
 				</File>
 				<File
-					RelativePath=".\src\common\Socket.h"
+					RelativePath=".\src\common\Sockets.h"
 					>
 				</File>
 			</Filter>

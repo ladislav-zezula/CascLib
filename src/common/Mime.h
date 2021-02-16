@@ -25,6 +25,24 @@ enum CASC_MIME_ENCODING
 };
 
 //-----------------------------------------------------------------------------
+// Structure for caching parsed HTTP response information
+
+struct CASC_MIME_HTTP
+{
+    CASC_MIME_HTTP()
+    {
+        response_valid = content_length = content_offset = total_length = 0;
+    }
+
+    bool IsDataComplete(const char * response, size_t response_length);
+
+    size_t response_valid;              // Nonzero if this is an already parsed HTTP response
+    size_t content_length;              // Parsed value of "Content-Length"
+    size_t content_offset;              // Offset of the HTTP data, relative to the begin of the response
+    size_t total_length;                // Expected total length of the HTTP response (content_offset + content_size)
+};
+
+//-----------------------------------------------------------------------------
 // MIME blob class
 
 struct CASC_MIME_BLOB
@@ -62,7 +80,7 @@ class CASC_MIME_ELEMENT
 
     CASC_MIME_ELEMENT * AllocateAndLoadElement(char * a_mime_data, char * a_mime_data_end, const char * boundary_begin);
     bool   ExtractEncoding(const char * line, CASC_MIME_ENCODING & Encoding);
-    bool   ExtractBoundary(const char * line, char * boundary, size_t length);
+    bool   ExtractBoundary(const char * line);
 
     DWORD DecodeTextPlain(char * content_begin, char * content_end, unsigned char * data_ptr, size_t * ptr_length);
     DWORD DecodeQuotedPrintable(char * content_begin, char * content_end, unsigned char * data_ptr, size_t * ptr_length);
@@ -103,5 +121,10 @@ class CASC_MIME
 
     CASC_MIME_ELEMENT root;
 };
+
+//-----------------------------------------------------------------------------
+// HTTP helpers
+
+bool IsHttpResponseComplete(CASC_MIME_HTTP & HttpInfo, const char * response, size_t response_length);
 
 #endif // __MIME_H__

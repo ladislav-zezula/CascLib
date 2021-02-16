@@ -1121,50 +1121,23 @@ int main(int argc, char * argv[])
 #endif  // defined(_MSC_VER) && defined(_DEBUG)
 
 #ifdef _DEBUG
-//  CASC_MIME Mime;
-//  Mime.Load(_T("e:\\ribbit_response.txt"));
-//  Mime.Print();
-/*
-    ULONGLONG ByteOffset;
-    TFileStream * pStream;
-    LPBYTE pbBuffer = CASC_ALLOC<BYTE>(100);
+    //CASC_MIME Mime;
+    //Mime.Load(_T("e:\\ribbit_response.txt"));
+    //Mime.Print();
 
-    if((pbBuffer = CASC_ALLOC<BYTE>(100)) != NULL)
-    {
-        if((pStream = FileStream_OpenFile(_T("http://www.zezula.net/download/bellavista_en.zip"), 0)) != NULL)
-        {
-            ByteOffset = 1751;
-            FileStream_Read(pStream, &ByteOffset, pbBuffer, 100);
+    //PCASC_SOCKET pSocket;
+    //const char * request;
+    //char * response;
 
-            ByteOffset = 1750;
-            FileStream_Read(pStream, &ByteOffset, pbBuffer, 100);
+    //if((pSocket = sockets_connect("level3.blizzard.com", CASC_PORT_HTTP)) != NULL)
+    //{
+    //    request = "GET /tpr/wow/data/a3/e6/a3e604a2b89d7a9e0784cbbee57793b4.index HTTP/1.1\r\nHost: level3.blizzard.com\r\nConnection: Keep-Alive\r\n\r\n";
+    //    response = pSocket->ReadResponse(request);
+    //    if(response != NULL)
+    //        CASC_FREE(response);
 
-            FileStream_Close(pStream);
-        }
-
-        CASC_FREE(pbBuffer);
-    }
-*/
-/*
-    PCASC_SOCKET pSocket;
-    const char * request;
-    char * response;
-
-    if((pSocket = sockets_connect("www.zezula.net", CASC_PORT_HTTP)) != NULL)
-    {
-        request = "GET /index.html HTTP/1.1\r\nHost: www.zezula.net\r\nConnection: Keep-Alive\r\n\r\n";
-        response = pSocket->ReadResponse(request);
-        if(response != NULL)
-            CASC_FREE(response);
-
-        request = "GET /fstools.html HTTP/1.1\r\nHost: www.zezula.net\r\nConnection: Keep-Alive\r\n\r\n";
-        response = pSocket->ReadResponse(request);
-        if(response != NULL)
-            CASC_FREE(response);
-
-        pSocket->Release();
-    }
-*/
+    //    pSocket->Release();
+    //}
 #endif
 
     //

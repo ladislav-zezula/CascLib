@@ -22,6 +22,57 @@ static const char * CascBase64Table = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmno
 static unsigned char CascBase64ToBits[0x80] = {0};
 
 //-----------------------------------------------------------------------------
+// CASC_MIME_HTTP implementation
+
+static size_t DecodeValueInt32(const char * string, const char * string_end)
+{
+    size_t result = 0;
+
+    while(string < string_end && isdigit(string[0]))
+    {
+        result = (result * 10) + (string[0] - '0');
+        string++;
+    }
+
+    return result;
+}
+
+bool CASC_MIME_HTTP::IsDataComplete(const char * response, size_t response_length)
+{
+    const char * content_length_ptr;
+    const char * content_begin_ptr;
+
+    // Do not parse the HTTP response multiple times
+    if(response_valid == 0 && response_length > 8)
+    {
+        // Check the begin of the response
+        if(!strncmp(response, "HTTP/1.1", 8))
+        {
+            // Check if there's begin of the content
+            if((content_begin_ptr = strstr(response, "\r\n\r\n")) != NULL)
+            {
+                // HTTP responses contain "Content-Length: %u\n\r"
+                if((content_length_ptr = strstr(response, "Content-Length: ")) != NULL)
+                {
+                    // The content length info muse be before the actual content
+                    if(content_length_ptr < content_begin_ptr)
+                    {
+                        // Fill the HTTP info cache
+                        response_valid = 'HTTP';
+                        content_offset = (content_begin_ptr + 4) - response;
+                        content_length = DecodeValueInt32(content_length_ptr + 16, content_begin_ptr);
+                        total_length = content_offset + content_length;
+                    }
+                }
+            }
+        }
+    }
+
+    // If we know the expected total length, we can tell whether it's complete or not
+    return ((response_valid != 0) && (total_length == response_length));
+}
+
+//-----------------------------------------------------------------------------
 // The MIME blob class
 
 CASC_MIME_BLOB::CASC_MIME_BLOB(char * mime_ptr, char * mime_end)
@@ -110,7 +161,7 @@ DWORD CASC_MIME_ELEMENT::Load(char * mime_data_begin, char * mime_data_end, cons
 {
     CASC_MIME_ENCODING Encoding = MimeEncodingTextPlain;
     CASC_MIME_BLOB mime_data(mime_data_begin, mime_data_end);
-    size_t terminator_length = 2;
+    CASC_MIME_HTTP HttpInfo;
     size_t length_begin;
     size_t length_end;
     char * mime_line;
@@ -118,6 +169,18 @@ DWORD CASC_MIME_ELEMENT::Load(char * mime_data_begin, char * mime_data_end, cons
     char boundary_end[MAX_LENGTH_BOUNDARY + 4];
     DWORD dwErrCode = ERROR_SUCCESS;
     bool mime_version = false;
+
+    // Diversion for HTTP: No need to parse the entire headers and stuff.
+    // Just give the data right away
+    if(HttpInfo.IsDataComplete(mime_data_begin, (mime_data_end - mime_data_begin)))
+    {
+        if((data.begin = CASC_ALLOC<BYTE>(HttpInfo.content_length)) == NULL)
+            return ERROR_NOT_ENOUGH_MEMORY;
+        
+        memcpy(data.begin, mime_data_begin + HttpInfo.content_offset, HttpInfo.content_length);
+        data.length = HttpInfo.content_length;
+        return ERROR_SUCCESS;
+    }
 
     // Reset the boundary
     boundary[0] = 0;
@@ -142,7 +205,6 @@ DWORD CASC_MIME_ELEMENT::Load(char * mime_data_begin, char * mime_data_end, cons
             }
             if(!strcmp(mime_line, "HTTP/1.1 200 OK"))
             {
-                terminator_length = 0;
                 mime_version = true;
                 continue;
             }
@@ -158,7 +220,7 @@ DWORD CASC_MIME_ELEMENT::Load(char * mime_data_begin, char * mime_data_end, cons
         // Is there content type?
         if(!strncmp(mime_line, "Content-Type: ", 14))
         {
-            ExtractBoundary(mime_line + 14, boundary, sizeof(boundary));
+            ExtractBoundary(mime_line + 14);
             continue;
         }
     }
@@ -248,10 +310,10 @@ DWORD CASC_MIME_ELEMENT::Load(char * mime_data_begin, char * mime_data_end, cons
             }
             else
             {
-                content.end = mime_data_end - terminator_length;
-                if((terminator_length >= 2) && (content.end[0] != 0x0D || content.end[1] != 0x0A))
+                content.end = mime_data_end - 2;
+                if(content.end[0] != 0x0D || content.end[1] != 0x0A)
                     return ERROR_BAD_FORMAT;
-                if((content.ptr + terminator_length) >= content.end)
+                if((content.ptr + 2) >= content.end)
                     return ERROR_BAD_FORMAT;
             }
 
@@ -316,7 +378,7 @@ void CASC_MIME_ELEMENT::Print(size_t nLevel, size_t nIndex)
     memset(Prefix, ' ', nSpaces);
 
     // Print the spaces and index
-    nSpaces = printf("%s* [%u]: ", Prefix, nIndex);
+    nSpaces = printf("%s* [%u]: ", Prefix, (int)nIndex);
     memset(Prefix, ' ', nSpaces);
 
     // Is this a folder item?
@@ -337,7 +399,7 @@ void CASC_MIME_ELEMENT::Print(size_t nLevel, size_t nIndex)
                 data_printable[i] = '.';
         }
 
-        printf("Data item (%u bytes): \"%s\"\n", data.length, data_printable);
+        printf("Data item (%u bytes): \"%s\"\n", (int)data.length, data_printable);
     }
 
     // Do we have a next element?
@@ -388,7 +450,7 @@ bool CASC_MIME_ELEMENT::ExtractEncoding(const char * line, CASC_MIME_ENCODING & 
 }
 
 
-bool CASC_MIME_ELEMENT::ExtractBoundary(const char * line, char * boundary, size_t length)
+bool CASC_MIME_ELEMENT::ExtractBoundary(const char * line)
 {
     const char * begin;
     const char * end;
@@ -402,12 +464,8 @@ bool CASC_MIME_ELEMENT::ExtractBoundary(const char * line, char * boundary, size
         // Is there also end?
         if((end = strchr(begin, '\"')) != NULL)
         {
-            if((size_t)(end - begin) < length)
-            {
-                memcpy(boundary, begin, end - begin);
-                boundary[end - begin] = 0;
-                return true;
-            }
+            CascStrCopy(boundary, _countof(boundary), begin, end - begin);
+            return true;
         }
     }
 
@@ -610,3 +668,4 @@ void CASC_MIME::Print()
     root.Print(0, 0);
 }
 #endif
+

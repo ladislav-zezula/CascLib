@@ -18,7 +18,6 @@
 #include "../CascCommon.h"
 
 #ifdef _MSC_VER
-#pragma comment(lib, "wininet.lib")             // Internet functions for HTTP stream
 #pragma warning(disable: 4800)                  // 'BOOL' : forcing value to bool 'true' or 'false' (performance warning)
 #endif
 
@@ -852,7 +851,7 @@ static bool BaseHttp_Read(
                 if((ByteOffset + dwBytesToRead) > pStream->Base.Socket.fileDataLength)
                 {
                     bCanReadTheWholeRange = false;
-                    dwBytesToRead = pStream->Base.Socket.fileDataLength - ByteOffset;
+                    dwBytesToRead = (DWORD)(pStream->Base.Socket.fileDataLength - ByteOffset);
                 }
             }
             else

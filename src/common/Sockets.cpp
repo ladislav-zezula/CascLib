@@ -1,7 +1,8 @@
 /*****************************************************************************/
-/* Socket.cpp                             Copyright (c) Ladislav Zezula 2021 */
+/* Sockets.cpp                            Copyright (c) Ladislav Zezula 2021 */
 /*---------------------------------------------------------------------------*/
-/* Mime functions for CascLib                                                */
+/* Don't call this module "Socket.cpp", otherwise VS 2019 will not link it   */
+/* Socket functions for CascLib.                                             */
 /*---------------------------------------------------------------------------*/
 /*   Date    Ver   Who  Comment                                              */
 /* --------  ----  ---  -------                                              */
@@ -23,9 +24,10 @@ CASC_SOCKET_CACHE SocketCache;
 // Guarantees that there is zero terminator after the response
 char * CASC_SOCKET::ReadResponse(const char * request, size_t request_length, size_t * PtrLength)
 {
+    CASC_MIME_HTTP HttpInfo;
     char * server_response = NULL;
     size_t total_received = 0;
-    size_t block_increment = 0x1000;
+    size_t block_increment = 0x8000;
     size_t buffer_size = block_increment;
     int bytes_received = 0;
 
@@ -65,9 +67,7 @@ char * CASC_SOCKET::ReadResponse(const char * request, size_t request_length, si
                     CascUnlock(Lock);
                     return NULL;
                 }
-
                 buffer_size += block_increment;
-                block_increment *= 2;
             }
 
             // Receive the next part of the response, up to buffer size
@@ -80,8 +80,8 @@ char * CASC_SOCKET::ReadResponse(const char * request, size_t request_length, si
             total_received += bytes_received;
             server_response[total_received] = 0;
 
-            // If a HTTP request, we need to check whether we received all the data
-            if(portNum == CASC_PORT_HTTP && IsHttpResponseComplete(server_response, total_received))
+            // On a HTTP protocol, we need to check whether we received all data
+            if(HttpInfo.IsDataComplete(server_response, total_received))
                 break;
         }
     }
@@ -162,7 +162,7 @@ SOCKET CASC_SOCKET::CreateAndConnect(addrinfo * remoteItem)
     {
         // Connect to the remote host
         // On error, returns SOCKET_ERROR (-1) on Windows, -1 on Linux
-        if(connect(sock, remoteItem->ai_addr, remoteItem->ai_addrlen) == 0)
+        if(connect(sock, remoteItem->ai_addr, (int)remoteItem->ai_addrlen) == 0)
             return sock;
 
         // Failed. Close the socket and return 0
@@ -263,41 +263,6 @@ PCASC_SOCKET CASC_SOCKET::Connect(const char * hostName, unsigned portNum)
 
     SetCascError(nErrCode);
     return NULL;
-}
-
-size_t CASC_SOCKET::DecodeValueInt32(const char * string, const char * string_end)
-{
-    size_t result = 0;
-
-    while(string < string_end && isdigit(string[0]))
-    {
-        result = (result * 10) + (string[0] - '0');
-        string++;
-    }
-
-    return result;
-}
-
-bool CASC_SOCKET::IsHttpResponseComplete(const char * response, size_t response_length)
-{
-    const char * content_length;
-    const char * content_begin;
-    size_t expected_length;
-    size_t current_length;
-
-    // Check if there's begin of the content
-    if((content_begin = strstr(response, "\r\n\r\n")) != NULL)
-    {
-        // HTTP responses contain "Content-Length: %u\n\r"
-        if((content_length = strstr(response, "Content-Length: ")) != NULL)
-        {
-            expected_length = DecodeValueInt32(content_length + 16, content_begin);
-            current_length = (response + response_length) - (content_begin + 4);
-            return (expected_length == current_length);
-        }
-    }
-
-    return false;
 }
 
 void CASC_SOCKET::Delete()
@@ -474,4 +439,3 @@ void sockets_set_caching(bool caching)
 {
     SocketCache.SetCaching(caching);
 }
-

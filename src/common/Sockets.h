@@ -1,5 +1,5 @@
 /*****************************************************************************/
-/* Socket.h                               Copyright (c) Ladislav Zezula 2021 */
+/* Sockets.h                              Copyright (c) Ladislav Zezula 2021 */
 /*---------------------------------------------------------------------------*/
 /* MIME parsing functions for CascLib                                        */
 /*---------------------------------------------------------------------------*/
@@ -63,8 +63,6 @@ class CASC_SOCKET
     static PCASC_SOCKET Connect(const char * hostName, unsigned portNum);
 
     // Frees all resources and deletes the socket
-    size_t DecodeValueInt32(const char * string, const char * string_end);
-    bool IsHttpResponseComplete(const char * response, size_t response_length);
     void Delete();
 
     // Entities allowed to manipulate with the class
@@ -97,7 +95,7 @@ class CASC_SOCKET_CACHE
     PCASC_SOCKET Find(const char * hostName, unsigned portNum);
     PCASC_SOCKET InsertSocket(PCASC_SOCKET pSocket);
     void UnlinkSocket(PCASC_SOCKET pSocket);
-    
+
     void SetCaching(bool bAddRef);
     void PurgeAll();
 
