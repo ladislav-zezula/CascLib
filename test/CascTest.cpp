@@ -48,7 +48,11 @@
 #ifdef PLATFORM_LINUX
 #define CASC_PATH_ROOT "/media/ladik/CascStorages"
 #define CASC_WORK_ROOT "/home/ladik/CASC/Work"
-//#define UNREFERENCED_PARAMETER(var) (void)var;
+#endif
+
+#ifdef PLATFORM_MAC
+//#define CASC_PATH_ROOT "/media/ladik/CascStorages"
+#define CASC_WORK_ROOT "/home/ladik/CASC/Work"  // TODO
 #endif
 
 static const char szCircleChar[] = "|/-\\";
