@@ -26,6 +26,14 @@
 #define MSG_NOSIGNAL 0
 #endif
 
+#ifndef WSAECONNRESET
+#define WSAECONNRESET       10054L
+#endif
+
+#ifndef EPIPE
+#define EPIPE               32
+#endif
+
 #define CASC_PORT_HTTP      80
 #define CASC_PORT_RIBBIT    1119
 
@@ -47,11 +55,12 @@ class CASC_SOCKET
     private:
 
     // Constructor and destructor
+    static int GetSockError();
+    static DWORD GetAddrInfoWrapper(const char * hostName, unsigned portNum, PADDRINFO hints, PADDRINFO * ppResult);
+    static SOCKET CreateAndConnect(addrinfo * remoteItem);
+    static SOCKET ReconnectAfterShutdown(SOCKET & sock, addrinfo * remoteItem);
     static PCASC_SOCKET New(addrinfo * remoteList, addrinfo * remoteItem, const char * hostName, unsigned portNum, SOCKET sock);
     static PCASC_SOCKET Connect(const char * hostName, unsigned portNum);
-    static SOCKET CreateAndConnect(SOCKET old_sock, addrinfo * remoteItem);
-    static DWORD GetAddrInfoWrapper(const char * hostName, unsigned portNum, PADDRINFO hints, PADDRINFO * ppResult);
-    static bool NeedReconnect();
 
     // Frees all resources and deletes the socket
     size_t DecodeValueInt32(const char * string, const char * string_end);

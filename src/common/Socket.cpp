@@ -42,14 +42,13 @@ char * CASC_SOCKET::ReadResponse(const char * request, size_t request_length, si
     // we need to prevend that by using the MSG_NOSIGNAL flag. On Windows, it fails normally.
     while(send(sock, request, (int)request_length, MSG_NOSIGNAL) == SOCKET_ERROR)
     {
-        // If the connection was closed by the remote host, we must reconnect the socket
-        if(NeedReconnect() && (sock = CreateAndConnect(sock, remoteItem)) != INVALID_SOCKET)
-            continue;
-
-        // Other type of failure, bail out
-        SetCascError(ERROR_NETWORK_NOT_AVAILABLE);
-        CascUnlock(Lock);
-        return NULL;
+        // If the connection was closed by the remote host, we try to reconnect
+        if(ReconnectAfterShutdown(sock, remoteItem) == INVALID_SOCKET)
+        {
+            SetCascError(ERROR_NETWORK_NOT_AVAILABLE);
+            CascUnlock(Lock);
+            return NULL;
+        }
     }
 
     // Allocate buffer for server response. Allocate one extra byte for zero terminator
@@ -110,6 +109,92 @@ void CASC_SOCKET::Release()
     }
 }
 
+int CASC_SOCKET::GetSockError()
+{
+#ifdef PLATFORM_WINDOWS
+    return WSAGetLastError();
+#else
+    return errno;
+#endif
+}
+
+DWORD CASC_SOCKET::GetAddrInfoWrapper(const char * hostName, unsigned portNum, PADDRINFO hints, PADDRINFO * ppResult)
+{
+    char portNumString[16];
+
+    // Prepare the port number
+    CascStrPrintf(portNumString, _countof(portNumString), "%d", portNum);
+
+    // Attempt to connect
+    for(;;)
+    {
+        // Attempt to call the addrinfo
+        DWORD dwErrCode = getaddrinfo(hostName, portNumString, hints, ppResult);
+
+        // Error-specific handling
+        switch(dwErrCode)
+        {
+#ifdef PLATFORM_WINDOWS
+            case WSANOTINITIALISED:     // Windows-specific: WSAStartup not called
+            {
+                WSADATA wsd;
+
+                WSAStartup(MAKEWORD(2, 2), &wsd);
+                continue;
+            }
+#endif
+            case EAI_AGAIN:             // Temporary error, try again
+                continue;
+
+            default:                    // Any other result, incl. ERROR_SUCCESS
+                return dwErrCode;
+        }
+    }
+}
+
+SOCKET CASC_SOCKET::CreateAndConnect(addrinfo * remoteItem)
+{
+    SOCKET sock;
+
+    // Create new socket
+    // On error, returns returns INVALID_SOCKET (-1) on Windows, -1 on Linux
+    if((sock = socket(remoteItem->ai_family, remoteItem->ai_socktype, remoteItem->ai_protocol)) > 0)
+    {
+        // Connect to the remote host
+        // On error, returns SOCKET_ERROR (-1) on Windows, -1 on Linux
+        if(connect(sock, remoteItem->ai_addr, remoteItem->ai_addrlen) == 0)
+            return sock;
+
+        // Failed. Close the socket and return 0
+        closesocket(sock);
+        sock = INVALID_SOCKET;
+    }
+
+    return sock;
+}
+
+SOCKET CASC_SOCKET::ReconnectAfterShutdown(SOCKET & sock, addrinfo * remoteItem)
+{
+    // Retrieve the error code related to previous socket operation
+    switch(GetSockError())
+    {
+        case EPIPE:         // Non-Windows
+        case WSAECONNRESET: // Windows
+        {
+            // Close the old socket
+            if(sock != INVALID_SOCKET)
+                closesocket(sock);
+
+            // Attempt to reconnect
+            sock = CreateAndConnect(remoteItem);
+            return sock;
+        }
+    }
+
+    // Another problem
+    return INVALID_SOCKET;
+}
+
 PCASC_SOCKET CASC_SOCKET::New(addrinfo * remoteList, addrinfo * remoteItem, const char * hostName, unsigned portNum, SOCKET sock)
 {
     PCASC_SOCKET pSocket;
@@ -159,7 +244,7 @@ PCASC_SOCKET CASC_SOCKET::Connect(const char * hostName, unsigned portNum)
         for(remoteItem = remoteList; remoteItem != NULL; remoteItem = remoteItem->ai_next)
         {
             // Create new socket and connect to the remote host
-            if((sock = CreateAndConnect(INVALID_SOCKET, remoteItem)) != 0)
+            if((sock = CreateAndConnect(remoteItem)) != 0)
             {
                 // Create new instance of the CASC_SOCKET structure
                 if((pSocket = CASC_SOCKET::New(remoteList, remoteItem, hostName, portNum, sock)) != NULL)
@@ -234,80 +319,6 @@ void CASC_SOCKET::Delete()
 
     // Free the socket itself
     CASC_FREE(pThis);
-}
-
-SOCKET CASC_SOCKET::CreateAndConnect(SOCKET old_sock, addrinfo * remoteItem)
-{
-    SOCKET sock;
-
-    // Reconnect: If we have been given an old socket, close it
-    if(old_sock != INVALID_SOCKET)
-    {
-        closesocket(old_sock);
-    }
-
-    // Create new socket
-    // On error, returns returns INVALID_SOCKET (-1) on Windows, -1 on Linux
-    if((sock = socket(remoteItem->ai_family, remoteItem->ai_socktype, remoteItem->ai_protocol)) > 0)
-    {
-        // Connect to the remote host
-        // On error, returns SOCKET_ERROR (-1) on Windows, -1 on Linux
-        if(connect(sock, remoteItem->ai_addr, remoteItem->ai_addrlen) == 0)
-            return sock;
-
-        // Failed. Close the socket and return 0
-        closesocket(sock);
-        sock = INVALID_SOCKET;
-    }
-
-    return sock;
-}
-
-DWORD CASC_SOCKET::GetAddrInfoWrapper(const char * hostName, unsigned portNum, PADDRINFO hints, PADDRINFO * ppResult)
-{
-    char portNumString[16];
-
-    // Prepare the port number
-    CascStrPrintf(portNumString, _countof(portNumString), "%d", portNum);
-
-    // Attempt to connect
-    for(;;)
-    {
-        // Attempt to call the addrinfo
-        DWORD dwErrCode = getaddrinfo(hostName, portNumString, hints, ppResult);
-
-        // Error-specific handling
-        switch(dwErrCode)
-        {
-#ifdef PLATFORM_WINDOWS
-            case WSANOTINITIALISED:     // Windows-specific: WSAStartup not called
-            {
-                WSADATA wsd;
-
-                WSAStartup(MAKEWORD(2, 2), &wsd);
-                continue;
-            }
-#endif
-            case EAI_AGAIN:             // Temporary error, try again
-                continue;
-
-            default:                    // Any other result, incl. ERROR_SUCCESS
-                return dwErrCode;
-        }
-    }
-}
-
-bool CASC_SOCKET::NeedReconnect()
-{
-#ifdef PLATFORM_WINDOWS
-    if(WSAGetLastError() == WSAECONNRESET)
-        return true;
-#else
-    if(errno == EPIPE)
-        return true;
-#endif
-
-    return false;
 }
 
 //-----------------------------------------------------------------------------
