@@ -167,16 +167,16 @@ void * ProbeOutputBuffer(void * pvBuffer, size_t cbLength, size_t cbMinLength, s
 
 static LPTSTR CheckForIndexDirectory(TCascStorage * hs, LPCTSTR szSubDir)
 {
-    LPTSTR szIndexPath;
+    TCHAR szIndexPath[MAX_PATH];
 
     // Combine the index path
-    szIndexPath = CombinePath(hs->szDataPath, szSubDir);
-    if (!DirectoryExists(szIndexPath))
-    {
-        CASC_FREE(szIndexPath);
-    }
+    CombinePath(szIndexPath, _countof(szIndexPath), hs->szDataPath, szSubDir, NULL);
 
-    return szIndexPath;
+    // Check whether the path exists
+    if(!DirectoryExists(szIndexPath))
+        return NULL;
+
+    return CascNewStr(szIndexPath);
 }
 
 // Inserts an entry from the text build file

@@ -871,26 +871,21 @@ static DWORD ParseFile_CdnBuild(TCascStorage * hs, void * pvListFile)
 
 static DWORD CheckDataDirectory(TCascStorage * hs, LPTSTR szDirectory)
 {
-    LPTSTR szDataPath;
+    TCHAR szDataPath[MAX_PATH];
     DWORD dwErrCode = ERROR_FILE_NOT_FOUND;
 
     // Try all known subdirectories
     for(size_t i = 0; DataDirs[i] != NULL; i++)
     {
         // Create the eventual data path
-        szDataPath = CombinePath(szDirectory, DataDirs[i]);
-        if(szDataPath != NULL)
-        {
-            // Does that directory exist?
-            if(DirectoryExists(szDataPath))
-            {
-                hs->szRootPath = CascNewStr(szDirectory);
-                hs->szDataPath = szDataPath;
-                return ERROR_SUCCESS;
-            }
+        CombinePath(szDataPath, _countof(szDataPath), szDirectory, DataDirs[i], NULL);
 
-            // Free the data path
-            CASC_FREE(szDataPath);
+        // Does that directory exist?
+        if(DirectoryExists(szDataPath))
+        {
+            hs->szRootPath = CascNewStr(szDirectory);
+            hs->szDataPath = CascNewStr(szDataPath);
+            return ERROR_SUCCESS;
         }
     }
 
@@ -1357,34 +1352,30 @@ DWORD GetFileSpanInfo(PCASC_CKEY_ENTRY pCKeyEntry, PULONGLONG PtrContentSize, PU
 DWORD CheckGameDirectory(TCascStorage * hs, LPTSTR szDirectory)
 {
     TFileStream * pStream;
-    LPTSTR szBuildFile;
+    TCHAR szBuildFile[MAX_PATH];
     DWORD dwErrCode = ERROR_FILE_NOT_FOUND;
 
     // Try to find any of the root files used in the history
     for (size_t i = 0; BuildTypes[i].szFileName != NULL; i++)
     {
         // Create the full name of the .agent.db file
-        szBuildFile = CombinePath(szDirectory, BuildTypes[i].szFileName);
-        if(szBuildFile != NULL)
+        CombinePath(szBuildFile, _countof(szBuildFile), szDirectory, BuildTypes[i].szFileName, NULL);
+
+        // Attempt to open the file
+        pStream = FileStream_OpenFile(szBuildFile, STREAM_FLAG_READ_ONLY);
+        if(pStream != NULL)
         {
-            // Attempt to open the file
-            pStream = FileStream_OpenFile(szBuildFile, STREAM_FLAG_READ_ONLY);
-            if(pStream != NULL)
+            // Free the stream
+            FileStream_Close(pStream);
+
+            // Check for the data directory
+            dwErrCode = CheckDataDirectory(hs, szDirectory);
+            if(dwErrCode == ERROR_SUCCESS)
             {
-                // Free the stream
-                FileStream_Close(pStream);
-
-                // Check for the data directory
-                dwErrCode = CheckDataDirectory(hs, szDirectory);
-                if(dwErrCode == ERROR_SUCCESS)
-                {
-                    hs->szBuildFile = szBuildFile;
-                    hs->BuildFileType = BuildTypes[i].BuildFileType;
-                    return ERROR_SUCCESS;
-                }
+                hs->szBuildFile = CascNewStr(szBuildFile);
+                hs->BuildFileType = BuildTypes[i].BuildFileType;
+                return ERROR_SUCCESS;
             }
-
-            CASC_FREE(szBuildFile);
         }
     }
 

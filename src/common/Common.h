@@ -328,9 +328,8 @@ wchar_t * CascNewStr(const wchar_t * szString, size_t nCharsToReserve = 0);
 LPSTR  CascNewStrT2A(LPCTSTR szString, size_t nCharsToReserve = 0);
 LPTSTR CascNewStrA2T(LPCSTR szString, size_t nCharsToReserve = 0);
 
-size_t CombinePath(LPTSTR szBuffer, size_t nMaxChars, char chSeparator, va_list argList);
-size_t CombinePath(LPTSTR szBuffer, size_t nMaxChars, char chSeparator, ...);
-LPTSTR CombinePath(LPCTSTR szPath, LPCTSTR szSubDir);
+size_t CombinePath(LPTSTR szBuffer, size_t nMaxChars, va_list argList);
+size_t CombinePath(LPTSTR szBuffer, size_t nMaxChars, ...);
 LPTSTR GetLastPathPart(LPTSTR szWorkPath);
 bool CutLastPathPart(LPTSTR szWorkPath);
 

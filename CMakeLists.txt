@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 3.2)
 project(CascLib)
 
 set(HEADER_FILES
@@ -99,6 +99,18 @@ option(CASC_BUILD_SHARED_LIB "Compile dynamically linked library" ON)
 if(CASC_BUILD_SHARED_LIB)
     message(STATUS "Build dynamically linked library")
     add_library(casc SHARED ${SRC_FILES} ${HEADER_FILES} ${SRC_ADDITIONAL_FILES})
+
+    if(APPLE)
+        set_target_properties(casc PROPERTIES FRAMEWORK true)
+        set_target_properties(casc PROPERTIES PUBLIC_HEADER "src/CascLib.h src/CascPort.h")
+        set_target_properties(casc PROPERTIES LINK_FLAGS "-framework Carbon")
+    endif()
+
+    if(UNIX)
+        set_target_properties(casc PROPERTIES VERSION 1.0.0)
+        set_target_properties(casc PROPERTIES SOVERSION 1)
+    endif()
+	
     target_link_libraries(casc ${LINK_LIBS})
     install(TARGETS casc RUNTIME DESTINATION bin LIBRARY DESTINATION lib${LIB_SUFFIX} ARCHIVE DESTINATION lib${LIB_SUFFIX} FRAMEWORK DESTINATION /Library/Frameworks)
     target_include_directories(casc
@@ -111,23 +123,11 @@ if(CASC_BUILD_SHARED_LIB)
         set_target_properties(casc PROPERTIES OUTPUT_NAME CascLib)
     endif()
 
-
-if(APPLE)
-    set_target_properties(casc PROPERTIES FRAMEWORK true)
-    set_target_properties(casc PROPERTIES PUBLIC_HEADER "src/CascLib.h src/CascPort.h")
-    set_target_properties(casc PROPERTIES LINK_FLAGS "-framework Carbon")
-endif()
-
-if(UNIX)
-    set_target_properties(casc PROPERTIES VERSION 1.0.0)
-    set_target_properties(casc PROPERTIES SOVERSION 1)
-endif()
-
 endif()
 
 option(CASC_BUILD_TESTS "Build Test application" OFF)
 if(CASC_BUILD_TESTS)
-    set(CASC_BUILD_STATIC_LIB ON CACHE BOOL "Force Static library building to link test app")
+    set(CASC_BUILD_STATIC_LIB ON CACHE BOOL "Force Static library building to link test app" FORCE)
     message(STATUS "Build Test application")
     add_executable(casc_test ${TEST_SRC_FILES})
     set_target_properties(casc_test PROPERTIES LINK_FLAGS "-pthread")
