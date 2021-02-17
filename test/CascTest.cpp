@@ -46,12 +46,12 @@
 #endif
 
 #ifdef PLATFORM_LINUX
-#define CASC_PATH_ROOT "/media/ladik/CascStorages"
+#define CASC_PATH_ROOT "/media/ladik/CascStorages/CASC"
 #define CASC_WORK_ROOT "/home/ladik/CASC/Work"
 #endif
 
 #ifdef PLATFORM_MAC
-//#define CASC_PATH_ROOT "/media/ladik/CascStorages"
+#define CASC_PATH_ROOT "/media/ladik/CascStorages"
 #define CASC_WORK_ROOT "/home/ladik/CASC/Work"  // TODO
 #endif
 
