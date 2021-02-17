@@ -71,6 +71,12 @@
     <ClInclude Include="src\md5\md5.h">
       <Filter>Source Files\md5</Filter>
     </ClInclude>
+    <ClInclude Include="src\common\Mime.h">
+      <Filter>Source Files\common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\common\Sockets.h">
+      <Filter>Source Files\common</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\CascFiles.cpp">
@@ -171,6 +177,12 @@
     </ClCompile>
     <ClCompile Include="src\zlib\trees.c">
       <Filter>Source Files\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="src\common\Mime.cpp">
+      <Filter>Source Files\common</Filter>
+    </ClCompile>
+    <ClCompile Include="src\common\Sockets.cpp">
+      <Filter>Source Files\common</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

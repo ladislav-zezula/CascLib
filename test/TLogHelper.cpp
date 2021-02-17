@@ -106,7 +106,7 @@ class TLogHelper
         size_t nRemainingWidth;
         size_t nConsoleWidth = GetConsoleWidth();
         size_t nLength = 0;
-        DWORD dwErrCode = GetLastError();
+        DWORD dwErrCode = GetCascError();
 
         // Always start the buffer with '\r'
         szBufferEnd = szMessage + sizeof(szMessage);
