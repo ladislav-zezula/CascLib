@@ -97,7 +97,6 @@
 
   #define    PKEXPORT
   #define    __SYS_ZLIB
-  #define    __SYS_BZLIB
 
   #ifndef __BIG_ENDIAN__
     #define CASCLIB_PLATFORM_LITTLE_ENDIAN
