@@ -33,24 +33,24 @@
 #include <crtdbg.h>
 #endif
 
-#ifdef PLATFORM_LINUX
+#ifdef CASCLIB_PLATFORM_LINUX
 #include <dirent.h>
 #endif
 
 //------------------------------------------------------------------------------
 // Defines
 
-#ifdef PLATFORM_WINDOWS
+#ifdef CASCLIB_PLATFORM_WINDOWS
 #define CASC_PATH_ROOT "/Multimedia/CASC"
 #define CASC_WORK_ROOT "/Multimedia/CASC/Work"
 #endif
 
-#ifdef PLATFORM_LINUX
+#ifdef CASCLIB_PLATFORM_LINUX
 #define CASC_PATH_ROOT "/media/ladik/CascStorages/CASC"
 #define CASC_WORK_ROOT "/home/ladik/CASC/Work"
 #endif
 
-#ifdef PLATFORM_MAC
+#ifdef CASCLIB_PLATFORM_MAC
 #define CASC_PATH_ROOT "/media/ladik/CascStorages"
 #define CASC_WORK_ROOT "/home/ladik/CASC/Work"  // TODO
 #endif
@@ -554,7 +554,7 @@ static void RunExtractWorkers(PCASC_FIND_DATA_ARRAY pFiles)
     std::vector<std::thread> threads;
     size_t dwCoresUsed = 10;
 
-#ifdef PLATFORM_WINDOWS
+#ifdef CASCLIB_PLATFORM_WINDOWS
     // Retrieve the number of available cores
     SYSTEM_INFO si = {0};
     DWORD dwFreeCPUs = 2;

@@ -86,7 +86,7 @@ endif()
 
 if(APPLE)
     message(STATUS "Using Mac OS X port")
-    set(LINK_LIBS z bz2)
+    set(LINK_LIBS z)
     set(SRC_ADDITIONAL_FILES)
 endif()
 
