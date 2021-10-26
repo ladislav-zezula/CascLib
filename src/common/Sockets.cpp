@@ -143,7 +143,7 @@ DWORD CASC_SOCKET::GetAddrInfoWrapper(const char * hostName, unsigned portNum, P
                 continue;
             }
 #endif
-            case EAI_AGAIN:             // Temporary error, try again
+            case (DWORD)EAI_AGAIN:             // Temporary error, try again
                 continue;
 
             default:                    // Any other result, incl. ERROR_SUCCESS
