@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.2)
 project(CascLib)
+include(GNUInstallDirs)
 
 set(HEADER_FILES
     src/CascCommon.h
@@ -110,9 +111,13 @@ if(CASC_BUILD_SHARED_LIB)
         set_target_properties(casc PROPERTIES VERSION 1.0.0)
         set_target_properties(casc PROPERTIES SOVERSION 1)
     endif()
-	
+
     target_link_libraries(casc ${LINK_LIBS})
-    install(TARGETS casc RUNTIME DESTINATION bin LIBRARY DESTINATION lib${LIB_SUFFIX} ARCHIVE DESTINATION lib${LIB_SUFFIX} FRAMEWORK DESTINATION /Library/Frameworks)
+    install(TARGETS casc
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        FRAMEWORK DESTINATION /Library/Frameworks)
     target_include_directories(casc
             PUBLIC
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
@@ -146,7 +151,11 @@ if(CASC_BUILD_STATIC_LIB)
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
             $<INSTALL_INTERFACE:include>
     )
-    install(TARGETS casc_static RUNTIME DESTINATION bin LIBRARY DESTINATION lib${LIB_SUFFIX} ARCHIVE DESTINATION lib${LIB_SUFFIX} FRAMEWORK DESTINATION /Library/Frameworks)
+    install(TARGETS casc_static
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        FRAMEWORK DESTINATION /Library/Frameworks)
 
     if(APPLE)
     set_target_properties(casc_static PROPERTIES FRAMEWORK false)
