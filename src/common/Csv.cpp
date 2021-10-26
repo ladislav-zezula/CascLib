@@ -186,9 +186,7 @@ CASC_CSV::~CASC_CSV()
 {
     if(m_pLines != NULL)
         delete[] m_pLines;
-    if(m_szCsvFile != NULL)
-        delete [] m_szCsvFile;
-    m_szCsvFile = NULL;
+    CASC_FREE(m_szCsvFile);
 }
 
 DWORD CASC_CSV::SetNextLineProc(CASC_CSV_NEXTPROC PfnNextLineProc, CASC_CSV_NEXTPROC PfnNextColProc, void * pvUserData)
