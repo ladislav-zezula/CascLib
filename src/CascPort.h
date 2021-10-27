@@ -12,11 +12,7 @@
 #ifndef __CASCPORT_H__
 #define __CASCPORT_H__
 
-#ifndef __cplusplus
-  #define bool  char
-  #define true  1
-  #define false 0
-#endif
+#include <stdbool.h>
 
 //-----------------------------------------------------------------------------
 // Defines for Windows
