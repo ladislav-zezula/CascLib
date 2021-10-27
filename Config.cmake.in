@@ -1,0 +1,11 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+find_dependency(ZLIB REQUIRED)
+
+include("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@Targets.cmake")
+check_required_components("@PROJECT_NAME@")
+
+include(FindPackageHandleStandardArgs)
+set(CascLib_CONFIG ${CMAKE_CURRENT_LIST_FILE})
+find_package_handle_standard_args(CascLib CONFIG_MODE)

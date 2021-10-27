@@ -109,20 +109,21 @@ if(CASC_BUILD_SHARED_LIB)
 
     target_link_libraries(casc ${LINK_LIBS})
     install(TARGETS casc
+        EXPORT CascLibTargets
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
         FRAMEWORK DESTINATION /Library/Frameworks)
     target_include_directories(casc
             PUBLIC
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-            $<INSTALL_INTERFACE:include>
+            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
     )
     # On Win32, build CascLib.dll
     if(WIN32)
         set_target_properties(casc PROPERTIES OUTPUT_NAME CascLib)
     endif()
-
 endif()
 
 option(CASC_BUILD_TESTS "Build Test application" OFF)
@@ -144,26 +145,41 @@ if(CASC_BUILD_STATIC_LIB)
     target_include_directories(casc_static
             PUBLIC
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-            $<INSTALL_INTERFACE:include>
+            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
     )
     install(TARGETS casc_static
+        EXPORT CascLibTargets
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
         FRAMEWORK DESTINATION /Library/Frameworks)
 
     if(APPLE)
-    set_target_properties(casc_static PROPERTIES FRAMEWORK false)
-    set_target_properties(casc_static PROPERTIES PUBLIC_HEADER "src/CascLib.h src/CascPort.h")
-    set_target_properties(casc_static PROPERTIES LINK_FLAGS "-framework Carbon")
+        set_target_properties(casc_static PROPERTIES FRAMEWORK false)
+        set_target_properties(casc_static PROPERTIES PUBLIC_HEADER "src/CascLib.h src/CascPort.h")
+        set_target_properties(casc_static PROPERTIES LINK_FLAGS "-framework Carbon")
+    endif()
+
+    if(UNIX)
+        set_target_properties(casc_static PROPERTIES VERSION 1.0.0)
+        set_target_properties(casc_static PROPERTIES SOVERSION 1)
+    endif()
 endif()
 
-if(UNIX)
-    set_target_properties(casc_static PROPERTIES VERSION 1.0.0)
-    set_target_properties(casc_static PROPERTIES SOVERSION 1)
-endif()
 
-endif()
+install(FILES src/CascLib.h src/CascPort.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
+set(VERSION_CONFIG "${CMAKE_CURRENT_BINARY_DIR}/CascLibConfigVersion.cmake")
+set(PROJECT_CONFIG "${CMAKE_CURRENT_BINARY_DIR}/CascLibConfig.cmake")
+set(INSTALL_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/CascLib")
 
-install(FILES src/CascLib.h src/CascPort.h DESTINATION include)
+include(CMakePackageConfigHelpers)
+
+write_basic_package_version_file("${VERSION_CONFIG}" VERSION 2.1 COMPATIBILITY SameMajorVersion)
+configure_package_config_file("Config.cmake.in"
+                              "${PROJECT_CONFIG}"
+                              INSTALL_DESTINATION "${INSTALL_DIR}")
+
+install(FILES "${PROJECT_CONFIG}" "${VERSION_CONFIG}" DESTINATION "${INSTALL_DIR}")
+install(EXPORT CascLibTargets NAMESPACE CascLib:: DESTINATION "${INSTALL_DIR}")
