@@ -124,6 +124,7 @@ if(CASC_BUILD_SHARED_LIB)
     if(WIN32)
         set_target_properties(casc PROPERTIES OUTPUT_NAME CascLib)
     endif()
+    target_compile_definitions(casc PUBLIC CASCLIB_NO_AUTO_LINK_LIBRARY)
 endif()
 
 option(CASC_BUILD_TESTS "Build Test application" OFF)
@@ -165,6 +166,7 @@ if(CASC_BUILD_STATIC_LIB)
         set_target_properties(casc_static PROPERTIES VERSION 1.0.0)
         set_target_properties(casc_static PROPERTIES SOVERSION 1)
     endif()
+    target_compile_definitions(casc_static PUBLIC CASCLIB_NO_AUTO_LINK_LIBRARY)
 endif()
 
 
