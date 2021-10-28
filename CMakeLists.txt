@@ -55,6 +55,7 @@ set(LINK_LIBS)
 find_package(ZLIB)
 if (ZLIB_FOUND)
     set(LINK_LIBS ${LINK_LIBS} ZLIB::ZLIB)
+    add_definitions(-DCASC_USE_SYSTEM_ZLIB)
 else()
     set(SRC_FILES ${SRC_FILES}
         src/zlib/adler32.c
@@ -64,7 +65,6 @@ else()
         src/zlib/inftrees.c
         src/zlib/zutil.c
     )
-    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/zlib)
 endif()
 
 set(TEST_SRC_FILES
