@@ -51,14 +51,21 @@ set(SRC_FILES
     src/CascRootFile_WoW.cpp
 )
 
-set(ZLIB_FILES
-    src/zlib/adler32.c
-    src/zlib/crc32.c
-    src/zlib/inffast.c
-    src/zlib/inflate.c
-    src/zlib/inftrees.c
-    src/zlib/zutil.c
-)
+set(LINK_LIBS)
+find_package(ZLIB)
+if (ZLIB_FOUND)
+    set(LINK_LIBS ${LINK_LIBS} ZLIB::ZLIB)
+else()
+    set(SRC_FILES ${SRC_FILES}
+        src/zlib/adler32.c
+        src/zlib/crc32.c
+        src/zlib/inffast.c
+        src/zlib/inflate.c
+        src/zlib/inftrees.c
+        src/zlib/zutil.c
+    )
+    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/zlib)
+endif()
 
 set(TEST_SRC_FILES
     test/CascTest.cpp
@@ -75,8 +82,7 @@ if(WIN32)
     else()
         message(STATUS "Using mingw")
     endif()
-    set(SRC_ADDITIONAL_FILES ${ZLIB_FILES})
-    set(LINK_LIBS wininet)
+    set(LINK_LIBS ${LINK_LIBS} wininet)
     if(CASC_UNICODE)
     message(STATUS "Build UNICODE version")
         add_definitions(-DUNICODE -D_UNICODE)
@@ -85,21 +91,10 @@ if(WIN32)
     endif()
 endif()
 
-if(APPLE)
-    message(STATUS "Using Mac OS X port")
-    set(LINK_LIBS z)
-    set(SRC_ADDITIONAL_FILES)
-endif()
-
-if (${CMAKE_SYSTEM_NAME} STREQUAL Linux)
-    message(STATUS "Using Linux port")
-    set(SRC_ADDITIONAL_FILES ${ZLIB_FILES})
-endif()
-
 option(CASC_BUILD_SHARED_LIB "Compile dynamically linked library" ON)
 if(CASC_BUILD_SHARED_LIB)
     message(STATUS "Build dynamically linked library")
-    add_library(casc SHARED ${SRC_FILES} ${HEADER_FILES} ${SRC_ADDITIONAL_FILES})
+    add_library(casc SHARED ${SRC_FILES} ${HEADER_FILES})
 
     if(APPLE)
         set_target_properties(casc PROPERTIES FRAMEWORK true)
@@ -143,7 +138,7 @@ endif()
 option(CASC_BUILD_STATIC_LIB "Build static linked library" OFF)
 if(CASC_BUILD_STATIC_LIB)
     message(STATUS "Build static linked library")
-    add_library(casc_static STATIC ${SRC_FILES} ${HEADER_FILES} ${SRC_ADDITIONAL_FILES})
+    add_library(casc_static STATIC ${SRC_FILES} ${HEADER_FILES})
     target_link_libraries(casc_static ${LINK_LIBS})
     set_target_properties(casc_static PROPERTIES OUTPUT_NAME casc)
     target_include_directories(casc_static

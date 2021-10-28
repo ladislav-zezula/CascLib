@@ -15,11 +15,7 @@
 // Compression support
 
 // Include functions from zlib
-#ifndef __SYS_ZLIB
-  #include "zlib/zlib.h"
-#else
-  #include <zlib.h>
-#endif
+#include <zlib.h>
 
 #include "CascPort.h"
 #include "common/Common.h"
