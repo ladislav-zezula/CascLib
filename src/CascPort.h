@@ -13,9 +13,7 @@
 #define __CASCPORT_H__
 
 #ifndef __cplusplus
-  #define bool  char
-  #define true  1
-  #define false 0
+    #include <stdbool.h>
 #endif
 
 //-----------------------------------------------------------------------------
