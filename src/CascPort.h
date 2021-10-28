@@ -12,7 +12,9 @@
 #ifndef __CASCPORT_H__
 #define __CASCPORT_H__
 
-#include <stdbool.h>
+#ifndef __cplusplus
+    #include <stdbool.h>
+#endif
 
 //-----------------------------------------------------------------------------
 // Defines for Windows
