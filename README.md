@@ -5,13 +5,13 @@
 For API documentation, refer to http://www.zezula.net/en/casc/casclib.html .
 
 ## Using CascLib on Linux (generic cmake build)
-cmake -L CMakeLists.txt
-make
+- cmake -L CMakeLists.txt
+- make
 
 ## Using CascLib as shared library in Debian/Ubuntu (build packages)
-dpkg-buildpackage -us -uc
-cd ..
-sudo dpkg -i libcasc1_3.2_amd64.deb libcasc-dev_3.2_amd64.deb
+- dpkg-buildpackage -us -uc
+- cd ..
+- sudo dpkg -i libcasc1_3.2_amd64.deb libcasc-dev_3.2_amd64.deb
 
 ## Using CascLib as static library in Windows
 1. Clone the CascLib repository into a local folder:
