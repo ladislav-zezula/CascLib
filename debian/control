@@ -1,0 +1,24 @@
+Source: libcasc
+Priority: optional
+Maintainer: Andreas Volz <andreas.volz@tux-style.com>
+Build-Depends: debhelper-compat (= 12)
+Standards-Version: 4.4.1
+Section: libs
+Homepage: http://www.zezula.net/en/casc/main.html
+#Vcs-Browser: https://salsa.debian.org/debian/libcasc
+#Vcs-Git: https://salsa.debian.org/debian/libcasc.git
+
+Package: libcasc-dev
+Section: libdevel
+Architecture: any
+Multi-Arch: same
+Depends: libcasc1 (= ${binary:Version}), ${misc:Depends}
+Description: <insert up to 60 chars description>
+ <insert long description, indented with spaces>
+
+Package: libcasc1
+Architecture: any
+Multi-Arch: same
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: <insert up to 60 chars description>
+ <insert long description, indented with spaces>
