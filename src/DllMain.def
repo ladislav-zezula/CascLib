@@ -33,5 +33,5 @@ EXPORTS
     CascFindEncryptionKey
     CascGetNotFoundEncryptionKey
 
-    GetLastError=Kernel32.GetLastError
-    SetLastError=Kernel32.SetLastError
+    GetCascError
+    SetCascError
