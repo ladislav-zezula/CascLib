@@ -1149,6 +1149,7 @@ static DWORD InitializeOnlineDirectories(TCascStorage * hs, PCASC_OPEN_STORAGE_A
 
 static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
 {
+    LPCTSTR szCdnHost = NULL;
     LPCTSTR szCodeName = NULL;
     LPCTSTR szRegion = NULL;
     LPCTSTR szBuildKey = NULL;
@@ -1160,6 +1161,10 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
 
     // Extract optional arguments
     ExtractVersionedArgument(pArgs, FIELD_OFFSET(CASC_OPEN_STORAGE_ARGS, dwLocaleMask), &dwLocaleMask);
+
+    // Extract the product code name
+    if (ExtractVersionedArgument(pArgs, FIELD_OFFSET(CASC_OPEN_STORAGE_ARGS, szCdnHostUrl), &szCdnHost) && szCdnHost != NULL)
+        hs->szCdnHostUrl = CascNewStr(szCdnHost);
     
     // Extract the product code name
     if(ExtractVersionedArgument(pArgs, FIELD_OFFSET(CASC_OPEN_STORAGE_ARGS, szCodeName), &szCodeName) && szCodeName != NULL)
@@ -1289,7 +1294,7 @@ static LPTSTR ParseOpenParams(LPCTSTR szParams, PCASC_OPEN_STORAGE_ARGS pArgs)
     }
 
     // The 'pArgs' must be valid but must not contain 'szLocalPath', 'szCodeName' or 'szRegion'
-    if(pArgs->szLocalPath != NULL || pArgs->szCodeName != NULL || pArgs->szRegion != NULL)
+    if(pArgs->szCdnHostUrl != NULL || pArgs->szLocalPath != NULL || pArgs->szCodeName != NULL || pArgs->szRegion != NULL)
     {
         SetCascError(ERROR_INVALID_PARAMETER);
         return NULL;
@@ -1417,6 +1422,7 @@ bool WINAPI CascOpenOnlineStorage(LPCTSTR szParams, DWORD dwLocaleMask, HANDLE *
     CASC_OPEN_STORAGE_ARGS OpenArgs = {sizeof(CASC_OPEN_STORAGE_ARGS)};
 
     OpenArgs.dwLocaleMask = dwLocaleMask;
+    OpenArgs.szCdnHostUrl = _T("ribbit://%s.version.battle.net/v1/products/%s/%s");
     return CascOpenStorageEx(szParams, &OpenArgs, true, phStorage);
 }
 
