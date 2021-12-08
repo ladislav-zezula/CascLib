@@ -62,6 +62,7 @@ TCascStorage::TCascStorage()
     dwRefCount = 1;
 
     szRootPath = szDataPath = szIndexPath = szBuildFile = szCdnServers = szCdnPath = szCodeName = NULL;
+    szCdnHostUrl = NULL;
     szIndexFormat = NULL;
     szRegion = NULL;
     szBuildKey = NULL;
@@ -100,6 +101,7 @@ TCascStorage::~TCascStorage()
     CascFreeLock(StorageLock);
 
     // Free the file paths
+    CASC_FREE(szCdnHostUrl);
     CASC_FREE(szDataPath);
     CASC_FREE(szRootPath);
     CASC_FREE(szBuildFile);
