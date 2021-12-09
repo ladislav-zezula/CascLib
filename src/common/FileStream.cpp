@@ -666,6 +666,7 @@ static DWORD BaseHttp_ParsePort(TFileStream* pStream, LPCTSTR szFileName, int& p
     {
         CascStrCopy(foundPort, 256, szPortPtr + 1, (szFilePtr - szPortPtr));
         port = atoi(foundPort);
+        CASC_FREE(foundPort);
 
         return ERROR_SUCCESS;
     }
