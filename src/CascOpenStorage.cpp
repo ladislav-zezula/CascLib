@@ -61,8 +61,7 @@ TCascStorage::TCascStorage()
     pRootHandler = NULL;
     dwRefCount = 1;
 
-    szRootPath = szDataPath = szIndexPath = szBuildFile = szCdnServers = szCdnPath = szCodeName = NULL;
-    szCdnHostUrl = NULL;
+    szRootPath = szDataPath = szIndexPath = szBuildFile = szCdnServers = szCdnPath = szCdnHostUrl = szCodeName = NULL;
     szIndexFormat = NULL;
     szRegion = NULL;
     szBuildKey = NULL;
@@ -108,6 +107,7 @@ TCascStorage::~TCascStorage()
     CASC_FREE(szCdnServers);
     CASC_FREE(szCdnPath);
     CASC_FREE(szCodeName);
+    CASC_FREE(szCdnHostUrl);
     CASC_FREE(szRegion);
     CASC_FREE(szBuildKey);
 
