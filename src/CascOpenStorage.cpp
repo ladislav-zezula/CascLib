@@ -61,7 +61,7 @@ TCascStorage::TCascStorage()
     pRootHandler = NULL;
     dwRefCount = 1;
 
-    szRootPath = szDataPath = szIndexPath = szBuildFile = szCdnServers = szCdnPath = szCdnHostUrlMask = szCdnHostRegion = szCodeName = NULL;
+    szRootPath = szDataPath = szIndexPath = szBuildFile = szCdnServers = szCdnPath = szCdnHostUrl = szCodeName = NULL;
     szIndexFormat = NULL;
     szRegion = NULL;
     szBuildKey = NULL;
@@ -107,8 +107,7 @@ TCascStorage::~TCascStorage()
     CASC_FREE(szCdnServers);
     CASC_FREE(szCdnPath);
     CASC_FREE(szCodeName);
-    CASC_FREE(szCdnHostUrlMask);
-    CASC_FREE(szCdnHostRegion);
+    CASC_FREE(szCdnHostUrl);
     CASC_FREE(szRegion);
     CASC_FREE(szBuildKey);
 
@@ -1151,8 +1150,7 @@ static DWORD InitializeOnlineDirectories(TCascStorage * hs, PCASC_OPEN_STORAGE_A
 
 static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
 {
-    LPCTSTR szCdnHostUrlMask = NULL;
-    LPCTSTR szCdnHostRegion = NULL;
+    LPCTSTR szCdnHostUrl = NULL;
     LPCTSTR szCodeName = NULL;
     LPCTSTR szRegion = NULL;
     LPCTSTR szBuildKey = NULL;
@@ -1165,14 +1163,10 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
     // Extract optional arguments
     ExtractVersionedArgument(pArgs, FIELD_OFFSET(CASC_OPEN_STORAGE_ARGS, dwLocaleMask), &dwLocaleMask);
 
-    // Extract the Cdn Hosr Url
-    if(ExtractVersionedArgument(pArgs, FIELD_OFFSET(CASC_OPEN_STORAGE_ARGS, szCdnHostUrlMask), &szCdnHostUrlMask) && szCdnHostUrlMask != NULL)
-        hs->szCdnHostUrlMask = CascNewStr(szCdnHostUrlMask);
+    // Extract the CDN host URL
+    if(ExtractVersionedArgument(pArgs, FIELD_OFFSET(CASC_OPEN_STORAGE_ARGS, szCdnHostUrl), &szCdnHostUrl) && szCdnHostUrl != NULL)
+        hs->szCdnHostUrl = CascNewStr(szCdnHostUrl);
 
-    // Extract the Cdn Hosr Region
-    if(ExtractVersionedArgument(pArgs, FIELD_OFFSET(CASC_OPEN_STORAGE_ARGS, szCdnHostRegion), &szCdnHostRegion) && szCdnHostRegion != NULL)
-        hs->szCdnHostRegion = CascNewStr(szCdnHostRegion);
-    
     // Extract the product code name
     if(ExtractVersionedArgument(pArgs, FIELD_OFFSET(CASC_OPEN_STORAGE_ARGS, szCodeName), &szCodeName) && szCodeName != NULL)
         hs->szCodeName = CascNewStr(szCodeName);
@@ -1428,8 +1422,7 @@ bool WINAPI CascOpenOnlineStorage(LPCTSTR szParams, DWORD dwLocaleMask, HANDLE *
 {
     CASC_OPEN_STORAGE_ARGS OpenArgs = {sizeof(CASC_OPEN_STORAGE_ARGS)};
 
-    OpenArgs.szCdnHostUrlMask = _T("ribbit://%s.version.battle.net/v1/products/%s/%s");
-    OpenArgs.szCdnHostRegion = _T("us");
+    OpenArgs.szCdnHostUrl = _T("ribbit://us.version.battle.net/v1/products/%s/%s");
     OpenArgs.dwLocaleMask = dwLocaleMask;
     return CascOpenStorageEx(szParams, &OpenArgs, true, phStorage);
 }
