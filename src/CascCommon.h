@@ -279,6 +279,8 @@ struct TCascStorage
     CASC_LOCK StorageLock;                          // Lock for multi-threaded operations
 
     LPCTSTR szIndexFormat;                          // Format of the index file name
+    LPTSTR  szCdnHostUrl;                           // Cdn Host Url for online storage
+    LPTSTR  szCdnHostRegion;                        // Cdn Host region prefix for online storage
     LPTSTR  szCodeName;                             // On local storage, this select a product in a multi-product storage. For online storage, this selects a product
     LPTSTR  szRootPath;                             // Path where the build file is
     LPTSTR  szDataPath;                             // This is the directory where data files are
