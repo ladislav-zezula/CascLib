@@ -278,7 +278,6 @@ struct TCascStorage
     PCASC_OPEN_STORAGE_ARGS pArgs;                  // Open storage arguments. Only valid during opening the storage
     CASC_LOCK StorageLock;                          // Lock for multi-threaded operations
 
-
     LPCTSTR szIndexFormat;                          // Format of the index file name
     LPTSTR  szCdnHostUrl;                           // Cdn Host Url for online storage
     LPTSTR  szCdnHostRegion;                        // Cdn Host region prefix for online storage

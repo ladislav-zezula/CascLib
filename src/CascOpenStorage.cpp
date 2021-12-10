@@ -1165,11 +1165,11 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
     // Extract optional arguments
     ExtractVersionedArgument(pArgs, FIELD_OFFSET(CASC_OPEN_STORAGE_ARGS, dwLocaleMask), &dwLocaleMask);
 
-    // Extract the product code name
+    // Extract the Cdn Hosr Url
     if (ExtractVersionedArgument(pArgs, FIELD_OFFSET(CASC_OPEN_STORAGE_ARGS, szCdnHostUrl), &szCdnHostUrl) && szCdnHostUrl != NULL)
         hs->szCdnHostUrl = CascNewStr(szCdnHostUrl);
 
-    // Extract the product code name
+    // Extract the Cdn Hosr Region
     if (ExtractVersionedArgument(pArgs, FIELD_OFFSET(CASC_OPEN_STORAGE_ARGS, szCdnHostRegion), &szCdnHostRegion) && szCdnHostRegion != NULL)
         hs->szCdnHostRegion = CascNewStr(szCdnHostRegion);
     
