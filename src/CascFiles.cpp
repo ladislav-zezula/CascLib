@@ -1136,7 +1136,7 @@ static DWORD DownloadFile(
     return dwErrCode;
 }
 
-static DWORD RibbitDownloadFile(LPCTSTR szCdnRegion, LPCTSTR szCdnHost, LPCTSTR szProduct, LPCTSTR szFileName, QUERY_KEY & FileData)
+static DWORD RibbitDownloadFile(LPCTSTR szCdnRegion, LPCTSTR szCdnHostMask, LPCTSTR szProduct, LPCTSTR szFileName, QUERY_KEY & FileData)
 {
     TFileStream * pStream;
     ULONGLONG FileSize = 0;
@@ -1145,7 +1145,7 @@ static DWORD RibbitDownloadFile(LPCTSTR szCdnRegion, LPCTSTR szCdnHost, LPCTSTR 
 
     // Construct the full URL (https://wowdev.wiki/Ribbit)
     // Old (HTTP) download: wget http://us.patch.battle.net:1119/wow_classic/cdns
-    CascStrPrintf(szRemoteUrl, _countof(szRemoteUrl), szCdnHost, szCdnRegion, szProduct, szFileName);
+    CascStrPrintf(szRemoteUrl, _countof(szRemoteUrl), szCdnHostMask, szCdnRegion, szProduct, szFileName);
 
     // Open the file stream
     if((pStream = FileStream_OpenFile(szRemoteUrl, 0)) != NULL)
@@ -1418,7 +1418,7 @@ DWORD LoadBuildInfo(TCascStorage * hs)
             return ERROR_CANCELLED;
 
         // Download the file using Ribbit protocol
-        dwErrCode = RibbitDownloadFile(hs->szCdnHostRegion, hs->szCdnHostUrl, hs->szCodeName, _T("versions"), FileData);
+        dwErrCode = RibbitDownloadFile(hs->szCdnHostRegion, hs->szCdnHostUrlMask, hs->szCodeName, _T("versions"), FileData);
         if(dwErrCode == ERROR_SUCCESS)
         {
             // Parse the downloaded file
@@ -1447,7 +1447,7 @@ DWORD LoadCdnsFile(TCascStorage * hs)
         return ERROR_CANCELLED;
 
     // Download the file using Ribbit protocol
-    dwErrCode = RibbitDownloadFile(hs->szCdnHostRegion, hs->szCdnHostUrl, hs->szCodeName, _T("cdns"), FileData);
+    dwErrCode = RibbitDownloadFile(hs->szCdnHostRegion, hs->szCdnHostUrlMask, hs->szCodeName, _T("cdns"), FileData);
     if(dwErrCode == ERROR_SUCCESS)
     {
         // Parse the downloaded file

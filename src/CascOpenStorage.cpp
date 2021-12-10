@@ -61,7 +61,7 @@ TCascStorage::TCascStorage()
     pRootHandler = NULL;
     dwRefCount = 1;
 
-    szRootPath = szDataPath = szIndexPath = szBuildFile = szCdnServers = szCdnPath = szCdnHostUrl = szCdnHostRegion = szCodeName = NULL;
+    szRootPath = szDataPath = szIndexPath = szBuildFile = szCdnServers = szCdnPath = szCdnHostUrlMask = szCdnHostRegion = szCodeName = NULL;
     szIndexFormat = NULL;
     szRegion = NULL;
     szBuildKey = NULL;
@@ -107,7 +107,7 @@ TCascStorage::~TCascStorage()
     CASC_FREE(szCdnServers);
     CASC_FREE(szCdnPath);
     CASC_FREE(szCodeName);
-    CASC_FREE(szCdnHostUrl);
+    CASC_FREE(szCdnHostUrlMask);
     CASC_FREE(szCdnHostRegion);
     CASC_FREE(szRegion);
     CASC_FREE(szBuildKey);
@@ -537,7 +537,7 @@ size_t GetTagBitmapLength(LPBYTE pbFilePtr, LPBYTE pbFileEnd, DWORD EntryCount)
     size_t nBitmapLength;
 
     nBitmapLength = (EntryCount / 8) + ((EntryCount & 0x07) ? 1 : 0);
-    if ((pbFilePtr + nBitmapLength) > pbFileEnd)
+    if((pbFilePtr + nBitmapLength) > pbFileEnd)
         nBitmapLength = (pbFileEnd - pbFilePtr);
 
     return nBitmapLength;
@@ -567,14 +567,14 @@ int CaptureDownloadHeader(CASC_DOWNLOAD_HEADER & DlHeader, LPBYTE pbFileData, si
     DlHeader.EntryLength = DlHeader.EKeyLength + 5 + 1 + (DlHeader.EntryHasChecksum ? 4 : 0);
 
     // Capture header version 2
-    if (pFileHeader->Version >= 2)
+    if(pFileHeader->Version >= 2)
     {
         DlHeader.FlagByteSize = pFileHeader->FlagByteSize;
         DlHeader.HeaderLength = FIELD_OFFSET(FILE_DOWNLOAD_HEADER, BasePriority);
         DlHeader.EntryLength += DlHeader.FlagByteSize;
 
         // Capture header version 3
-        if (pFileHeader->Version >= 3)
+        if(pFileHeader->Version >= 3)
         {
             DlHeader.BasePriority = pFileHeader->BasePriority;
             DlHeader.HeaderLength = sizeof(FILE_DOWNLOAD_HEADER);
@@ -810,7 +810,7 @@ static int LoadInstallManifest(TCascStorage * hs)
 
     // Load the entire DOWNLOAD file to memory
     pbInstallFile = LoadInternalFileToMemory(hs, pCKeyEntry, &cbInstallFile);
-    if (pbInstallFile != NULL && cbInstallFile != 0)
+    if(pbInstallFile != NULL && cbInstallFile != 0)
     {
         dwErrCode = RootHandler_CreateInstall(hs, pbInstallFile, cbInstallFile);
         CASC_FREE(pbInstallFile);
@@ -1114,14 +1114,14 @@ static DWORD InitializeLocalDirectories(TCascStorage * hs, PCASC_OPEN_STORAGE_AR
         }
 
         // Find the index directory
-        if (dwErrCode == ERROR_SUCCESS)
+        if(dwErrCode == ERROR_SUCCESS)
         {
             // First, check for more common "data" subdirectory
-            if ((hs->szIndexPath = CheckForIndexDirectory(hs, _T("data"))) != NULL)
+            if((hs->szIndexPath = CheckForIndexDirectory(hs, _T("data"))) != NULL)
                 dwErrCode = ERROR_SUCCESS;
 
             // Second, try the "darch" subdirectory (older builds of HOTS - Alpha)
-            else if ((hs->szIndexPath = CheckForIndexDirectory(hs, _T("darch"))) != NULL)
+            else if((hs->szIndexPath = CheckForIndexDirectory(hs, _T("darch"))) != NULL)
                 dwErrCode = ERROR_SUCCESS;
 
             else
@@ -1139,7 +1139,7 @@ static DWORD InitializeOnlineDirectories(TCascStorage * hs, PCASC_OPEN_STORAGE_A
 {
     // Create the root path
     hs->szRootPath = CascNewStr(pArgs->szLocalPath);
-    if (hs->szRootPath != NULL)
+    if(hs->szRootPath != NULL)
     {
         hs->BuildFileType = CascVersionsDb;
         hs->dwFeatures |= CASC_FEATURE_ONLINE;
@@ -1151,7 +1151,7 @@ static DWORD InitializeOnlineDirectories(TCascStorage * hs, PCASC_OPEN_STORAGE_A
 
 static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
 {
-    LPCTSTR szCdnHostUrl = NULL;
+    LPCTSTR szCdnHostUrlMask = NULL;
     LPCTSTR szCdnHostRegion = NULL;
     LPCTSTR szCodeName = NULL;
     LPCTSTR szRegion = NULL;
@@ -1166,11 +1166,11 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
     ExtractVersionedArgument(pArgs, FIELD_OFFSET(CASC_OPEN_STORAGE_ARGS, dwLocaleMask), &dwLocaleMask);
 
     // Extract the Cdn Hosr Url
-    if (ExtractVersionedArgument(pArgs, FIELD_OFFSET(CASC_OPEN_STORAGE_ARGS, szCdnHostUrl), &szCdnHostUrl) && szCdnHostUrl != NULL)
-        hs->szCdnHostUrl = CascNewStr(szCdnHostUrl);
+    if(ExtractVersionedArgument(pArgs, FIELD_OFFSET(CASC_OPEN_STORAGE_ARGS, szCdnHostUrlMask), &szCdnHostUrlMask) && szCdnHostUrlMask != NULL)
+        hs->szCdnHostUrlMask = CascNewStr(szCdnHostUrlMask);
 
     // Extract the Cdn Hosr Region
-    if (ExtractVersionedArgument(pArgs, FIELD_OFFSET(CASC_OPEN_STORAGE_ARGS, szCdnHostRegion), &szCdnHostRegion) && szCdnHostRegion != NULL)
+    if(ExtractVersionedArgument(pArgs, FIELD_OFFSET(CASC_OPEN_STORAGE_ARGS, szCdnHostRegion), &szCdnHostRegion) && szCdnHostRegion != NULL)
         hs->szCdnHostRegion = CascNewStr(szCdnHostRegion);
     
     // Extract the product code name
@@ -1204,7 +1204,7 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
 
     // If the .build.info OR .build.db file has been loaded,
     // proceed with loading the CDN config file
-    if (dwErrCode == ERROR_SUCCESS)
+    if(dwErrCode == ERROR_SUCCESS)
     {
         dwErrCode = LoadCdnConfigFile(hs);
         if(dwErrCode != ERROR_SUCCESS && (hs->dwFeatures & CASC_FEATURE_ONLINE) == 0)
@@ -1212,7 +1212,7 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
     }
 
     // Proceed with loading the CDN build file
-    if (dwErrCode == ERROR_SUCCESS)
+    if(dwErrCode == ERROR_SUCCESS)
     {
         dwErrCode = LoadCdnBuildFile(hs);
     }
@@ -1255,7 +1255,7 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
 
         // Continue loading the manifest
         dwErrCode = LoadBuildManifest(hs, dwLocaleMask);
-        if (dwErrCode != ERROR_SUCCESS)
+        if(dwErrCode != ERROR_SUCCESS)
         {
             // If we fail to load the ROOT file, we take the file names from the INSTALL manifest
             dwErrCode = LoadInstallManifest(hs);
@@ -1264,7 +1264,7 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
 
     // Insert entries for files with well-known names. Their CKeys are in the BUILD file
     // See https://wowdev.wiki/TACT#Encoding_table for their list
-    if (dwErrCode == ERROR_SUCCESS)
+    if(dwErrCode == ERROR_SUCCESS)
     {
         InsertWellKnownFile(hs, "ENCODING", hs->EncodingCKey);
         InsertWellKnownFile(hs, "DOWNLOAD", hs->DownloadCKey);
@@ -1278,7 +1278,7 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
     }
 
     // Load the encryption keys
-    if (dwErrCode == ERROR_SUCCESS)
+    if(dwErrCode == ERROR_SUCCESS)
     {
         dwErrCode = CascLoadEncryptionKeys(hs);
     }
@@ -1301,7 +1301,7 @@ static LPTSTR ParseOpenParams(LPCTSTR szParams, PCASC_OPEN_STORAGE_ARGS pArgs)
     }
 
     // The 'pArgs' must be valid but must not contain 'szLocalPath', 'szCodeName' or 'szRegion'
-    if(pArgs->szCdnHostUrl != NULL || pArgs->szLocalPath != NULL || pArgs->szCodeName != NULL || pArgs->szRegion != NULL)
+    if(pArgs->szLocalPath != NULL || pArgs->szCodeName != NULL || pArgs->szRegion != NULL)
     {
         SetCascError(ERROR_INVALID_PARAMETER);
         return NULL;
@@ -1428,9 +1428,9 @@ bool WINAPI CascOpenOnlineStorage(LPCTSTR szParams, DWORD dwLocaleMask, HANDLE *
 {
     CASC_OPEN_STORAGE_ARGS OpenArgs = {sizeof(CASC_OPEN_STORAGE_ARGS)};
 
-    OpenArgs.dwLocaleMask = dwLocaleMask;
-    OpenArgs.szCdnHostUrl = _T("ribbit://%s.version.battle.net/v1/products/%s/%s");
+    OpenArgs.szCdnHostUrlMask = _T("ribbit://%s.version.battle.net/v1/products/%s/%s");
     OpenArgs.szCdnHostRegion = _T("us");
+    OpenArgs.dwLocaleMask = dwLocaleMask;
     return CascOpenStorageEx(szParams, &OpenArgs, true, phStorage);
 }
 

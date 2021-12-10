@@ -814,7 +814,7 @@ static DWORD Storage_EnumFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
         // Iterate over the storage
         LogHelper.PrintProgress("Searching storage ...");
         hFind = CascFindFirstFile(hStorage, "*", &pFiles->cf[dwFileIndex], szListFile);
-        if (hFind != INVALID_HANDLE_VALUE)
+        if(hFind != INVALID_HANDLE_VALUE)
         {
             // Keep searching as long as we found something
             while (bFileFound)
@@ -849,7 +849,7 @@ static DWORD Storage_EnumFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
             for(DWORD i = 0; i < pFiles->ItemCount; i++)
             {
                 // Print the file name, if needed
-                if (Params.fp1 != NULL)
+                if(Params.fp1 != NULL)
                     fprintf(Params.fp1, "%s\n", pFiles->cf[i].szFileName);
                 assert(pFiles->cf[i].szFileName[0] != 0);
 
@@ -1019,7 +1019,7 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, LPCSTR szCodeName, LPCS
 
     // Open te online storage
     LogHelper.PrintProgress("Opening storage ...");
-    if (CascOpenOnlineStorage(szParamsT, 0, &hStorage))
+    if(CascOpenOnlineStorage(szParamsT, 0, &hStorage))
     {
         TEST_PARAMS Params;
 
@@ -1154,24 +1154,24 @@ int main(int argc, char * argv[])
     //
     // Run the tests for every local storage in my collection
     //
-    for(size_t i = 0; i < _countof(StorageInfo1); i++)
-    {
-        // Attempt to open the storage and extract single file
-        dwErrCode = LocalStorage_Test(Storage_ReadFiles, StorageInfo1[i].szPath, StorageInfo1[i].szNameHash, StorageInfo1[i].szDataHash);
-        if(dwErrCode != ERROR_SUCCESS && dwErrCode != ERROR_FILE_NOT_FOUND)
-            break;
-    }
+    //for(size_t i = 0; i < _countof(StorageInfo1); i++)
+    //{
+    //    // Attempt to open the storage and extract single file
+    //    dwErrCode = LocalStorage_Test(Storage_ReadFiles, StorageInfo1[i].szPath, StorageInfo1[i].szNameHash, StorageInfo1[i].szDataHash);
+    //    if(dwErrCode != ERROR_SUCCESS && dwErrCode != ERROR_FILE_NOT_FOUND)
+    //        break;
+    //}
 
     //
     // Run the tests for every available online storage in my collection
     //
-    //for (size_t i = 0; i < _countof(StorageInfo2); i++)
-    //{
-    //    // Attempt to open the storage and extract single file
-    //    dwErrCode = OnlineStorage_Test(Storage_EnumFiles, StorageInfo2[i].szCodeName, StorageInfo2[i].szRegion, StorageInfo2[i].szFile);
-    //    if (dwErrCode != ERROR_SUCCESS)
-    //        break;
-    //}
+    for (size_t i = 0; i < _countof(StorageInfo2); i++)
+    {
+        // Attempt to open the storage and extract single file
+        dwErrCode = OnlineStorage_Test(Storage_EnumFiles, StorageInfo2[i].szCodeName, StorageInfo2[i].szRegion, StorageInfo2[i].szFile);
+        if(dwErrCode != ERROR_SUCCESS)
+            break;
+    }
 
 #ifdef _MSC_VER
     //_CrtDumpMemoryLeaks();
