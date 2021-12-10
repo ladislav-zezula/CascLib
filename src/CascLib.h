@@ -317,6 +317,8 @@ typedef struct _CASC_OPEN_STORAGE_ARGS
     size_t Size;                                // Length of this structure. Initialize to sizeof(CASC_OPEN_STORAGE_ARGS)
 
     LPCTSTR szCdnHostUrl;                       // Online: Specify the cdn host url
+    LPCTSTR szCdnHostRegion;                    // Online: Specify the cdn host region
+
     LPCTSTR szLocalPath;                        // Local:  Path to the storage directory (where ".build.info: is) or any of the sub-path
                                                 // Online: Path to the local storage cache
 
