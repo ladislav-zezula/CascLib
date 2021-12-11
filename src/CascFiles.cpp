@@ -1143,6 +1143,10 @@ static DWORD RibbitDownloadFile(LPCTSTR szCdnHostUrl, LPCTSTR szProduct, LPCTSTR
     TCHAR szRemoteUrl[256];
     DWORD dwErrCode = ERROR_CAN_NOT_COMPLETE;
 
+    // Supply the default CDN URL, if not present
+    if(szCdnHostUrl == NULL || szCdnHostUrl[0] == 0)
+        szCdnHostUrl = szDefaultCDN;
+
     // Construct the full URL (https://wowdev.wiki/Ribbit)
     // Old (HTTP) download: wget http://us.patch.battle.net:1119/wow_classic/cdns
     CascStrPrintf(szRemoteUrl, _countof(szRemoteUrl), _T("%s/%s/%s"), szCdnHostUrl, szProduct, szFileName);
@@ -1628,7 +1632,7 @@ LPBYTE WINAPI CascCdnDownload(LPCTSTR szCdnHostUrl, LPCTSTR szProduct, LPCTSTR s
 {
     QUERY_KEY FileData;
     LPBYTE pbFileData = NULL;
-    DWORD cbFileData = 0;
+    size_t cbFileData = 0;
     DWORD dwErrCode;
 
     // Download the file
@@ -1639,8 +1643,8 @@ LPBYTE WINAPI CascCdnDownload(LPCTSTR szCdnHostUrl, LPCTSTR szProduct, LPCTSTR s
         if((pbFileData = CASC_ALLOC<BYTE>(FileData.cbData + 1)) != NULL)
         {
             memcpy(pbFileData, FileData.pbData, FileData.cbData);
-            cbFileData = (DWORD)FileData.cbData;
             pbFileData[FileData.cbData] = 0;
+            cbFileData = FileData.cbData;
         }
         else
         {
@@ -1652,7 +1656,7 @@ LPBYTE WINAPI CascCdnDownload(LPCTSTR szCdnHostUrl, LPCTSTR szProduct, LPCTSTR s
     if(dwErrCode != ERROR_SUCCESS)
         SetCascError(dwErrCode);
     if(PtrSize != NULL)
-        PtrSize[0] = cbFileData;
+        PtrSize[0] = (DWORD)cbFileData;
     return pbFileData;
 }
 

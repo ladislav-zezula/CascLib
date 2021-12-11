@@ -1136,10 +1136,6 @@ static DWORD InitializeLocalDirectories(TCascStorage * hs, PCASC_OPEN_STORAGE_AR
 
 static DWORD InitializeOnlineDirectories(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
 {
-    // Supply the default CDN, if not specified otherwise
-    if(pArgs->szCdnHostUrl == NULL || pArgs->szCdnHostUrl[0] == 0)
-        pArgs->szCdnHostUrl = CascCdnGetDefault();
-
     // Create the root path
     hs->szRootPath = CascNewStr(pArgs->szLocalPath);
     if(hs->szRootPath != NULL)
@@ -1307,17 +1303,21 @@ static bool IsUrl(LPCTSTR szString)
 
 static LPTSTR GetNextParam(LPTSTR szParamsPtr, bool bMustBeUrl = false)
 {
-    LPTSTR szSeparator;
+    LPTSTR szSeparator = NULL;
 
-    // Find the separator (":") or end of string
-    if((szSeparator = _tcschr(szParamsPtr, _T('*'))) != NULL)
+    // The 'szParamsPtr' must be valid
+    if(szParamsPtr != NULL)
     {
-        // Check for URL pattern, if needed
-        if(bMustBeUrl && IsUrl(szSeparator + 1) == false)
-            return NULL;
+        // Find the separator (":") or end of string
+        if((szSeparator = _tcschr(szParamsPtr, _T('*'))) != NULL)
+        {
+            // Check for URL pattern, if needed
+            if(bMustBeUrl && IsUrl(szSeparator + 1) == false)
+                return NULL;
 
-        // Put the EOS there
-        *szSeparator++ = 0;
+            // Put the EOS there
+            *szSeparator++ = 0;
+        }
     }
 
     return szSeparator;
