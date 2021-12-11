@@ -60,6 +60,8 @@ static LPCTSTR DataDirs[] =
     NULL,
 };
 
+static const LPCTSTR szDefaultCDN = _T("ribbit://us.version.battle.net/v1/products");
+
 //-----------------------------------------------------------------------------
 // Local functions
 
@@ -1415,7 +1417,7 @@ DWORD LoadBuildInfo(TCascStorage * hs)
         if(InvokeProgressCallback(hs, "Downloading the \"versions\" file", NULL, 0, 0))
             return ERROR_CANCELLED;
 
-        // Download the file using Ribbit protocol
+        // Download the file using Ribbit/HTTP protocol
         dwErrCode = RibbitDownloadFile(hs->szCdnHostUrl, hs->szCodeName, _T("versions"), FileData);
         if(dwErrCode == ERROR_SUCCESS)
         {
@@ -1612,5 +1614,50 @@ LPBYTE LoadFileToMemory(LPCTSTR szFileName, DWORD * pcbFileData)
     if(pcbFileData != NULL)
         pcbFileData[0] = cbFileData;
     return pbFileData;
+}
+
+//-----------------------------------------------------------------------------
+// Public CDN functions
+
+LPCTSTR WINAPI CascCdnGetDefault()
+{
+    return szDefaultCDN;
+}
+
+LPBYTE WINAPI CascCdnDownload(LPCTSTR szCdnHostUrl, LPCTSTR szProduct, LPCTSTR szFileName, LPDWORD PtrSize)
+{
+    QUERY_KEY FileData;
+    LPBYTE pbFileData = NULL;
+    DWORD cbFileData = 0;
+    DWORD dwErrCode;
+
+    // Download the file
+    dwErrCode = RibbitDownloadFile(szCdnHostUrl, szProduct, szFileName, FileData);
+    if(dwErrCode == ERROR_SUCCESS)
+    {
+        // Create copy of the buffer
+        if((pbFileData = CASC_ALLOC<BYTE>(FileData.cbData + 1)) != NULL)
+        {
+            memcpy(pbFileData, FileData.pbData, FileData.cbData);
+            cbFileData = (DWORD)FileData.cbData;
+            pbFileData[FileData.cbData] = 0;
+        }
+        else
+        {
+            dwErrCode = ERROR_NOT_ENOUGH_MEMORY;
+        }
+    }
+
+    // Give the results
+    if(dwErrCode != ERROR_SUCCESS)
+        SetCascError(dwErrCode);
+    if(PtrSize != NULL)
+        PtrSize[0] = cbFileData;
+    return pbFileData;
+}
+
+void WINAPI CascCdnFree(void * buffer)
+{
+    CASC_FREE(buffer);
 }
 

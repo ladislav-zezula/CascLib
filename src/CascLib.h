@@ -16,8 +16,8 @@
 #define __CASCLIB_H__
 
 #ifdef _MSC_VER
-#pragma warning(disable:4668)                   // 'XXX' is not defined as a preprocessor macro, replacing with '0' for '#if/#elif'
-#pragma warning(disable:4820)       // 'XXX' : '2' bytes padding added after data member 'XXX::yyy'
+#pragma warning(disable:4668)           // 'XXX' is not defined as a preprocessor macro, replacing with '0' for '#if/#elif'
+#pragma warning(disable:4820)           // 'XXX' : '2' bytes padding added after data member 'XXX::yyy'
 #endif
 
 #include "CascPort.h"
@@ -316,8 +316,6 @@ typedef struct _CASC_OPEN_STORAGE_ARGS
 {
     size_t Size;                                // Length of this structure. Initialize to sizeof(CASC_OPEN_STORAGE_ARGS)
 
-    LPCTSTR szCdnHostUrl;                       // Online: Specify the cdn host url (optionally, including the port)
-
     LPCTSTR szLocalPath;                        // Local:  Path to the storage directory (where ".build.info: is) or any of the sub-path
                                                 // Online: Path to the local storage cache
 
@@ -342,6 +340,9 @@ typedef struct _CASC_OPEN_STORAGE_ARGS
     //
 
     LPCTSTR szBuildKey;                         // If non-null, this will specify a build key (aka MD5 of build config that is different that current online version)
+
+    LPCTSTR szCdnHostUrl;                       // If non-null, specifies the custom CDN URL. Must contain protocol, can contain port number
+                                                // Example: http://eu.custom-wow-cdn.com:8000
 
 } CASC_OPEN_STORAGE_ARGS, *PCASC_OPEN_STORAGE_ARGS;
 
@@ -375,6 +376,13 @@ bool   WINAPI CascImportKeysFromString(HANDLE hStorage, LPCSTR szKeyList);
 bool   WINAPI CascImportKeysFromFile(HANDLE hStorage, LPCTSTR szFileName);
 LPBYTE WINAPI CascFindEncryptionKey(HANDLE hStorage, ULONGLONG KeyName);
 bool   WINAPI CascGetNotFoundEncryptionKey(HANDLE hStorage, ULONGLONG * KeyName);
+
+//-----------------------------------------------------------------------------
+// CDN Support
+
+LPCTSTR WINAPI CascCdnGetDefault();
+LPBYTE  WINAPI CascCdnDownload(LPCTSTR szCdnHostUrl, LPCTSTR szProduct, LPCTSTR szFileName, LPDWORD PtrSize);
+void    WINAPI CascCdnFree(void * buffer);
 
 //-----------------------------------------------------------------------------
 // Error code support

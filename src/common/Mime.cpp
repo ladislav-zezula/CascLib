@@ -51,7 +51,7 @@ bool CASC_MIME_HTTP::IsDataComplete(const char * response, size_t response_lengt
             // Check if there's begin of the content
             if((content_begin_ptr = strstr(response, "\r\n\r\n")) != NULL)
             {
-                if ((content_length_ptr = strstr(response, "Content-Length: ")) == NULL)
+                if((content_length_ptr = strstr(response, "Content-Length: ")) == NULL)
                     content_length_ptr = strstr(response, "content-length: ");
 
                 // HTTP responses contain "Content-Length: %u\n\r"
