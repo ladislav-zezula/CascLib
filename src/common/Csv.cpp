@@ -231,7 +231,7 @@ DWORD CASC_CSV::Load(LPBYTE pbData, size_t cbData)
 {
     DWORD dwErrCode = ERROR_NOT_ENOUGH_MEMORY;
 
-    m_szCsvFile = new char[cbData + 1];
+    m_szCsvFile = CASC_ALLOC<char>(cbData + 1);
     if (m_szCsvFile != NULL)
     {
         // Copy the entire data and terminate them with zero
