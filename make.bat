@@ -29,10 +29,10 @@ del buildfre_wlh_amd64.log
 echo.
 
 :COPY_LIBS
-copy /Y .\objfre_wlh_amd64\amd64\%LIBRARY_NAME%.lib ..\aaa\lib64\%LIBRARY_NAME%.lib >nul
-copy /Y .\objfre_w2k_x86\i386\%LIBRARY_NAME%.lib ..\aaa\lib32\%LIBRARY_NAME%.lib >nul
-copy /Y .\src\CascPort.h ..\aaa\inc >nul
-copy /Y .\src\CascLib.h ..\aaa\inc >nul
+xcopy /Y /D .\src\CascLib.h  ..\aaa\inc >nul
+xcopy /Y /D .\src\CascPort.h ..\aaa\inc >nul
+xcopy /Y /D .\objfre_w2k_x86\i386\%LIBRARY_NAME%.lib    ..\aaa\lib32\%LIBRARY_NAME%.lib >nul
+xcopy /Y /D .\objfre_wlh_amd64\amd64\%LIBRARY_NAME%.lib ..\aaa\lib64\%LIBRARY_NAME%.lib >nul
 
 :CLEANUP
 if exist build.bat del build.bat
