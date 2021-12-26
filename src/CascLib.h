@@ -381,7 +381,7 @@ bool   WINAPI CascGetNotFoundEncryptionKey(HANDLE hStorage, ULONGLONG * KeyName)
 // CDN Support
 
 LPCTSTR WINAPI CascCdnGetDefault();
-LPBYTE  WINAPI CascCdnDownload(LPCTSTR szCdnHostUrl, LPCTSTR szProduct, LPCTSTR szFileName, LPDWORD PtrSize);
+LPBYTE  WINAPI CascCdnDownload(LPCTSTR szCdnHostUrl, LPCTSTR szProduct, LPCTSTR szFileName, DWORD * PtrSize);
 void    WINAPI CascCdnFree(void * buffer);
 
 //-----------------------------------------------------------------------------

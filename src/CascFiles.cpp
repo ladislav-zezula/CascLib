@@ -1628,7 +1628,7 @@ LPCTSTR WINAPI CascCdnGetDefault()
     return szDefaultCDN;
 }
 
-LPBYTE WINAPI CascCdnDownload(LPCTSTR szCdnHostUrl, LPCTSTR szProduct, LPCTSTR szFileName, LPDWORD PtrSize)
+LPBYTE WINAPI CascCdnDownload(LPCTSTR szCdnHostUrl, LPCTSTR szProduct, LPCTSTR szFileName, DWORD * PtrSize)
 {
     QUERY_KEY FileData;
     LPBYTE pbFileData = NULL;
