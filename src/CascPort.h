@@ -49,8 +49,6 @@
   #include <ws2tcpip.h>
   #include <strsafe.h>
 
-#ifndef _WS2TCPIP_H_
-
   #define CASCLIB_PLATFORM_LITTLE_ENDIAN
 
   #pragma intrinsic(memset, memcmp, memcpy)     // Make these functions intrinsic (inline)
