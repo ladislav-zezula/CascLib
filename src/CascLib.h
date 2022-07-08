@@ -341,31 +341,34 @@ typedef struct _CASC_OPEN_STORAGE_ARGS
 
     LPCTSTR szBuildKey;                         // If non-null, this will specify a build key (aka MD5 of build config that is different that current online version)
 
+    LPCTSTR szCdnHostUrl;                       // If non-null, specifies the custom CDN URL. Must contain protocol, can contain port number
+                                                // Example: http://eu.custom-wow-cdn.com:8000
+
 } CASC_OPEN_STORAGE_ARGS, *PCASC_OPEN_STORAGE_ARGS;
 
 //-----------------------------------------------------------------------------
 // Functions for storage manipulation
 
-bool  WINAPI CascOpenStorageEx(LPCTSTR szParams, PCASC_OPEN_STORAGE_ARGS pArgs, bool bOnlineStorage, HANDLE * phStorage);
-bool  WINAPI CascOpenStorage(LPCTSTR szParams, DWORD dwLocaleMask, HANDLE * phStorage);
-bool  WINAPI CascOpenOnlineStorage(LPCTSTR szParams, DWORD dwLocaleMask, HANDLE * phStorage);
-bool  WINAPI CascGetStorageInfo(HANDLE hStorage, CASC_STORAGE_INFO_CLASS InfoClass, void * pvStorageInfo, size_t cbStorageInfo, size_t * pcbLengthNeeded);
-bool  WINAPI CascCloseStorage(HANDLE hStorage);
+bool   WINAPI CascOpenStorageEx(LPCTSTR szParams, PCASC_OPEN_STORAGE_ARGS pArgs, bool bOnlineStorage, HANDLE * phStorage);
+bool   WINAPI CascOpenStorage(LPCTSTR szParams, DWORD dwLocaleMask, HANDLE * phStorage);
+bool   WINAPI CascOpenOnlineStorage(LPCTSTR szParams, DWORD dwLocaleMask, HANDLE * phStorage);
+bool   WINAPI CascGetStorageInfo(HANDLE hStorage, CASC_STORAGE_INFO_CLASS InfoClass, void * pvStorageInfo, size_t cbStorageInfo, size_t * pcbLengthNeeded);
+bool   WINAPI CascCloseStorage(HANDLE hStorage);
 
-bool  WINAPI CascOpenFile(HANDLE hStorage, const void * pvFileName, DWORD dwLocaleFlags, DWORD dwOpenFlags, HANDLE * PtrFileHandle);
-bool  WINAPI CascOpenLocalFile(LPCTSTR szFileName, DWORD dwOpenFlags, HANDLE * PtrFileHandle);
-bool  WINAPI CascGetFileInfo(HANDLE hFile, CASC_FILE_INFO_CLASS InfoClass, void * pvFileInfo, size_t cbFileInfo, size_t * pcbLengthNeeded);
-bool  WINAPI CascGetFileSize64(HANDLE hFile, PULONGLONG PtrFileSize);
-bool  WINAPI CascSetFilePointer64(HANDLE hFile, LONGLONG DistanceToMove, PULONGLONG PtrNewPos, DWORD dwMoveMethod);
-bool  WINAPI CascReadFile(HANDLE hFile, void * lpBuffer, DWORD dwToRead, PDWORD pdwRead);
-bool  WINAPI CascCloseFile(HANDLE hFile);
+bool   WINAPI CascOpenFile(HANDLE hStorage, const void * pvFileName, DWORD dwLocaleFlags, DWORD dwOpenFlags, HANDLE * PtrFileHandle);
+bool   WINAPI CascOpenLocalFile(LPCTSTR szFileName, DWORD dwOpenFlags, HANDLE * PtrFileHandle);
+bool   WINAPI CascGetFileInfo(HANDLE hFile, CASC_FILE_INFO_CLASS InfoClass, void * pvFileInfo, size_t cbFileInfo, size_t * pcbLengthNeeded);
+bool   WINAPI CascGetFileSize64(HANDLE hFile, PULONGLONG PtrFileSize);
+bool   WINAPI CascSetFilePointer64(HANDLE hFile, LONGLONG DistanceToMove, PULONGLONG PtrNewPos, DWORD dwMoveMethod);
+bool   WINAPI CascReadFile(HANDLE hFile, void * lpBuffer, DWORD dwToRead, PDWORD pdwRead);
+bool   WINAPI CascCloseFile(HANDLE hFile);
 
-DWORD WINAPI CascGetFileSize(HANDLE hFile, PDWORD pdwFileSizeHigh);
-DWORD WINAPI CascSetFilePointer(HANDLE hFile, LONG lFilePos, LONG * PtrFilePosHigh, DWORD dwMoveMethod);
+DWORD  WINAPI CascGetFileSize(HANDLE hFile, PDWORD pdwFileSizeHigh);
+DWORD  WINAPI CascSetFilePointer(HANDLE hFile, LONG lFilePos, LONG * PtrFilePosHigh, DWORD dwMoveMethod);
 
 HANDLE WINAPI CascFindFirstFile(HANDLE hStorage, LPCSTR szMask, PCASC_FIND_DATA pFindData, LPCTSTR szListFile);
-bool  WINAPI CascFindNextFile(HANDLE hFind, PCASC_FIND_DATA pFindData);
-bool  WINAPI CascFindClose(HANDLE hFind);
+bool   WINAPI CascFindNextFile(HANDLE hFind, PCASC_FIND_DATA pFindData);
+bool   WINAPI CascFindClose(HANDLE hFind);
 
 bool   WINAPI CascAddEncryptionKey(HANDLE hStorage, ULONGLONG KeyName, LPBYTE Key);
 bool   WINAPI CascAddStringEncryptionKey(HANDLE hStorage, ULONGLONG KeyName, LPCSTR szKey);
@@ -373,6 +376,13 @@ bool   WINAPI CascImportKeysFromString(HANDLE hStorage, LPCSTR szKeyList);
 bool   WINAPI CascImportKeysFromFile(HANDLE hStorage, LPCTSTR szFileName);
 LPBYTE WINAPI CascFindEncryptionKey(HANDLE hStorage, ULONGLONG KeyName);
 bool   WINAPI CascGetNotFoundEncryptionKey(HANDLE hStorage, ULONGLONG * KeyName);
+
+//-----------------------------------------------------------------------------
+// CDN Support
+
+LPCTSTR WINAPI CascCdnGetDefault();
+LPBYTE  WINAPI CascCdnDownload(LPCTSTR szCdnHostUrl, LPCTSTR szProduct, LPCTSTR szFileName, DWORD * PtrSize);
+void    WINAPI CascCdnFree(void * buffer);
 
 //-----------------------------------------------------------------------------
 // Error code support

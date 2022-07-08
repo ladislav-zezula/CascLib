@@ -428,7 +428,7 @@ PCASC_SOCKET sockets_connect(const char * hostName, unsigned portNum)
         pSocket = CASC_SOCKET::Connect(hostName, portNum);
 
         // Insert it to the cache, if it's a HTTP connection
-        if(pSocket->portNum == CASC_PORT_HTTP)
+        if(pSocket != NULL && pSocket->portNum == CASC_PORT_HTTP)
             pSocket = SocketCache.InsertSocket(pSocket);
     }
 
