@@ -74,6 +74,7 @@ typedef struct _STORAGE_INFO1
 // For online storages
 typedef struct _STORAGE_INFO2
 {
+    LPCSTR szCustomCDN;                     // Pointer to custom CDN
     LPCSTR szCodeName;                      // Codename of the product
     LPCSTR szRegion;                        // Region of the product. If NULL, CascLib will open the first one in the "versions"
     LPCSTR szFile;                          // Example file in the storage
@@ -247,17 +248,17 @@ static LPTSTR MakeFullPath(LPTSTR szBuffer, size_t ccBuffer, LPCSTR szStorage)
     return CopyPath(szBuffer, szBufferEnd, szStorage);
 }
 
-static bool AppendParamSuffix(LPSTR szBuffer, size_t cchBuffer, LPCSTR szSuffix)
+static bool AppendParamSuffix(LPTSTR szBuffer, size_t cchBuffer, LPCSTR szSuffix)
 {
-    LPSTR szBufferPtr = szBuffer + strlen(szBuffer);
-    LPSTR szBufferEnd = szBuffer + cchBuffer;
+    LPTSTR szBufferPtr = szBuffer + _tcslen(szBuffer);
+    LPTSTR szBufferEnd = szBuffer + cchBuffer;
 
     if(szSuffix && szSuffix[0])
     {
         // Append the colon
         if((szBufferPtr + 1) < szBufferEnd)
         {
-            *szBufferPtr++ = ':';
+            *szBufferPtr++ = '*';
         }
 
         // Append the suffix
@@ -784,7 +785,7 @@ static DWORD Storage_EnumFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
     // Create the output file for dumping all file names
 //  Params.fp1 = OpenOutputTextFile(hStorage, "\\list-%s-%u-002.txt");
 
-        // Dump the storage
+    // Dump the storage
 //  LogHelper.PrintProgress("Dumping storage ...");
 //  CascDumpStorage(hStorage, "E:\\storage-dump.txt");
 
@@ -814,7 +815,7 @@ static DWORD Storage_EnumFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
         // Iterate over the storage
         LogHelper.PrintProgress("Searching storage ...");
         hFind = CascFindFirstFile(hStorage, "*", &pFiles->cf[dwFileIndex], szListFile);
-        if (hFind != INVALID_HANDLE_VALUE)
+        if(hFind != INVALID_HANDLE_VALUE)
         {
             // Keep searching as long as we found something
             while (bFileFound)
@@ -849,7 +850,7 @@ static DWORD Storage_EnumFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
             for(DWORD i = 0; i < pFiles->ItemCount; i++)
             {
                 // Print the file name, if needed
-                if (Params.fp1 != NULL)
+                if(Params.fp1 != NULL)
                     fprintf(Params.fp1, "%s\n", pFiles->cf[i].szFileName);
                 assert(pFiles->cf[i].szFileName[0] != 0);
 
@@ -993,45 +994,41 @@ static DWORD SpeedStorage_Test(PFN_RUN_TEST PfnRunTest, LPCSTR szStorage, LPCSTR
     return dwErrCode;
 }
 
-static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, LPCSTR szCodeName, LPCSTR szRegion = NULL, LPCSTR szBuildKey = NULL, LPCSTR szFileName = NULL)
+static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO2 & StorInfo)
 {
-    TLogHelper LogHelper(szCodeName);
+    TLogHelper LogHelper(StorInfo.szCodeName);
     HANDLE hStorage;
-    TCHAR szParamsT[MAX_PATH+0x40];
-    char szParamsA[MAX_PATH+0x40];
+    TCHAR szParams[MAX_PATH+0x40];
     DWORD dwErrCode = ERROR_SUCCESS;
 
     // Prepare the path
-    CascStrPrintf(szParamsA, _countof(szParamsA), "%s/%s", CASC_WORK_ROOT, szCodeName);
+    CascStrPrintf(szParams, _countof(szParams), _T("%hs/%hs"), CASC_WORK_ROOT, StorInfo.szCodeName);
+
+    // Append custom CDN URL, if any
+    AppendParamSuffix(szParams, _countof(szParams), StorInfo.szCustomCDN);
 
     // Append codename, if any
-    if(AppendParamSuffix(szParamsA, _countof(szParamsA), szCodeName))
+    if(AppendParamSuffix(szParams, _countof(szParams), StorInfo.szCodeName))
     {
         // Append region, if any
-        if(AppendParamSuffix(szParamsA, _countof(szParamsA), szRegion))
-        {
-            // Append build key, if any
-            AppendParamSuffix(szParamsA, _countof(szParamsA), szBuildKey);
-        }
+        AppendParamSuffix(szParams, _countof(szParams), StorInfo.szRegion);
     }
-
-    CascStrCopy(szParamsT, _countof(szParamsT), szParamsA);
 
     // Open te online storage
     LogHelper.PrintProgress("Opening storage ...");
-    if (CascOpenOnlineStorage(szParamsT, 0, &hStorage))
+    if(CascOpenOnlineStorage(szParams, 0, &hStorage))
     {
         TEST_PARAMS Params;
 
         // Configure the test parameters
         Params.hStorage = hStorage;
-        Params.szFileName = szFileName;
+        Params.szFileName = NULL;
         Params.bOnlineStorage = true;
         dwErrCode = PfnRunTest(LogHelper, Params);
     }
     else
     {
-        LogHelper.PrintError("Error: Failed to open storage %s", szCodeName);
+        LogHelper.PrintError("Error: Failed to open storage %s", StorInfo.szCodeName);
         assert(GetCascError() != ERROR_SUCCESS);
         dwErrCode = GetCascError();
     }
@@ -1044,7 +1041,7 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, LPCSTR szCodeName, LPCS
 
 static STORAGE_INFO1 StorageInfo1[] =
 {
-    //- Name of the storage folder -------- Compound file name hash ----------- Compound file data hash ----------- Example file to extract -----------------------------------------------------------
+//- Name of the storage folder ---- Compound file name hash ----------- Compound file data hash ----------- Example file to extract -----------------------------------------------------------
     {"Beta TVFS/00001",             "44833489ccf495e78d3a8f2ee9688ba6", "96e6457b649b11bcee54d52fa4be12e5", "ROOT"},
     {"Beta TVFS/00002",             "0ada2ba6b0decfa4013e0465f577abf1", "4da83fa60e0e505d14a5c21284142127", "ENCODING"},
 
@@ -1096,19 +1093,24 @@ static STORAGE_INFO1 StorageInfo1[] =
     {"WoW/22267",                   "101949dfbed06d417d24a65054e8a6b6", "4ef8df3cf9b00b5c7b2c1b9f4166ec0d", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"WoW/23420",                   "e62a798989e6db00044b079e74faa1eb", "854e58816e6eb2795d14fe81470ad19e", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"WoW/29981",                   "a35f7de61584644d4877aac1380ef090", "3cba30b5e439a6e59b0953d17da9ac6c", "dbfilesclient\\battlepetspeciesstate.db2"},
-    {"WoW/31299:wow",               "6220549f2b8936af6e63179f6ece78ab", "05627c131969bd9394fb345f4037e249", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/31299:wowt",              "959fa63cbcd9ced02a8977ed128df828", "423c1b99b14a615a02d8ffc7a7eff4ef", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/31299:wow_classic",       "184794b8a191429e2aae9b8a5334651b", "b46bd2f81ead285e810e5a049ca2db74", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+
+    {"WoW/31299*wow",               "6220549f2b8936af6e63179f6ece78ab", "05627c131969bd9394fb345f4037e249", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/31299*wowt",              "959fa63cbcd9ced02a8977ed128df828", "423c1b99b14a615a02d8ffc7a7eff4ef", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/31299*wow_classic",       "184794b8a191429e2aae9b8a5334651b", "b46bd2f81ead285e810e5a049ca2db74", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
 };
+
+static LPCSTR szCdn1 = "ribbit://us.version.battle.net/v1/products";
+static LPCSTR szCdn2 = "http://us.falloflordaeron.com:8000";
 
 static STORAGE_INFO2 StorageInfo2[] =
 {
-//  {"agent",       "us"},
-//  {"bna",         "us"},
-//  {"catalogs",    NULL},
-//  {"clnt",        "us"},
-//  {"hsb",         "us"},
-    {"wow_classic", "us"},
+//  {NULL,   "agent",       "us"},
+//  {NULL,   "bna",         "us"},
+//  {NULL,   "catalogs" },
+//  {NULL,   "clnt",        "us"},
+//  {NULL,   "hsb",         "us"},
+//  {szCdn1, "wow_classic", "us"},
+    {szCdn2, "wow",         "us"},
 };
 
 //-----------------------------------------------------------------------------
@@ -1165,13 +1167,13 @@ int main(int argc, char * argv[])
     //
     // Run the tests for every available online storage in my collection
     //
-    //for (size_t i = 0; i < _countof(StorageInfo2); i++)
-    //{
-    //    // Attempt to open the storage and extract single file
-    //    dwErrCode = OnlineStorage_Test(Storage_EnumFiles, StorageInfo2[i].szCodeName, StorageInfo2[i].szRegion, StorageInfo2[i].szFile);
-    //    if (dwErrCode != ERROR_SUCCESS)
-    //        break;
-    //}
+    for (size_t i = 0; i < _countof(StorageInfo2); i++)
+    {
+        // Attempt to open the storage and extract single file
+        dwErrCode = OnlineStorage_Test(Storage_EnumFiles, StorageInfo2[i]);
+        if(dwErrCode != ERROR_SUCCESS)
+            break;
+    }
 
 #ifdef _MSC_VER
     //_CrtDumpMemoryLeaks();

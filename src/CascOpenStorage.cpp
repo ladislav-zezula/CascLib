@@ -1308,7 +1308,7 @@ static LPTSTR GetNextParam(LPTSTR szParamsPtr, bool bMustBeUrl = false)
     // The 'szParamsPtr' must be valid
     if(szParamsPtr != NULL)
     {
-        // Find the separator (":") or end of string
+        // Find the separator ("*") or end of string
         if((szSeparator = _tcschr(szParamsPtr, _T('*'))) != NULL)
         {
             // Check for URL pattern, if needed
