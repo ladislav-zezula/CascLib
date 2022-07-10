@@ -387,7 +387,7 @@ static DWORD ExtractFile(TLogHelper & LogHelper, TEST_PARAMS & Params, CASC_FIND
     //    __debugbreak();
 
     // Show the progress, if open succeeded
-    //LogHelper.PrintProgress("Extracting: (%u of %u) %s ...", LogHelper.FileCount, LogHelper.TotalFiles, szShortName);
+    LogHelper.PrintProgress("Extracting: (%u of %u) %s ...", LogHelper.FileCount, LogHelper.TotalFiles, szShortName);
 
     // Did the open succeed?
     if(CascOpenFile(Params.hStorage, szOpenName, 0, Params.dwOpenFlags | CASC_STRICT_DATA_CHECK, &hFile))
@@ -400,11 +400,11 @@ static DWORD ExtractFile(TLogHelper & LogHelper, TEST_PARAMS & Params, CASC_FIND
             DWORD dwBytesRead = 0;
 
             // Print the current file
-            char szEKey[MD5_STRING_SIZE+1];
-            char szCKey[MD5_STRING_SIZE+1];
-            StringFromBinary(FileInfo.EKey, MD5_HASH_SIZE, szEKey);
-            StringFromBinary(FileInfo.CKey, MD5_HASH_SIZE, szCKey);
-            LogHelper.PrintMessage("%s -> %s: %u bytes", szEKey, szCKey, (DWORD)(FileInfo.ContentSize));
+            //char szEKey[MD5_STRING_SIZE+1];
+            //char szCKey[MD5_STRING_SIZE+1];
+            //StringFromBinary(FileInfo.EKey, MD5_HASH_SIZE, szEKey);
+            //StringFromBinary(FileInfo.CKey, MD5_HASH_SIZE, szCKey);
+            //LogHelper.PrintMessage("%s -> %s: %u bytes", szEKey, szCKey, (DWORD)(FileInfo.ContentSize));
 
             // Load the entire file, one read request per span.
             // Using span-aligned reads will cause CascReadFile not to do any caching,
@@ -931,15 +931,15 @@ static DWORD Storage_ReadFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
     return Storage_EnumFiles(LogHelper, Params);
 }
 
-static DWORD LocalStorage_Test(PFN_RUN_TEST PfnRunTest, LPCSTR szStorage, LPCSTR szExpectedNameHash = NULL, LPCSTR szExpectedDataHash = NULL, LPCSTR szFileName = NULL)
+static DWORD LocalStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO1 & StorInfo)
 {
-    TLogHelper LogHelper(szStorage);
+    TLogHelper LogHelper(StorInfo.szPath);
     HANDLE hStorage;
     TCHAR szFullPath[MAX_PATH];
     DWORD dwErrCode = ERROR_SUCCESS;
 
     // Prepare the full path of the storage
-    MakeFullPath(szFullPath, _countof(szFullPath), szStorage);
+    MakeFullPath(szFullPath, _countof(szFullPath), StorInfo.szPath);
 
     // Open the CASC storage
     LogHelper.PrintProgress("Opening storage ...");
@@ -949,14 +949,14 @@ static DWORD LocalStorage_Test(PFN_RUN_TEST PfnRunTest, LPCSTR szStorage, LPCSTR
 
         // Configure the test parameters
         Params.hStorage = hStorage;
-        Params.szExpectedNameHash = szExpectedNameHash;
-        Params.szExpectedDataHash = szExpectedDataHash;
-        Params.szFileName = szFileName;
+        Params.szExpectedNameHash = StorInfo.szNameHash;
+        Params.szExpectedDataHash = StorInfo.szDataHash;
+        Params.szFileName = StorInfo.szFileName;
         dwErrCode = PfnRunTest(LogHelper, Params);
     }
     else
     {
-        LogHelper.PrintError("Error: Failed to open storage %s", szStorage);
+        LogHelper.PrintError("Error: Failed to open storage %s", StorInfo.szPath);
         assert(GetCascError() != ERROR_SUCCESS);
         dwErrCode = GetCascError();
     }
@@ -1067,7 +1067,7 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO2 & StorInf
 static STORAGE_INFO1 StorageInfo1[] =
 {
 //- Name of the storage folder ---- Compound file name hash ----------- Compound file data hash ----------- Example file to extract -----------------------------------------------------------
-    //{"Beta TVFS/00001",             "44833489ccf495e78d3a8f2ee9688ba6", "96e6457b649b11bcee54d52fa4be12e5", "ROOT"},
+    {"Beta TVFS/00001",             "44833489ccf495e78d3a8f2ee9688ba6", "96e6457b649b11bcee54d52fa4be12e5", "ROOT"},
     {"Beta TVFS/00002",             "0ada2ba6b0decfa4013e0465f577abf1", "4da83fa60e0e505d14a5c21284142127", "ENCODING"},
 
     {"CoD4/3376209",                "e01180b36a8cfd82cb2daa862f5bbf3e", "79cd4cfc9eddad53e4b4d394c36b8b0c", "zone/base.xpak" },
@@ -1172,8 +1172,10 @@ int main(int argc, char * argv[])
     //
     for(int i = 1; i < argc; i++)
     {
+        STORAGE_INFO1 StorInfo = {argv[i]};
+
         // Attempt to open the storage and extract single file
-        dwErrCode = LocalStorage_Test(Storage_ReadFiles, argv[i], NULL, NULL);
+        dwErrCode = LocalStorage_Test(Storage_ReadFiles, StorInfo);
         if(dwErrCode != ERROR_SUCCESS && dwErrCode != ERROR_FILE_NOT_FOUND)
             break;
     }
@@ -1184,8 +1186,8 @@ int main(int argc, char * argv[])
     for(size_t i = 0; i < _countof(StorageInfo1); i++)
     {
         // Attempt to open the storage and extract single file
-        dwErrCode = LocalStorage_Test(Storage_ReadFiles, StorageInfo1[i].szPath, StorageInfo1[i].szNameHash, StorageInfo1[i].szDataHash);
-        //if(dwErrCode != ERROR_SUCCESS && dwErrCode != ERROR_FILE_NOT_FOUND)
+        dwErrCode = LocalStorage_Test(Storage_ReadFiles, StorageInfo1[i]);
+        if(dwErrCode != ERROR_SUCCESS && dwErrCode != ERROR_FILE_NOT_FOUND)
             break;
     }
 
