@@ -387,7 +387,7 @@ static DWORD ExtractFile(TLogHelper & LogHelper, TEST_PARAMS & Params, CASC_FIND
     //    __debugbreak();
 
     // Show the progress, if open succeeded
-    LogHelper.PrintProgress("Extracting: (%u of %u) %s ...", LogHelper.FileCount, LogHelper.TotalFiles, szShortName);
+    //LogHelper.PrintProgress("Extracting: (%u of %u) %s ...", LogHelper.FileCount, LogHelper.TotalFiles, szShortName);
 
     // Did the open succeed?
     if(CascOpenFile(Params.hStorage, szOpenName, 0, Params.dwOpenFlags | CASC_STRICT_DATA_CHECK, &hFile))
@@ -523,7 +523,7 @@ static DWORD ExtractFile(TLogHelper & LogHelper, TEST_PARAMS & Params, CASC_FIND
     return dwErrCode;
 }
 
-static DWORD GetWorkerThreadCount()
+static DWORD GetNumberOfWorkerThreads()
 {
     DWORD dwThreadCount = 10;
 
@@ -546,7 +546,7 @@ static DWORD GetWorkerThreadCount()
     //
 
 #ifdef _DEBUG
-    dwThreadCount = 1;
+    //dwThreadCount = 1;
 #endif
 
     return dwThreadCount;
@@ -589,7 +589,7 @@ static void RunExtractWorkers(PCASC_FIND_DATA_ARRAY pFiles)
 #ifdef PLATFORM_STD_THREAD
 
     std::vector<std::thread> threads;
-    size_t dwCoresUsed = GetWorkerThreadCount();
+    size_t dwCoresUsed = GetNumberOfWorkerThreads();
 
     // Run up to 40 worker threads
     for (size_t i = 0; i < dwCoresUsed; i++)
@@ -1067,7 +1067,7 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO2 & StorInf
 static STORAGE_INFO1 StorageInfo1[] =
 {
 //- Name of the storage folder ---- Compound file name hash ----------- Compound file data hash ----------- Example file to extract -----------------------------------------------------------
-    {"Beta TVFS/00001",             "44833489ccf495e78d3a8f2ee9688ba6", "96e6457b649b11bcee54d52fa4be12e5", "ROOT"},
+    //{"Beta TVFS/00001",             "44833489ccf495e78d3a8f2ee9688ba6", "96e6457b649b11bcee54d52fa4be12e5", "ROOT"},
     {"Beta TVFS/00002",             "0ada2ba6b0decfa4013e0465f577abf1", "4da83fa60e0e505d14a5c21284142127", "ENCODING"},
 
     {"CoD4/3376209",                "e01180b36a8cfd82cb2daa862f5bbf3e", "79cd4cfc9eddad53e4b4d394c36b8b0c", "zone/base.xpak" },

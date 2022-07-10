@@ -36,7 +36,7 @@ class TLogHelper
         // Fill the variables
         memset(this, 0, sizeof(TLogHelper));
 
-#ifdef PLATFORM_WINDOWS
+#ifdef CASCLIB_PLATFORM_WINDOWS
         InitializeCriticalSection(&Locker);
 #endif
 
@@ -86,7 +86,7 @@ class TLogHelper
             }
         }
 
-#ifdef PLATFORM_WINDOWS
+#ifdef CASCLIB_PLATFORM_WINDOWS
         DeleteCriticalSection(&Locker);
 #endif
 
@@ -278,14 +278,14 @@ class TLogHelper
 
     void Lock()
     {
-#ifdef PLATFORM_WINDOWS
+#ifdef CASCLIB_PLATFORM_WINDOWS
         EnterCriticalSection(&Locker);
 #endif
     }
 
     void Unlock()
     {
-#ifdef PLATFORM_WINDOWS
+#ifdef CASCLIB_PLATFORM_WINDOWS
         LeaveCriticalSection(&Locker);
 #endif
     }
@@ -372,7 +372,7 @@ class TLogHelper
         }
     }
 
-#ifdef PLATFORM_WINDOWS
+#ifdef CASCLIB_PLATFORM_WINDOWS
     CRITICAL_SECTION Locker;
 #endif
 
@@ -410,7 +410,7 @@ class TLogHelper
         // Only check this once per 100 messages
         if(nSaveConsoleWidth == 0 || (nMessageCounter % 100) == 0)
         {
-#ifdef PLATFORM_WINDOWS
+#ifdef CASCLIB_PLATFORM_WINDOWS
             CONSOLE_SCREEN_BUFFER_INFO ScreenInfo;
             GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &ScreenInfo);
             nSaveConsoleWidth = (ScreenInfo.srWindow.Right - ScreenInfo.srWindow.Left);
