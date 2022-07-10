@@ -60,7 +60,7 @@ static LPCTSTR DataDirs[] =
     NULL,
 };
 
-static LPCTSTR bnet_region = _T("us");
+static const LPCTSTR szDefaultCDN = _T("ribbit://us.version.battle.net/v1/products");
 
 //-----------------------------------------------------------------------------
 // Local functions
@@ -1136,16 +1136,20 @@ static DWORD DownloadFile(
     return dwErrCode;
 }
 
-static DWORD RibbitDownloadFile(LPCTSTR szProduct, LPCTSTR szFileName, QUERY_KEY & FileData)
+static DWORD RibbitDownloadFile(LPCTSTR szCdnHostUrl, LPCTSTR szProduct, LPCTSTR szFileName, QUERY_KEY & FileData)
 {
     TFileStream * pStream;
     ULONGLONG FileSize = 0;
     TCHAR szRemoteUrl[256];
     DWORD dwErrCode = ERROR_CAN_NOT_COMPLETE;
 
+    // Supply the default CDN URL, if not present
+    if(szCdnHostUrl == NULL || szCdnHostUrl[0] == 0)
+        szCdnHostUrl = szDefaultCDN;
+
     // Construct the full URL (https://wowdev.wiki/Ribbit)
     // Old (HTTP) download: wget http://us.patch.battle.net:1119/wow_classic/cdns
-    CascStrPrintf(szRemoteUrl, _countof(szRemoteUrl), _T("ribbit://%s.version.battle.net/v1/products/%s/%s"), bnet_region, szProduct, szFileName);
+    CascStrPrintf(szRemoteUrl, _countof(szRemoteUrl), _T("%s/%s/%s"), szCdnHostUrl, szProduct, szFileName);
 
     // Open the file stream
     if((pStream = FileStream_OpenFile(szRemoteUrl, 0)) != NULL)
@@ -1417,8 +1421,8 @@ DWORD LoadBuildInfo(TCascStorage * hs)
         if(InvokeProgressCallback(hs, "Downloading the \"versions\" file", NULL, 0, 0))
             return ERROR_CANCELLED;
 
-        // Download the file using Ribbit protocol
-        dwErrCode = RibbitDownloadFile(hs->szCodeName, _T("versions"), FileData);
+        // Download the file using Ribbit/HTTP protocol
+        dwErrCode = RibbitDownloadFile(hs->szCdnHostUrl, hs->szCodeName, _T("versions"), FileData);
         if(dwErrCode == ERROR_SUCCESS)
         {
             // Parse the downloaded file
@@ -1447,7 +1451,7 @@ DWORD LoadCdnsFile(TCascStorage * hs)
         return ERROR_CANCELLED;
 
     // Download the file using Ribbit protocol
-    dwErrCode = RibbitDownloadFile(hs->szCodeName, _T("cdns"), FileData);
+    dwErrCode = RibbitDownloadFile(hs->szCdnHostUrl, hs->szCodeName, _T("cdns"), FileData);
     if(dwErrCode == ERROR_SUCCESS)
     {
         // Parse the downloaded file
@@ -1614,5 +1618,50 @@ LPBYTE LoadFileToMemory(LPCTSTR szFileName, DWORD * pcbFileData)
     if(pcbFileData != NULL)
         pcbFileData[0] = cbFileData;
     return pbFileData;
+}
+
+//-----------------------------------------------------------------------------
+// Public CDN functions
+
+LPCTSTR WINAPI CascCdnGetDefault()
+{
+    return szDefaultCDN;
+}
+
+LPBYTE WINAPI CascCdnDownload(LPCTSTR szCdnHostUrl, LPCTSTR szProduct, LPCTSTR szFileName, DWORD * PtrSize)
+{
+    QUERY_KEY FileData;
+    LPBYTE pbFileData = NULL;
+    size_t cbFileData = 0;
+    DWORD dwErrCode;
+
+    // Download the file
+    dwErrCode = RibbitDownloadFile(szCdnHostUrl, szProduct, szFileName, FileData);
+    if(dwErrCode == ERROR_SUCCESS)
+    {
+        // Create copy of the buffer
+        if((pbFileData = CASC_ALLOC<BYTE>(FileData.cbData + 1)) != NULL)
+        {
+            memcpy(pbFileData, FileData.pbData, FileData.cbData);
+            pbFileData[FileData.cbData] = 0;
+            cbFileData = FileData.cbData;
+        }
+        else
+        {
+            dwErrCode = ERROR_NOT_ENOUGH_MEMORY;
+        }
+    }
+
+    // Give the results
+    if(dwErrCode != ERROR_SUCCESS)
+        SetCascError(dwErrCode);
+    if(PtrSize != NULL)
+        PtrSize[0] = (DWORD)cbFileData;
+    return pbFileData;
+}
+
+void WINAPI CascCdnFree(void * buffer)
+{
+    CASC_FREE(buffer);
 }
 
