@@ -399,6 +399,13 @@ static DWORD ExtractFile(TLogHelper & LogHelper, TEST_PARAMS & Params, CASC_FIND
             ULONGLONG TotalRead = 0;
             DWORD dwBytesRead = 0;
 
+            // Print the current file
+            char szEKey[MD5_STRING_SIZE+1];
+            char szCKey[MD5_STRING_SIZE+1];
+            StringFromBinary(FileInfo.EKey, MD5_HASH_SIZE, szEKey);
+            StringFromBinary(FileInfo.CKey, MD5_HASH_SIZE, szCKey);
+            LogHelper.PrintMessage("%s -> %s: %u bytes", szEKey, szCKey, (DWORD)(FileInfo.ContentSize));
+
             // Load the entire file, one read request per span.
             // Using span-aligned reads will cause CascReadFile not to do any caching,
             // and the amount of memcpys will be almost zero
@@ -516,6 +523,35 @@ static DWORD ExtractFile(TLogHelper & LogHelper, TEST_PARAMS & Params, CASC_FIND
     return dwErrCode;
 }
 
+static DWORD GetWorkerThreadCount()
+{
+    DWORD dwThreadCount = 10;
+
+    //
+    // Retrieve the number of available cores on Windows
+    //
+
+#ifdef CASCLIB_PLATFORM_WINDOWS
+    SYSTEM_INFO si = {0};
+    DWORD dwFreeCPUs = 2;
+
+    GetSystemInfo(&si);
+    dwThreadCount = (si.dwNumberOfProcessors > dwFreeCPUs) ? (si.dwNumberOfProcessors - dwFreeCPUs) : 1;
+    if(dwThreadCount > MAXIMUM_WAIT_OBJECTS)
+        dwThreadCount = MAXIMUM_WAIT_OBJECTS;
+#endif
+
+    //
+    // Only 1 worker thread in debug version
+    //
+
+#ifdef _DEBUG
+    dwThreadCount = 1;
+#endif
+
+    return dwThreadCount;
+}
+
 static PCASC_FIND_DATA GetNextInLine(PCASC_FIND_DATA_ARRAY pFiles)
 {
     DWORD ItemIndex;
@@ -553,18 +589,7 @@ static void RunExtractWorkers(PCASC_FIND_DATA_ARRAY pFiles)
 #ifdef PLATFORM_STD_THREAD
 
     std::vector<std::thread> threads;
-    size_t dwCoresUsed = 10;
-
-#ifdef CASCLIB_PLATFORM_WINDOWS
-    // Retrieve the number of available cores
-    SYSTEM_INFO si = {0};
-    DWORD dwFreeCPUs = 2;
-
-    GetSystemInfo(&si);
-    dwCoresUsed = (si.dwNumberOfProcessors > dwFreeCPUs) ? (si.dwNumberOfProcessors - dwFreeCPUs) : 1;
-    if(dwCoresUsed > MAXIMUM_WAIT_OBJECTS)
-        dwCoresUsed = MAXIMUM_WAIT_OBJECTS;
-#endif
+    size_t dwCoresUsed = GetWorkerThreadCount();
 
     // Run up to 40 worker threads
     for (size_t i = 0; i < dwCoresUsed; i++)
@@ -1160,7 +1185,7 @@ int main(int argc, char * argv[])
     {
         // Attempt to open the storage and extract single file
         dwErrCode = LocalStorage_Test(Storage_ReadFiles, StorageInfo1[i].szPath, StorageInfo1[i].szNameHash, StorageInfo1[i].szDataHash);
-        if(dwErrCode != ERROR_SUCCESS && dwErrCode != ERROR_FILE_NOT_FOUND)
+        //if(dwErrCode != ERROR_SUCCESS && dwErrCode != ERROR_FILE_NOT_FOUND)
             break;
     }
 
