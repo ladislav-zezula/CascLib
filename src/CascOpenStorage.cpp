@@ -1395,7 +1395,7 @@ bool WINAPI CascOpenStorageEx(LPCTSTR szParams, PCASC_OPEN_STORAGE_ARGS pArgs, b
         // Make a copy of the parameters so we can tamper with them
         if((szParamsCopy = CascNewStr(szParams)) == NULL)
         {
-            SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+            SetCascError(ERROR_NOT_ENOUGH_MEMORY);
             return false;
         }
 
