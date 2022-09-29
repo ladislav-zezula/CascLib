@@ -454,6 +454,7 @@ static DWORD LoadBuildProductId(TCascStorage * hs, const char * /* szVariableNam
 
 // "B29049"
 // "WOW-18125patch6.0.1"
+// "WOW-45779patch10.0.2_Beta"
 // "30013_Win32_2_2_0_Ptr_ptr"
 // "prometheus-0_8_0_0-24919"
 static DWORD LoadBuildNumber(TCascStorage * hs, const char * /* szVariableName */, const char * szDataBegin, const char * szDataEnd, void * /* pvParam */)

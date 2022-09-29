@@ -131,15 +131,15 @@ struct TRootHandler_TVFS : public TFileTreeRoot
     bool PathBuffer_AppendNode(CASC_PATH<char> & PathBuffer, TVFS_PATH_TABLE_ENTRY & PathEntry)
     {
         // Append the prefix separator, if needed
-        if (PathEntry.NodeFlags & TVFS_PTE_PATH_SEPARATOR_PRE)
+        if(PathEntry.NodeFlags & TVFS_PTE_PATH_SEPARATOR_PRE)
             PathBuffer.AppendChar('/');
 
         // Append the name fragment, if any
-        if (PathEntry.pbNameEnd > PathEntry.pbNamePtr)
+        if(PathEntry.pbNameEnd > PathEntry.pbNamePtr)
             PathBuffer.AppendStringN((const char *)PathEntry.pbNamePtr, (PathEntry.pbNameEnd - PathEntry.pbNamePtr), false);
 
         // Append the postfix separator, if needed
-        if (PathEntry.NodeFlags & TVFS_PTE_PATH_SEPARATOR_POST)
+        if(PathEntry.NodeFlags & TVFS_PTE_PATH_SEPARATOR_POST)
             PathBuffer.AppendChar('/');
 
         return true;
@@ -294,19 +294,19 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         PathEntry.NodeValue = 0;
 
         // Zero before the name means prefix path separator
-        if (pbPathTablePtr < pbPathTableEnd && pbPathTablePtr[0] == 0)
+        if(pbPathTablePtr < pbPathTableEnd && pbPathTablePtr[0] == 0)
         {
             PathEntry.NodeFlags |= TVFS_PTE_PATH_SEPARATOR_PRE;
             pbPathTablePtr++;
         }
 
         // Capture the length of the name fragment
-        if (pbPathTablePtr < pbPathTableEnd && pbPathTablePtr[0] != 0xFF)
+        if(pbPathTablePtr < pbPathTableEnd && pbPathTablePtr[0] != 0xFF)
         {
             // Capture length of the name fragment
             size_t nLength = *pbPathTablePtr++;
 
-            if ((pbPathTablePtr + nLength) > pbPathTableEnd)
+            if((pbPathTablePtr + nLength) > pbPathTableEnd)
                 return NULL;
             PathEntry.pbNamePtr = pbPathTablePtr;
             PathEntry.pbNameEnd = pbPathTablePtr + nLength;
@@ -314,18 +314,18 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         }
 
         // Zero after the name means postfix path separator
-        if (pbPathTablePtr < pbPathTableEnd && pbPathTablePtr[0] == 0)
+        if(pbPathTablePtr < pbPathTableEnd && pbPathTablePtr[0] == 0)
         {
             PathEntry.NodeFlags |= TVFS_PTE_PATH_SEPARATOR_POST;
             pbPathTablePtr++;
         }
 
-        if (pbPathTablePtr < pbPathTableEnd)
+        if(pbPathTablePtr < pbPathTableEnd)
         {
             // Check for node value
-            if (pbPathTablePtr[0] == 0xFF)
+            if(pbPathTablePtr[0] == 0xFF)
             {
-                if ((pbPathTablePtr + 1 + sizeof(DWORD)) > pbPathTableEnd)
+                if((pbPathTablePtr + 1 + sizeof(DWORD)) > pbPathTableEnd)
                     return NULL;
                 PathEntry.NodeValue = ConvertBytesToInteger_4(pbPathTablePtr + 1);
                 PathEntry.NodeFlags |= TVFS_PTE_NODE_VALUE;
@@ -352,9 +352,9 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         for (size_t i = 0; i < ItemCount; i++)
         {
             pCKeyEntry = (PCASC_CKEY_ENTRY)hs->VfsRootList.ItemAt(i);
-            if (pCKeyEntry != NULL)
+            if(pCKeyEntry != NULL)
             {
-                if (!memcmp(pCKeyEntry->EKey, EKey, EKeyLength))
+                if(!memcmp(pCKeyEntry->EKey, EKey, EKeyLength))
                     return true;
             }
         }
@@ -380,11 +380,11 @@ struct TRootHandler_TVFS : public TFileTreeRoot
             {
                 // Load the entire file into memory
                 pbVfsData = LoadInternalFileToMemory(hs, pCKeyEntry, &cbVfsData);
-                if (pbVfsData && cbVfsData)
+                if(pbVfsData && cbVfsData)
                 {
                     // Capture the file folder. This also serves as test
                     dwErrCode = CaptureDirectoryHeader(SubHeader, pbVfsData, pbVfsData + cbVfsData);
-                    if (dwErrCode == ERROR_SUCCESS)
+                    if(dwErrCode == ERROR_SUCCESS)
                         return dwErrCode;
 
                     // Clear the captured header
@@ -461,12 +461,12 @@ struct TRootHandler_TVFS : public TFileTreeRoot
             PathBuffer_AppendNode(PathBuffer, PathEntry);
 
             // Folder component
-            if (PathEntry.NodeFlags & TVFS_PTE_NODE_VALUE)
+            if(PathEntry.NodeFlags & TVFS_PTE_NODE_VALUE)
             {
                 // If the TVFS_FOLDER_NODE is set, then the path node is a directory,
                 // with its data immediately following the path node. Lower 31 bits of NodeValue
                 // contain the length of the directory (including the NodeValue!)
-                if (PathEntry.NodeValue & TVFS_FOLDER_NODE)
+                if(PathEntry.NodeValue & TVFS_FOLDER_NODE)
                 {
                     LPBYTE pbDirectoryEnd = pbPathTablePtr + (PathEntry.NodeValue & TVFS_FOLDER_SIZE_MASK) - sizeof(DWORD);
 
@@ -475,7 +475,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
 
                     // Recursively call the folder parser on the same file
                     dwErrCode = ParsePathFileTable(hs, DirHeader, PathBuffer, pbPathTablePtr, pbDirectoryEnd);
-                    if (dwErrCode != ERROR_SUCCESS)
+                    if(dwErrCode != ERROR_SUCCESS)
                         return dwErrCode;
 
                     // Skip the directory data
@@ -512,7 +512,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                         }
 
                         // We need to check whether this is another TVFS directory file
-                        if (IsVfsSubDirectory(hs, DirHeader, SubHeader, SpanEntry.EKey, SpanEntry.ContentSize) == ERROR_SUCCESS)
+                        if(IsVfsSubDirectory(hs, DirHeader, SubHeader, SpanEntry.EKey, SpanEntry.ContentSize) == ERROR_SUCCESS)
                         {
                             // Add colon (':')
                             PathBuffer.AppendChar(':');
@@ -531,6 +531,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                             if(pCKeyEntry->ContentSize == CASC_INVALID_SIZE)
                                 pCKeyEntry->ContentSize = SpanEntry.ContentSize;
                             FileTree.InsertByName(pCKeyEntry, PathBuffer);
+                            //printf("%s\n", (const char *)PathBuffer);
                         }
                     }
                     else

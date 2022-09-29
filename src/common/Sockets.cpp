@@ -61,7 +61,7 @@ char * CASC_SOCKET::ReadResponse(const char * request, size_t request_length, si
             // Reallocate the buffer size, if needed
             if(total_received == buffer_size)
             {
-                if((server_response = CASC_REALLOC(char, server_response, buffer_size + block_increment + 1)) == NULL)
+                if((server_response = CASC_REALLOC(server_response, buffer_size + block_increment + 1)) == NULL)
                 {
                     SetCascError(ERROR_NOT_ENOUGH_MEMORY);
                     CascUnlock(Lock);

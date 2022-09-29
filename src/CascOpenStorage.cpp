@@ -166,6 +166,13 @@ void * ProbeOutputBuffer(void * pvBuffer, size_t cbLength, size_t cbMinLength, s
     return pvBuffer;
 }
 
+static bool CheckForWorldOfWarcraft(TCascStorage * hs)
+{
+    if(hs->szCodeName && hs->szCodeName[0])
+        return (hs->szCodeName[0] == 'w' && hs->szCodeName[1] == 'o' && hs->szCodeName[2] == 'w');
+    return false;
+}
+
 static LPTSTR CheckForIndexDirectory(TCascStorage * hs, LPCTSTR szSubDir)
 {
     TCHAR szIndexPath[MAX_PATH];
@@ -862,7 +869,7 @@ static bool InsertWellKnownFile(TCascStorage * hs, const char * szFileName, CASC
 
 static int LoadBuildManifest(TCascStorage * hs, DWORD dwLocaleMask)
 {
-    PCASC_CKEY_ENTRY pCKeyEntry;
+    PCASC_CKEY_ENTRY pCKeyEntry = &hs->RootFile;
     PDWORD FileSignature;
     LPBYTE pbRootFile = NULL;
     DWORD cbRootFile = 0;
@@ -879,8 +886,9 @@ static int LoadBuildManifest(TCascStorage * hs, DWORD dwLocaleMask)
     // Locale: The default parameter is 0 - in that case, we load all locales
     dwLocaleMask = (dwLocaleMask != 0) ? dwLocaleMask : 0xFFFFFFFF;
 
-    // Prioritize the VFS root over legacy ROOT file
-    pCKeyEntry = (hs->VfsRoot.ContentSize != CASC_INVALID_SIZE) ? &hs->VfsRoot : &hs->RootFile;
+    // Prioritize the VFS root over legacy ROOT file, unless it's WoW
+    if(hs->VfsRoot.ContentSize != CASC_INVALID_SIZE && CheckForWorldOfWarcraft(hs) == false)
+        pCKeyEntry = &hs->VfsRoot;
     pCKeyEntry = FindCKeyEntry_CKey(hs, pCKeyEntry->CKey);
 
     // Load the entire ROOT file to memory
