@@ -233,7 +233,7 @@ static LPBYTE ReadMissingHeaderData(PCASC_FILE_SPAN pFileSpan, ULONGLONG DataFil
     LPBYTE pbNewBuffer;
 
     // Reallocate the buffer
-    pbNewBuffer = CASC_REALLOC(BYTE, pbEncodedBuffer, cbTotalHeaderSize);
+    pbNewBuffer = CASC_REALLOC(pbEncodedBuffer, cbTotalHeaderSize);
     if (pbNewBuffer != NULL)
     {
         // Load the missing data
@@ -276,7 +276,7 @@ static DWORD LoadSpanFrames(PCASC_FILE_SPAN pFileSpan, PCASC_CKEY_ENTRY pCKeyEnt
     if (pFileSpan->FrameCount != 0)
     {
         // Move the raw archive offset
-        DataFileOffset += (pFileSpan->FrameCount * sizeof(BLTE_FRAME));
+        DataFileOffset += ((ULONGLONG)pFileSpan->FrameCount * sizeof(BLTE_FRAME));
 
         // Allocate array of file frames
         pFrames = CASC_ALLOC<CASC_FILE_FRAME>(pFileSpan->FrameCount);
