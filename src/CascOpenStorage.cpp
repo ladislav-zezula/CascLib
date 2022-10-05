@@ -7,7 +7,7 @@
 /*---------------------------------------------------------------------------*/
 /*   Date    Ver   Who  Comment                                              */
 /* --------  ----  ---  -------                                              */
-/* 29.04.14  1.00  Lad  The first version of CascOpenStorage.cpp             */
+/* 29.04.14  1.00  Lad  Created                                              */
 /*****************************************************************************/
 
 #define __CASCLIB_SELF__
@@ -150,7 +150,15 @@ TCascStorage * TCascStorage::Release()
 
 //-----------------------------------------------------------------------------
 // Local functions
-
+/*
+static bool CheckForWorldOfWarcraft(TCascStorage * hs)
+{
+    // All WoW code names begin with "wow"
+    if(hs->szCodeName && hs->szCodeName[0])
+        return (hs->szCodeName[0] == 'w' && hs->szCodeName[1] == 'o' && hs->szCodeName[2] == 'w');
+    return false;
+}
+*/
 void * ProbeOutputBuffer(void * pvBuffer, size_t cbLength, size_t cbMinLength, size_t * pcbLengthNeeded)
 {
     // Verify the output length
@@ -164,13 +172,6 @@ void * ProbeOutputBuffer(void * pvBuffer, size_t cbLength, size_t cbMinLength, s
     if(pcbLengthNeeded != NULL)
         pcbLengthNeeded[0] = cbMinLength;
     return pvBuffer;
-}
-
-static bool CheckForWorldOfWarcraft(TCascStorage * hs)
-{
-    if(hs->szCodeName && hs->szCodeName[0])
-        return (hs->szCodeName[0] == 'w' && hs->szCodeName[1] == 'o' && hs->szCodeName[2] == 'w');
-    return false;
 }
 
 static LPTSTR CheckForIndexDirectory(TCascStorage * hs, LPCTSTR szSubDir)
@@ -870,6 +871,7 @@ static bool InsertWellKnownFile(TCascStorage * hs, const char * szFileName, CASC
 static int LoadBuildManifest(TCascStorage * hs, DWORD dwLocaleMask)
 {
     PCASC_CKEY_ENTRY pCKeyEntry = &hs->RootFile;
+    TRootHandler * pOldRootHandler = NULL;
     PDWORD FileSignature;
     LPBYTE pbRootFile = NULL;
     DWORD cbRootFile = 0;
@@ -887,11 +889,13 @@ static int LoadBuildManifest(TCascStorage * hs, DWORD dwLocaleMask)
     dwLocaleMask = (dwLocaleMask != 0) ? dwLocaleMask : 0xFFFFFFFF;
 
     // Prioritize the VFS root over legacy ROOT file, unless it's WoW
-    if(hs->VfsRoot.ContentSize != CASC_INVALID_SIZE && CheckForWorldOfWarcraft(hs) == false)
+    if(hs->VfsRoot.ContentSize != CASC_INVALID_SIZE /* && !CheckForWorldOfWarcraft(hs) */)
         pCKeyEntry = &hs->VfsRoot;
-    pCKeyEntry = FindCKeyEntry_CKey(hs, pCKeyEntry->CKey);
+
+__LoadRootFile:
 
     // Load the entire ROOT file to memory
+    pCKeyEntry = FindCKeyEntry_CKey(hs, pCKeyEntry->CKey);
     pbRootFile = LoadInternalFileToMemory(hs, pCKeyEntry, &cbRootFile);
     if(pbRootFile != NULL)
     {
@@ -944,6 +948,28 @@ static int LoadBuildManifest(TCascStorage * hs, DWORD dwLocaleMask)
     else
     {
         dwErrCode = GetCascError();
+    }
+
+    // Handle reparsing of the root file
+    if(dwErrCode == ERROR_REPARSE_ROOT && pCKeyEntry != &hs->RootFile)
+    {
+        if(InvokeProgressCallback(hs, "Loading ROOT manifest (reparsed)", NULL, 0, 0))
+            return ERROR_CANCELLED;
+
+        // Replace the root handler
+        pOldRootHandler = hs->pRootHandler;
+        hs->pRootHandler = NULL;
+
+        // Replace the CKey entry for the ROOT file
+        pCKeyEntry = &hs->RootFile;
+        goto __LoadRootFile;
+    }
+
+    // If we reparsed the ROOT file and we have the old one, we need to copy all items to the new one
+    if(hs->pRootHandler && pOldRootHandler)
+    {
+        hs->pRootHandler->Copy(pOldRootHandler);
+        delete pOldRootHandler;
     }
 
     return dwErrCode;
@@ -1150,6 +1176,7 @@ static DWORD InitializeOnlineDirectories(TCascStorage * hs, PCASC_OPEN_STORAGE_A
     {
         hs->BuildFileType = CascVersionsDb;
         hs->dwFeatures |= CASC_FEATURE_ONLINE;
+        hs->dwFeatures |= (pArgs->dwFlags & (CASC_FEATURE_LOCAL_CDNS | CASC_FEATURE_LOCAL_VERSIONS));
         return ERROR_SUCCESS;
     }
 
@@ -1204,8 +1231,7 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
         dwErrCode = LoadBuildInfo(hs);
     }
 
-    // If the .build.info OR .build.db file has been loaded,
-    // proceed with loading the CDN config file
+    // Proceed with loading the CDN config file
     if(dwErrCode == ERROR_SUCCESS)
     {
         dwErrCode = LoadCdnConfigFile(hs);

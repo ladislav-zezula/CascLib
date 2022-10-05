@@ -274,6 +274,10 @@
 #define ERROR_INDEX_PARSING_DONE         1010
 #endif
 
+#ifndef ERROR_REPARSE_ROOT
+#define ERROR_REPARSE_ROOT               1011
+#endif
+
 #ifndef _countof
 #define _countof(x)   (sizeof(x) / sizeof(x[0]))
 #endif
