@@ -1229,13 +1229,13 @@ int main(int argc, char * argv[])
     //
     // Run the tests for every local storage in my collection
     //
-    //for(size_t i = 0; i < _countof(StorageInfo1); i++)
-    //{
-    //    // Attempt to open the storage and extract single file
-    //    dwErrCode = LocalStorage_Test(Storage_ReadFiles, StorageInfo1[i]);
-    //    if(dwErrCode != ERROR_SUCCESS && dwErrCode != ERROR_FILE_NOT_FOUND)
-    //        break;
-    //}
+    for(size_t i = 0; i < _countof(StorageInfo1); i++)
+    {
+        // Attempt to open the storage and extract single file
+        dwErrCode = LocalStorage_Test(Storage_ReadFiles, StorageInfo1[i]);
+        if(dwErrCode != ERROR_SUCCESS && dwErrCode != ERROR_FILE_NOT_FOUND)
+            break;
+    }
 
     //
     // Run the tests for every available online storage in my collection
