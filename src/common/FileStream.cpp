@@ -182,7 +182,7 @@ static bool BaseFile_Read(
             pStream->Base.File.FilePos = ByteOffset;
 
             // Read the data
-            if (dwBytesToRead != 0)
+            if(dwBytesToRead != 0)
             {
                 OVERLAPPED Overlapped;
 
@@ -204,9 +204,9 @@ static bool BaseFile_Read(
 
             // If the byte offset is different from the current file position,
             // we have to update the file position
-            if (ByteOffset != pStream->Base.File.FilePos)
+            if(ByteOffset != pStream->Base.File.FilePos)
             {
-                if (lseek64((intptr_t)pStream->Base.File.hFile, (off64_t)(ByteOffset), SEEK_SET) == (off64_t)-1)
+                if(lseek64((intptr_t)pStream->Base.File.hFile, (off64_t)(ByteOffset), SEEK_SET) == (off64_t)-1)
                 {
                     CascUnlock(pStream->Lock);
                     SetCascError(errno);
@@ -216,10 +216,10 @@ static bool BaseFile_Read(
             }
 
             // Perform the read operation
-            if (dwBytesToRead != 0)
+            if(dwBytesToRead != 0)
             {
                 bytes_read = read((intptr_t)pStream->Base.File.hFile, pvBuffer, (size_t)dwBytesToRead);
-                if (bytes_read == -1)
+                if(bytes_read == -1)
                 {
                     CascUnlock(pStream->Lock);
                     SetCascError(errno);
@@ -282,7 +282,7 @@ static bool BaseFile_Write(TFileStream * pStream, ULONGLONG * pByteOffset, const
             pStream->Base.File.FilePos = ByteOffset;
 
             // Read the data
-            if (dwBytesToWrite != 0)
+            if(dwBytesToWrite != 0)
             {
                 OVERLAPPED Overlapped;
 
@@ -304,9 +304,9 @@ static bool BaseFile_Write(TFileStream * pStream, ULONGLONG * pByteOffset, const
 
             // If the byte offset is different from the current file position,
             // we have to update the file position
-            if (ByteOffset != pStream->Base.File.FilePos)
+            if(ByteOffset != pStream->Base.File.FilePos)
             {
-                if (lseek64((intptr_t)pStream->Base.File.hFile, (off64_t)(ByteOffset), SEEK_SET) == (off64_t)-1)
+                if(lseek64((intptr_t)pStream->Base.File.hFile, (off64_t)(ByteOffset), SEEK_SET) == (off64_t)-1)
                 {
                     CascUnlock(pStream->Lock);
                     SetCascError(errno);
@@ -317,7 +317,7 @@ static bool BaseFile_Write(TFileStream * pStream, ULONGLONG * pByteOffset, const
 
             // Perform the read operation
             bytes_written = write((intptr_t)pStream->Base.File.hFile, pvBuffer, (size_t)dwBytesToWrite);
-            if (bytes_written == -1)
+            if(bytes_written == -1)
             {
                 CascUnlock(pStream->Lock);
                 SetCascError(errno);
@@ -684,6 +684,9 @@ static bool BaseHttp_Download(TFileStream * pStream)
     // If we already have the data, it's success
     if(pStream->Base.Socket.fileData == NULL)
     {
+        // Reset the file data length as well
+        pStream->Base.Socket.fileDataLength = 0;
+
         // Construct the request, either HTTP or Ribbit (https://wowdev.wiki/Ribbit).
         // Note that Ribbit requests don't start with slash
         if((pStream->dwFlags & BASE_PROVIDER_MASK) == BASE_PROVIDER_RIBBIT)
@@ -698,13 +701,18 @@ static bool BaseHttp_Download(TFileStream * pStream)
         server_response = pStream->Base.Socket.pSocket->ReadResponse(request, request_length, &response_length);
         if(server_response != NULL)
         {
-            // Decode the MIME document
-            if((dwErrCode = Mime.Load(server_response, response_length)) == ERROR_SUCCESS)
+            // Check for non-zero data
+            if(response_length != 0)
             {
-                // Move the data from MIME to HTTP stream
-                pStream->Base.Socket.fileData = Mime.GiveAway(&pStream->Base.Socket.fileDataLength);
+                // Decode the MIME document
+                if((dwErrCode = Mime.Load(server_response, response_length)) == ERROR_SUCCESS)
+                {
+                    // Move the data from MIME to HTTP stream
+                    pStream->Base.Socket.fileData = Mime.GiveAway(&pStream->Base.Socket.fileDataLength);
+                }
             }
 
+            // Free the buffer
             CASC_FREE(server_response);
         }
     }
@@ -799,8 +807,7 @@ static bool BaseHttp_GetSize(TFileStream * pStream, ULONGLONG * pFileSize)
     CascLock(pStream->Lock);
     {
         // Make sure that we have the file data
-        bResult = BaseHttp_Download(pStream);
-        if(bResult)
+        if((bResult = BaseHttp_Download(pStream)) != false)
         {
             *pFileSize = pStream->Base.Socket.fileDataLength;
         }

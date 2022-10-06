@@ -62,6 +62,9 @@
 // For CASC_CDN_DOWNLOAD::Flags
 #define CASC_CDN_FORCE_DOWNLOAD         0x0001      // Force downloading the file even if in the cache
 
+// The maximum size of an inline file
+#define CASC_MAX_ONLINE_FILE_SIZE   0x40000000
+
 //-----------------------------------------------------------------------------
 // In-memory structures
 
@@ -383,8 +386,9 @@ struct TCascSearch
     TCascSearch(TCascStorage * ahs, LPCTSTR aszListFile, const char * aszMask)
     {
         // Init the class
+        if(ahs != NULL)
+            hs = ahs->AddRef();
         ClassName = CASC_MAGIC_FIND;
-        hs = ahs->AddRef();
 
         // Init provider-specific data
         pCache = NULL;
@@ -400,7 +404,8 @@ struct TCascSearch
     ~TCascSearch()
     {
         // Dereference the CASC storage
-        hs = hs->Release();
+        if(hs != NULL)
+            hs = hs->Release();
         ClassName = 0;
 
         // Free the rest of the members

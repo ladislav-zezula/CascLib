@@ -522,14 +522,24 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                             FileTree.InsertByName(pCKeyEntry, PathBuffer);
 
                             // Parse the subdir
-                            ParseDirectoryData(hs, SubHeader, PathBuffer);
+                            dwErrCode = ParseDirectoryData(hs, SubHeader, PathBuffer);
                             CASC_FREE(SubHeader.pbDirectoryData);
+
+                            // On error, stop the parsing
+                            if(dwErrCode != ERROR_SUCCESS)
+                                return dwErrCode;
                         }
                         else
                         {
                             // If the content content size is not there, supply it now
                             if(pCKeyEntry->ContentSize == CASC_INVALID_SIZE)
                                 pCKeyEntry->ContentSize = SpanEntry.ContentSize;
+
+                            // Detect generic file names from World of Warcraft (build 45779)
+                            if(IsWoWGenericName(PathBuffer))
+                                return ERROR_REPARSE_ROOT;
+
+                            // If not a generic name, insert to the tree
                             FileTree.InsertByName(pCKeyEntry, PathBuffer);
                             //printf("%s\n", (const char *)PathBuffer);
                         }
@@ -680,6 +690,25 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         return ParseDirectoryData(hs, RootHeader, PathBuffer);
     }
 
+    bool IsWoWGenericName(const CASC_PATH<char> & PathBuffer)
+    {
+        // Example: 000000020000:000C472F02BA924C604A670B253AA02DBCD9441
+        if(PathBuffer.Length() == 52)
+        {
+            if(PathBuffer[12] == ':')
+            {
+                const char * szBinary = PathBuffer;
+                BYTE TempBin[20];
+
+                if(BinaryFromString(szBinary + 14, 38, TempBin) == ERROR_SUCCESS)
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     CASC_ARRAY SpanArray;           // Array of CASC_SPAN_ENTRY for all multi-span files
 };
 
@@ -702,7 +731,7 @@ DWORD RootHandler_CreateTVFS(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootF
         {
             // Load the root directory. If load failed, we free the object
             dwErrCode = pRootHandler->Load(hs, RootHeader);
-            if(dwErrCode != ERROR_SUCCESS)
+            if(dwErrCode != ERROR_SUCCESS && dwErrCode != ERROR_REPARSE_ROOT)
             {
                 delete pRootHandler;
                 pRootHandler = NULL;

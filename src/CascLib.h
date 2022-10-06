@@ -140,6 +140,8 @@ extern "C" {
 #define CASC_FEATURE_LOCALE_FLAGS   0x00000040  // Locale flags are supported
 #define CASC_FEATURE_CONTENT_FLAGS  0x00000080  // Content flags are supported
 #define CASC_FEATURE_ONLINE         0x00000100  // The storage is an online storage
+#define CASC_FEATURE_LOCAL_CDNS     0x00000200  // (Online) use cached "cdns" file, if available
+#define CASC_FEATURE_LOCAL_VERSIONS 0x00000400  // (Online) use cached "versions" file, if available
 
 // Macro to convert FileDataId to the argument of CascOpenFile
 #define CASC_FILE_DATA_ID(FileDataId) ((LPCSTR)(size_t)FileDataId)
@@ -329,7 +331,7 @@ typedef struct _CASC_OPEN_STORAGE_ARGS
     void * PtrProductParam;                     // Pointer-sized parameter that will be passed to PfnProgressCallback
 
     DWORD dwLocaleMask;                         // Locale mask to open
-    DWORD dwFlags;                              // Reserved. Set to zero.
+    DWORD dwFlags;                              // Additional CASC_FEATURE_XXX can be set here
 
     //
     // Any additional member from here on must be checked for availability using the ExtractVersionedArgument function.

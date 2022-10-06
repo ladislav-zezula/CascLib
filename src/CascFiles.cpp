@@ -915,6 +915,93 @@ static DWORD LoadCsvFile(TCascStorage * hs, LPCTSTR szFileName, PARSECSVFILE Pfn
     return dwErrCode;
 }
 
+static DWORD ForcePathExist(LPCTSTR szFileName, bool bIsFileName)
+{
+    LPTSTR szLocalPath;
+    size_t nIndex;
+    bool bFirstSeparator = false;
+    DWORD dwErrCode = ERROR_NOT_ENOUGH_MEMORY;
+
+    // Sanity checks
+    if(szFileName && szFileName[0])
+    {
+        szLocalPath = CascNewStr(szFileName);
+        if(szLocalPath != NULL)
+        {
+            // Get the end of search
+            if(bIsFileName)
+                CutLastPathPart(szLocalPath);
+
+            // Check the entire path
+            if(_taccess(szLocalPath, 0) != 0)
+            {
+                // Searth the entire path
+                for(nIndex = 0; szLocalPath[nIndex] != 0; nIndex++)
+                {
+                    if(szLocalPath[nIndex] == '\\' || szLocalPath[nIndex] == '/')
+                    {
+                        // Cut the path and verify whether the folder/file exists
+                        szLocalPath[nIndex] = 0;
+
+                        // Skip the very first separator
+                        if(bFirstSeparator == true)
+                        {
+                            // Is it there?
+                            if(DirectoryExists(szLocalPath) == false && MakeDirectory(szLocalPath) == false)
+                            {
+                                dwErrCode = ERROR_PATH_NOT_FOUND;
+                                break;
+                            }
+                        }
+
+                        // Restore the character
+                        szLocalPath[nIndex] = PATH_SEP_CHAR;
+                        bFirstSeparator = true;
+                        dwErrCode = ERROR_SUCCESS;
+                    }
+                }
+
+                // Now check the final path
+                if(DirectoryExists(szLocalPath) || MakeDirectory(szLocalPath))
+                {
+                    dwErrCode = ERROR_SUCCESS;
+                }
+            }
+            else
+            {
+                dwErrCode = ERROR_SUCCESS;
+            }
+
+            CASC_FREE(szLocalPath);
+        }
+    }
+
+    return dwErrCode;
+}
+
+static DWORD SaveLocalFile(LPCTSTR szLocalName, LPBYTE pbFileData, size_t cbFileData)
+{
+    TFileStream * pLocStream;
+    DWORD dwErrCode = ERROR_DISK_FULL;
+
+    // Make sure that the path exists
+    ForcePathExist(szLocalName, true);
+
+    // Create local file
+    pLocStream = FileStream_CreateFile(szLocalName, BASE_PROVIDER_FILE | STREAM_PROVIDER_FLAT);
+    if(pLocStream != NULL)
+    {
+        if(FileStream_Write(pLocStream, NULL, pbFileData, (DWORD)(cbFileData)))
+            dwErrCode = ERROR_SUCCESS;
+
+        FileStream_Close(pLocStream);
+    }
+    else
+        dwErrCode = GetCascError();
+
+    return dwErrCode;
+}
+
 static LPCTSTR ExtractCdnServerName(LPTSTR szServerName, size_t cchServerName, LPCTSTR szCdnServers)
 {
     LPCTSTR szSeparator;
@@ -998,70 +1085,6 @@ static void CreateRemoteAndLocalPath(TCascStorage * hs, CASC_CDN_DOWNLOAD & Cdns
     LocalPath.AppendString(CdnsInfo.szExtension, false);
 }
 
-static DWORD ForcePathExist(LPCTSTR szFileName, bool bIsFileName)
-{
-    LPTSTR szLocalPath;
-    size_t nIndex;
-    bool bFirstSeparator = false;
-    DWORD dwErrCode = ERROR_NOT_ENOUGH_MEMORY;
-
-    // Sanity checks
-    if(szFileName && szFileName[0])
-    {
-        szLocalPath = CascNewStr(szFileName);
-        if(szLocalPath != NULL)
-        {
-            // Get the end of search
-            if(bIsFileName)
-                CutLastPathPart(szLocalPath);
-
-            // Check the entire path
-            if(_taccess(szLocalPath, 0) != 0)
-            {
-                // Searth the entire path
-                for(nIndex = 0; szLocalPath[nIndex] != 0; nIndex++)
-                {
-                    if(szLocalPath[nIndex] == '\\' || szLocalPath[nIndex] == '/')
-                    {
-                        // Cut the path and verify whether the folder/file exists
-                        szLocalPath[nIndex] = 0;
-
-                        // Skip the very first separator
-                        if(bFirstSeparator == true)
-                        {
-                            // Is it there?
-                            if(DirectoryExists(szLocalPath) == false && MakeDirectory(szLocalPath) == false)
-                            {
-                                dwErrCode = ERROR_PATH_NOT_FOUND;
-                                break;
-                            }
-                        }
-
-                        // Restore the character
-                        szLocalPath[nIndex] = PATH_SEP_CHAR;
-                        bFirstSeparator = true;
-                        dwErrCode = ERROR_SUCCESS;
-                    }
-                }
-
-                // Now check the final path
-                if(DirectoryExists(szLocalPath) || MakeDirectory(szLocalPath))
-                {
-                    dwErrCode = ERROR_SUCCESS;
-                }
-            }
-            else
-            {
-                dwErrCode = ERROR_SUCCESS;
-            }
-
-            CASC_FREE(szLocalPath);
-        }
-    }
-
-    return dwErrCode;
-}
-
 static bool FileAlreadyExists(LPCTSTR szFileName)
 {
     TFileStream * pStream;
@@ -1085,7 +1108,6 @@ static DWORD DownloadFile(
     DWORD dwPortFlags)
 {
     TFileStream * pRemStream;
-    TFileStream * pLocStream;
     LPBYTE pbFileData;
     DWORD dwErrCode = ERROR_NOT_ENOUGH_MEMORY;
 
@@ -1099,28 +1121,31 @@ static DWORD DownloadFile(
             ULONGLONG FileSize = 0;
 
             // Retrieve the file size, but not longer than 1 GB
-            if(FileStream_GetSize(pRemStream, &FileSize) && 0 < FileSize && FileSize < 0x40000000)
+            if(FileStream_GetSize(pRemStream, &FileSize))
             {
-                // Cut the file size down to 32 bits
-                cbReadSize = (DWORD)FileSize;
+                // Verify valid size
+                if(0 < FileSize && FileSize < CASC_MAX_ONLINE_FILE_SIZE)
+                {
+                    cbReadSize = (DWORD)FileSize;
+                    dwErrCode = ERROR_SUCCESS;
+                }
+                else
+                {
+                    dwErrCode = ERROR_BAD_FORMAT;
+                }
+            }
+            else
+            {
+                dwErrCode = GetCascError();
             }
         }
 
         // Shall we read something?
-        if((cbReadSize != 0) && (pbFileData = CASC_ALLOC<BYTE>(cbReadSize)) != NULL)
+        if((dwErrCode == ERROR_SUCCESS) && (cbReadSize != 0) && (pbFileData = CASC_ALLOC<BYTE>(cbReadSize)) != NULL)
         {
             // Read all required data from the remote file
             if(FileStream_Read(pRemStream, PtrByteOffset, pbFileData, cbReadSize))
-            {
-                pLocStream = FileStream_CreateFile(szLocalName, BASE_PROVIDER_FILE | STREAM_PROVIDER_FLAT);
-                if(pLocStream != NULL)
-                {
-                    if(FileStream_Write(pLocStream, NULL, pbFileData, cbReadSize))
-                        dwErrCode = ERROR_SUCCESS;
-
-                    FileStream_Close(pLocStream);
-                }
-            }
+                dwErrCode = SaveLocalFile(szLocalName, pbFileData, cbReadSize);
 
             // Free the data buffer
             CASC_FREE(pbFileData);
@@ -1137,12 +1162,30 @@ static DWORD DownloadFile(
     return dwErrCode;
 }
 
-static DWORD RibbitDownloadFile(LPCTSTR szCdnHostUrl, LPCTSTR szProduct, LPCTSTR szFileName, QUERY_KEY & FileData)
+static DWORD RibbitDownloadFile(LPCTSTR szCdnHostUrl, LPCTSTR szProduct, LPCTSTR szFileName, CASC_PATH<TCHAR> & LocalPath, QUERY_KEY & FileData)
 {
+    CASC_PATH<TCHAR> LocalFile;
     TFileStream * pStream;
     ULONGLONG FileSize = 0;
     TCHAR szRemoteUrl[256];
     DWORD dwErrCode = ERROR_CAN_NOT_COMPLETE;
+
+    // If required, try to load the local name first
+    if(LocalPath.Length() && LocalPath.LocalCaching())
+    {
+        LPBYTE pbFileData;
+        DWORD cbFileData = 0;
+
+        // Load the local file into memory
+        pbFileData = LoadFileToMemory(LocalPath, &cbFileData);
+        if(pbFileData && cbFileData)
+        {
+            // Pass the file data to the caller
+            FileData.pbData = pbFileData;
+            FileData.cbData = cbFileData;
+            return ERROR_SUCCESS;
+        }
+    }
 
     // Supply the default CDN URL, if not present
     if(szCdnHostUrl == NULL || szCdnHostUrl[0] == 0)
@@ -1191,6 +1234,9 @@ static DWORD RibbitDownloadFile(LPCTSTR szCdnHostUrl, LPCTSTR szProduct, LPCTSTR
         dwErrCode = GetCascError();
     }
 
+    // Save the file to the local cache
+    if(LocalPath.Length() && dwErrCode == ERROR_SUCCESS)
+        SaveLocalFile(LocalPath, FileData.pbData, FileData.cbData);
     return dwErrCode;
 }
 
@@ -1233,13 +1279,24 @@ DWORD DownloadFileFromCDN(TCascStorage * hs, CASC_CDN_DOWNLOAD & CdnsInfo)
     // from the storage's configuration
     if(CdnsInfo.szCdnsHost == NULL)
     {
+        // Supply the CDN host
+        CdnsInfo.szCdnsHost = szCdnHost;
+
         // Try all download servers
         while((szCdnServers = ExtractCdnServerName(szCdnHost, _countof(szCdnHost), szCdnServers)) != NULL)
         {
-            CdnsInfo.szCdnsHost = szCdnHost;
-            if((dwErrCode = DownloadFileFromCDN2(hs, CdnsInfo)) == ERROR_SUCCESS)
-                return ERROR_SUCCESS;
+            // Attempt to download the file from the remote server
+            dwErrCode = DownloadFileFromCDN2(hs, CdnsInfo);
+            
+            // If the download succeeded, exit immediately.
+            // Also exit when there is a low memory condition,
+            // as it will most likely end up with low memory on next download
+            if(dwErrCode == ERROR_SUCCESS || dwErrCode == ERROR_NOT_ENOUGH_MEMORY)
+                break;
         }
+
+        // Don't give the local buffer pointer to the caller
+        CdnsInfo.szCdnsHost = NULL;
     }
     else
     {
@@ -1416,14 +1473,21 @@ DWORD LoadBuildInfo(TCascStorage * hs)
     // If the storage is online storage, we need to download "versions"
     if(hs->dwFeatures & CASC_FEATURE_ONLINE)
     {
+        CASC_PATH<TCHAR> LocalPath;
         QUERY_KEY FileData;
+        LPCTSTR szVersionsName = _T("versions");
 
         // Inform the user about loading the build.info/build.db/versions
         if(InvokeProgressCallback(hs, "Downloading the \"versions\" file", NULL, 0, 0))
             return ERROR_CANCELLED;
 
+        // Shall we prefer the locally cached file?
+        LocalPath.SetPathRoot(hs->szRootPath);
+        LocalPath.AppendString(szVersionsName, true);
+        LocalPath.SetLocalCaching(hs->dwFeatures & CASC_FEATURE_LOCAL_VERSIONS);
+
         // Download the file using Ribbit/HTTP protocol
-        dwErrCode = RibbitDownloadFile(hs->szCdnHostUrl, hs->szCodeName, _T("versions"), FileData);
+        dwErrCode = RibbitDownloadFile(hs->szCdnHostUrl, hs->szCodeName, szVersionsName, LocalPath, FileData);
         if(dwErrCode == ERROR_SUCCESS)
         {
             // Parse the downloaded file
@@ -1441,7 +1505,9 @@ DWORD LoadBuildInfo(TCascStorage * hs)
 
 DWORD LoadCdnsFile(TCascStorage * hs)
 {
+    CASC_PATH<TCHAR> LocalPath;
     QUERY_KEY FileData;
+    LPCTSTR szCdnsName = _T("cdns");
     DWORD dwErrCode = ERROR_SUCCESS;
 
     // Sanity checks
@@ -1451,8 +1517,13 @@ DWORD LoadCdnsFile(TCascStorage * hs)
     if(InvokeProgressCallback(hs, "Downloading the \"cdns\" file", NULL, 0, 0))
         return ERROR_CANCELLED;
 
+    // Construct the local path of the file
+    LocalPath.SetPathRoot(hs->szRootPath);
+    LocalPath.AppendString(szCdnsName, true);
+    LocalPath.SetLocalCaching(hs->dwFeatures & CASC_FEATURE_LOCAL_CDNS);
+
     // Download the file using Ribbit protocol
-    dwErrCode = RibbitDownloadFile(hs->szCdnHostUrl, hs->szCodeName, _T("cdns"), FileData);
+    dwErrCode = RibbitDownloadFile(hs->szCdnHostUrl, hs->szCodeName, szCdnsName, LocalPath, FileData);
     if(dwErrCode == ERROR_SUCCESS)
     {
         // Parse the downloaded file
@@ -1608,7 +1679,6 @@ LPBYTE LoadFileToMemory(LPCTSTR szFileName, DWORD * pcbFileData)
         {
             SetCascError(ERROR_BAD_FORMAT);
             cbFileData = 0;
-            assert(false);
         }
 
         // Close the file stream
@@ -1631,13 +1701,14 @@ LPCTSTR WINAPI CascCdnGetDefault()
 
 LPBYTE WINAPI CascCdnDownload(LPCTSTR szCdnHostUrl, LPCTSTR szProduct, LPCTSTR szFileName, DWORD * PtrSize)
 {
+    CASC_PATH<TCHAR> LocalPath;
     QUERY_KEY FileData;
     LPBYTE pbFileData = NULL;
     size_t cbFileData = 0;
     DWORD dwErrCode;
 
     // Download the file
-    dwErrCode = RibbitDownloadFile(szCdnHostUrl, szProduct, szFileName, FileData);
+    dwErrCode = RibbitDownloadFile(szCdnHostUrl, szProduct, szFileName, LocalPath, FileData);
     if(dwErrCode == ERROR_SUCCESS)
     {
         // Create copy of the buffer
