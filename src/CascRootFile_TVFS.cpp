@@ -693,6 +693,9 @@ struct TRootHandler_TVFS : public TFileTreeRoot
     bool IsWoWGenericName(const CASC_PATH<char> & PathBuffer)
     {
         // Example: 000000020000:000C472F02BA924C604A670B253AA02DBCD9441
+        // Meaning: LLLLLLLLCCCC IIIIIIIIKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK?
+        //          L = Locale flags, C = Content flags, I = File Data ID, K = CKey
+        //          Meaning of the last single digit is unknown
         if(PathBuffer.Length() == 52)
         {
             if(PathBuffer[12] == ':')
