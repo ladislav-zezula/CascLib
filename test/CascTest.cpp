@@ -1040,6 +1040,7 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO2 & StorInf
     HANDLE hStorage;
     TCHAR szParams[MAX_PATH+0x40];
     DWORD dwErrCode = ERROR_SUCCESS;
+    bool bSucceeded = false;
 
     LogHelper.PrintProgress("Opening storage ...");
 
@@ -1076,7 +1077,6 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO2 & StorInf
         {
             CASC_FILE_FULL_INFO FileInfo = {0};
             HANDLE hFile = NULL;
-            bool bSucceeded = false;
 
             // Just get the file info
             LogHelper.PrintProgress("Querying file \"%s\" ...", GetPlainFileName(StorInfo.szFile));
@@ -1094,6 +1094,10 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO2 & StorInf
                 LogHelper.PrintError("Failed to retrieve file information.", StorInfo.szFile);
             }
         }
+        
+        // Show the result on success
+        if(bSucceeded)
+            LogHelper.PrintMessage(" ");
         CascCloseStorage(hStorage);
     }
     else
@@ -1179,9 +1183,9 @@ static STORAGE_INFO2 StorageInfo2[] =
 //  {NULL,   "catalogs" },
 //  {NULL,   "clnt",        "us"},
 //  {NULL,   "hsb",         "us"},
-//  {szCdn1, "wow_classic", "us"},
-//  {szCdn2, "wow",         "us"},
-    {szCdn1, "wow_beta",    "us", "interface/framexml/localization.lua"},
+    {szCdn1, "wow_classic", "us"},
+    {szCdn2, "wow",         "us"},
+    {szCdn1, "wow_beta",    "us"}, // "interface/framexml/localization.lua"
 };
 
 //-----------------------------------------------------------------------------
@@ -1229,13 +1233,13 @@ int main(int argc, char * argv[])
     //
     // Run the tests for every local storage in my collection
     //
-    for(size_t i = 0; i < _countof(StorageInfo1); i++)
-    {
-        // Attempt to open the storage and extract single file
-        dwErrCode = LocalStorage_Test(Storage_ReadFiles, StorageInfo1[i]);
-        if(dwErrCode != ERROR_SUCCESS && dwErrCode != ERROR_FILE_NOT_FOUND)
-            break;
-    }
+    //for(size_t i = 0; i < _countof(StorageInfo1); i++)
+    //{
+    //    // Attempt to open the storage and extract single file
+    //    dwErrCode = LocalStorage_Test(Storage_ReadFiles, StorageInfo1[i]);
+    //    if(dwErrCode != ERROR_SUCCESS && dwErrCode != ERROR_FILE_NOT_FOUND)
+    //        break;
+    //}
 
     //
     // Run the tests for every available online storage in my collection

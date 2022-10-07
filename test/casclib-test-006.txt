@@ -326,7 +326,20 @@ Data Hash: b46bd2f81ead285e810e5a049ca2db74 (match)
 TotalTime: 150.558 second(s)
 Work complete.
 
--- "wow_beta" ----------------------------------------------------------------------------
-Querying file "localization.lua" ...
+-- "wow_classic" -------------------------------------------------------------------------
+Name Hash: 99ce1f6be8e9817df199b31132da5665
+Data Hash: c52941fa21b456cef12119a28a932772
+TotalTime: 36.970 second(s)
+Work complete.
 
-E:\Ladik\AppDir\CascLib\bin\CascLib_test\x64\Release>
+-- "wow" ---------------------------------------------------------------------------------
+Name Hash: d0af10b6c692fc123d6e0a5c192b58da
+Data Hash: 14c043c71ad53c9288daf1ecba692662
+TotalTime: 45.920 second(s)
+Work complete.
+
+-- "wow_beta" ----------------------------------------------------------------------------
+Name Hash: 1f844a28db5b034a6d9cf8f1e9ff44bb
+Data Hash: df1e1073535daf33cead043708bbae67
+TotalTime: 8.271 second(s)
+Work complete.
