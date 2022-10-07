@@ -711,6 +711,10 @@ static bool BaseHttp_Download(TFileStream * pStream)
                     pStream->Base.Socket.fileData = Mime.GiveAway(&pStream->Base.Socket.fileDataLength);
                 }
             }
+            else
+            {
+                SetCascError(ERROR_BAD_FORMAT);
+            }
 
             // Free the buffer
             CASC_FREE(server_response);

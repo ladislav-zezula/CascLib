@@ -1235,7 +1235,7 @@ static DWORD RibbitDownloadFile(LPCTSTR szCdnHostUrl, LPCTSTR szProduct, LPCTSTR
     }
 
     // Save the file to the local cache
-    if(LocalPath.Length() && dwErrCode == ERROR_SUCCESS)
+    if(LocalPath.Length() && FileData.pbData && FileData.cbData && dwErrCode == ERROR_SUCCESS)
         SaveLocalFile(LocalPath, FileData.pbData, FileData.cbData);
     return dwErrCode;
 }
