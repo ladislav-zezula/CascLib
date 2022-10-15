@@ -8,6 +8,7 @@ set SAVE_PATH=%PATH%
 set LIB_NAME=CascLib
 
 :: Determine where the program files are, both for 64-bit and 32-bit Windows
+if exist "%ProgramFiles%"      set PROGRAM_FILES_X64=%ProgramFiles%
 if exist "%ProgramFiles%"      set PROGRAM_FILES_DIR=%ProgramFiles%
 if exist "%ProgramFiles(x86)%" set PROGRAM_FILES_DIR=%ProgramFiles(x86)%
 
@@ -17,12 +18,16 @@ if exist "%PROGRAM_FILES_DIR%\Microsoft Visual Studio\2017\Professional\VC\Auxil
 if exist "%PROGRAM_FILES_DIR%\Microsoft Visual Studio\2017\Enterprise\VC\Auxiliary\Build\vcvarsall.bat"   set VCVARS_2017=%PROGRAM_FILES_DIR%\Microsoft Visual Studio\2017\Enterprise\VC\Auxiliary\Build\vcvarsall.bat
 if exist "%PROGRAM_FILES_DIR%\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build\vcvarsall.bat" set VCVARS_2019=%PROGRAM_FILES_DIR%\Microsoft Visual Studio\2019\Professional\VC\Auxiliary\Build\vcvarsall.bat
 if exist "%PROGRAM_FILES_DIR%\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat"   set VCVARS_2019=%PROGRAM_FILES_DIR%\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat
+if exist "%PROGRAM_FILES_X64%\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build\vcvarsall.bat" set VCVARS_2022=%PROGRAM_FILES_X64%\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build\vcvarsall.bat
+if exist "%PROGRAM_FILES_X64%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat"   set VCVARS_2022=%PROGRAM_FILES_X64%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat
 
-::Build all libraries using Visual Studio 2008 and 2017
-rem if not "x%VCVARS_2008%" == "x" call :BuildLibs "%VCVARS_2008%" x86 %LIB_NAME%_vs08.sln
-rem if not "x%VCVARS_2008%" == "x" call :BuildLibs "%VCVARS_2008%" x64 %LIB_NAME%_vs08.sln
+::Build all libraries using Visual Studio 2008, 2019 and 2022
+if not "x%VCVARS_2008%" == "x" call :BuildLibs "%VCVARS_2008%" x86 %LIB_NAME%_vs08.sln
+if not "x%VCVARS_2008%" == "x" call :BuildLibs "%VCVARS_2008%" x64 %LIB_NAME%_vs08.sln
 if not "x%VCVARS_2019%" == "x" call :BuildLibs "%VCVARS_2019%" x86 %LIB_NAME%_vs19.sln
 if not "x%VCVARS_2019%" == "x" call :BuildLibs "%VCVARS_2019%" x64 %LIB_NAME%_vs19.sln
+if not "x%VCVARS_2022%" == "x" call :BuildLibs "%VCVARS_2022%" x86 %LIB_NAME%_vs19.sln
+if not "x%VCVARS_2022%" == "x" call :BuildLibs "%VCVARS_2022%" x64 %LIB_NAME%_vs19.sln
 goto:eof
 
 ::-----------------------------------------------------------------------------

@@ -1060,7 +1060,7 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO2 & StorInf
     // Open te online storage
     OpenArgs.PfnProgressCallback = OnlineStorage_OpenCB;
     OpenArgs.PtrProgressParam = &LogHelper;
-    //OpenArgs.dwFlags = CASC_FEATURE_LOCAL_CDNS | CASC_FEATURE_LOCAL_VERSIONS;
+    OpenArgs.dwFlags = CASC_FEATURE_LOCAL_CDNS | CASC_FEATURE_LOCAL_VERSIONS;
     if(CascOpenStorageEx(szParams, &OpenArgs, true, &hStorage))
     {
         if(StorInfo.szFile == NULL)
@@ -1184,8 +1184,8 @@ static STORAGE_INFO2 StorageInfo2[] =
 //  {NULL,   "clnt",        "us"},
 //  {NULL,   "hsb",         "us"},
 //  {szCdn1, "wow_beta",    "us"}, // "interface/framexml/localization.lua"
-    {szCdn1, "wow_beta",    "us", "interface/framexml/localization.lua"},
-//  {szCdn2, "wow",         "us"},
+//  {szCdn1, "wow_beta",    "us", "interface/framexml/localization.lua"},
+    {szCdn2, "wow",         "us"},
 //  {szCdn1, "wow_classic", "us"},
 };
 
