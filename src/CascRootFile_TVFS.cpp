@@ -692,21 +692,24 @@ struct TRootHandler_TVFS : public TFileTreeRoot
 
     bool IsWoWGenericName(const CASC_PATH<char> & PathBuffer)
     {
-        // Example: 000000020000:000C472F02BA924C604A670B253AA02DBCD9441
-        // Meaning: LLLLLLLLCCCC IIIIIIIIKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK?
-        //          L = Locale flags, C = Content flags, I = File Data ID, K = CKey
-        //          Meaning of the last single digit is unknown
-        if(PathBuffer.Length() == 52)
+        size_t nPathLength = PathBuffer.Length();
+
+        //
+        // WoW Build 45779: 000000020000:000C472F02BA924C604A670B253AA02DBCD9441  (Bug: Missing last digit of the CKey)
+        // WoW Build 46144: 000000020000:000C472F02BA924C604A670B253AA02DBCD9441C
+        //                  LLLLLLLLCCCC IIIIIIIIKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK
+        //
+        //                  L = Locale flags, C = Content flags, I = File Data ID, K = CKey
+        //
+
+        if(nPathLength == 52 || nPathLength == 53)
         {
             if(PathBuffer[12] == ':')
             {
                 const char * szBinary = PathBuffer;
                 BYTE TempBin[20];
 
-                if(BinaryFromString(szBinary + 14, 38, TempBin) == ERROR_SUCCESS)
-                {
-                    return true;
-                }
+                return (BinaryFromString(szBinary + 13, nPathLength - 13, TempBin) == ERROR_SUCCESS);
             }
         }
         return false;

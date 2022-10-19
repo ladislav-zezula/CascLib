@@ -1184,8 +1184,8 @@ static STORAGE_INFO2 StorageInfo2[] =
 //  {NULL,   "clnt",        "us"},
 //  {NULL,   "hsb",         "us"},
 //  {szCdn1, "wow_beta",    "us"}, // "interface/framexml/localization.lua"
-//  {szCdn1, "wow_beta",    "us", "interface/framexml/localization.lua"},
-    {szCdn2, "wow",         "us"},
+    {szCdn1, "wow_beta",    "us", "interface/framexml/localization.lua"},
+//  {szCdn2, "wow",         "us"},
 //  {szCdn1, "wow_classic", "us"},
 };
 
