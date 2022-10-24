@@ -150,15 +150,7 @@ TCascStorage * TCascStorage::Release()
 
 //-----------------------------------------------------------------------------
 // Local functions
-/*
-static bool CheckForWorldOfWarcraft(TCascStorage * hs)
-{
-    // All WoW code names begin with "wow"
-    if(hs->szCodeName && hs->szCodeName[0])
-        return (hs->szCodeName[0] == 'w' && hs->szCodeName[1] == 'o' && hs->szCodeName[2] == 'w');
-    return false;
-}
-*/
+
 void * ProbeOutputBuffer(void * pvBuffer, size_t cbLength, size_t cbMinLength, size_t * pcbLengthNeeded)
 {
     // Verify the output length
@@ -889,7 +881,7 @@ static int LoadBuildManifest(TCascStorage * hs, DWORD dwLocaleMask)
     dwLocaleMask = (dwLocaleMask != 0) ? dwLocaleMask : 0xFFFFFFFF;
 
     // Prioritize the VFS root over legacy ROOT file, unless it's WoW
-    if(hs->VfsRoot.ContentSize != CASC_INVALID_SIZE /* && !CheckForWorldOfWarcraft(hs) */)
+    if(hs->VfsRoot.ContentSize != CASC_INVALID_SIZE)
         pCKeyEntry = &hs->VfsRoot;
 
 __LoadRootFile:

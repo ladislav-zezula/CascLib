@@ -25,8 +25,12 @@
 #define TVFS_PTE_PATH_SEPARATOR_POST 0x0002         // There is path separator after the name
 #define TVFS_PTE_NODE_VALUE          0x0004         // The NodeValue in path table entry is valid
 
-#define TVFS_FOLDER_NODE            0x80000000      // Highest bit is set if a file node is a folder
-#define TVFS_FOLDER_SIZE_MASK       0x7FFFFFFF      // Mask to get length of the folder
+#define TVFS_FOLDER_NODE             0x80000000     // Highest bit is set if a file node is a folder
+#define TVFS_FOLDER_SIZE_MASK        0x7FFFFFFF     // Mask to get length of the folder
+
+// Uncomment this to parse TVFS root files for World of Warcraft
+// Note that this is signigicantly slower than using the legacy ROOT file
+//#define TVFS_PARSE_WOW_ROOT
 
 //-----------------------------------------------------------------------------
 // Local structures
@@ -97,6 +101,14 @@ typedef struct _TVFS_PATH_TABLE_ENTRY
     DWORD NodeFlags;                                // TVFS_PTE_XXX
     DWORD NodeValue;                                // Node value
 } TVFS_PATH_TABLE_ENTRY, *PTVFS_PATH_TABLE_ENTRY;
+
+typedef struct _TVFS_WOW_ENTRY
+{
+    DWORD  LocaleFlags;
+    USHORT ContentFlags;
+    DWORD  FileDataId;
+    BYTE   ContentKey[MD5_HASH_SIZE];
+} TVFS_WOW_ENTRY, *PTVFS_WOW_ENTRY;
 
 //-----------------------------------------------------------------------------
 // Handler definition for TVFS root file
@@ -531,16 +543,29 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                         }
                         else
                         {
+                            TVFS_WOW_ENTRY WowEntry;
+
                             // If the content content size is not there, supply it now
                             if(pCKeyEntry->ContentSize == CASC_INVALID_SIZE)
                                 pCKeyEntry->ContentSize = SpanEntry.ContentSize;
 
-                            // Detect generic file names from World of Warcraft (build 45779)
-                            if(IsWoWGenericName(PathBuffer))
-                                return ERROR_REPARSE_ROOT;
+                            // Detect generic file names from World of Warcraft (since build 45779)
+                            switch(dwErrCode = CheckWoWGenericName(PathBuffer, WowEntry))
+                            {
+                                case ERROR_SUCCESS:         // The entry was recognized and has the right format
+                                    FileTree.InsertByName(pCKeyEntry, PathBuffer, WowEntry.FileDataId, WowEntry.LocaleFlags, WowEntry.ContentFlags);
+                                    break;
+
+                                case ERROR_BAD_FORMAT:      // The entry was not recognized as TVFS WoW name
+                                    FileTree.InsertByName(pCKeyEntry, PathBuffer);
+                                    break;
+
+                                default:                    // The entry has a bad format - use classic ROOT file
+                                    assert(dwErrCode == ERROR_REPARSE_ROOT);
+                                    return dwErrCode;
+                            }
 
                             // If not a generic name, insert to the tree
-                            FileTree.InsertByName(pCKeyEntry, PathBuffer);
                             //printf("%s\n", (const char *)PathBuffer);
                         }
                     }
@@ -690,9 +715,10 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         return ParseDirectoryData(hs, RootHeader, PathBuffer);
     }
 
-    bool IsWoWGenericName(const CASC_PATH<char> & PathBuffer)
+    DWORD CheckWoWGenericName(const CASC_PATH<char> & PathBuffer, TVFS_WOW_ENTRY & WowEntry)
     {
         size_t nPathLength = PathBuffer.Length();
+        BYTE BinaryBuffer[4+2+4+16];
 
         //
         // WoW Build 45779: 000000020000:000C472F02BA924C604A670B253AA02DBCD9441  (Bug: Missing last digit of the CKey)
@@ -706,13 +732,32 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         {
             if(PathBuffer[12] == ':')
             {
-                const char * szBinary = PathBuffer;
-                BYTE TempBin[20];
+                // Check the first part of the TVFS name
+                if(BinaryFromString(&PathBuffer[00], 12, (LPBYTE)(&BinaryBuffer[0])) != ERROR_SUCCESS)
+                    return ERROR_REPARSE_ROOT;
 
-                return (BinaryFromString(szBinary + 13, nPathLength - 13, TempBin) == ERROR_SUCCESS);
+                // Check the second part of the file name
+                if(BinaryFromString(&PathBuffer[13], 40, (LPBYTE)(&BinaryBuffer[6])) != ERROR_SUCCESS)
+                    return ERROR_REPARSE_ROOT;
+
+#ifdef TVFS_PARSE_WOW_ROOT
+                // We accept strings with length 53 chars
+                if(nPathLength == 53)
+                {
+                    WowEntry.LocaleFlags  = ConvertBytesToInteger_4(BinaryBuffer + 0x00);
+                    WowEntry.ContentFlags = ConvertBytesToInteger_2(BinaryBuffer + 0x04);
+                    WowEntry.FileDataId   = ConvertBytesToInteger_4(BinaryBuffer + 0x06);
+                    memcpy(WowEntry.ContentKey, BinaryBuffer + 0x0A, MD5_HASH_SIZE);
+                    return ERROR_SUCCESS;
+                }
+#endif  // TVFS_PARSE_WOW_ROOT
+
+                // An invalid entry - reparse tot he normal root
+                UNREFERENCED_PARAMETER(WowEntry);
+                return ERROR_REPARSE_ROOT;
             }
         }
-        return false;
+        return ERROR_BAD_FORMAT;
     }
 
     CASC_ARRAY SpanArray;           // Array of CASC_SPAN_ENTRY for all multi-span files
