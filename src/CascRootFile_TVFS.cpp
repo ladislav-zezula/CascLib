@@ -753,7 +753,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
 #endif  // TVFS_PARSE_WOW_ROOT
 
                 // An invalid entry - reparse tot he normal root
-                UNREFERENCED_PARAMETER(WowEntry);
+                CASCLIB_UNUSED(WowEntry);
                 return ERROR_REPARSE_ROOT;
             }
         }
