@@ -1183,14 +1183,66 @@ static STORAGE_INFO2 StorageInfo2[] =
 //  {NULL,   "catalogs" },
 //  {NULL,   "clnt",        "us"},
 //  {NULL,   "hsb",         "us"},
-//  {szCdn1, "wow_beta",    "us"}, // "interface/framexml/localization.lua"
     {szCdn1, "wow_beta",    "us", "interface/framexml/localization.lua"},
-//  {szCdn2, "wow",         "us"},
-//  {szCdn1, "wow_classic", "us"},
+    {szCdn2, "wow",         "us"},
+    {szCdn1, "wow_classic", "us"},
 };
 
 //-----------------------------------------------------------------------------
 // Main
+
+typedef uint64_t ULONG64;
+
+LPBYTE MapFileToMemory(LPCTSTR szFileName, size_t * PtrLength)
+{
+    ULARGE_INTEGER FileSize = {0};
+    HANDLE hFile;
+    HANDLE hMap;
+    LPBYTE pbFileData = NULL;
+    int nError = ERROR_SUCCESS;
+
+    // Load the file to memory
+    hFile = CreateFile(szFileName, FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    if(hFile != INVALID_HANDLE_VALUE)
+    {
+        // Get the file size
+        FileSize.LowPart = GetFileSize(hFile, &FileSize.HighPart);
+        if(FileSize.HighPart == 0 && 2 < FileSize.LowPart && FileSize.LowPart < 0x02000000)
+        {
+            // Create file section
+            hMap = CreateFileMapping(hFile, NULL, PAGE_READONLY, 0, 0, NULL);
+            if(hMap != NULL)
+            {
+                // Map the entire file to memory
+                pbFileData = (LPBYTE)MapViewOfFile(hMap, FILE_MAP_READ, 0, 0, 0);
+                if(pbFileData == NULL)
+                {
+                    nError = GetLastError();
+                }
+
+                // Close the mapping
+                CloseHandle(hMap);
+            }
+            else
+                nError = GetLastError();
+        }
+        else
+            SetLastError(ERROR_FILE_TOO_LARGE);
+
+        // Close the file
+        CloseHandle(hFile);
+    }
+    else
+        nError = GetLastError();
+
+    // Return results
+    if(PtrLength != NULL)
+        PtrLength[0] = (size_t)FileSize.QuadPart;
+    if(nError != ERROR_SUCCESS)
+        SetLastError(nError);
+    return pbFileData;
+}
+
 
 int main(int argc, char * argv[])
 {
@@ -1203,19 +1255,35 @@ int main(int argc, char * argv[])
 #endif  // defined(_MSC_VER) && defined(_DEBUG)
 
 #ifdef _DEBUG
-    //PCASC_SOCKET pSocket;
-    //const char * request;
-    //char * response;
+/*
+    CASC_SPARSE_ARRAY FileDataIds;
+    //CASC_ARRAY FileDataIds;
+    PULONG64 Int64Array;
+    size_t nLength;
 
-    //if((pSocket = sockets_connect("level3.blizzard.com", CASC_PORT_HTTP)) != NULL)
-    //{
-    //    request = "GET /tpr/wow/data/a3/e6/a3e604a2b89d7a9e0784cbbee57793b4.index HTTP/1.1\r\nHost: level3.blizzard.com\r\nConnection: Keep-Alive\r\n\r\n";
-    //    response = pSocket->ReadResponse(request);
-    //    if(response != NULL)
-    //        CASC_FREE(response);
+    if(FileDataIds.Create<ULONG64>(0x10) == ERROR_SUCCESS)
+    {
+        Int64Array = (PULONG64)MapFileToMemory(_T("e:\\file-data-ids.bin"), &nLength);
+        if(Int64Array != NULL)
+        {
+            for(size_t i = 0; i < (nLength / 8); i++)
+            {
+                if(Int64Array[i] != 0)
+                {
+                    ULONG64 * RefElement;
 
-    //    pSocket->Release();
-    //}
+                    if((RefElement = (ULONG64 *)FileDataIds.InsertAt(i + 0x10000000)) != NULL)
+                    {
+                        RefElement[0] = Int64Array[i];
+                    }
+                }
+            }
+        }
+
+        FileDataIds.Dump("e:\\file-data-ids2.bin");
+        printf("Bytes allocated: %u\n", (DWORD)FileDataIds.BytesAllocated());
+    }
+*/
 #endif
 
     //
@@ -1234,13 +1302,13 @@ int main(int argc, char * argv[])
     //
     // Run the tests for every local storage in my collection
     //
-    //for(size_t i = 0; i < _countof(StorageInfo1); i++)
-    //{
-    //    // Attempt to open the storage and extract single file
-    //    dwErrCode = LocalStorage_Test(Storage_ReadFiles, StorageInfo1[i]);
-    //    if(dwErrCode != ERROR_SUCCESS && dwErrCode != ERROR_FILE_NOT_FOUND)
-    //        break;
-    //}
+    for(size_t i = 0; i < _countof(StorageInfo1); i++)
+    {
+        // Attempt to open the storage and extract single file
+        dwErrCode = LocalStorage_Test(Storage_ReadFiles, StorageInfo1[i]);
+        if(dwErrCode != ERROR_SUCCESS && dwErrCode != ERROR_FILE_NOT_FOUND)
+            break;
+    }
 
     //
     // Run the tests for every available online storage in my collection

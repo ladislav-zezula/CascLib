@@ -399,6 +399,7 @@
     <ClInclude Include="src\CascLib.h" />
     <ClInclude Include="src\CascPort.h" />
     <ClInclude Include="src\CascStructs.h" />
+    <ClInclude Include="src\common\ArraySparse.h" />
     <ClInclude Include="src\common\Common.h" />
     <ClInclude Include="src\common\Directory.h" />
     <ClInclude Include="src\common\Csv.h" />

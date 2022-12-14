@@ -42,6 +42,9 @@ class CASC_ARRAY
     // Creates an array with a custom element size
     int Create(size_t ItemSize, size_t ItemCountMax)
     {
+        // Sanity check
+        assert(ItemCountMax != 0);
+
         // Create the array
         if ((m_pItemArray = CASC_ALLOC<BYTE>(ItemSize * ItemCountMax)) == NULL)
             return ERROR_NOT_ENOUGH_MEMORY;
@@ -166,6 +169,24 @@ class CASC_ARRAY
         CASC_FREE(m_pItemArray);
         m_ItemCountMax = m_ItemCount = m_ItemSize = 0;
     }
+
+#ifdef _DEBUG
+    size_t BytesAllocated()
+    {
+        return m_ItemCountMax * m_ItemSize;
+    }
+
+    void Dump(const char * szFileName)
+    {
+        FILE * fp;
+
+        if((fp = fopen(szFileName, "wb")) != NULL)
+        {
+            fwrite(m_pItemArray, m_ItemSize, m_ItemCount, fp);
+            fclose(fp);
+        }
+    }
+#endif
 
     protected:
 
