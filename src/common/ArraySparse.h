@@ -1,18 +1,37 @@
 /*****************************************************************************/
 /* ArraySparse.h                          Copyright (c) Ladislav Zezula 2022 */
 /*---------------------------------------------------------------------------*/
-/* Sparse array implementation                                               */
+/* This is somewhat more effective version of CASC_ARRAY, used for mapping   */
+/* of uint32_t -> pointer. Works better when there are large gaps in seqs    */
+/* of the source integers and when there is large gap at the beginning       */
+/* of the array.                                                             */
+/*                                                                           */
+/* This ofject works as multi-level table, where each byte from the mapping  */
+/* integer is an index to the appropriate sub-table                          */
+/*                                                                           */
+/* Example: Mapping of 11223344 -> POINTER                                   */
+/*                                                                           */
+/* The source uint_32_t is divided into 4 bytes. Each byte is an index to    */
+/* the corresponding level-N sub-table                                       */
+/*                                                                           */
+/*  [*] 0x11223344 -> {0x11, 0x22, 0x33, 0x44}                               */
+/*                                                                           */
+/* 0x11 is the index to the level-0 table. Contains pointer to level-1 table */
+/* 0x22 is the index to the level-1 table. Contains pointer to level-2 table */
+/* 0x33 is the index to the level-2 table. Contains pointer to level-3 table */
+/* 0x44 is the index to the level-3 table. Contains the result POINTER       */
 /*---------------------------------------------------------------------------*/
 /*   Date    Ver   Who  Comment                                              */
 /* --------  ----  ---  -------                                              */
 /* 14.12.22  1.00  Lad  Created                                              */
 /*****************************************************************************/
 
-#ifndef __CASC_ARRAY_SPARSE_H__
-#define __CASC_ARRAY_SPARSE_H__
+#ifndef __CASC_SPARSE_ARRAY_H__
+#define __CASC_SPARSE_ARRAY_H__
 
 //-----------------------------------------------------------------------------
-// Structures
+// Structure of the 256-item sub-table. Each table item contains either
+// pointer to the lower sub-table (if present) or the pointer to the target item
 
 struct CASC_ARRAY_256
 {
@@ -83,6 +102,9 @@ struct CASC_ARRAY_256
     void * Pointers[0x100];
 };
 
+//-----------------------------------------------------------------------------
+// Interface to the sparse array class
+
 class CASC_SPARSE_ARRAY
 {
     public:
@@ -111,8 +133,8 @@ class CASC_SPARSE_ARRAY
         return ERROR_NOT_ENOUGH_MEMORY;
     }
 
-    // Returns an item at a given index
-    void * ItemAt(size_t ItemIndex)
+    // Returns pointer to the cell given index
+    void ** ItemAt(size_t ItemIndex)
     {
         CASC_ARRAY_256 * pLevelN;
 
@@ -138,8 +160,8 @@ class CASC_SPARSE_ARRAY
         return NULL;
     }
 
-    // Inserts an item at a given index. The 4-level tree will be updated automatically, if needed
-    void * InsertAt(size_t ItemIndex)
+    // Inserts an item at a given index and returns pointer to its cell
+    void ** InsertAt(size_t ItemIndex)
     {
         CASC_ARRAY_256 * pLevelN;
 
@@ -164,7 +186,7 @@ class CASC_SPARSE_ARRAY
             }
         }
 
-        // Not available
+        // Not enough memory
         return NULL;
     }
 
@@ -255,9 +277,9 @@ class CASC_SPARSE_ARRAY
     }
 
     // Level-0 subitem table
-    CASC_ARRAY_256 * m_pLevel0;                 // Level 0 of pointers
-    size_t m_LevelsAllocated;
+    CASC_ARRAY_256 * m_pLevel0;                 // Array of level 0 of pointers
+    size_t m_LevelsAllocated;                   // Number of CASC_ARRAY_256's allocated (for debugging purposes)
     size_t m_ItemCount;                         // The number of items inserted
 };
 
-#endif // __CASC_ARRAY_SPARSE_H__
+#endif // __CASC_SPARSE_ARRAY_H__
