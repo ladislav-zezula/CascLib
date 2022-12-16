@@ -183,6 +183,9 @@
     <ClInclude Include="src\common\Sockets.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
+    <ClInclude Include="src\common\ArraySparse.h">
+      <Filter>Source Files\common</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="doc\History.txt">

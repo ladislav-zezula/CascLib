@@ -389,6 +389,10 @@ struct TRootHandler_WoW : public TFileTreeRoot
         if (dwErrCode == ERROR_SUCCESS)
             dwErrCode = ParseWowRootFile_Level1(hs, pbRootPtr, pbRootEnd, dwLocaleMask, 1);
 
+#ifdef _DEBUG
+        // Dump the array of the file data IDs
+        //FileTree.DumpFileDataIds("e:\\file-data-ids.bin");
+#endif
         return dwErrCode;
     }
 

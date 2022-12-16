@@ -24,6 +24,7 @@
 #include "CascPort.h"
 #include "common/Common.h"
 #include "common/Array.h"
+#include "common/ArraySparse.h"
 #include "common/Map.h"
 #include "common/FileTree.h"
 #include "common/FileStream.h"
