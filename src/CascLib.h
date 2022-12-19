@@ -1,7 +1,7 @@
 /*****************************************************************************/
-/* CascLib.h                              Copyright (c) Ladislav Zezula 2014 */
+/* CascLib.h                              Copyright (c) Ladislav Zezula 2022 */
 /*---------------------------------------------------------------------------*/
-/* CascLib library v 1.00                                                    */
+/* CascLib library v 3.0                                                     */
 /*                                                                           */
 /* Author : Ladislav Zezula                                                  */
 /* E-mail : ladik@zezula.net                                                 */
@@ -10,13 +10,14 @@
 /*   Date    Ver   Who  Comment                                              */
 /* --------  ----  ---  -------                                              */
 /* 29.04.14  1.00  Lad  Created                                              */
+/* 19.12.22  1.00  Lad  Version 3.0                                          */
 /*****************************************************************************/
 
 #ifndef __CASCLIB_H__
 #define __CASCLIB_H__
 
 #ifdef _MSC_VER
-#pragma warning(disable:4668)                   // 'XXX' is not defined as a preprocessor macro, replacing with '0' for '#if/#elif'
+#pragma warning(disable:4668)       // 'XXX' is not defined as a preprocessor macro, replacing with '0' for '#if/#elif'
 #pragma warning(disable:4820)       // 'XXX' : '2' bytes padding added after data member 'XXX::yyy'
 #endif
 
@@ -74,8 +75,8 @@ extern "C" {
 //-----------------------------------------------------------------------------
 // Defines
 
-#define CASCLIB_VERSION                 0x0210  // CascLib version - integral (2.1)
-#define CASCLIB_VERSION_STRING           "2.1"  // CascLib version - string
+#define CASCLIB_VERSION                 0x0300  // CascLib version - integral (3.0)
+#define CASCLIB_VERSION_STRING           "3.0"  // CascLib version - string
 
 // Values for CascOpenFile
 #define CASC_OPEN_BY_NAME           0x00000000  // Open the file by name. This is the default value
@@ -122,7 +123,7 @@ extern "C" {
 #define MD5_STRING_SIZE                   0x20
 #endif
 
-// Return value for CascGetFileSize and CascSetFilePointer
+// Invalid values of all kind
 #define CASC_INVALID_INDEX          0xFFFFFFFF
 #define CASC_INVALID_SIZE           0xFFFFFFFF
 #define CASC_INVALID_POS            0xFFFFFFFF

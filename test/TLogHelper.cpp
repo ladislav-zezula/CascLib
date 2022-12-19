@@ -173,7 +173,7 @@ class TLogHelper
                 }
 
                 // 32-bit integer argument
-                if (IsFormatSpecifier(szFormat, "%08X"))
+                if(IsFormatSpecifier(szFormat, "%08X"))
                 {
                     szBufferPtr += CascStrPrintf(szBufferPtr, (szBufferEnd - szBufferPtr), "%08X", va_arg(argList, DWORD));
                     szFormat += 4;

@@ -41,18 +41,21 @@
 // Defines
 
 #ifdef CASCLIB_PLATFORM_WINDOWS
-#define CASC_PATH_ROOT "/Multimedia/CASC"
-#define CASC_WORK_ROOT "/Multimedia/CASC/Work"
+#define CASC_PATH_ROOT      "/Multimedia/CASC"
+#define CASC_WORK_ROOT      "/Multimedia/CASC/Work"
+#define CASC_ONLINE_ROOT    "/Multimedia/CASC/!online"
 #endif
 
 #ifdef CASCLIB_PLATFORM_LINUX
-#define CASC_PATH_ROOT "/media/ladik/CascStorages/CASC"
-#define CASC_WORK_ROOT "/home/ladik/CASC/Work"
+#define CASC_PATH_ROOT      "/media/ladik/CascStorages/CASC"
+#define CASC_WORK_ROOT      "/home/ladik/CASC/Work"
+#define CASC_ONLINE_ROOT    "/home/ladik/CASC/!online"
 #endif
 
 #ifdef CASCLIB_PLATFORM_MAC
-#define CASC_PATH_ROOT "/media/ladik/CascStorages"
-#define CASC_WORK_ROOT "/home/ladik/CASC/Work"  // TODO
+#define CASC_PATH_ROOT      "/media/ladik/CascStorages"
+#define CASC_WORK_ROOT      "/home/ladik/CASC/Work"         // TODO
+#define CASC_ONLINE_ROOT    "/home/ladik/CASC/!online"      // TODO
 #endif
 
 static const char szCircleChar[] = "|/-\\";
@@ -74,7 +77,7 @@ typedef struct _STORAGE_INFO1
 // For online storages
 typedef struct _STORAGE_INFO2
 {
-    LPCSTR szCustomCDN;                     // Pointer to custom CDN
+    LPCSTR szCdnServer;                     // URL of the CDN server
     LPCSTR szCodeName;                      // Codename of the product
     LPCSTR szRegion;                        // Region of the product. If NULL, CascLib will open the first one in the "versions"
     LPCSTR szFile;                          // Example file in the storage
@@ -359,14 +362,19 @@ static PCASC_FILE_SPAN_INFO GetFileInfo(HANDLE hFile, CASC_FILE_FULL_INFO & File
     return pSpans;
 }
 
+static const char * GetHash(LPBYTE md5_binary, char * szBuffer)
+{
+    StringFromBinary(md5_binary, MD5_HASH_SIZE, szBuffer);
+    return szBuffer;
+}
+
 static const char * GetHash(MD5_CTX & HashContext, char * szBuffer)
 {
     unsigned char md5_binary[MD5_HASH_SIZE];
 
     // Finalize the hashing
     MD5_Final(md5_binary, &HashContext);
-    StringFromBinary(md5_binary, MD5_HASH_SIZE, szBuffer);
-    return szBuffer;
+    return GetHash(md5_binary, szBuffer);
 }
 
 static DWORD ExtractFile(TLogHelper & LogHelper, TEST_PARAMS & Params, CASC_FIND_DATA & cf)
@@ -1040,15 +1048,16 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO2 & StorInf
     HANDLE hStorage;
     TCHAR szParams[MAX_PATH+0x40];
     DWORD dwErrCode = ERROR_SUCCESS;
-    bool bSucceeded = false;
 
+    LogHelper.PrintMessage("CDN Server: %s", StorInfo.szCdnServer);
+    LogHelper.PrintMessage("Local Cache: %s", CASC_ONLINE_ROOT);
     LogHelper.PrintProgress("Opening storage ...");
 
     // Prepare the path
-    CascStrPrintf(szParams, _countof(szParams), _T("%hs/%hs"), CASC_WORK_ROOT, StorInfo.szCodeName);
+    CascStrPrintf(szParams, _countof(szParams), _T("%hs/%hs"), CASC_ONLINE_ROOT, StorInfo.szCodeName);
 
     // Append custom CDN URL, if any
-    AppendParamSuffix(szParams, _countof(szParams), StorInfo.szCustomCDN);
+    AppendParamSuffix(szParams, _countof(szParams), StorInfo.szCdnServer);
 
     // Append codename, if any
     if(AppendParamSuffix(szParams, _countof(szParams), StorInfo.szCodeName))
@@ -1063,27 +1072,30 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO2 & StorInf
     OpenArgs.dwFlags = CASC_FEATURE_LOCAL_CDNS | CASC_FEATURE_LOCAL_VERSIONS;
     if(CascOpenStorageEx(szParams, &OpenArgs, true, &hStorage))
     {
-        if(StorInfo.szFile == NULL)
-        {
-            TEST_PARAMS Params;
+        TEST_PARAMS Params;
 
-            // Configure the test parameters
-            Params.hStorage = hStorage;
-            Params.szFileName = NULL;
-            Params.bOnlineStorage = true;
-            dwErrCode = PfnRunTest(LogHelper, Params);
-        }
-        else
+        // Check a specific file
+        if(StorInfo.szFile != NULL)
         {
             CASC_FILE_FULL_INFO FileInfo = {0};
             HANDLE hFile = NULL;
+            char szBuffer[MD5_STRING_SIZE + 1];
+            bool bSucceeded = false;
 
             // Just get the file info
             LogHelper.PrintProgress("Querying file \"%s\" ...", GetPlainFileName(StorInfo.szFile));
             if(CascOpenFile(hStorage, StorInfo.szFile, 0, CASC_OPEN_BY_NAME, &hFile))
             {
                 if(CascGetFileInfo(hFile, CascFileFullInfo, &FileInfo, sizeof(CASC_FILE_FULL_INFO), NULL))
+                {
+                    LogHelper.PrintMessage("  File name:     %s", StorInfo.szFile);
+                    LogHelper.PrintMessage("  File hash:     %s", GetHash(FileInfo.CKey, szBuffer));
+                    LogHelper.PrintMessage("  File size:     %08X", FileInfo.ContentSize);
+                    LogHelper.PrintMessage("  Locale flags:  %08X", FileInfo.LocaleFlags);
+                    LogHelper.PrintMessage("  Content flags: %08X", FileInfo.ContentFlags);
                     bSucceeded = true;
+                }
+
                 CascCloseFile(hFile);
             }
 
@@ -1094,10 +1106,12 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO2 & StorInf
                 LogHelper.PrintError("Failed to retrieve file information.", StorInfo.szFile);
             }
         }
-        
-        // Show the result on success
-        if(bSucceeded)
-            LogHelper.PrintMessage(" ");
+
+        // Configure the test parameters
+        Params.hStorage = hStorage;
+        Params.szFileName = NULL;
+        Params.bOnlineStorage = true;
+        dwErrCode = PfnRunTest(LogHelper, Params);
         CascCloseStorage(hStorage);
     }
     else
@@ -1150,7 +1164,6 @@ static STORAGE_INFO1 StorageInfo1[] =
     {"Starcraft II/75025",            "79c044e1286b7b18478556e571901294", "e290febb90e06e97b4db6f0eb519ca91", "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
     {"Starcraft II/81102",            "cb6bea299820895f6dcbc72067553743", "63b47f03b1717ded751e0d24d3ddff4f", "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
 
-    {"Warcraft III/09231",            "8147106d7c05eaaf3f3611cc6f5314fe", "1b47c84d9b4ce58beeb2604a934cf83c", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
     {"Warcraft III/09655",            "f3f5470aa0ab4939fa234d3e29c3d347", "e45792b7459dc0c78ecb25130fa34d88", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
     {"Warcraft III/11889",            "ff36cd4f58aae23bd77d4a90c333bdb5", "4cba488e57f7dccfb77eca8c86578a37", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
     {"Warcraft III/13369",            "9c3fce648bf75d93a8765e84dcd10377", "4ac831db9bf0734f01b9d20455a68ab6", "ENCODING" },
@@ -1180,76 +1193,19 @@ static STORAGE_INFO1 StorageInfo1[] =
     {"WoW/47067*wow_classic_era_ptr", "cefa2f0e794f987e3c9779dc9e20d1be", "a0736b9aa5dfcd68dcc1fd2b3247ed1d", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
 };
 
-static LPCSTR szCdn1 = "ribbit://us.version.battle.net/v1/products";
+static LPCSTR szDefCdn = "ribbit://us.version.battle.net/v1/products";
 static LPCSTR szCdn2 = "http://us.falloflordaeron.com:8000";
 
 static STORAGE_INFO2 StorageInfo2[] =
 {
-//  {NULL,   "agent",       "us"},
-//  {NULL,   "bna",         "us"},
-//  {NULL,   "catalogs" },
-//  {NULL,   "clnt",        "us"},
-//  {NULL,   "hsb",         "us"},
-    {szCdn2, "wow",         "us"},
-    {szCdn1, "wowt",        "us", "interface/framexml/localization.lua"},
-    {szCdn1, "wow_classic", "us"},
+    {szDefCdn, "hsb",         "us"},
+    {szCdn2,   "wow",         "us"},
+    {szDefCdn, "wowt",        "us", "interface/framexml/localization.lua"},
+    {szDefCdn, "wow_classic", "us"},
 };
 
 //-----------------------------------------------------------------------------
 // Main
-
-typedef uint64_t ULONG64;
-
-LPBYTE MapFileToMemory(LPCTSTR szFileName, size_t * PtrLength)
-{
-    ULARGE_INTEGER FileSize = {0};
-    HANDLE hFile;
-    HANDLE hMap;
-    LPBYTE pbFileData = NULL;
-    int nError = ERROR_SUCCESS;
-
-    // Load the file to memory
-    hFile = CreateFile(szFileName, FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
-    if(hFile != INVALID_HANDLE_VALUE)
-    {
-        // Get the file size
-        FileSize.LowPart = GetFileSize(hFile, &FileSize.HighPart);
-        if(FileSize.HighPart == 0 && 2 < FileSize.LowPart && FileSize.LowPart < 0x02000000)
-        {
-            // Create file section
-            hMap = CreateFileMapping(hFile, NULL, PAGE_READONLY, 0, 0, NULL);
-            if(hMap != NULL)
-            {
-                // Map the entire file to memory
-                pbFileData = (LPBYTE)MapViewOfFile(hMap, FILE_MAP_READ, 0, 0, 0);
-                if(pbFileData == NULL)
-                {
-                    nError = GetLastError();
-                }
-
-                // Close the mapping
-                CloseHandle(hMap);
-            }
-            else
-                nError = GetLastError();
-        }
-        else
-            SetLastError(ERROR_FILE_TOO_LARGE);
-
-        // Close the file
-        CloseHandle(hFile);
-    }
-    else
-        nError = GetLastError();
-
-    // Return results
-    if(PtrLength != NULL)
-        PtrLength[0] = (size_t)FileSize.QuadPart;
-    if(nError != ERROR_SUCCESS)
-        SetLastError(nError);
-    return pbFileData;
-}
-
 
 int main(int argc, char * argv[])
 {
@@ -1260,38 +1216,6 @@ int main(int argc, char * argv[])
 #if defined(_MSC_VER) && defined(_DEBUG)
     _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif  // defined(_MSC_VER) && defined(_DEBUG)
-
-#ifdef _DEBUG
-/*
-    CASC_SPARSE_ARRAY FileDataIds;
-    //CASC_ARRAY FileDataIds;
-    PULONG64 Int64Array;
-    size_t nLength;
-
-    if(FileDataIds.Create<ULONG64>(0x10) == ERROR_SUCCESS)
-    {
-        Int64Array = (PULONG64)MapFileToMemory(_T("e:\\file-data-ids.bin"), &nLength);
-        if(Int64Array != NULL)
-        {
-            for(size_t i = 0; i < (nLength / 8); i++)
-            {
-                if(Int64Array[i] != 0)
-                {
-                    ULONG64 * RefElement;
-
-                    if((RefElement = (ULONG64 *)FileDataIds.InsertAt(i + 0x10000000)) != NULL)
-                    {
-                        RefElement[0] = Int64Array[i];
-                    }
-                }
-            }
-        }
-
-        FileDataIds.Dump("e:\\file-data-ids2.bin");
-        printf("Bytes allocated: %u\n", (DWORD)FileDataIds.BytesAllocated());
-    }
-*/
-#endif
 
     //
     // Run tests for each storage entered on command line
