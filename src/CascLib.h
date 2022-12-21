@@ -130,6 +130,7 @@ extern "C" {
 #define CASC_INVALID_ID             0xFFFFFFFF
 #define CASC_INVALID_OFFS64         0xFFFFFFFFFFFFFFFF
 #define CASC_INVALID_SIZE64         0xFFFFFFFFFFFFFFFF
+#define CASC_INVALID_SIZE_T         ((size_t)(-1))
 
 // Flags for CASC_STORAGE_FEATURES::dwFeatures
 #define CASC_FEATURE_FILE_NAMES     0x00000001  // File names are supported by the storage

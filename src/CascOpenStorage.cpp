@@ -1133,11 +1133,16 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs, L
         hs->szBuildKey = CascNewStrT2A(szBuildKey);
 
     // Copy the CASC variables
-    hs->BuildFileType = BuildFileType;
-    hs->dwFeatures = dwFeatures;
     hs->szBuildFile = CascNewStr(szBuildFile);
     hs->szRootPath = CascNewStr(szBuildFile);
-    if(hs->szBuildFile == NULL || hs->szRootPath == NULL)
+    hs->BuildFileType = BuildFileType;
+
+    // Merge features
+    hs->dwFeatures |= (dwFeatures & (CASC_FEATURE_DATA_ARCHIVES | CASC_FEATURE_DATA_FILES | CASC_FEATURE_ONLINE));
+    hs->dwFeatures |= (pArgs->dwFlags & (CASC_FEATURE_LOCAL_VERSIONS | CASC_FEATURE_LOCAL_CDNS));
+
+    // If either of the root path or build file is known, it's an error
+    if(hs->szRootPath == NULL || hs->szBuildFile == NULL)
     {
         dwErrCode = ERROR_NOT_ENOUGH_MEMORY;
     }

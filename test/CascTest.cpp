@@ -1198,11 +1198,10 @@ static LPCSTR szCdn2 = "http://us.falloflordaeron.com:8000";
 
 static STORAGE_INFO2 StorageInfo2[] =
 {
-    {szDefCdn, "wow",         "us"},
-    //{szDefCdn, "hsb",         "us"},
-    //{szCdn2,   "wow",         "us"},
-    //{szDefCdn, "wowt",        "us", "interface/framexml/localization.lua"},
-    //{szDefCdn, "wow_classic", "us"},
+    {szDefCdn, "hsb",         "us"},
+    {szCdn2,   "wow",         "us"},
+    {szDefCdn, "wowt",        "us", "interface/framexml/localization.lua"},
+    {szDefCdn, "wow_classic", "us"},
 };
 
 //-----------------------------------------------------------------------------
@@ -1247,6 +1246,7 @@ int main(int argc, char * argv[])
     //
     // Run the tests for every available online storage in my collection
     //
+
     for (size_t i = 0; i < _countof(StorageInfo2); i++)
     {
         // Attempt to open the storage and extract single file

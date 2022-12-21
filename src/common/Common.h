@@ -124,7 +124,7 @@ typedef CASC_CKEY_ENTRY *PCASC_CKEY_ENTRY;
 
 extern unsigned char AsciiToLowerTable_Slash[256];
 extern unsigned char AsciiToUpperTable_BkSlash[256];
-extern unsigned char AsciiToHexTable[0x80];
+extern unsigned char AsciiToHexTable[128];
 extern unsigned char IntToHexChar[];
 
 //-----------------------------------------------------------------------------
@@ -350,6 +350,12 @@ ULONGLONG CalcFileNameHash(const char * szFileName);
 
 //-----------------------------------------------------------------------------
 // String conversion functions
+
+template <typename xchar>
+bool IsHexadecimalDigit(xchar ch)
+{
+    return ((ch < sizeof(AsciiToHexTable)) && (AsciiToHexTable[ch] != 0xFF));
+}
 
 template <typename xchar, typename INTXX>
 DWORD ConvertStringToInt(const xchar * szString, size_t nMaxDigits, INTXX & RefValue, const xchar ** PtrStringEnd = NULL)

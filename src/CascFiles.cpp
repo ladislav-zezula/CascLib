@@ -22,9 +22,10 @@
 
 #define MAX_VAR_NAME 80
 
-typedef DWORD (*PARSECSVFILE)(TCascStorage * hs, CASC_CSV & Csv);
-typedef DWORD (*PARSETEXTFILE)(TCascStorage * hs, void * pvListFile);
+typedef DWORD (*PARSE_CSV_FILE)(TCascStorage * hs, CASC_CSV & Csv);
+typedef DWORD (*PARSE_TEXT_FILE)(TCascStorage * hs, void * pvListFile);
 typedef DWORD (*PARSE_VARIABLE)(TCascStorage * hs, const char * szVariableName, const char * szDataBegin, const char * szDataEnd, void * pvParam);
+typedef DWORD (*PARSE_REGION_LINE)(TCascStorage * hs, CASC_CSV & Csv, size_t nLine);
 
 static DWORD RibbitDownloadFile(LPCTSTR szCdnHostUrl, LPCTSTR szProduct, LPCTSTR szFileName, CASC_PATH<TCHAR> & LocalPath, QUERY_KEY & FileData);
 
@@ -566,43 +567,6 @@ static DWORD GetDefaultLocaleMask(TCascStorage * hs, const CASC_CSV_COLUMN & Col
     return ERROR_SUCCESS;
 }
 
-static DWORD ParseFile_CDNS(TCascStorage * hs, CASC_CSV & Csv)
-{
-    const char * szWantedRegion = hs->szRegion;
-    const char * szRegion;
-    size_t nLineCount;
-
-    // Fix the region
-    if(szWantedRegion == NULL || !_stricmp(szWantedRegion, "beta") || !_stricmp(szWantedRegion, "xx"))
-        szWantedRegion = "us";
-
-    // Determine the row count
-    nLineCount = Csv.GetLineCount();
-
-    // Find the active config
-    for(size_t i = 0; i < nLineCount; i++)
-    {
-        // Retrieve the region
-        if((szRegion = Csv[i]["Name!STRING:0"].szValue) != NULL)
-        {
-            // Is it the version we are looking for?
-            if(!strcmp(Csv[i]["Name!STRING:0"].szValue, szWantedRegion))
-            {
-                // Save the list of CDN servers
-                hs->szCdnServers = CascNewStrA2T(Csv[i]["Hosts!STRING:0"].szValue);
-
-                // Save the CDN subpath
-                hs->szCdnPath = CascNewStrA2T(Csv[i]["Path!STRING:0"].szValue);
-
-                // Check and return result
-                return (hs->szCdnServers && hs->szCdnPath) ? ERROR_SUCCESS : ERROR_BAD_FORMAT;
-            }
-        }
-    }
-
-    return ERROR_FILE_NOT_FOUND;
-}
-
 static DWORD ParseFile_BuildInfo(TCascStorage * hs, CASC_CSV & Csv)
 {
     PFNPRODUCTCALLBACK PfnProductCallback = hs->pArgs->PfnProductCallback;
@@ -725,47 +689,47 @@ static DWORD ParseFile_BuildInfo(TCascStorage * hs, CASC_CSV & Csv)
     return ERROR_FILE_NOT_FOUND;
 }
 
-static DWORD ParseFile_Versions(TCascStorage * hs, CASC_CSV & Csv)
+static DWORD ParseRegionLine_Versions(TCascStorage * hs, CASC_CSV & Csv, size_t nLine)
 {
-    size_t nLineCount = Csv.GetLineCount();
-    DWORD dwErrCode = ERROR_SUCCESS;
+    DWORD dwErrCode;
 
-    // Find the active config
-    for(size_t i = 0; i < nLineCount; i++)
+    // If the region line is not there yet, supply default one
+    if(hs->szRegion == NULL)
+        hs->szRegion = CascNewStr(Csv[nLine]["Region!STRING:0"].szValue);
+
+    // Extract the CDN build key
+    dwErrCode = LoadQueryKey(Csv[nLine]["BuildConfig!HEX:16"], hs->CdnBuildKey);
+    if(dwErrCode != ERROR_SUCCESS)
+        return dwErrCode;
+
+    // Extract the CDN config key
+    dwErrCode = LoadQueryKey(Csv[nLine]["CDNConfig!HEX:16"], hs->CdnConfigKey);
+    if(dwErrCode != ERROR_SUCCESS)
+        return dwErrCode;
+
+    const CASC_CSV_COLUMN & VerColumn = Csv[nLine]["VersionsName!String:0"];
+    if(VerColumn.szValue && VerColumn.nLength)
     {
-        // Either take the version required or take the first one
-        if(hs->szRegion == NULL || !strcmp(Csv[i]["Region!STRING:0"].szValue, hs->szRegion))
-        {
-            // Extract the CDN build key
-            dwErrCode = LoadQueryKey(Csv[i]["BuildConfig!HEX:16"], hs->CdnBuildKey);
-            if(dwErrCode != ERROR_SUCCESS)
-                return dwErrCode;
-
-            // Extract the CDN config key
-            dwErrCode = LoadQueryKey(Csv[i]["CDNConfig!HEX:16"], hs->CdnConfigKey);
-            if(dwErrCode != ERROR_SUCCESS)
-                return dwErrCode;
-
-            const CASC_CSV_COLUMN & VerColumn = Csv[i]["VersionsName!String:0"];
-            if(VerColumn.szValue && VerColumn.nLength)
-            {
-                LoadBuildNumber(hs, NULL, VerColumn.szValue, VerColumn.szValue + VerColumn.nLength, NULL);
-            }
-
-            // Verify all variables
-            if(hs->CdnBuildKey.pbData != NULL && hs->CdnConfigKey.pbData != NULL)
-            {
-                // If we have manually given build key, override the value
-                if(hs->szBuildKey != NULL)
-                    dwErrCode = BinaryFromString(hs->szBuildKey, MD5_STRING_SIZE, hs->CdnBuildKey.pbData);
-                return dwErrCode;
-            }
-
-            return ERROR_BAD_FORMAT;
-        }
+        LoadBuildNumber(hs, NULL, VerColumn.szValue, VerColumn.szValue + VerColumn.nLength, NULL);
     }
 
-    return ERROR_FILE_NOT_FOUND;
+    // Verify all variables
+    if(hs->CdnBuildKey.pbData != NULL && hs->CdnConfigKey.pbData != NULL)
+    {
+        // If we have manually given build key, override the value
+        if(hs->szBuildKey != NULL)
+            dwErrCode = BinaryFromString(hs->szBuildKey, MD5_STRING_SIZE, hs->CdnBuildKey.pbData);
+        return dwErrCode;
+    }
+
+    return ERROR_BAD_FORMAT;
+}
+
+static DWORD ParseRegionLine_Cdns(TCascStorage * hs, CASC_CSV & Csv, size_t nLine)
+{
+    hs->szCdnServers = CascNewStrA2T(Csv[nLine]["Hosts!STRING:0"].szValue);
+    hs->szCdnPath = CascNewStrA2T(Csv[nLine]["Path!STRING:0"].szValue);
+    return (hs->szCdnServers && hs->szCdnPath) ? ERROR_SUCCESS : ERROR_FILE_NOT_FOUND;
 }
 
 static DWORD ParseFile_BuildDb(TCascStorage * hs, CASC_CSV & Csv)
@@ -898,18 +862,8 @@ static DWORD ParseFile_CdnBuild(TCascStorage * hs, void * pvListFile)
     return dwErrCode;
 }
 
-static DWORD LoadCsvFile(TCascStorage * hs, LPBYTE pbFileData, size_t cbFileData, PARSECSVFILE PfnParseProc, bool bHasHeader)
-{
-    CASC_CSV Csv(0x40, bHasHeader);
-    DWORD dwErrCode;
-
-    // Load the external file to memory
-    if((dwErrCode = Csv.Load(pbFileData, cbFileData)) == ERROR_SUCCESS)
-        dwErrCode = PfnParseProc(hs, Csv);
-    return dwErrCode;
-}
-
-static DWORD LoadCsvFile(TCascStorage * hs, LPCTSTR szFileName, PARSECSVFILE PfnParseProc, bool bHasHeader)
+// Loads a local CSV file
+static DWORD LoadCsvFile(TCascStorage * hs, LPCTSTR szFileName, PARSE_CSV_FILE PfnParseProc, bool bHasHeader)
 {
     CASC_CSV Csv(0x40, bHasHeader);
     DWORD dwErrCode;
@@ -921,11 +875,11 @@ static DWORD LoadCsvFile(TCascStorage * hs, LPCTSTR szFileName, PARSECSVFILE Pfn
 }
 
 // Loading an online file (VERSIONS or CDNS)
-static DWORD LoadCsvFile(TCascStorage * hs, PARSECSVFILE PfnParseProc, LPCTSTR szFileName, DWORD dwCacheFeature)
+static DWORD LoadCsvFile(TCascStorage * hs, PARSE_REGION_LINE PfnParseRegionLine, LPCTSTR szFileName, LPCSTR szColumnName, DWORD dwCacheFeature)
 {
     CASC_PATH<TCHAR> LocalPath;
     QUERY_KEY FileData;
-    DWORD dwErrCode;
+    DWORD dwErrCode = ERROR_SUCCESS;
     DWORD cbFileData = 0;
     char szFileNameA[0x20];
 
@@ -955,7 +909,60 @@ static DWORD LoadCsvFile(TCascStorage * hs, PARSECSVFILE PfnParseProc, LPCTSTR s
 
     // Load the VERSIONS file
     if(dwErrCode == ERROR_SUCCESS)
-        dwErrCode = LoadCsvFile(hs, FileData.pbData, FileData.cbData, PfnParseProc, true);
+    {
+        CASC_CSV Csv(0x40, true);
+
+        // Load the external file to memory
+        if((dwErrCode = Csv.Load(FileData.pbData, FileData.cbData)) == ERROR_SUCCESS)
+        {
+            size_t nLineCount = Csv.GetLineCount();
+            size_t nRegionXX = CASC_INVALID_SIZE_T;
+            size_t nRegionUS = CASC_INVALID_SIZE_T;
+            size_t nRegionEU = CASC_INVALID_SIZE_T;
+
+            // Find a matching config
+            for(size_t i = 0; i < nLineCount; i++)
+            {
+                const char * szRegion = Csv[i][szColumnName].szValue;
+
+                if(hs->szRegion && !strcmp(hs->szRegion, szRegion))
+                    return PfnParseRegionLine(hs, Csv, i);
+
+                if(!strcmp(szRegion, "xx"))
+                {
+                    nRegionXX = i;
+                    continue;
+                }
+
+                if(!strcmp(szRegion, "us"))
+                {
+                    nRegionUS = i;
+                    continue;
+                }
+
+                if(!strcmp(szRegion, "eu"))
+                {
+                    nRegionEU = i;
+                    continue;
+                }
+            }
+
+            // Now load the regions in this order:
+            // 1) US region
+            // 2. EU region
+            // 3. XX region
+            // 4. The first line
+            if(nRegionUS != CASC_INVALID_SIZE_T)
+                return PfnParseRegionLine(hs, Csv, nRegionUS);
+            if(nRegionEU != CASC_INVALID_SIZE_T)
+                return PfnParseRegionLine(hs, Csv, nRegionEU);
+            if(nRegionXX != CASC_INVALID_SIZE_T)
+                return PfnParseRegionLine(hs, Csv, nRegionXX);
+            if(nLineCount != 0)
+                return PfnParseRegionLine(hs, Csv, 0);
+            dwErrCode = ERROR_FILE_NOT_FOUND;
+        }
+    }
     return dwErrCode;
 }
 
@@ -1350,7 +1357,7 @@ DWORD DownloadFileFromCDN(TCascStorage * hs, CASC_CDN_DOWNLOAD & CdnsInfo)
     return dwErrCode;
 }
 
-static DWORD FetchAndLoadConfigFile(TCascStorage * hs, PQUERY_KEY pFileKey, PARSETEXTFILE PfnParseProc)
+static DWORD FetchAndLoadConfigFile(TCascStorage * hs, PQUERY_KEY pFileKey, PARSE_TEXT_FILE PfnParseProc)
 {
     LPCTSTR szPathType = _T("config");
     TCHAR szLocalPath[MAX_PATH];
@@ -1638,7 +1645,6 @@ DWORD CheckDataFilesDirectory(TCascStorage * hs)
 
 DWORD LoadBuildFile(TCascStorage * hs)
 {
-    PARSECSVFILE PfnParseProc = NULL;
     DWORD dwErrCode = ERROR_NOT_SUPPORTED;
 
     // The build file must be known at this point, even for online storage
@@ -1657,45 +1663,15 @@ DWORD LoadBuildFile(TCascStorage * hs)
             break;
 
         case CascVersions:      // Online storages have "versions+cdns"
-            dwErrCode = LoadCsvFile(hs, ParseFile_Versions, _T("versions"), CASC_FEATURE_LOCAL_VERSIONS);
-            //if(dwErrCode == ERROR_SUCCESS)
-            //    dwErrCode = LoadCsvFile(hs, _T("cdns"), ParseFile_Cdns, CASC_FEATURE_LOCAL_CDNS);
+            dwErrCode = LoadCsvFile(hs, ParseRegionLine_Versions, _T("versions"), "Region!STRING:0", CASC_FEATURE_LOCAL_VERSIONS);
+            if(dwErrCode == ERROR_SUCCESS)
+                dwErrCode = LoadCsvFile(hs, ParseRegionLine_Cdns, _T("cdns"), "Name!STRING:0", CASC_FEATURE_LOCAL_CDNS);
             break;
 
         default:
             assert(false);
             break;
     }
-    return dwErrCode;
-}
-
-DWORD LoadCdnsFile(TCascStorage * hs)
-{
-    CASC_PATH<TCHAR> LocalPath;
-    QUERY_KEY FileData;
-    LPCTSTR szCdnsName = _T("cdns");
-    DWORD dwErrCode = ERROR_SUCCESS;
-
-    // Sanity checks
-    assert(hs->dwFeatures & CASC_FEATURE_ONLINE);
-
-    // Inform the user about what we are doing
-    if(InvokeProgressCallback(hs, "Downloading the \"cdns\" file", NULL, 0, 0))
-        return ERROR_CANCELLED;
-
-    // Construct the local path of the file
-    LocalPath.SetPathRoot(hs->szRootPath);
-    LocalPath.AppendString(szCdnsName, true);
-    LocalPath.SetLocalCaching(hs->dwFeatures & CASC_FEATURE_LOCAL_CDNS);
-
-    // Download the file using Ribbit protocol
-    dwErrCode = RibbitDownloadFile(hs->szCdnServers, hs->szCodeName, szCdnsName, LocalPath, FileData);
-    if(dwErrCode == ERROR_SUCCESS)
-    {
-        // Parse the downloaded file
-        dwErrCode = LoadCsvFile(hs, FileData.pbData, FileData.cbData, ParseFile_CDNS, true);
-    }
-
     return dwErrCode;
 }
 

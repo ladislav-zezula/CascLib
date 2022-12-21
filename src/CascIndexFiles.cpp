@@ -27,21 +27,40 @@ typedef bool (*EKEY_ENTRY_CALLBACK)(TCascStorage * hs, CASC_INDEX_HEADER & InHea
 //-----------------------------------------------------------------------------
 // Local functions
 
-// "data.iXY"
-static bool IsIndexFileName_V1(LPCTSTR szFileName)
+// Check a file name with mask
+static bool IsFileNameMask(LPCTSTR szFileName, LPCTSTR szMask)
 {
-    // Check if the name looks like a valid index file
-    return (_tcslen(szFileName) == 8 &&
-            _tcsnicmp(szFileName, _T("data.i"), 6) == 0 &&
-            _tcsspn(szFileName + 6, szAllowedHexChars) == 2);
+    size_t i;
+
+    for(i = 0; szFileName[i] != 0 && szMask[i] != 0; i++)
+    {
+        // '#' in the mask means any hexa number
+        if(szMask[i] == _T('#'))
+        {
+            if(!IsHexadecimalDigit(szFileName[i]))
+                return false;
+            continue;
+        }
+
+        // Compare both characters, converted to lowercase
+        if(AsciiToUpperTable_BkSlash[(BYTE)(szMask[i])] != AsciiToUpperTable_BkSlash[(BYTE)(szFileName[i])])
+            return false;
+    }
+
+    // If we found end of both strings, it's a match
+    return (szFileName[i] == 0 && szMask[i] == 0);
 }
 
+// Heroes of the Storm, build 29049: "data.i##"
+static bool IsIndexFileName_V1(LPCTSTR szFileName)
+{
+    return IsFileNameMask(szFileName, _T("data.i##"));
+}
+
+// Current CASC storages: ##########.idx
 static bool IsIndexFileName_V2(LPCTSTR szFileName)
 {
-    // Check if the name looks like a valid index file
-    return (_tcslen(szFileName) == 14 &&
-            _tcsspn(szFileName, _T("0123456789aAbBcCdDeEfF")) == 0x0A &&
-            _tcsicmp(szFileName + 0x0A, _T(".idx")) == 0);
+    return IsFileNameMask(szFileName, _T("##########.idx"));
 }
 
 static bool IndexDirectory_OnFileFound(

@@ -470,7 +470,6 @@ DWORD CheckCascBuildFileDirs(CASC_BUILD_FILE & BuildFile, LPCTSTR szLocalPath);
 DWORD CheckOnlineStorage(PCASC_OPEN_STORAGE_ARGS pArgs, CASC_BUILD_FILE & BuildFile, bool bOnlineStorage);
 DWORD CheckArchiveFilesDirectories(TCascStorage * hs);
 DWORD CheckDataFilesDirectory(TCascStorage * hs);
-DWORD LoadCdnsFile(TCascStorage * hs);
 DWORD LoadBuildFile(TCascStorage * hs);
 DWORD LoadCdnConfigFile(TCascStorage * hs);
 DWORD LoadCdnBuildFile(TCascStorage * hs);
