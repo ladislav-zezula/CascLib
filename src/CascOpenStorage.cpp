@@ -61,7 +61,8 @@ TCascStorage::TCascStorage()
     pRootHandler = NULL;
     dwRefCount = 1;
 
-    szRootPath = szDataPath = szIndexPath = szBuildFile = szCdnServers = szCdnPath = szCdnHostUrl = szCodeName = NULL;
+    szRootPath = szDataPath = szIndexPath = szFilesPath = szConfigPath = szBuildFile = NULL;
+    szCdnHostUrl = szCdnServers = szCdnPath = szCodeName = NULL;
     szIndexFormat = NULL;
     szRegion = NULL;
     szBuildKey = NULL;
@@ -100,14 +101,16 @@ TCascStorage::~TCascStorage()
     CascFreeLock(StorageLock);
 
     // Free the file paths
-    CASC_FREE(szDataPath);
     CASC_FREE(szRootPath);
-    CASC_FREE(szBuildFile);
+    CASC_FREE(szDataPath);
     CASC_FREE(szIndexPath);
+    CASC_FREE(szFilesPath);
+    CASC_FREE(szConfigPath);
+    CASC_FREE(szBuildFile);
+    CASC_FREE(szCdnHostUrl);
     CASC_FREE(szCdnServers);
     CASC_FREE(szCdnPath);
     CASC_FREE(szCodeName);
-    CASC_FREE(szCdnHostUrl);
     CASC_FREE(szRegion);
     CASC_FREE(szBuildKey);
 
@@ -164,20 +167,6 @@ void * ProbeOutputBuffer(void * pvBuffer, size_t cbLength, size_t cbMinLength, s
     if(pcbLengthNeeded != NULL)
         pcbLengthNeeded[0] = cbMinLength;
     return pvBuffer;
-}
-
-static LPTSTR CheckForIndexDirectory(TCascStorage * hs, LPCTSTR szSubDir)
-{
-    TCHAR szIndexPath[MAX_PATH];
-
-    // Combine the index path
-    CombinePath(szIndexPath, _countof(szIndexPath), hs->szDataPath, szSubDir, NULL);
-
-    // Check whether the path exists
-    if(!DirectoryExists(szIndexPath))
-        return NULL;
-
-    return CascNewStr(szIndexPath);
 }
 
 // Inserts an entry from the text build file
@@ -735,15 +724,18 @@ static int LoadDownloadManifest(TCascStorage * hs, CASC_DOWNLOAD_HEADER & DlHead
         // Insert the entry to the central CKey table
         if((pCKeyEntry = InsertCKeyEntry(hs, DlEntry)) != NULL)
         {
-            // Supply the tag bits
-            for(size_t j = 0; j < TagItemCount; j++)
+            if(TagArray != NULL)
             {
-                // Set the bit in the entry, if the tag for it is present
-                if((BitMaskOffset < TagArray[j].BitmapLength) && (TagArray[j].Bitmap[BitMaskOffset] & BitMaskBit))
-                    pCKeyEntry->TagBitMask |= TagBit;
+                // Supply the tag bits
+                for(size_t j = 0; j < TagItemCount; j++)
+                {
+                    // Set the bit in the entry, if the tag for it is present
+                    if((BitMaskOffset < TagArray[j].BitmapLength) && (TagArray[j].Bitmap[BitMaskOffset] & BitMaskBit))
+                        pCKeyEntry->TagBitMask |= TagBit;
 
-                // Move to the next bit
-                TagBit <<= 1;
+                    // Move to the next bit
+                    TagBit <<= 1;
+                }
             }
         }
 
@@ -1109,73 +1101,7 @@ static bool GetStoragePathProduct(TCascStorage * hs, void * pvStorageInfo, size_
     return (szBuffer != NULL);
 }
 
-static DWORD InitializeLocalDirectories(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
-{
-    LPTSTR szWorkPath;
-    DWORD dwErrCode = ERROR_NOT_ENOUGH_MEMORY;
-
-    // Find the root directory of the storage. The root directory
-    // is the one with ".build.info" or ".build.db".
-    szWorkPath = CascNewStr(pArgs->szLocalPath);
-    if(szWorkPath != NULL)
-    {
-        // Get the length and go up until we find the ".build.info" or ".build.db"
-        for(;;)
-        {
-            // Is this a game directory?
-            dwErrCode = CheckGameDirectory(hs, szWorkPath);
-            if(dwErrCode == ERROR_SUCCESS)
-            {
-                dwErrCode = ERROR_SUCCESS;
-                break;
-            }
-
-            // Cut one path part
-            if(!CutLastPathPart(szWorkPath))
-            {
-                dwErrCode = ERROR_FILE_NOT_FOUND;
-                break;
-            }
-        }
-
-        // Find the index directory
-        if(dwErrCode == ERROR_SUCCESS)
-        {
-            // First, check for more common "data" subdirectory
-            if((hs->szIndexPath = CheckForIndexDirectory(hs, _T("data"))) != NULL)
-                dwErrCode = ERROR_SUCCESS;
-
-            // Second, try the "darch" subdirectory (older builds of HOTS - Alpha)
-            else if((hs->szIndexPath = CheckForIndexDirectory(hs, _T("darch"))) != NULL)
-                dwErrCode = ERROR_SUCCESS;
-
-            else
-                dwErrCode = ERROR_FILE_NOT_FOUND;
-        }
-
-        // Free the work path buffer
-        CASC_FREE(szWorkPath);
-    }
-
-    return dwErrCode;
-}
-
-static DWORD InitializeOnlineDirectories(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
-{
-    // Create the root path
-    hs->szRootPath = CascNewStr(pArgs->szLocalPath);
-    if(hs->szRootPath != NULL)
-    {
-        hs->BuildFileType = CascVersionsDb;
-        hs->dwFeatures |= CASC_FEATURE_ONLINE;
-        hs->dwFeatures |= (pArgs->dwFlags & (CASC_FEATURE_LOCAL_CDNS | CASC_FEATURE_LOCAL_VERSIONS));
-        return ERROR_SUCCESS;
-    }
-
-    return ERROR_NOT_ENOUGH_MEMORY;
-}
-
-static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
+static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs, LPCTSTR szBuildFile, CBLD_TYPE BuildFileType, DWORD dwFeatures)
 {
     LPCTSTR szCdnHostUrl = NULL;
     LPCTSTR szCodeName = NULL;
@@ -1206,21 +1132,37 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs)
     if(ExtractVersionedArgument(pArgs, FIELD_OFFSET(CASC_OPEN_STORAGE_ARGS, szBuildKey), &szBuildKey) && szBuildKey != NULL)
         hs->szBuildKey = CascNewStrT2A(szBuildKey);
 
-    // Special handling to online storages
-    if(hs->dwFeatures & CASC_FEATURE_ONLINE)
+    // Copy the CASC variables
+    hs->BuildFileType = BuildFileType;
+    hs->dwFeatures = dwFeatures;
+    hs->szBuildFile = CascNewStr(szBuildFile);
+    hs->szRootPath = CascNewStr(szBuildFile);
+    if(hs->szBuildFile == NULL || hs->szRootPath == NULL)
     {
-        // Enable caching of the sockets. This will add references
-        // to all existing and all future sockets
-        sockets_set_caching(true);
-
-        // For online storages, we need to load CDN servers
-        dwErrCode = LoadCdnsFile(hs);
+        dwErrCode = ERROR_NOT_ENOUGH_MEMORY;
     }
 
-    // Now, load the main storage file ".build.info" (or ".build.db" in old storages) 
+    // Initialize variables for local CASC storages
     if(dwErrCode == ERROR_SUCCESS)
     {
-        dwErrCode = LoadBuildInfo(hs);
+        // We want the folder, not the file
+        CutLastPathPart(hs->szRootPath);
+
+        // For local (game) storages, we need the data and indices subdirectory
+        if(hs->dwFeatures & CASC_FEATURE_DATA_ARCHIVES)
+            CheckArchiveFilesDirectories(hs);
+
+        // For data files storage, we need that folder
+        if(hs->dwFeatures & CASC_FEATURE_DATA_FILES)
+            CheckDataFilesDirectory(hs);
+
+        // Enable caching of the sockets. This will add references
+        // to all existing and all future sockets
+        if(hs->dwFeatures & CASC_FEATURE_ONLINE)
+            sockets_set_caching(true);
+
+        // Now, load the storage build file (".build.info", ".build.db" or "versions")
+        dwErrCode = LoadBuildFile(hs);
     }
 
     // Proceed with loading the CDN config file
@@ -1439,17 +1381,35 @@ bool WINAPI CascOpenStorageEx(LPCTSTR szParams, PCASC_OPEN_STORAGE_ARGS pArgs, b
         }
     }
 
-    // Allocate the storage structure
+    // Now we need to get the CASC main file, which is either
+    // [*] .build.info - for current local storages
+    // [*] .build.db   - for older local storages
+    // [*] versions    - for cached online storages
+    // If there is none of these and `bOnlineStorage` is specified,
+    // CascLib will download it, as long as the product code was specified
     if(dwErrCode == ERROR_SUCCESS)
     {
         if((hs = new TCascStorage()) != NULL)
         {
-            // Setup the directories
-            dwErrCode = (bOnlineStorage) ? InitializeOnlineDirectories(hs, pArgs) : InitializeLocalDirectories(hs, pArgs);
-            if(dwErrCode == ERROR_SUCCESS)
+            CASC_BUILD_FILE BuildFile = {NULL};
+            DWORD dwFeatures = bOnlineStorage ? CASC_FEATURE_ONLINE : 0;
+            
+            // Check for one of the supported main files (.build.info, .build.db, versions)
+            if(CheckCascBuildFileExact(BuildFile, pArgs->szLocalPath) == ERROR_SUCCESS)
             {
-                // Perform the entire storage loading
-                dwErrCode = LoadCascStorage(hs, pArgs);
+                dwErrCode = LoadCascStorage(hs, pArgs, BuildFile.szFullPath, BuildFile.BuildFileType, dwFeatures | CASC_FEATURE_DATA_ARCHIVES | CASC_FEATURE_DATA_FILES);
+            }
+
+            // Search the folder and upper folders for the build file
+            else if(CheckCascBuildFileDirs(BuildFile, pArgs->szLocalPath) == ERROR_SUCCESS)
+            {
+                dwErrCode = LoadCascStorage(hs, pArgs, BuildFile.szFullPath, BuildFile.BuildFileType, dwFeatures | CASC_FEATURE_DATA_ARCHIVES | CASC_FEATURE_DATA_FILES);
+            }
+
+            // If the caller requested an online storage, we must have the code name
+            else if(CheckOnlineStorage(pArgs, BuildFile, bOnlineStorage) == ERROR_SUCCESS)
+            {
+                dwErrCode = LoadCascStorage(hs, pArgs, BuildFile.szFullPath, BuildFile.BuildFileType, dwFeatures | CASC_FEATURE_DATA_FILES);
             }
         }
     }

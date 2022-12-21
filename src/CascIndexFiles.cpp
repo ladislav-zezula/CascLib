@@ -563,7 +563,7 @@ static DWORD LoadLocalIndexFiles(TCascStorage * hs)
         return ERROR_CANCELLED;
 
     // Perform the directory scan
-    if((dwErrCode = ScanIndexDirectory(hs->szIndexPath, IndexDirectory_OnFileFound, hs)) == ERROR_SUCCESS)
+    if((dwErrCode = ScanDirectory(hs->szIndexPath, NULL, IndexDirectory_OnFileFound, hs)) == ERROR_SUCCESS)
     {
         // If no index file was found, we cannot load anything
         if(hs->szIndexFormat == NULL)
@@ -635,7 +635,7 @@ static DWORD CaptureArcIndexFooter(CASC_ARCINDEX_FOOTER & InFooter, LPBYTE pbInd
         InFooter.SizeBytes = pFooter08->SizeBytes;
         InFooter.EKeyLength = pFooter08->EKeyLength;
         InFooter.FooterHashBytes = pFooter08->FooterHashBytes;
-        InFooter.PageLength = pFooter08->PageSizeKB << 10;
+        InFooter.PageLength = ((size_t)pFooter08->PageSizeKB) << 10;
         InFooter.ItemLength = pFooter08->EKeyLength + pFooter08->OffsetBytes + pFooter08->SizeBytes;
         InFooter.FooterLength = sizeof(FILE_INDEX_FOOTER<0x08>);
         InFooter.ElementCount = ConvertBytesToInteger_4_LE(pFooter08->ElementCount);

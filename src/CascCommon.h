@@ -72,9 +72,9 @@
 typedef enum _CBLD_TYPE
 {
     CascBuildNone = 0,                              // No build type found
-    CascBuildInfo,                                  // .build.info
     CascBuildDb,                                    // .build.db (older storages)
-    CascVersionsDb                                  // versions (downloaded online)
+    CascBuildInfo,                                  // .build.info
+    CascVersions                                    // versions (cached or online)
 } CBLD_TYPE, *PCBLD_TYPE;
 
 typedef enum _CSTRTG
@@ -91,12 +91,20 @@ typedef struct _CASC_TAG_ENTRY
     char TagName[1];                                // Tag name. Variable length.
 } CASC_TAG_ENTRY, *PCASC_TAG_ENTRY;
 
+// Information about CASC main file
+typedef struct _CASC_BUILD_FILE
+{
+    LPCTSTR szPlainName;                            // Plain file name
+    CBLD_TYPE BuildFileType;                        // Build file type
+    TCHAR   szFullPath[MAX_PATH];                   // Full file name
+} CASC_BUILD_FILE, *PCASC_BUILD_FILE;
+
 // Information about index file
 typedef struct _CASC_INDEX
 {
     LPTSTR szFileName;                              // Full name of the index file
     LPBYTE pbFileData;                              // Loaded content of the index file
-    size_t cbFileData;                               // Size of the index file
+    size_t cbFileData;                              // Size of the index file
     DWORD NewSubIndex;                              // New subindex
     DWORD OldSubIndex;                              // Old subindex
 } CASC_INDEX, *PCASC_INDEX;
@@ -283,13 +291,15 @@ struct TCascStorage
     CASC_LOCK StorageLock;                          // Lock for multi-threaded operations
 
     LPCTSTR szIndexFormat;                          // Format of the index file name
-    LPTSTR  szCdnHostUrl;                           // CDN host URL for online storage
     LPTSTR  szCodeName;                             // On local storage, this select a product in a multi-product storage. For online storage, this selects a product
     LPTSTR  szRootPath;                             // Path where the build file is
-    LPTSTR  szDataPath;                             // This is the directory where data files are
-    LPTSTR  szIndexPath;                            // This is the directory where index files are
-    LPTSTR  szBuildFile;                            // Build file name (.build.info or .build.db)
-    LPTSTR  szCdnServers;                           // Multi-SZ list of CDN servers
+    LPTSTR  szDataPath;                             // The directory where data files are
+    LPTSTR  szIndexPath;                            // The directory where index files are
+    LPTSTR  szFilesPath;                            // The directory where raw files are
+    LPTSTR  szConfigPath;                           // The directory with configs
+    LPTSTR  szBuildFile;                            // Build file name (.build.info, .build.db, versions)
+    LPTSTR  szCdnHostUrl;                           // URL of the ribbit/http server where to download the VERSIONS and CDNS files
+    LPTSTR  szCdnServers;                           // List of CDN servers, separated by space
     LPTSTR  szCdnPath;                              // Remote CDN sub path for the product
     LPSTR   szRegion;                               // Product region. Only when "versions" is used as storage root file
     LPSTR   szBuildKey;                             // Product build key, aka MD5 of the build file
@@ -387,9 +397,8 @@ struct TCascSearch
     TCascSearch(TCascStorage * ahs, LPCTSTR aszListFile, const char * aszMask)
     {
         // Init the class
-        if(ahs != NULL)
-            hs = ahs->AddRef();
         ClassName = CASC_MAGIC_FIND;
+        hs = (ahs != NULL) ? ahs->AddRef() : NULL;
 
         // Init provider-specific data
         pCache = NULL;
@@ -456,9 +465,13 @@ inline void FreeCascBlob(PQUERY_KEY pBlob)
 bool  InvokeProgressCallback(TCascStorage * hs, LPCSTR szMessage, LPCSTR szObject, DWORD CurrentValue, DWORD TotalValue);
 DWORD GetFileSpanInfo(PCASC_CKEY_ENTRY pCKeyEntry, PULONGLONG PtrContentSize, PULONGLONG PtrEncodedSize = NULL);
 DWORD DownloadFileFromCDN(TCascStorage * hs, CASC_CDN_DOWNLOAD & CdnsInfo);
-DWORD CheckGameDirectory(TCascStorage * hs, LPTSTR szDirectory);
+DWORD CheckCascBuildFileExact(CASC_BUILD_FILE & BuildFile, LPCTSTR szLocalPath);
+DWORD CheckCascBuildFileDirs(CASC_BUILD_FILE & BuildFile, LPCTSTR szLocalPath);
+DWORD CheckOnlineStorage(PCASC_OPEN_STORAGE_ARGS pArgs, CASC_BUILD_FILE & BuildFile, bool bOnlineStorage);
+DWORD CheckArchiveFilesDirectories(TCascStorage * hs);
+DWORD CheckDataFilesDirectory(TCascStorage * hs);
 DWORD LoadCdnsFile(TCascStorage * hs);
-DWORD LoadBuildInfo(TCascStorage * hs);
+DWORD LoadBuildFile(TCascStorage * hs);
 DWORD LoadCdnConfigFile(TCascStorage * hs);
 DWORD LoadCdnBuildFile(TCascStorage * hs);
 

@@ -1198,10 +1198,11 @@ static LPCSTR szCdn2 = "http://us.falloflordaeron.com:8000";
 
 static STORAGE_INFO2 StorageInfo2[] =
 {
-    {szDefCdn, "hsb",         "us"},
-    {szCdn2,   "wow",         "us"},
-    {szDefCdn, "wowt",        "us", "interface/framexml/localization.lua"},
-    {szDefCdn, "wow_classic", "us"},
+    {szDefCdn, "wow",         "us"},
+    //{szDefCdn, "hsb",         "us"},
+    //{szCdn2,   "wow",         "us"},
+    //{szDefCdn, "wowt",        "us", "interface/framexml/localization.lua"},
+    //{szDefCdn, "wow_classic", "us"},
 };
 
 //-----------------------------------------------------------------------------
@@ -1211,6 +1212,8 @@ int main(int argc, char * argv[])
 {
     DWORD dwErrCode = ERROR_SUCCESS;
 
+    CASCLIB_UNUSED(argc);
+    CASCLIB_UNUSED(argv);
     printf("\n");
 
 #if defined(_MSC_VER) && defined(_DEBUG)

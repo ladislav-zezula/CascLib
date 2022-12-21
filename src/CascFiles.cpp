@@ -20,11 +20,13 @@
 //-----------------------------------------------------------------------------
 // Local defines
 
+#define MAX_VAR_NAME 80
+
 typedef DWORD (*PARSECSVFILE)(TCascStorage * hs, CASC_CSV & Csv);
 typedef DWORD (*PARSETEXTFILE)(TCascStorage * hs, void * pvListFile);
 typedef DWORD (*PARSE_VARIABLE)(TCascStorage * hs, const char * szVariableName, const char * szDataBegin, const char * szDataEnd, void * pvParam);
 
-#define MAX_VAR_NAME 80
+static DWORD RibbitDownloadFile(LPCTSTR szCdnHostUrl, LPCTSTR szProduct, LPCTSTR szFileName, CASC_PATH<TCHAR> & LocalPath, QUERY_KEY & FileData);
 
 //-----------------------------------------------------------------------------
 // Local structures
@@ -32,6 +34,7 @@ typedef DWORD (*PARSE_VARIABLE)(TCascStorage * hs, const char * szVariableName, 
 struct TBuildFileInfo
 {
     LPCTSTR szFileName;
+    size_t  nLength;
     CBLD_TYPE BuildFileType;
 };
 
@@ -43,15 +46,14 @@ struct TGameLocaleString
 
 static const TBuildFileInfo BuildTypes[] =
 {
-    {_T(".build.info"), CascBuildInfo},             // Since HOTS build 30027, the game uses .build.info file for storage info
-    {_T(".build.db"),   CascBuildDb},               // Older CASC storages
-    {_T("versions"),    CascVersionsDb},            // Older CASC storages
-    {NULL, CascBuildNone}
+    {_T(".build.info"), 11, CascBuildInfo},         // Since HOTS build 30027, the game uses .build.info file for storage info
+    {_T(".build.db"),   9,  CascBuildDb},           // Older CASC storages
+    {_T("versions"),    8,  CascVersions},          // Online/cached CASC storages
 };
 
 static LPCTSTR DataDirs[] =
 {
-    _T("data") _T(PATH_SEP_STRING) _T("casc"),      // Overwatch
+    _T("data") _T(PATH_SEP_STRING) _T("casc"),      // Overwatch. This item must be the first in the list
     _T("data"),                                     // TACT casc (for Linux systems)
     _T("Data"),                                     // World of Warcraft, Diablo
     _T("SC2Data"),                                  // Starcraft II (Legacy of the Void) build 38749
@@ -83,6 +85,24 @@ static bool IsCharDigit(BYTE OneByte)
 static bool StringEndsWith(LPCSTR szString, size_t nLength, LPCSTR szSuffix, size_t nSuffixLength)
 {
     return ((nLength > nSuffixLength) && !strcmp(szString + nLength - nSuffixLength, szSuffix));
+}
+
+static bool CheckForTwoDigitFolder(LPCTSTR szPathName, void * pvContext)
+{
+    BYTE Binary[8];
+
+    // Must be a two-digit hexa string (the first two digits of the CKey)
+    if(_tcslen(szPathName) == 2)
+    {
+        if(BinaryFromString(szPathName, 2, Binary) == ERROR_SUCCESS)
+        {
+            *(bool *)pvContext = true;
+            return false;
+        }
+    }
+    
+    // Keep searching
+    return true;
 }
 
 static const char * CaptureDecimalInteger(const char * szDataPtr, const char * szDataEnd, PDWORD PtrValue)
@@ -147,7 +167,7 @@ static const char * CaptureSingleHash(const char * szDataPtr, const char * szDat
     szHashString = szDataPtr;
 
     // Count all hash characters
-    for (size_t i = 0; i < HashStringLength; i++)
+    for(size_t i = 0; i < HashStringLength; i++)
     {
         if(szDataPtr >= szDataEnd || isxdigit(szDataPtr[0]) == 0)
             return NULL;
@@ -266,7 +286,7 @@ static DWORD LoadHashArray(
     {
         LPBYTE pbBuffer = pBlob->pbData;
 
-        for (size_t i = 0; i < HashCount; i++)
+        for(size_t i = 0; i < HashCount; i++)
         {
             // Capture the hash value
             szLinePtr = CaptureSingleHash(szLinePtr, szLineEnd, pbBuffer, MD5_HASH_SIZE);
@@ -507,13 +527,17 @@ static void SetProductCodeName(TCascStorage * hs, LPCSTR szCodeName)
     }
 }
 
+static DWORD GetDefaultCdnServers(TCascStorage * hs, const CASC_CSV_COLUMN & Column)
+{
+    if(hs->szCdnServers == NULL && Column.nLength != 0)
+        hs->szCdnServers = CascNewStrA2T(Column.szValue);
+    return ERROR_SUCCESS;
+}
+
 static DWORD GetDefaultCdnPath(TCascStorage * hs, const CASC_CSV_COLUMN & Column)
 {
     if(hs->szCdnPath == NULL && Column.nLength != 0)
-    {
         hs->szCdnPath = CascNewStrA2T(Column.szValue);
-    }
-
     return ERROR_SUCCESS;
 }
 
@@ -677,11 +701,15 @@ static DWORD ParseFile_BuildInfo(TCascStorage * hs, CASC_CSV & Csv)
         if(dwErrCode != ERROR_SUCCESS)
             return dwErrCode;
 
-        // Get the CDN path
-        GetDefaultCdnPath(hs, Csv[nSelected]["CDN Path!STRING:0"]);
-
         // If we found tags, we can extract language build from it
         GetDefaultLocaleMask(hs, Csv[nSelected]["Tags!STRING:0"]);
+
+        // Get the CDN servers and hosts
+        if(hs->dwFeatures & CASC_FEATURE_ONLINE)
+        {
+            GetDefaultCdnServers(hs, Csv[nSelected]["CDN Hosts!STRING:0"]);
+            GetDefaultCdnPath(hs, Csv[nSelected]["CDN Path!STRING:0"]);
+        }
 
         // If we found version, extract a build number
         const CASC_CSV_COLUMN & VerColumn = Csv[nSelected]["Version!STRING:0"];
@@ -697,13 +725,13 @@ static DWORD ParseFile_BuildInfo(TCascStorage * hs, CASC_CSV & Csv)
     return ERROR_FILE_NOT_FOUND;
 }
 
-static DWORD ParseFile_VersionsDb(TCascStorage * hs, CASC_CSV & Csv)
+static DWORD ParseFile_Versions(TCascStorage * hs, CASC_CSV & Csv)
 {
     size_t nLineCount = Csv.GetLineCount();
     DWORD dwErrCode = ERROR_SUCCESS;
 
     // Find the active config
-    for (size_t i = 0; i < nLineCount; i++)
+    for(size_t i = 0; i < nLineCount; i++)
     {
         // Either take the version required or take the first one
         if(hs->szRegion == NULL || !strcmp(Csv[i]["Region!STRING:0"].szValue, hs->szRegion))
@@ -870,29 +898,6 @@ static DWORD ParseFile_CdnBuild(TCascStorage * hs, void * pvListFile)
     return dwErrCode;
 }
 
-static DWORD CheckDataDirectory(TCascStorage * hs, LPTSTR szDirectory)
-{
-    TCHAR szDataPath[MAX_PATH];
-    DWORD dwErrCode = ERROR_FILE_NOT_FOUND;
-
-    // Try all known subdirectories
-    for(size_t i = 0; DataDirs[i] != NULL; i++)
-    {
-        // Create the eventual data path
-        CombinePath(szDataPath, _countof(szDataPath), szDirectory, DataDirs[i], NULL);
-
-        // Does that directory exist?
-        if(DirectoryExists(szDataPath))
-        {
-            hs->szRootPath = CascNewStr(szDirectory);
-            hs->szDataPath = CascNewStr(szDataPath);
-            return ERROR_SUCCESS;
-        }
-    }
-
-    return dwErrCode;
-}
-
 static DWORD LoadCsvFile(TCascStorage * hs, LPBYTE pbFileData, size_t cbFileData, PARSECSVFILE PfnParseProc, bool bHasHeader)
 {
     CASC_CSV Csv(0x40, bHasHeader);
@@ -912,6 +917,45 @@ static DWORD LoadCsvFile(TCascStorage * hs, LPCTSTR szFileName, PARSECSVFILE Pfn
     // Load the external file to memory
     if((dwErrCode = Csv.Load(szFileName)) == ERROR_SUCCESS)
         dwErrCode = PfnParseProc(hs, Csv);
+    return dwErrCode;
+}
+
+// Loading an online file (VERSIONS or CDNS)
+static DWORD LoadCsvFile(TCascStorage * hs, PARSECSVFILE PfnParseProc, LPCTSTR szFileName, DWORD dwCacheFeature)
+{
+    CASC_PATH<TCHAR> LocalPath;
+    QUERY_KEY FileData;
+    DWORD dwErrCode;
+    DWORD cbFileData = 0;
+    char szFileNameA[0x20];
+
+    // Prepare the loading / downloading
+    LocalPath.SetPathRoot(hs->szRootPath);
+    LocalPath.AppendString(szFileName, true);
+    LocalPath.SetLocalCaching(hs->dwFeatures & dwCacheFeature);
+
+    // If the storage is defined as online, we can download the file, if it doesn't exist
+    if(hs->dwFeatures & CASC_FEATURE_ONLINE)
+    {
+        // Inform the user that we are downloading something
+        CascStrCopy(szFileNameA, _countof(szFileNameA), szFileName);
+        if(InvokeProgressCallback(hs, "Downloading the \"%s\" file", szFileNameA, 0, 0))
+            return ERROR_CANCELLED;
+
+        // Download the file using Ribbit/HTTP protocol
+        dwErrCode = RibbitDownloadFile(hs->szCdnHostUrl, hs->szCodeName, szFileName, LocalPath, FileData);
+    }
+    else
+    {
+        // Load the local file
+        if((FileData.pbData = LoadFileToMemory(LocalPath, &cbFileData)) == NULL)
+            dwErrCode = GetCascError();
+        FileData.cbData = cbFileData;
+    }
+
+    // Load the VERSIONS file
+    if(dwErrCode == ERROR_SUCCESS)
+        dwErrCode = LoadCsvFile(hs, FileData.pbData, FileData.cbData, PfnParseProc, true);
     return dwErrCode;
 }
 
@@ -1364,6 +1408,20 @@ static DWORD FetchAndLoadConfigFile(TCascStorage * hs, PQUERY_KEY pFileKey, PARS
     return dwErrCode;
 }
 
+static LPTSTR CheckForDirectory(LPCTSTR szParentFolder, LPCTSTR szSubFolder)
+{
+    LPTSTR szLocalPath = NULL;
+    TCHAR szPathBuffer[MAX_PATH];
+
+    // Combine the index path
+    CombinePath(szPathBuffer, _countof(szPathBuffer), szParentFolder, szSubFolder, NULL);
+
+    // Check whether the path exists
+    if(DirectoryExists(szPathBuffer))
+        szLocalPath = CascNewStr(szPathBuffer);
+    return szLocalPath;
+}
+
 //-----------------------------------------------------------------------------
 // Public functions
 
@@ -1408,98 +1466,206 @@ DWORD GetFileSpanInfo(PCASC_CKEY_ENTRY pCKeyEntry, PULONGLONG PtrContentSize, PU
     return dwSpanCount;
 }
 
-// Checks whether there is a ".build.info" or ".build.db".
-// If yes, the function sets "szDataPath" and "szIndexPath"
-// in the storage structure and returns ERROR_SUCCESS
-DWORD CheckGameDirectory(TCascStorage * hs, LPTSTR szDirectory)
+DWORD CheckCascBuildFileExact(CASC_BUILD_FILE & BuildFile, LPCTSTR szLocalPath)
 {
+    // Calculate the length of the local path
     TFileStream * pStream;
-    TCHAR szBuildFile[MAX_PATH];
-    DWORD dwErrCode = ERROR_FILE_NOT_FOUND;
+    LPCTSTR szFileType;
+    size_t nLength = _tcslen(szLocalPath);
 
-    // Try to find any of the root files used in the history
-    for (size_t i = 0; BuildTypes[i].szFileName != NULL; i++)
+    // Clear the build file structure
+    memset(&BuildFile, 0, sizeof(CASC_BUILD_FILE));
+
+    // Check every type of the build file
+    for(size_t i = 0; i < _countof(BuildTypes); i++)
     {
-        // Create the full name of the .agent.db file
-        CombinePath(szBuildFile, _countof(szBuildFile), szDirectory, BuildTypes[i].szFileName, NULL);
-
-        // Attempt to open the file
-        pStream = FileStream_OpenFile(szBuildFile, STREAM_FLAG_READ_ONLY);
-        if(pStream != NULL)
+        // We support any file name with the appropriate ending,
+        // for example wow-19342.build.info or wow-47186.versions
+        szFileType = szLocalPath + nLength - BuildTypes[i].nLength;
+        if(!_tcsicmp(BuildTypes[i].szFileName, szFileType))
         {
-            // Free the stream
-            FileStream_Close(pStream);
-
-            // Check for the data directory
-            dwErrCode = CheckDataDirectory(hs, szDirectory);
-            if(dwErrCode == ERROR_SUCCESS)
+            // We also try to open the file
+            if((pStream = FileStream_OpenFile(szLocalPath, 0)) != NULL)
             {
-                hs->szBuildFile = CascNewStr(szBuildFile);
-                hs->BuildFileType = BuildTypes[i].BuildFileType;
+                CascStrCopy(BuildFile.szFullPath, _countof(BuildFile.szFullPath), szLocalPath);
+                BuildFile.szPlainName = GetPlainFileName(BuildFile.szFullPath);
+                BuildFile.BuildFileType = BuildTypes[i].BuildFileType;
+                FileStream_Close(pStream);
                 return ERROR_SUCCESS;
             }
         }
     }
 
-    return dwErrCode;
+    // Unrecognized file name
+    return ERROR_BAD_FORMAT;
 }
 
-DWORD LoadBuildInfo(TCascStorage * hs)
+DWORD CheckCascBuildFileDirs(CASC_BUILD_FILE & BuildFile, LPCTSTR szLocalPath)
+{
+    LPTSTR szWorkPath;
+    LPTSTR szFilePath;
+    DWORD dwErrCode = ERROR_FILE_NOT_FOUND;
+
+    // Clear the build file structure
+    memset(&BuildFile, 0, sizeof(CASC_BUILD_FILE));
+
+// Allocate the 
+if((szWorkPath = CascNewStr(szLocalPath)) != NULL)
+{
+    if((szFilePath = CascNewStr(szLocalPath, 0x10)) != NULL)
+    {
+        size_t ccFilePath = _tcslen(szFilePath) + 0x10;
+
+        for(;;)
+        {
+            // Try all supported build file types
+            for(size_t i = 0; i < _countof(BuildTypes); i++)
+            {
+                // Create the eventual build file name
+                CombinePath(szFilePath, ccFilePath, szWorkPath, BuildTypes[i].szFileName, NULL);
+
+                // If the file exists there, we found it
+                if(CheckCascBuildFileExact(BuildFile, szFilePath) == ERROR_SUCCESS)
+                {
+                    dwErrCode = ERROR_SUCCESS;
+                    goto __FreeAllocatedBuffers;
+                }
+            }
+
+            // Try to cut off one path path
+            if(!CutLastPathPart(szWorkPath))
+            {
+                dwErrCode = ERROR_PATH_NOT_FOUND;
+                break;
+            }
+        }
+
+    __FreeAllocatedBuffers:
+        CASC_FREE(szFilePath);
+    }
+    CASC_FREE(szWorkPath);
+}
+
+// Unrecognized file name
+return dwErrCode;
+}
+
+DWORD CheckOnlineStorage(PCASC_OPEN_STORAGE_ARGS pArgs, CASC_BUILD_FILE & BuildFile, bool bOnlineStorage)
+{
+    // If the online storage is required, we try to extract the product code
+    if(bOnlineStorage == true && pArgs->szCodeName != NULL)
+    {
+        CombinePath(BuildFile.szFullPath, _countof(BuildFile.szFullPath), pArgs->szLocalPath, _T("versions"), NULL);
+        BuildFile.szPlainName = GetPlainFileName(BuildFile.szFullPath);
+        BuildFile.BuildFileType = CascVersions;
+        return ERROR_SUCCESS;
+    }
+    return ERROR_FILE_NOT_FOUND;
+}
+
+DWORD CheckArchiveFilesDirectories(TCascStorage * hs)
+{
+    // Sanity checks
+    assert((hs->dwFeatures & CASC_FEATURE_DATA_ARCHIVES) != 0);
+    assert(hs->szRootPath != NULL);
+    assert(hs->szDataPath == NULL);
+    assert(hs->szIndexPath == NULL);
+
+    // Try all known subdirectories for the game data sub dirs
+    for(size_t i = 0; i < _countof(DataDirs); i++)
+    {
+        if((hs->szDataPath = CheckForDirectory(hs->szRootPath, DataDirs[i])) != NULL)
+        {
+            break;
+        }
+    }
+
+    // If we found the data path, we also need to initialize the index path
+    if(hs->szDataPath != NULL)
+    {
+        // Check the config folder
+        if((hs->szConfigPath = CheckForDirectory(hs->szDataPath, _T("config"))) == NULL)
+            return ERROR_FILE_NOT_FOUND;
+
+        // First, check for more common "data" subdirectory
+        if((hs->szIndexPath = CheckForDirectory(hs->szDataPath, _T("data"))) != NULL)
+            return ERROR_SUCCESS;
+
+        // Second, try the "darch" subdirectory (older builds of HOTS - Alpha)
+        if((hs->szIndexPath = CheckForDirectory(hs->szDataPath, _T("darch"))) != NULL)
+            return ERROR_SUCCESS;
+    }
+
+    // One of the paths was not found
+    return ERROR_FILE_NOT_FOUND;
+}
+
+DWORD CheckDataFilesDirectory(TCascStorage * hs)
+{
+    TCHAR szPathBuffer[MAX_PATH];
+    bool bTwoDigitFolderFound = false;
+
+    // Combine the path with the "data" subfolder.
+    CombinePath(szPathBuffer, _countof(szPathBuffer), hs->szRootPath, _T("data"), NULL);
+
+    // When CASC_FEATURE_ONLINE is not set, then the folder must exist
+    if((hs->dwFeatures & CASC_FEATURE_ONLINE) == 0)
+    {
+        // Check if there are subfolders at all. If not, do not bother
+        // the file system with open requests into data files folder
+        if(ScanDirectory(szPathBuffer, CheckForTwoDigitFolder, NULL, &bTwoDigitFolderFound) != ERROR_SUCCESS)
+        {
+            hs->dwFeatures &= ~CASC_FEATURE_DATA_FILES;
+            return ERROR_PATH_NOT_FOUND;
+        }
+
+        if(bTwoDigitFolderFound == false)
+        {
+            hs->dwFeatures &= ~CASC_FEATURE_DATA_FILES;
+            return ERROR_PATH_NOT_FOUND;
+        }
+    }
+
+    // Create the path for raw files
+    if((hs->szFilesPath = CascNewStr(szPathBuffer)) == NULL)
+    {
+        hs->dwFeatures &= ~CASC_FEATURE_DATA_FILES;
+        return ERROR_NOT_ENOUGH_MEMORY;
+    }
+
+    return ERROR_SUCCESS;
+}
+
+DWORD LoadBuildFile(TCascStorage * hs)
 {
     PARSECSVFILE PfnParseProc = NULL;
-    DWORD dwErrCode;
-    bool bHasHeader = true;
+    DWORD dwErrCode = ERROR_NOT_SUPPORTED;
 
-    // We support ".build.info", ".build.db" or "versions"
-    switch (hs->BuildFileType)
+    // The build file must be known at this point, even for online storage
+    // that are to bo created
+    assert(hs->szBuildFile != NULL);
+
+    // Perform support for each build file type
+    switch(hs->BuildFileType)
     {
-        case CascBuildInfo:
-            PfnParseProc = ParseFile_BuildInfo;
+        case CascBuildDb:       // Older storages have "build.db"
+            dwErrCode = LoadCsvFile(hs, hs->szBuildFile, ParseFile_BuildDb, false);
             break;
 
-        case CascVersionsDb:
-            PfnParseProc = ParseFile_VersionsDb;
+        case CascBuildInfo:     // Current storages have "build.db"
+            dwErrCode = LoadCsvFile(hs, hs->szBuildFile, ParseFile_BuildInfo, true);
             break;
 
-        case CascBuildDb:
-            PfnParseProc = ParseFile_BuildDb;
-            bHasHeader = false;
+        case CascVersions:      // Online storages have "versions+cdns"
+            dwErrCode = LoadCsvFile(hs, ParseFile_Versions, _T("versions"), CASC_FEATURE_LOCAL_VERSIONS);
+            //if(dwErrCode == ERROR_SUCCESS)
+            //    dwErrCode = LoadCsvFile(hs, _T("cdns"), ParseFile_Cdns, CASC_FEATURE_LOCAL_CDNS);
             break;
 
         default:
-            return ERROR_NOT_SUPPORTED;
+            assert(false);
+            break;
     }
-
-    // If the storage is online storage, we need to download "versions"
-    if(hs->dwFeatures & CASC_FEATURE_ONLINE)
-    {
-        CASC_PATH<TCHAR> LocalPath;
-        QUERY_KEY FileData;
-        LPCTSTR szVersionsName = _T("versions");
-
-        // Inform the user about loading the build.info/build.db/versions
-        if(InvokeProgressCallback(hs, "Downloading the \"versions\" file", NULL, 0, 0))
-            return ERROR_CANCELLED;
-
-        // Shall we prefer the locally cached file?
-        LocalPath.SetPathRoot(hs->szRootPath);
-        LocalPath.AppendString(szVersionsName, true);
-        LocalPath.SetLocalCaching(hs->dwFeatures & CASC_FEATURE_LOCAL_VERSIONS);
-
-        // Download the file using Ribbit/HTTP protocol
-        dwErrCode = RibbitDownloadFile(hs->szCdnHostUrl, hs->szCodeName, szVersionsName, LocalPath, FileData);
-        if(dwErrCode == ERROR_SUCCESS)
-        {
-            // Parse the downloaded file
-            dwErrCode = LoadCsvFile(hs, FileData.pbData, FileData.cbData, ParseFile_VersionsDb, true);
-        }
-    }
-    else
-    {
-        assert(hs->szBuildFile != NULL);
-        dwErrCode = LoadCsvFile(hs, hs->szBuildFile, PfnParseProc, bHasHeader);
-    }
-
     return dwErrCode;
 }
 
@@ -1523,7 +1689,7 @@ DWORD LoadCdnsFile(TCascStorage * hs)
     LocalPath.SetLocalCaching(hs->dwFeatures & CASC_FEATURE_LOCAL_CDNS);
 
     // Download the file using Ribbit protocol
-    dwErrCode = RibbitDownloadFile(hs->szCdnHostUrl, hs->szCodeName, szCdnsName, LocalPath, FileData);
+    dwErrCode = RibbitDownloadFile(hs->szCdnServers, hs->szCodeName, szCdnsName, LocalPath, FileData);
     if(dwErrCode == ERROR_SUCCESS)
     {
         // Parse the downloaded file

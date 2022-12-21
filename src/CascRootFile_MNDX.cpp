@@ -2232,7 +2232,7 @@ class TFileNameDatabase
         DWORD edi;
 
         // Perform action based on the search phase
-        switch (pStruct40->SearchPhase)
+        switch(pStruct40->SearchPhase)
         {
             case MNDX_SEARCH_INITIALIZING:
             {

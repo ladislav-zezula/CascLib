@@ -526,20 +526,9 @@ bool CascCheckWildCard(const char * szString, const char * szWildCard);
 //-----------------------------------------------------------------------------
 // Hashing functions
 
-ULONGLONG HashStringJenkins(const char * szFileName);
-
 bool CascIsValidMD5(LPBYTE pbMd5);
 void CascCalculateDataBlockHash(void * pvDataBlock, DWORD cbDataBlock, LPBYTE md5_hash);
 bool CascVerifyDataBlockHash(void * pvDataBlock, DWORD cbDataBlock, LPBYTE expected_md5);
-
-//-----------------------------------------------------------------------------
-// Scanning a directory
-
-typedef bool (*INDEX_FILE_FOUND)(LPCTSTR szFileName, void * pvContext);
-
-bool DirectoryExists(LPCTSTR szDirectory);
-
-int ScanIndexDirectory(LPCTSTR szIndexPath, INDEX_FILE_FOUND pfnOnFileFound, void * pvContext);
 
 //-----------------------------------------------------------------------------
 // Argument structure versioning
