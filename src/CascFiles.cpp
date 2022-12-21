@@ -1509,45 +1509,45 @@ DWORD CheckCascBuildFileDirs(CASC_BUILD_FILE & BuildFile, LPCTSTR szLocalPath)
     // Clear the build file structure
     memset(&BuildFile, 0, sizeof(CASC_BUILD_FILE));
 
-// Allocate the 
-if((szWorkPath = CascNewStr(szLocalPath)) != NULL)
-{
-    if((szFilePath = CascNewStr(szLocalPath, 0x10)) != NULL)
+    // Allocate buffers for constructing file name
+    if((szWorkPath = CascNewStr(szLocalPath)) != NULL)
     {
-        size_t ccFilePath = _tcslen(szFilePath) + 0x10;
-
-        for(;;)
+        if((szFilePath = CascNewStr(szLocalPath, 0x10)) != NULL)
         {
-            // Try all supported build file types
-            for(size_t i = 0; i < _countof(BuildTypes); i++)
-            {
-                // Create the eventual build file name
-                CombinePath(szFilePath, ccFilePath, szWorkPath, BuildTypes[i].szFileName, NULL);
+            size_t ccFilePath = _tcslen(szFilePath) + 0x10;
 
-                // If the file exists there, we found it
-                if(CheckCascBuildFileExact(BuildFile, szFilePath) == ERROR_SUCCESS)
+            for(;;)
+            {
+                // Try all supported build file types
+                for(size_t i = 0; i < _countof(BuildTypes); i++)
                 {
-                    dwErrCode = ERROR_SUCCESS;
-                    goto __FreeAllocatedBuffers;
+                    // Create the eventual build file name
+                    CombinePath(szFilePath, ccFilePath, szWorkPath, BuildTypes[i].szFileName, NULL);
+
+                    // If the file exists there, we found it
+                    if(CheckCascBuildFileExact(BuildFile, szFilePath) == ERROR_SUCCESS)
+                    {
+                        dwErrCode = ERROR_SUCCESS;
+                        goto __FreeAllocatedBuffers;
+                    }
+                }
+
+                // Try to cut off one path path
+                if(!CutLastPathPart(szWorkPath))
+                {
+                    dwErrCode = ERROR_PATH_NOT_FOUND;
+                    break;
                 }
             }
 
-            // Try to cut off one path path
-            if(!CutLastPathPart(szWorkPath))
-            {
-                dwErrCode = ERROR_PATH_NOT_FOUND;
-                break;
-            }
+            __FreeAllocatedBuffers:
+            CASC_FREE(szFilePath);
         }
-
-    __FreeAllocatedBuffers:
-        CASC_FREE(szFilePath);
+        CASC_FREE(szWorkPath);
     }
-    CASC_FREE(szWorkPath);
-}
 
-// Unrecognized file name
-return dwErrCode;
+    // Unrecognized file name
+    return dwErrCode;
 }
 
 DWORD CheckOnlineStorage(PCASC_OPEN_STORAGE_ARGS pArgs, CASC_BUILD_FILE & BuildFile, bool bOnlineStorage)

@@ -1130,6 +1130,8 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO2 & StorInf
 static STORAGE_INFO1 StorageInfo1[] =
 {
     //- Storage folder name --------  - Compound file name hash --------  - Compound file data hash --------  - Example file to extract ---
+    {"HeeeHeee/00001",                "44833489ccf495e78d3a8f2ee9688ba6", "96e6457b649b11bcee54d52fa4be12e5", "ROOT"},
+
     {"Beta TVFS/00001",               "44833489ccf495e78d3a8f2ee9688ba6", "96e6457b649b11bcee54d52fa4be12e5", "ROOT"},
     {"Beta TVFS/00002",               "0ada2ba6b0decfa4013e0465f577abf1", "4da83fa60e0e505d14a5c21284142127", "ENCODING"},
 
