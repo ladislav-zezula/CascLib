@@ -61,32 +61,32 @@ static bool IndexDirectory_OnFileFound(
         else if(IsIndexFileName_V1(szFileName))
             hs->szIndexFormat = szIndexFormat_V1;
         else
-            return false;
+            return true;
     }
 
     if(hs->szIndexFormat == szIndexFormat_V2)
     {
         // Check the index file name format
         if(!IsIndexFileName_V2(szFileName))
-            return false;
+            return true;
 
         // Get the main index from the first two digits
         if(ConvertStringToInt(szFileName + 0, 2, IndexValue) != ERROR_SUCCESS)
-            return false;
+            return true;
         if(ConvertStringToInt(szFileName + 2, 8, IndexVersion) != ERROR_SUCCESS)
-            return false;
+            return true;
     }
     else if(hs->szIndexFormat == szIndexFormat_V1)
     {
         // Check the index file name format
         if(!IsIndexFileName_V1(szFileName))
-            return false;
+            return true;
 
         // Get the main index from the first two digits
         if(ConvertStringToInt(szFileName + 6, 1, IndexValue) != ERROR_SUCCESS)
-            return false;
+            return true;
         if(ConvertStringToInt(szFileName + 7, 1, IndexVersion) != ERROR_SUCCESS)
-            return false;
+            return true;
     }
     else
     {
