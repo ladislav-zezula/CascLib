@@ -46,7 +46,7 @@ class CASC_ARRAY
         assert(ItemCountMax != 0);
 
         // Create the array
-        if ((m_pItemArray = CASC_ALLOC<BYTE>(ItemSize * ItemCountMax)) == NULL)
+        if((m_pItemArray = CASC_ALLOC<BYTE>(ItemSize * ItemCountMax)) == NULL)
             return ERROR_NOT_ENOUGH_MEMORY;
 
         m_ItemCountMax = ItemCountMax;
@@ -61,7 +61,7 @@ class CASC_ARRAY
         void * pNewItems;
 
         // Try to enlarge the buffer, if needed
-        if (!EnlargeArray(m_ItemCount + NewItemCount, bEnlargeAllowed))
+        if(!EnlargeArray(m_ItemCount + NewItemCount, bEnlargeAllowed))
             return NULL;
         pNewItems = m_pItemArray + (m_ItemCount * m_ItemSize);
 
@@ -78,7 +78,7 @@ class CASC_ARRAY
         void * pNewItem = Insert(NewItemCount, bEnlargeAllowed);
 
         // Copy the item(s) to the array, if any
-        if (pNewItem && NewItems)
+        if(pNewItem && NewItems)
             memcpy(pNewItem, NewItems, (NewItemCount * m_ItemSize));
         return pNewItem;
     }
@@ -111,7 +111,7 @@ class CASC_ARRAY
         m_ItemCount = CASCLIB_MAX(m_ItemCount, ItemIndex+1);
 
         // If we inserted an item past the current end, we need to clear the items in-between
-        if (pbNewItem > pbLastItem)
+        if(pbNewItem > pbLastItem)
         {
             memset(pbLastItem, 0, (pbNewItem - pbLastItem));
             m_ItemCount = ItemIndex + 1;
@@ -200,7 +200,7 @@ class CASC_ARRAY
         assert(m_ItemCountMax != 0);
 
         // Shall we enlarge the table?
-        if (NewItemCount > m_ItemCountMax)
+        if(NewItemCount > m_ItemCountMax)
         {
             // Deny enlarge if not allowed
             if(bEnlargeAllowed == false)
@@ -213,7 +213,7 @@ class CASC_ARRAY
 
             // Allocate new table
             NewItemArray = CASC_REALLOC(m_pItemArray, (ItemCountMax * m_ItemSize));
-            if (NewItemArray == NULL)
+            if(NewItemArray == NULL)
                 return false;
 
             // Set the new table size

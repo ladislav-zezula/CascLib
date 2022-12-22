@@ -1198,7 +1198,7 @@ static LPCSTR szCdn2 = "http://us.falloflordaeron.com:8000";
 
 static STORAGE_INFO2 StorageInfo2[] =
 {
-    {szDefCdn, "hsb",         "us"},
+    //{szDefCdn, "hsb",         "us"},
     {szCdn2,   "wow",         "us"},
     {szDefCdn, "wowt",        "us", "interface/framexml/localization.lua"},
     {szDefCdn, "wow_classic", "us"},
@@ -1206,6 +1206,10 @@ static STORAGE_INFO2 StorageInfo2[] =
 
 //-----------------------------------------------------------------------------
 // Main
+
+//#define LOAD_STORAGES_CMD_LINE
+//#define LOAD_STORAGES_LOCAL
+#define LOAD_STORAGES_ONLINE
 
 int main(int argc, char * argv[])
 {
@@ -1219,6 +1223,7 @@ int main(int argc, char * argv[])
     _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif  // defined(_MSC_VER) && defined(_DEBUG)
 
+#ifdef LOAD_STORAGES_CMD_LINE
     //
     // Run tests for each storage entered on command line
     //
@@ -1231,7 +1236,9 @@ int main(int argc, char * argv[])
         if(dwErrCode != ERROR_SUCCESS && dwErrCode != ERROR_FILE_NOT_FOUND)
             break;
     }
+#endif  // LOAD_STORAGES_CMD_LINE
 
+#ifdef LOAD_STORAGES_LOCAL
     //
     // Run the tests for every local storage in my collection
     //
@@ -1242,11 +1249,12 @@ int main(int argc, char * argv[])
         if(dwErrCode != ERROR_SUCCESS && dwErrCode != ERROR_FILE_NOT_FOUND)
             break;
     }
+#endif  // LOAD_STORAGES_LOCAL
 
+#ifdef LOAD_STORAGES_ONLINE
     //
     // Run the tests for every available online storage in my collection
     //
-
     for (size_t i = 0; i < _countof(StorageInfo2); i++)
     {
         // Attempt to open the storage and extract single file
@@ -1254,10 +1262,11 @@ int main(int argc, char * argv[])
         if(dwErrCode != ERROR_SUCCESS)
             break;
     }
+#endif  // LOAD_STORAGES_ONLINE
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER) && defined(_DEBUG)
     //_CrtDumpMemoryLeaks();
-#endif  // _MSC_VER
+#endif  // defined(_MSC_VER) && defined(_DEBUG)
 
     return (int)dwErrCode;
 }

@@ -679,13 +679,14 @@ static bool BaseHttp_Download(TFileStream * pStream)
     char request[0x100];
     size_t response_length = 0;
     size_t request_length = 0;
-    DWORD dwErrCode;
+    DWORD dwErrCode = ERROR_SUCCESS;
 
     // If we already have the data, it's success
     if(pStream->Base.Socket.fileData == NULL)
     {
         // Reset the file data length as well
         pStream->Base.Socket.fileDataLength = 0;
+        dwErrCode = ERROR_BAD_FORMAT;
 
         // Construct the request, either HTTP or Ribbit (https://wowdev.wiki/Ribbit).
         // Note that Ribbit requests don't start with slash
@@ -709,11 +710,9 @@ static bool BaseHttp_Download(TFileStream * pStream)
                 {
                     // Move the data from MIME to HTTP stream
                     pStream->Base.Socket.fileData = Mime.GiveAway(&pStream->Base.Socket.fileDataLength);
+                    if(pStream->Base.Socket.fileData == NULL)
+                        dwErrCode = ERROR_BAD_FORMAT;
                 }
-            }
-            else
-            {
-                SetCascError(ERROR_BAD_FORMAT);
             }
 
             // Free the buffer
@@ -721,8 +720,10 @@ static bool BaseHttp_Download(TFileStream * pStream)
         }
     }
 
-    // If we have data loaded, return true
-    return (pStream->Base.Socket.fileData != NULL);
+    // Process error codes
+    if(dwErrCode != ERROR_SUCCESS)
+        SetCascError(dwErrCode);
+    return (dwErrCode == ERROR_SUCCESS);
 }
 
 static bool BaseHttp_Open(TFileStream * pStream, LPCTSTR szFileName, DWORD dwStreamFlags)

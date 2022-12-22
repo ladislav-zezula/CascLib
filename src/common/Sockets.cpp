@@ -94,7 +94,7 @@ char * CASC_SOCKET::ReadResponse(const char * request, size_t request_length, si
             server_response[total_received] = 0;
 
             // On a HTTP protocol, we need to check whether we received all data
-            http_flags = HttpInfo.IsDataComplete(server_response, total_received, &content_length);
+            http_flags = HttpInfo.GetHttpReplyFlags(server_response, total_received, &content_length);
             if(http_flags & HTTP_HEADER_COMPLETE)
             {
                 // Check for maximum file size

@@ -229,10 +229,10 @@ void CascStrCopy(char * szTarget, size_t cchTarget, const char * szSource, size_
 {
     size_t cchToCopy;
 
-    if (cchTarget > 0)
+    if(cchTarget > 0)
     {
         // Make sure we know the length
-        if (cchSource == -1)
+        if(cchSource == -1)
             cchSource = strlen(szSource);
         cchToCopy = CASCLIB_MIN((cchTarget - 1), cchSource);
 
@@ -246,10 +246,10 @@ void CascStrCopy(char * szTarget, size_t cchTarget, const wchar_t * szSource, si
 {
     size_t cchToCopy;
 
-    if (cchTarget > 0)
+    if(cchTarget > 0)
     {
         // Make sure we know the length
-        if (cchSource == -1)
+        if(cchSource == -1)
             cchSource = wcslen(szSource);
         cchToCopy = CASCLIB_MIN((cchTarget - 1), cchSource);
 
@@ -262,10 +262,10 @@ void CascStrCopy(wchar_t * szTarget, size_t cchTarget, const char * szSource, si
 {
     size_t cchToCopy;
 
-    if (cchTarget > 0)
+    if(cchTarget > 0)
     {
         // Make sure we know the length
-        if (cchSource == -1)
+        if(cchSource == -1)
             cchSource = strlen(szSource);
         cchToCopy = CASCLIB_MIN((cchTarget - 1), cchSource);
 
@@ -278,10 +278,10 @@ void CascStrCopy(wchar_t * szTarget, size_t cchTarget, const wchar_t * szSource,
 {
     size_t cchToCopy;
 
-    if (cchTarget > 0)
+    if(cchTarget > 0)
     {
         // Make sure we know the length
-        if (cchSource == -1)
+        if(cchSource == -1)
             cchSource = wcslen(szSource);
         cchToCopy = CASCLIB_MIN((cchTarget - 1), cchSource);
 

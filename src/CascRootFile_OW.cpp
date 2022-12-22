@@ -175,7 +175,7 @@ struct TCmfFile
         {
             PCMF_HEADER_V3 pHeader3 = (PCMF_HEADER_V3)pbCmfData;
             
-            if ((LPBYTE)(pHeader3 + 1) > pbCmfEnd)
+            if((LPBYTE)(pHeader3 + 1) > pbCmfEnd)
                 return NULL;
 
             BuildVersion = pHeader3->BuildVersion;
@@ -578,11 +578,11 @@ DWORD RootHandler_CreateOverwatch(TCascStorage * hs, LPBYTE pbRootFile, DWORD cb
         if(Indices[0] != CSV_INVALID_INDEX && Indices[1] != CSV_INVALID_INDEX)
         {
             pRootHandler = new TRootHandler_OW();
-            if (pRootHandler != NULL)
+            if(pRootHandler != NULL)
             {
                 // Load the root directory. If load failed, we free the object
                 dwErrCode = pRootHandler->Load(hs, Csv, Indices[0], Indices[1]);
-                if (dwErrCode != ERROR_SUCCESS)
+                if(dwErrCode != ERROR_SUCCESS)
                 {
                     delete pRootHandler;
                     pRootHandler = NULL;

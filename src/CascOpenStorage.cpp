@@ -1155,11 +1155,17 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs, L
 
         // For local (game) storages, we need the data and indices subdirectory
         if(hs->dwFeatures & CASC_FEATURE_DATA_ARCHIVES)
-            CheckArchiveFilesDirectories(hs);
+        {
+            if(CheckArchiveFilesDirectories(hs) != ERROR_SUCCESS)
+                hs->dwFeatures &= ~CASC_FEATURE_DATA_ARCHIVES;
+        }
 
         // For data files storage, we need that folder
         if(hs->dwFeatures & CASC_FEATURE_DATA_FILES)
-            CheckDataFilesDirectory(hs);
+        {
+            if(CheckDataFilesDirectory(hs) != ERROR_SUCCESS)
+                hs->dwFeatures &= ~CASC_FEATURE_DATA_FILES;
+        }
 
         // Enable caching of the sockets. This will add references
         // to all existing and all future sockets

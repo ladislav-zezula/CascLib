@@ -1621,25 +1621,15 @@ DWORD CheckDataFilesDirectory(TCascStorage * hs)
         // Check if there are subfolders at all. If not, do not bother
         // the file system with open requests into data files folder
         if(ScanDirectory(szPathBuffer, CheckForTwoDigitFolder, NULL, &bTwoDigitFolderFound) != ERROR_SUCCESS)
-        {
-            hs->dwFeatures &= ~CASC_FEATURE_DATA_FILES;
             return ERROR_PATH_NOT_FOUND;
-        }
 
         if(bTwoDigitFolderFound == false)
-        {
-            hs->dwFeatures &= ~CASC_FEATURE_DATA_FILES;
             return ERROR_PATH_NOT_FOUND;
-        }
     }
 
     // Create the path for raw files
     if((hs->szFilesPath = CascNewStr(szPathBuffer)) == NULL)
-    {
-        hs->dwFeatures &= ~CASC_FEATURE_DATA_FILES;
         return ERROR_NOT_ENOUGH_MEMORY;
-    }
-
     return ERROR_SUCCESS;
 }
 

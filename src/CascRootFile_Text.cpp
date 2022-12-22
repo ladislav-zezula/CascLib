@@ -36,7 +36,7 @@ struct TRootHandler_SC1 : public TFileTreeRoot
         {
             // There must be 2 or 3 elements
             nColumns = Csv[CSV_ZERO].GetColumnCount();
-            if (nColumns == 2 || nColumns == 3)
+            if(nColumns == 2 || nColumns == 3)
             {
                 const CASC_CSV_COLUMN & FileName = Csv[CSV_ZERO][CSV_ZERO];
                 const CASC_CSV_COLUMN & CKeyStr = Csv[CSV_ZERO][1];

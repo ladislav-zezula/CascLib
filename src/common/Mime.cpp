@@ -37,7 +37,18 @@ static size_t DecodeValueInt32(const char * string, const char * string_end)
     return result;
 }
 
-size_t CASC_MIME_HTTP::IsDataComplete(const char * response, size_t response_length, size_t * ptr_content_length)
+const char * GetContentLengthValue(const char * response, const char * end)
+{
+    const char * ptr;
+
+    if((ptr = strstr(response, "Content-Length: ")) != NULL && ptr < end)
+        return ptr;
+    if((ptr = strstr(response, "content-length: ")) != NULL && ptr < end)
+        return ptr;
+    return NULL;
+}
+
+size_t CASC_MIME_HTTP::GetHttpReplyFlags(const char * response, size_t response_length, size_t * ptr_content_length)
 {
     const char * content_length_ptr;
     const char * content_begin_ptr;
@@ -45,26 +56,33 @@ size_t CASC_MIME_HTTP::IsDataComplete(const char * response, size_t response_len
     // Do not parse the HTTP response multiple times
     if((http_flags & HTTP_HEADER_COMPLETE) == 0 && response_length > 8)
     {
-        // Check the begin of the response
-        if(!strncmp(response, "HTTP/1.1", 8))
+        // Check if there's begin of the content
+        if((content_begin_ptr = strstr(response, "\r\n\r\n")) != NULL)
         {
-            // Check if there's begin of the content
-            if((content_begin_ptr = strstr(response, "\r\n\r\n")) != NULL)
+            // Check the begin of the response
+            if(!strncmp(response, "HTTP/1.1 ", 9))
             {
-                // HTTP responses contain "Content-Length: %u\n\r"
-                if((content_length_ptr = strstr(response, "Content-Length: ")) == NULL)
-                    content_length_ptr = strstr(response, "content-length: ");
-                if(content_length_ptr != NULL)
+                // Extract the HTTP error code
+                http_code = DecodeValueInt32(response + 9, response + 13);
+                if(http_code == 200)
                 {
-                    // The content length info must be before the actual content
-                    if(content_length_ptr < content_begin_ptr)
+                    // Find the position of the "Content-Length" variable
+                    if((content_length_ptr = GetContentLengthValue(response, content_begin_ptr)) != NULL)
                     {
-                        // Fill the HTTP info cache
-                        content_offset = (content_begin_ptr + 4) - response;
-                        content_length = DecodeValueInt32(content_length_ptr + 16, content_begin_ptr);
-                        total_length = content_offset + content_length;
-                        http_flags = HTTP_HEADER_COMPLETE;
+                        // The content length info must be before the actual content
+                        if(content_length_ptr < content_begin_ptr)
+                        {
+                            // Fill the HTTP info cache
+                            content_offset = (content_begin_ptr + 4) - response;
+                            content_length = DecodeValueInt32(content_length_ptr + 16, content_begin_ptr);
+                            total_length = content_offset + content_length;
+                            http_flags = HTTP_HEADER_COMPLETE;
+                        }
                     }
+                }
+                else
+                {
+                    http_flags = HTTP_HEADER_COMPLETE | HTTP_DATA_COMPLETE;
                 }
             }
         }
@@ -170,15 +188,20 @@ DWORD CASC_MIME_ELEMENT::Load(char * mime_data_begin, char * mime_data_end, cons
     CASC_MIME_HTTP HttpInfo;
     size_t length_begin;
     size_t length_end;
+    size_t http_flags;
     char * mime_line;
     char boundary_begin[MAX_LENGTH_BOUNDARY + 2];
     char boundary_end[MAX_LENGTH_BOUNDARY + 4];
     DWORD dwErrCode = ERROR_SUCCESS;
     bool mime_version = false;
 
+    // Parse the HTTP headers
+    http_flags = HttpInfo.GetHttpReplyFlags(mime_data_begin, (mime_data_end - mime_data_begin));
+    if(HttpInfo.http_code != 200)
+        return ERROR_FILE_NOT_FOUND;
+
     // Diversion for HTTP: No need to parse the entire headers and stuff.
-    // Just give the data right away
-    if(HttpInfo.IsDataComplete(mime_data_begin, (mime_data_end - mime_data_begin)))
+    if(http_flags & HTTP_DATA_COMPLETE)
     {
         if((data.begin = CASC_ALLOC<BYTE>(HttpInfo.content_length)) == NULL)
             return ERROR_NOT_ENOUGH_MEMORY;
