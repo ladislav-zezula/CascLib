@@ -158,7 +158,6 @@ CASC_CSV::CASC_CSV(size_t nLinesMax, bool bHasHeader)
     m_pvUserData = NULL;
     m_szCsvFile = NULL;
     m_szCsvPtr = NULL;
-    m_nCsvFile = 0;
     m_nLines = 0;
     m_bHasHeader = bHasHeader;
 
@@ -185,8 +184,9 @@ CASC_CSV::CASC_CSV(size_t nLinesMax, bool bHasHeader)
 CASC_CSV::~CASC_CSV()
 {
     if(m_pLines != NULL)
+    {
         delete[] m_pLines;
-    CASC_FREE(m_szCsvFile);
+    }
 }
 
 DWORD CASC_CSV::SetNextLineProc(CASC_CSV_NEXTPROC PfnNextLineProc, CASC_CSV_NEXTPROC PfnNextColProc, void * pvUserData)
@@ -206,24 +206,18 @@ DWORD CASC_CSV::SetNextLineProc(CASC_CSV_NEXTPROC PfnNextLineProc, CASC_CSV_NEXT
 
 DWORD CASC_CSV::Load(LPCTSTR szFileName)
 {
-    DWORD cbFileData = 0;
-    DWORD dwErrCode = ERROR_SUCCESS;
+    DWORD dwErrCode;
 
-    m_szCsvFile = (char *)LoadFileToMemory(szFileName, &cbFileData);
-    if(m_szCsvFile != NULL)
+    dwErrCode = LoadFileToMemory(szFileName, CsvFile);
+    if(dwErrCode == ERROR_SUCCESS)
     {
         // Assign the data to the CSV object
+        m_szCsvFile = (char *)CsvFile.pbData;
         m_szCsvPtr = m_szCsvFile;
-        m_nCsvFile = cbFileData;
 
         // Parse the data
         dwErrCode = ParseCsvData() ? ERROR_SUCCESS : ERROR_BAD_FORMAT;
     }
-    else
-    {
-        dwErrCode = GetCascError();
-    }
-
     return dwErrCode;
 }
 
@@ -231,19 +225,16 @@ DWORD CASC_CSV::Load(LPBYTE pbData, size_t cbData)
 {
     DWORD dwErrCode = ERROR_NOT_ENOUGH_MEMORY;
 
-    m_szCsvFile = CASC_ALLOC<char>(cbData + 1);
-    if(m_szCsvFile != NULL)
+    if((dwErrCode = CsvFile.SetData(pbData, cbData)) == ERROR_SUCCESS)
     {
         // Copy the entire data and terminate them with zero
-        memcpy(m_szCsvFile, pbData, cbData);
-        m_szCsvFile[cbData] = 0;
+        m_szCsvFile = (char *)CsvFile.pbData;
+        m_szCsvFile[CsvFile.cbData] = 0;
         m_szCsvPtr = m_szCsvFile;
-        m_nCsvFile = cbData;
 
         // Parse the data
         dwErrCode = ParseCsvData() ? ERROR_SUCCESS : ERROR_BAD_FORMAT;
     }
-
     return dwErrCode;
 }
 

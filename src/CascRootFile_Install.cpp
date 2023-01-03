@@ -36,7 +36,7 @@ struct TRootHandler_Install : public TFileTreeRoot
         pbInstallFile += InHeader.HeaderLength;
 
         // Skip the tags
-        for (DWORD i = 0; i < InHeader.TagCount; i++)
+        for(DWORD i = 0; i < InHeader.TagCount; i++)
         {
             szString = (const char *)pbInstallFile;
             nBitmapLength = GetTagBitmapLength(pbInstallFile, pbInstallEnd, InHeader.EntryCount);
@@ -90,14 +90,14 @@ DWORD CaptureInstallHeader(CASC_INSTALL_HEADER & InHeader, LPBYTE pbFileData, si
     return ERROR_SUCCESS;
 }
 
-DWORD RootHandler_CreateInstall(TCascStorage * hs, LPBYTE pbInstallFile, DWORD cbInstallFile)
+DWORD RootHandler_CreateInstall(TCascStorage * hs, CASC_BLOB & InstallFile)
 {
     CASC_INSTALL_HEADER InHeader;
     TRootHandler_Install * pRootHandler = NULL;
     DWORD dwErrCode = ERROR_BAD_FORMAT;
 
     // Capture the header of the DOWNLOAD file
-    dwErrCode = CaptureInstallHeader(InHeader, pbInstallFile, cbInstallFile);
+    dwErrCode = CaptureInstallHeader(InHeader, InstallFile.pbData, InstallFile.cbData);
     if(dwErrCode == ERROR_SUCCESS)
     {
         // Allocate the root handler object
@@ -105,7 +105,7 @@ DWORD RootHandler_CreateInstall(TCascStorage * hs, LPBYTE pbInstallFile, DWORD c
         if(pRootHandler != NULL)
         {
             // Parse the entire install manifest
-            dwErrCode = pRootHandler->Load(hs, InHeader, pbInstallFile, pbInstallFile + cbInstallFile);
+            dwErrCode = pRootHandler->Load(hs, InHeader, InstallFile.pbData, InstallFile.End());
             hs->pRootHandler = pRootHandler;
         }
     }

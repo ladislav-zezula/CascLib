@@ -1190,7 +1190,7 @@ class TSparseArray
                     "========================================================\n"
                     "   Index    Base200h  +40  +80  +C0  +100 +140 +180 +1C0\n"
                     "--------------------------------------------------------\n");
-        for (size_t i = 0; i < BaseVals.ItemCount; i++)
+        for(size_t i = 0; i < BaseVals.ItemCount; i++)
         {
             fprintf(fp, "[%08zX]: %08x  %04x %04x %04x %04x %04x %04x %04x\n", GROUP_TO_INDEX(i), BaseVals[i].BaseValue200,
                 BaseVals[i].AddValue40,
@@ -1208,7 +1208,7 @@ class TSparseArray
                     "========================================\n"
                     "   Index     Item0    Item1\n"
                     "-----------------------------\n");
-        for (size_t i = 0; i < IndexToItem0.ItemCount; i++)
+        for(size_t i = 0; i < IndexToItem0.ItemCount; i++)
         {
             fprintf(fp, "[%08zX]: %08x %08x\n", GROUP_TO_INDEX(i), IndexToItem0[i], IndexToItem1[i]);
         }
@@ -1225,7 +1225,7 @@ class TSparseArray
             memset(ArrayInvert, 0xFF, TotalItemCount * sizeof(size_t));
 
             // Load the both arrays
-            for (size_t i = 0; i < TotalItemCount; i++)
+            for(size_t i = 0; i < TotalItemCount; i++)
             {
                 if(IsItemPresent(i))
                     ArrayNormal[IndexNormal++] = i;
@@ -1238,7 +1238,7 @@ class TSparseArray
                         "========================================\n"
                         "   Index     Item0    Item1\n"
                         "-----------------------------\n");
-            for (size_t i = 0; i < TotalItemCount; i++)
+            for(size_t i = 0; i < TotalItemCount; i++)
             {
                 char NormalValue[0x20];
                 char InvertValue[0x20];
@@ -1256,7 +1256,7 @@ class TSparseArray
 
         // Output array of all values
         fprintf(fp, "Item List: Index -> Value\n==========================\n");
-        for (size_t i = 0; i < TotalItemCount; i++)
+        for(size_t i = 0; i < TotalItemCount; i++)
         {
             if(IsItemPresent(i))
             {
@@ -1698,7 +1698,7 @@ class TFileNameDatabase
         {
 /*
             printf("\n");
-            for (DWORD i = 0; i < CollisionHiBitsIndexes.TotalItemCount; i++)
+            for(DWORD i = 0; i < CollisionHiBitsIndexes.TotalItemCount; i++)
             {
                 if(CollisionHiBitsIndexes.IsItemPresent(i))
                     printf("[%02X] = %02X\n", i, CollisionHiBitsIndexes.GetIntValueAt(i));
@@ -1863,7 +1863,7 @@ class TFileNameDatabase
         DWORD eax;
 
         // HOTS: 1957B95
-        for (;;)
+        for(;;)
         {
             // Get the hasn table item
             pHashEntry = &HashTable[TableIndex & HashTableMask];
@@ -1954,7 +1954,7 @@ class TFileNameDatabase
         PHASH_ENTRY pHashEntry;
 
         // HOTS: 1958D84
-        for (;;)
+        for(;;)
         {
             pHashEntry = &HashTable[TableIndex & HashTableMask];
             if(TableIndex == pHashEntry->NextIndex)
@@ -2029,7 +2029,7 @@ class TFileNameDatabase
         FILE * fp = fopen("E:\\PathFragmentTable.txt", "wt");
         if(fp != NULL)
         {
-            for (DWORD i = 0; i < HashTable.ItemCount; i++)
+            for(DWORD i = 0; i < HashTable.ItemCount; i++)
             {
                 FragOffs = HashTable[i].FragOffs;
                 fprintf(fp, "%02x ('%c') %08X %08X %08X", i, (0x20 <= i && i < 0x80) ? i : 0x20, HashTable[i].ItemIndex, HashTable[i].NextIndex, FragOffs);
@@ -2267,7 +2267,7 @@ class TFileNameDatabase
             case MNDX_SEARCH_SEARCHING:
             {
                 // HOTS: 1959522
-                for (;;)
+                for(;;)
                 {
                     // HOTS: 1959530
                     if(pStruct40->ItemCount == pStruct40->PathStops.ItemCount)
@@ -2951,11 +2951,12 @@ struct TRootHandler_MNDX : public TFileTreeRoot
 //-----------------------------------------------------------------------------
 // Public functions - MNDX info
 
-DWORD RootHandler_CreateMNDX(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile)
+DWORD RootHandler_CreateMNDX(TCascStorage * hs, CASC_BLOB & RootFile)
 {
     TRootHandler_MNDX * pRootHandler = NULL;
     FILE_MNDX_HEADER MndxHeader;
-    LPBYTE pbRootEnd = pbRootFile + cbRootFile;
+    LPBYTE pbRootFile = RootFile.pbData;
+    LPBYTE pbRootEnd = RootFile.End();
     DWORD dwErrCode = ERROR_BAD_FORMAT;
 
     // Verify the header of the ROOT file

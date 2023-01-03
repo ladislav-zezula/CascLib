@@ -674,23 +674,15 @@ DWORD CASC_MIME::Load(char * data, size_t length)
 
 DWORD CASC_MIME::Load(LPCTSTR szFileName)
 {
-    char * szFileData;
-    DWORD cbFileData = 0;
+    CASC_BLOB FileData;
     DWORD dwErrCode = ERROR_SUCCESS;
 
     // Note that LoadFileToMemory allocated one byte more and puts zero at the end
     // Thus, we can treat it as zero-terminated string
-    szFileData = (char *)LoadFileToMemory(szFileName, &cbFileData);
-    if(szFileData != NULL)
+    if((dwErrCode = LoadFileToMemory(szFileName, FileData)) == ERROR_SUCCESS)
     {
-        dwErrCode = Load(szFileData, cbFileData);
-        CASC_FREE(szFileData);
+        dwErrCode = Load((char *)FileData.pbData, FileData.cbData);
     }
-    else
-    {
-        dwErrCode = GetCascError();
-    }
-
     return dwErrCode;
 }
 

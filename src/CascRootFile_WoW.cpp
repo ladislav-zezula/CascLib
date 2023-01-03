@@ -470,12 +470,13 @@ struct TRootHandler_WoW : public TFileTreeRoot
 //-----------------------------------------------------------------------------
 // Public functions
 
-DWORD RootHandler_CreateWoW(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile, DWORD dwLocaleMask)
+DWORD RootHandler_CreateWoW(TCascStorage * hs, CASC_BLOB & RootFile, DWORD dwLocaleMask)
 {
     TRootHandler_WoW * pRootHandler = NULL;
     FILE_ROOT_HEADER_82 RootHeader;
     ROOT_FORMAT RootFormat = RootFormatWoW6x;
-    LPBYTE pbRootEnd = pbRootFile + cbRootFile;
+    LPBYTE pbRootFile = RootFile.pbData;
+    LPBYTE pbRootEnd = RootFile.End();
     LPBYTE pbRootPtr;
     DWORD FileCounterHashless = 0;
     DWORD dwErrCode = ERROR_BAD_FORMAT;

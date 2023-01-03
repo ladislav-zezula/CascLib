@@ -413,7 +413,7 @@ class TLogHelper
 #ifdef CASCLIB_PLATFORM_WINDOWS
             CONSOLE_SCREEN_BUFFER_INFO ScreenInfo;
             GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &ScreenInfo);
-            nSaveConsoleWidth = (ScreenInfo.srWindow.Right - ScreenInfo.srWindow.Left);
+            nSaveConsoleWidth = ((size_t)ScreenInfo.srWindow.Right - (size_t)ScreenInfo.srWindow.Left);
 #else
             // On non-Windows platforms, we assume that width of the console line
             // is 100 characters

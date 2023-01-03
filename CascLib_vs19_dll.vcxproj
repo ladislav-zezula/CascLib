@@ -244,6 +244,7 @@
     <ClInclude Include="src\common\FileTree.h" />
     <ClInclude Include="src\common\ListFile.h" />
     <ClInclude Include="src\common\Map.h" />
+    <ClInclude Include="src\common\Path.h" />
     <ClInclude Include="src\common\RootHandler.h" />
     <ClInclude Include="src\common\Mime.h" />
     <ClInclude Include="src\common\Sockets.h" />

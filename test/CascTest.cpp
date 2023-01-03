@@ -66,22 +66,13 @@ static const char szCircleChar[] = "|/-\\";
 // Local structures
 
 // For local storages
-typedef struct _STORAGE_INFO1
+typedef struct _STORAGE_INFO
 {
     LPCSTR szPath;                          // Path to the CASC storage
     LPCSTR szNameHash;                      // MD5 of all file names extracted sequentially
     LPCSTR szDataHash;                      // MD5 of all file data extracted sequentially
-    LPCSTR szFileName;                      // Example file in the storage
-} STORAGE_INFO1, *PSTORAGE_INFO1;
-
-// For online storages
-typedef struct _STORAGE_INFO2
-{
-    LPCSTR szCdnServer;                     // URL of the CDN server
-    LPCSTR szCodeName;                      // Codename of the product
-    LPCSTR szRegion;                        // Region of the product. If NULL, CascLib will open the first one in the "versions"
-    LPCSTR szFile;                          // Example file in the storage
-} STORAGE_INFO2, *PSTORAGE_INFO2;
+    LPCSTR szFileName;                      // file in the storage
+} STORAGE_INFO, *PSTORAGE_INFO;
 
 // For running tests on an open storage
 struct TEST_PARAMS
@@ -249,30 +240,6 @@ static LPTSTR MakeFullPath(LPTSTR szBuffer, size_t ccBuffer, LPCSTR szStorage)
 
     // Copy the rest of the path
     return CopyPath(szBuffer, szBufferEnd, szStorage);
-}
-
-static bool AppendParamSuffix(LPTSTR szBuffer, size_t cchBuffer, LPCSTR szSuffix)
-{
-    LPTSTR szBufferPtr = szBuffer + _tcslen(szBuffer);
-    LPTSTR szBufferEnd = szBuffer + cchBuffer;
-
-    if(szSuffix && szSuffix[0])
-    {
-        // Append the colon
-        if((szBufferPtr + 1) < szBufferEnd)
-        {
-            *szBufferPtr++ = '*';
-        }
-
-        // Append the suffix
-        if((szBufferPtr + strlen(szSuffix)) < szBufferEnd)
-        {
-            CascStrCopy(szBufferPtr, (szBufferEnd - szBufferPtr), szSuffix);
-            return true;
-        }
-    }
-
-    return false;
 }
 
 static LPCTSTR GetTheProperListfile(HANDLE hStorage, LPCTSTR szListFile)
@@ -939,7 +906,7 @@ static DWORD Storage_ReadFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
     return Storage_EnumFiles(LogHelper, Params);
 }
 
-static DWORD LocalStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO1 & StorInfo)
+static DWORD LocalStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO & StorInfo)
 {
     TLogHelper LogHelper(StorInfo.szPath);
     HANDLE hStorage;
@@ -1041,32 +1008,21 @@ static bool WINAPI OnlineStorage_OpenCB(
     return false;
 }
 
-static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO2 & StorInfo)
+static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO & StorInfo)
 {
     CASC_OPEN_STORAGE_ARGS OpenArgs = {sizeof(CASC_OPEN_STORAGE_ARGS)};
-    TLogHelper LogHelper(StorInfo.szCodeName);
+    TLogHelper LogHelper(StorInfo.szPath);
     HANDLE hStorage;
     TCHAR szParams[MAX_PATH+0x40];
     DWORD dwErrCode = ERROR_SUCCESS;
 
-    LogHelper.PrintMessage("CDN Server: %s", StorInfo.szCdnServer);
     LogHelper.PrintMessage("Local Cache: %s", CASC_ONLINE_ROOT);
     LogHelper.PrintProgress("Opening storage ...");
 
     // Prepare the path
-    CascStrPrintf(szParams, _countof(szParams), _T("%hs/%hs"), CASC_ONLINE_ROOT, StorInfo.szCodeName);
+    CascStrPrintf(szParams, _countof(szParams), _T("%hs/%hs"), CASC_ONLINE_ROOT, StorInfo.szPath);
 
-    // Append custom CDN URL, if any
-    AppendParamSuffix(szParams, _countof(szParams), StorInfo.szCdnServer);
-
-    // Append codename, if any
-    if(AppendParamSuffix(szParams, _countof(szParams), StorInfo.szCodeName))
-    {
-        // Append region, if any
-        AppendParamSuffix(szParams, _countof(szParams), StorInfo.szRegion);
-    }
-
-    // Open te online storage
+    // Open the online storage
     OpenArgs.PfnProgressCallback = OnlineStorage_OpenCB;
     OpenArgs.PtrProgressParam = &LogHelper;
     OpenArgs.dwFlags = CASC_FEATURE_LOCAL_CDNS | CASC_FEATURE_LOCAL_VERSIONS;
@@ -1075,7 +1031,7 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO2 & StorInf
         TEST_PARAMS Params;
 
         // Check a specific file
-        if(StorInfo.szFile != NULL)
+        if(StorInfo.szFileName != NULL)
         {
             CASC_FILE_FULL_INFO FileInfo = {0};
             HANDLE hFile = NULL;
@@ -1083,12 +1039,12 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO2 & StorInf
             bool bSucceeded = false;
 
             // Just get the file info
-            LogHelper.PrintProgress("Querying file \"%s\" ...", GetPlainFileName(StorInfo.szFile));
-            if(CascOpenFile(hStorage, StorInfo.szFile, 0, CASC_OPEN_BY_NAME, &hFile))
+            LogHelper.PrintProgress("Querying file \"%s\" ...", GetPlainFileName(StorInfo.szFileName));
+            if(CascOpenFile(hStorage, StorInfo.szFileName, 0, CASC_OPEN_BY_NAME, &hFile))
             {
                 if(CascGetFileInfo(hFile, CascFileFullInfo, &FileInfo, sizeof(CASC_FILE_FULL_INFO), NULL))
                 {
-                    LogHelper.PrintMessage("  File name:     %s", StorInfo.szFile);
+                    LogHelper.PrintMessage("  File name:     %s", StorInfo.szFileName);
                     LogHelper.PrintMessage("  File hash:     %s", GetHash(FileInfo.CKey, szBuffer));
                     LogHelper.PrintMessage("  File size:     %08X", FileInfo.ContentSize);
                     LogHelper.PrintMessage("  Locale flags:  %08X", FileInfo.LocaleFlags);
@@ -1103,11 +1059,13 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO2 & StorInf
             if(bSucceeded == false)
             {
                 dwErrCode = GetCascError();
-                LogHelper.PrintError("Failed to retrieve file information.", StorInfo.szFile);
+                LogHelper.PrintError("Failed to retrieve file information.", StorInfo.szFileName);
             }
         }
 
         // Configure the test parameters
+        Params.szExpectedNameHash = StorInfo.szNameHash;
+        Params.szExpectedDataHash = StorInfo.szDataHash;
         Params.hStorage = hStorage;
         Params.szFileName = NULL;
         Params.bOnlineStorage = true;
@@ -1116,7 +1074,7 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO2 & StorInf
     }
     else
     {
-        LogHelper.PrintError("Error: Failed to open storage %s", StorInfo.szCodeName);
+        LogHelper.PrintError("Error: Failed to open storage %s", StorInfo.szPath);
         assert(GetCascError() != ERROR_SUCCESS);
         dwErrCode = GetCascError();
     }
@@ -1127,7 +1085,7 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO2 & StorInf
 //-----------------------------------------------------------------------------
 // Storage list
 
-static STORAGE_INFO1 StorageInfo1[] =
+static STORAGE_INFO StorageInfo1[] =
 {
     //- Storage folder name --------  - Compound file name hash --------  - Compound file data hash --------  - Example file to extract ---
     {"Beta TVFS/00001",               "44833489ccf495e78d3a8f2ee9688ba6", "96e6457b649b11bcee54d52fa4be12e5", "ROOT"},
@@ -1185,6 +1143,11 @@ static STORAGE_INFO1 StorageInfo1[] =
     {"WoW/31299*wowt",                "959fa63cbcd9ced02a8977ed128df828", "423c1b99b14a615a02d8ffc7a7eff4ef", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"WoW/31299*wow_classic",         "184794b8a191429e2aae9b8a5334651b", "b46bd2f81ead285e810e5a049ca2db74", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
 
+    {"WoW/37497-classic",               "184794b8a191429e2aae9b8a5334651b", "b46bd2f81ead285e810e5a049ca2db74"},
+    {"WoW/38598-classic-tbcbeta",       "184794b8a191429e2aae9b8a5334651b", "b46bd2f81ead285e810e5a049ca2db74"},
+    {"WoW/38707-classic-tbc",           "184794b8a191429e2aae9b8a5334651b", "b46bd2f81ead285e810e5a049ca2db74"},
+    {"WoW/40892-classic-tbc/.build.info", "184794b8a191429e2aae9b8a5334651b", "b46bd2f81ead285e810e5a049ca2db74"},
+
     {"WoW/47067*wow",                 "6f257405278d42a39e6a6bd9e7385652", "34e8ccae337be5a00203417c1eb56f80", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"WoW/47067*wowt",                "e6ad508bfa8a0ac254da91f6512ff571", "d4fe823586aae75b193b3b3ab2458e73", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"WoW/47067*wow_classic",         "309d02ad4a7df0fc6574f23d0cb88f6a", "3aae26808a5255477ab49df20b95fb18", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
@@ -1193,21 +1156,20 @@ static STORAGE_INFO1 StorageInfo1[] =
     {"WoW/47067*wow_classic_era_ptr", "cefa2f0e794f987e3c9779dc9e20d1be", "a0736b9aa5dfcd68dcc1fd2b3247ed1d", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
 };
 
-static LPCSTR szDefCdn = "ribbit://us.version.battle.net/v1/products";
-static LPCSTR szCdn2 = "http://us.falloflordaeron.com:8000";
-
-static STORAGE_INFO2 StorageInfo2[] =
+static STORAGE_INFO StorageInfo2[] =
 {
-    //{szDefCdn, "hsb",         "us"},
-    {szCdn2,   "wow",         "us"},
-    {szDefCdn, "wowt",        "us", "interface/framexml/localization.lua"},
-    {szDefCdn, "wow_classic", "us"},
+    {"hsb/hearthstone-25.0.3.160183.159202.versions*hsb*us", "34b821747a7911eb98c9141153470fdd", "85096ab761616e1069a4fa5c1da28d9d"},
+    {"hsb*hsb*us",                                           "34b821747a7911eb98c9141153470fdd", "85096ab761616e1069a4fa5c1da28d9d"},
+    {"wow*http://us.falloflordaeron.com:8000*wow*us",        "d0af10b6c692fc123d6e0a5c192b58da", "14c043c71ad53c9288daf1ecba692662"},
+    {"wowt/versions",                                        "a2f0a4e939f6f058461c0733a59f9945", "b34daa19feff877e038f1cd9e7ee8799", "interface/framexml/localization.lua"},
+    {"wowt*wowt*us",                                         "a2f0a4e939f6f058461c0733a59f9945", "b34daa19feff877e038f1cd9e7ee8799", "interface/framexml/localization.lua"},
+    {"wow_classic*us",                                       "019c84177164c3cffe72691da519c1e0", "167c2be33ac6323b598ee6e02a5ccf1f"},
 };
 
 //-----------------------------------------------------------------------------
 // Main
 
-//#define LOAD_STORAGES_CMD_LINE
+#define LOAD_STORAGES_CMD_LINE
 //#define LOAD_STORAGES_LOCAL
 #define LOAD_STORAGES_ONLINE
 
@@ -1229,7 +1191,7 @@ int main(int argc, char * argv[])
     //
     for(int i = 1; i < argc; i++)
     {
-        STORAGE_INFO1 StorInfo = {argv[i]};
+        STORAGE_INFO StorInfo = {argv[i]};
 
         // Attempt to open the storage and extract single file
         dwErrCode = LocalStorage_Test(Storage_ReadFiles, StorInfo);
@@ -1265,7 +1227,7 @@ int main(int argc, char * argv[])
 #endif  // LOAD_STORAGES_ONLINE
 
 #if defined(_MSC_VER) && defined(_DEBUG)
-    //_CrtDumpMemoryLeaks();
+    _CrtDumpMemoryLeaks();
 #endif  // defined(_MSC_VER) && defined(_DEBUG)
 
     return (int)dwErrCode;

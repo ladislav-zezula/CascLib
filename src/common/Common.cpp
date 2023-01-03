@@ -413,74 +413,7 @@ LPTSTR CascNewStrA2T(LPCSTR szString, size_t nCharsToReserve)
 }
 
 //-----------------------------------------------------------------------------
-// String merging
-
-LPTSTR GetLastPathPart(LPTSTR szWorkPath)
-{
-    size_t nLength = _tcslen(szWorkPath);
-
-    // Go one character back
-    if(nLength > 0)
-        nLength--;
-
-    // Cut ending (back)slashes, if any
-    while(nLength > 0 && (szWorkPath[nLength] == _T('\\') || szWorkPath[nLength] == _T('/')))
-        nLength--;
-
-    // Cut the last path part
-    while(nLength > 0)
-    {
-        // End of path?
-        if(szWorkPath[nLength] == _T('\\') || szWorkPath[nLength] == _T('/'))
-        {
-            return szWorkPath + nLength;
-        }
-
-        // Go one character back
-        nLength--;
-    }
-
-    return NULL;
-}
-
-bool CutLastPathPart(LPTSTR szWorkPath)
-{
-    // Get the last part of the path
-    szWorkPath = GetLastPathPart(szWorkPath);
-    if(szWorkPath == NULL)
-        return false;
-
-    szWorkPath[0] = 0;
-    return true;
-}
-
-size_t CombinePath(LPTSTR szBuffer, size_t nMaxChars, va_list argList)
-{
-    CASC_PATH<TCHAR> Path(PATH_SEP_CHAR);
-    LPCTSTR szFragment;
-    bool bWithSeparator = false;
-
-    // Combine all parts of the path here
-    while((szFragment = va_arg(argList, LPTSTR)) != NULL)
-    {
-        Path.AppendString(szFragment, bWithSeparator);
-        bWithSeparator = true;
-    }
-
-    return Path.Copy(szBuffer, nMaxChars);
-}
-
-size_t CombinePath(LPTSTR szBuffer, size_t nMaxChars, ...)
-{
-    va_list argList;
-    size_t nLength;
-
-    va_start(argList, nMaxChars);
-    nLength = CombinePath(szBuffer, nMaxChars, argList);
-    va_end(argList);
-
-    return nLength;
-}
+// String normalization
 
 size_t NormalizeFileName(const unsigned char * NormTable, char * szNormName, const char * szFileName, size_t cchMaxChars)
 {

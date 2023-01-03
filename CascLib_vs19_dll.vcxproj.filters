@@ -179,6 +179,9 @@
     <ClInclude Include="src\common\Sockets.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
+    <ClInclude Include="src\common\Path.h">
+      <Filter>Source Files\common</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="src\DllMain.rc">

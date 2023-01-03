@@ -1206,19 +1206,23 @@
 					>
 				</File>
 				<File
-					RelativePath=".\src\common\RootHandler.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\src\common\RootHandler.h"
-					>
-				</File>
-				<File
 					RelativePath=".\src\common\Mime.cpp"
 					>
 				</File>
 				<File
 					RelativePath=".\src\common\Mime.h"
+					>
+				</File>
+				<File
+					RelativePath=".\src\common\Path.h"
+					>
+				</File>
+				<File
+					RelativePath=".\src\common\RootHandler.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\src\common\RootHandler.h"
 					>
 				</File>
 				<File

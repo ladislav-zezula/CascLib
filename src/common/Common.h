@@ -186,7 +186,7 @@ inline DWORD Rol32(DWORD dwValue, DWORD dwRolCount)
 //-----------------------------------------------------------------------------
 // Big endian number manipulation
 
-inline DWORD ConvertBytesToInteger_2(LPBYTE ValueAsBytes)
+inline USHORT ConvertBytesToInteger_2(LPBYTE ValueAsBytes)
 {
     USHORT Value = 0;
 
@@ -337,11 +337,6 @@ wchar_t * CascNewStr(const wchar_t * szString, size_t nCharsToReserve = 0);
 LPSTR  CascNewStrT2A(LPCTSTR szString, size_t nCharsToReserve = 0);
 LPTSTR CascNewStrA2T(LPCSTR szString, size_t nCharsToReserve = 0);
 
-size_t CombinePath(LPTSTR szBuffer, size_t nMaxChars, va_list argList);
-size_t CombinePath(LPTSTR szBuffer, size_t nMaxChars, ...);
-LPTSTR GetLastPathPart(LPTSTR szWorkPath);
-bool CutLastPathPart(LPTSTR szWorkPath);
-
 size_t NormalizeFileName_UpperBkSlash(char * szNormName, const char * szFileName, size_t cchMaxChars);
 size_t NormalizeFileName_LowerSlash(char * szNormName, const char * szFileName, size_t cchMaxChars);
 
@@ -454,34 +449,75 @@ xchar * StringFromBinary(LPBYTE pbBinary, size_t cbBinary, xchar * szBuffer)
 //-----------------------------------------------------------------------------
 // Structures for data blobs
 
-struct QUERY_KEY
+struct CASC_BLOB
 {
-    QUERY_KEY()
+    CASC_BLOB()
+    {
+        Reset();
+    }
+
+    ~CASC_BLOB()
+    {
+        Free();
+    }
+
+    void MoveFrom(CASC_BLOB & Source)
+    {
+        // Free current data, if any
+        Free();
+
+        // Take the source data
+        pbData = Source.pbData;
+        cbData = Source.cbData;
+
+        // Reset the source data without freeing
+        Source.Reset();
+    }
+
+    DWORD SetData(const void * pv, size_t cb)
+    {
+        if(SetSize(cb) != ERROR_SUCCESS)
+            return ERROR_NOT_ENOUGH_MEMORY;
+
+        memcpy(pbData, pv, cb);
+        return ERROR_SUCCESS;
+    }
+
+    DWORD SetSize(size_t cb)
+    {
+        Free();
+
+        // Always leave one extra byte for NUL character
+        if((pbData = CASC_ALLOC<BYTE>(cb + 1)) == NULL)
+            return ERROR_NOT_ENOUGH_MEMORY;
+
+        cbData = cb;
+        return ERROR_SUCCESS;
+    }
+
+    void Reset()
     {
         pbData = NULL;
         cbData = 0;
     }
 
-    ~QUERY_KEY()
+    void Free()
     {
-        CASC_FREE(pbData);
+        if(pbData != NULL)
+            CASC_FREE(pbData);
+        pbData = NULL;
         cbData = 0;
     }
 
-    DWORD SetData(const void * pv, size_t cb)
+    LPBYTE End() const
     {
-        if((pbData = CASC_ALLOC<BYTE>(cb)) == NULL)
-            return ERROR_NOT_ENOUGH_MEMORY;
-
-        memcpy(pbData, pv, cb);
-        cbData = cb;
-        return ERROR_SUCCESS;
+        return pbData + cbData;
     }
 
     LPBYTE pbData;
     size_t cbData;
 };
-typedef QUERY_KEY *PQUERY_KEY;
+typedef CASC_BLOB *PCASC_BLOB;
 
 //-----------------------------------------------------------------------------
 // File name utilities

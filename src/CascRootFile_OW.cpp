@@ -559,7 +559,7 @@ struct TRootHandler_OW : public TFileTreeRoot
 // Public functions
 
 // TODO: There is way more files in the Overwatch CASC storage than present in the ROOT file.
-DWORD RootHandler_CreateOverwatch(TCascStorage * hs, LPBYTE pbRootFile, DWORD cbRootFile)
+DWORD RootHandler_CreateOverwatch(TCascStorage * hs, CASC_BLOB & RootFile)
 {
     TRootHandler_OW * pRootHandler = NULL;
     CASC_CSV Csv(0, true);
@@ -567,7 +567,7 @@ DWORD RootHandler_CreateOverwatch(TCascStorage * hs, LPBYTE pbRootFile, DWORD cb
     DWORD dwErrCode;
 
     // Load the ROOT file
-    dwErrCode = Csv.Load(pbRootFile, cbRootFile);
+    dwErrCode = Csv.Load(RootFile.pbData, RootFile.cbData);
     if(dwErrCode == ERROR_SUCCESS)
     {
         // Retrieve the indices of the file name and MD5 columns

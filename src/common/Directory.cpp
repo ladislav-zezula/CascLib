@@ -60,15 +60,12 @@ DWORD ScanDirectory(
 {
 #ifdef CASCLIB_PLATFORM_WINDOWS
 
+    CASC_PATH<TCHAR> SearchMask(szDirectory, _T("*"), NULL);
     WIN32_FIND_DATA wf;
     HANDLE hFind;
-    TCHAR szSearchMask[MAX_PATH];
-
-    // Prepare the search mask
-    CombinePath(szSearchMask, _countof(szSearchMask), szDirectory, _T("*"), NULL);
 
     // Prepare directory search
-    hFind = FindFirstFile(szSearchMask, &wf);
+    hFind = FindFirstFile(SearchMask, &wf);
     if(hFind != INVALID_HANDLE_VALUE)
     {
         // Skip the first file as it's always just "." or ".."
