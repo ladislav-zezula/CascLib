@@ -959,25 +959,28 @@ static DWORD LoadCsvFile(TCascStorage * hs, PARSE_REGION_LINE PfnParseRegionLine
             {
                 const char * szRegion = Csv[i][szColumnName].szValue;
 
-                if(hs->szRegion && !strcmp(hs->szRegion, szRegion))
+                if(hs->szRegion && szRegion && !strcmp(hs->szRegion, szRegion))
                     return PfnParseRegionLine(hs, Csv, i);
 
-                if(!strcmp(szRegion, "xx"))
+                if(szRegion != NULL)
                 {
-                    nRegionXX = i;
-                    continue;
-                }
+                    if(!strcmp(szRegion, "xx"))
+                    {
+                        nRegionXX = i;
+                        continue;
+                    }
 
-                if(!strcmp(szRegion, "us"))
-                {
-                    nRegionUS = i;
-                    continue;
-                }
+                    if(!strcmp(szRegion, "us"))
+                    {
+                        nRegionUS = i;
+                        continue;
+                    }
 
-                if(!strcmp(szRegion, "eu"))
-                {
-                    nRegionEU = i;
-                    continue;
+                    if(!strcmp(szRegion, "eu"))
+                    {
+                        nRegionEU = i;
+                        continue;
+                    }
                 }
             }
 
@@ -1158,24 +1161,17 @@ static DWORD RibbitDownloadFile(LPCTSTR szCdnHostUrl, LPCTSTR szProduct, LPCTSTR
         if(FileStream_GetSize(pStream, &FileSize) && FileSize <= 0x04000000)
         {
             // Fill-in the file pointer and size
-            FileData.pbData = CASC_ALLOC<BYTE>((size_t)FileSize);
-            if(FileData.pbData != NULL)
+            if((dwErrCode = FileData.SetSize((size_t)FileSize)) == ERROR_SUCCESS)
             {
                 if(FileStream_Read(pStream, NULL, FileData.pbData, (DWORD)FileSize))
                 {
-                    FileData.cbData = (size_t)FileSize;
                     dwErrCode = ERROR_SUCCESS;
                 }
                 else
                 {
                     dwErrCode = GetCascError();
-                    CASC_FREE(FileData.pbData);
-                    FileData.pbData = NULL;
+                    FileData.Free();
                 }
-            }
-            else
-            {
-                dwErrCode = ERROR_NOT_ENOUGH_MEMORY;
             }
         }
         else
@@ -1352,8 +1348,8 @@ DWORD FetchCascFile(TCascStorage * hs, CPATH_TYPE PathType, LPBYTE pbEKey, LPCTS
                 return ERROR_SUCCESS;
         }
 
-        // Try to downloaded files
-        if(hs->szFilesPath != NULL)
+        // Try to download files
+        if(hs->szDataPath != NULL)
         {
             dwErrCode = FetchCascFile(hs, hs->szRootPath, PathType, pbEKey, szExtension, LocalPath);
             if(dwErrCode == ERROR_SUCCESS)
@@ -1518,10 +1514,10 @@ DWORD CheckCascBuildFileDirs(CASC_BUILD_FILE & BuildFile, LPCTSTR szLocalPath)
     return dwErrCode;
 }
 
-DWORD CheckOnlineStorage(PCASC_OPEN_STORAGE_ARGS pArgs, CASC_BUILD_FILE & BuildFile, bool bOnlineStorage)
+DWORD CheckOnlineStorage(PCASC_OPEN_STORAGE_ARGS pArgs, CASC_BUILD_FILE & BuildFile, DWORD dwFeatures)
 {
     // If the online storage is required, we try to extract the product code
-    if(bOnlineStorage == true && pArgs->szCodeName != NULL)
+    if((dwFeatures & CASC_FEATURE_ONLINE) && (pArgs->szCodeName != NULL))
     {
         CASC_PATH<TCHAR> FilePath(pArgs->szLocalPath, _T("versions"), NULL);
 

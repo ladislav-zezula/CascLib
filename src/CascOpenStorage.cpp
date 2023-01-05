@@ -1129,8 +1129,7 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs, L
 
     // Construct the root path from the name of the build file
     CASC_PATH<TCHAR> RootPath(szBuildFile, NULL);
-    RootPath.CutLastPart();
-    hs->szRootPath = RootPath.New();
+    hs->szRootPath = RootPath.New(true);
 
     // If either of the root path or build file is known, it's an error
     if(hs->szRootPath == NULL || hs->szBuildFile == NULL)
@@ -1406,25 +1405,23 @@ bool WINAPI CascOpenStorageEx(LPCTSTR szParams, PCASC_OPEN_STORAGE_ARGS pArgs, b
             }
 
             // If the caller requested an online storage, we must have the code name
-            else if((dwErrCode = CheckOnlineStorage(pArgs, BuildFile, bOnlineStorage)) == ERROR_SUCCESS)
+            else if((dwErrCode = CheckOnlineStorage(pArgs, BuildFile, dwFeatures)) == ERROR_SUCCESS)
             {
                 dwErrCode = LoadCascStorage(hs, pArgs, BuildFile.szFullPath, BuildFile.BuildFileType, dwFeatures | CASC_FEATURE_DATA_FILES);
             }
         }
     }
 
-    // Handle errors
+    // Delete the storage on error
     if(dwErrCode != ERROR_SUCCESS)
-    {
-        SetCascError(dwErrCode);
         hs = hs->Release();
-    }
-
-    // Free the copy of the parameters
     CASC_FREE(szParamsCopy);
 
     // Give the output parameter to the caller
-    *phStorage = (HANDLE)hs;
+    if(phStorage != NULL)
+        phStorage[0] = (HANDLE)hs;
+    if(dwErrCode != ERROR_SUCCESS)
+        SetCascError(dwErrCode);
     return (dwErrCode == ERROR_SUCCESS);
 }
 

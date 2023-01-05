@@ -672,12 +672,13 @@ static DWORD BaseHttp_ParseURL(TFileStream * pStream, LPCTSTR szFileName, int * 
 
 static bool BaseHttp_Download(TFileStream * pStream)
 {
+    CASC_MIME_RESPONSE MimeResponse;
+    CASC_BLOB FileData;
     CASC_MIME Mime;
     const char * request_mask = "GET %s HTTP/1.1\r\nHost: %s\r\nConnection: Keep-Alive\r\n\r\n";
     char * server_response;
     char * fileName = pStream->Base.Socket.fileName;
     char request[0x100];
-    size_t response_length = 0;
     size_t request_length = 0;
     DWORD dwErrCode = ERROR_SUCCESS;
 
@@ -699,19 +700,19 @@ static bool BaseHttp_Download(TFileStream * pStream)
 
         // Send the request and receive decoded response
         request_length = CascStrPrintf(request, _countof(request), request_mask, fileName, pStream->Base.Socket.hostName);
-        server_response = pStream->Base.Socket.pSocket->ReadResponse(request, request_length, &response_length);
+        server_response = pStream->Base.Socket.pSocket->ReadResponse(request, request_length, MimeResponse);
         if(server_response != NULL)
         {
-            // Check for non-zero data
-            if(response_length != 0)
+            // Decode the MIME document
+            if((dwErrCode = Mime.Load(server_response, MimeResponse)) == ERROR_SUCCESS)
             {
-                // Decode the MIME document
-                if((dwErrCode = Mime.Load(server_response, response_length)) == ERROR_SUCCESS)
+                // Move the data from MIME to HTTP stream
+                if((dwErrCode = Mime.GiveAway(FileData)) == ERROR_SUCCESS)
                 {
-                    // Move the data from MIME to HTTP stream
-                    pStream->Base.Socket.fileData = Mime.GiveAway(&pStream->Base.Socket.fileDataLength);
-                    if(pStream->Base.Socket.fileData == NULL)
-                        dwErrCode = ERROR_BAD_FORMAT;
+                    pStream->Base.Socket.fileData = FileData.pbData;
+                    pStream->Base.Socket.fileDataLength = FileData.cbData;
+                    pStream->Base.Socket.fileDataPos = 0;
+                    FileData.Reset();
                 }
             }
 

@@ -456,7 +456,7 @@ DWORD GetFileSpanInfo(PCASC_CKEY_ENTRY pCKeyEntry, PULONGLONG PtrContentSize, PU
 DWORD FetchCascFile(TCascStorage * hs, CPATH_TYPE PathType, LPBYTE pbEKey, LPCTSTR szExtension, CASC_PATH<TCHAR> & LocalPath, PCASC_ARCHIVE_INFO pArchiveInfo = NULL);
 DWORD CheckCascBuildFileExact(CASC_BUILD_FILE & BuildFile, LPCTSTR szLocalPath);
 DWORD CheckCascBuildFileDirs(CASC_BUILD_FILE & BuildFile, LPCTSTR szLocalPath);
-DWORD CheckOnlineStorage(PCASC_OPEN_STORAGE_ARGS pArgs, CASC_BUILD_FILE & BuildFile, bool bOnlineStorage);
+DWORD CheckOnlineStorage(PCASC_OPEN_STORAGE_ARGS pArgs, CASC_BUILD_FILE & BuildFile, DWORD dwFeatures);
 DWORD CheckArchiveFilesDirectories(TCascStorage * hs);
 DWORD CheckDataFilesDirectory(TCascStorage * hs);
 DWORD LoadBuildFile(TCascStorage * hs);
@@ -507,6 +507,7 @@ DWORD RootHandler_CreateInstall(TCascStorage * hs, CASC_BLOB & InstallFile);
 // Dumpers (CascDumpData.cpp)
 
 #ifdef _DEBUG
+void CascDumpData(LPCSTR szFileName, const void * pvData, size_t cbData);
 void CascDumpFile(HANDLE hFile, const char * szDumpFile = NULL);
 void CascDumpStorage(HANDLE hStorage, const char * szDumpFile = NULL);
 #endif

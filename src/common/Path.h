@@ -107,9 +107,14 @@ struct CASC_PATH
     }
 
     // LPTSTR szPath = Path.New();
-    xchar * New()
+    xchar * New(bool bCutLastPart = false)
     {
         xchar * szNewStr;
+
+        if(bCutLastPart)
+        {
+            CutLastPart();
+        }
 
         if((szNewStr = CASC_ALLOC<xchar>(Length() + 1)) != NULL)
         {

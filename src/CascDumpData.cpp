@@ -456,7 +456,18 @@ void DumpDownloadManifest(TCascStorage * hs, FILE * fp)
 //-----------------------------------------------------------------------------
 // Public dumping functions
 
-void CascDumpFile(const char * szDumpFile, HANDLE hFile)
+void CascDumpData(LPCSTR szFileName, const void * pvData, size_t cbData)
+{
+    FILE * fp;
+
+    if((fp = fopen(szFileName, "wb")) != NULL)
+    {
+        fwrite(pvData, 1, cbData, fp);
+        fclose(fp);
+    }
+}
+
+void CascDumpFile(HANDLE hFile, const char * szDumpFile)
 {
     FILE * fp;
     DWORD dwBytesRead = 1;
