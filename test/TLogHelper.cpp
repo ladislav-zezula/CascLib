@@ -38,6 +38,7 @@ class TLogHelper
 
 #ifdef CASCLIB_PLATFORM_WINDOWS
         InitializeCriticalSection(&Locker);
+        TickCount = GetTickCount();
 #endif
 
         // Remember the startup time
@@ -91,6 +92,28 @@ class TLogHelper
 #endif
 
         printf("\n");
+    }
+
+    //
+    // Measurement of elapsed time
+    //
+
+    bool TimeElapsed(DWORD Milliseconds)
+    {
+        bool bTimeElapsed = false;
+
+#ifdef CASCLIB_PLATFORM_WINDOWS
+        if(GetTickCount() > (TickCount + Milliseconds))
+        {
+            TickCount = GetTickCount();
+            if(CascInterlockedIncrement(&TimeTrigger) == 1)
+            {
+                bTimeElapsed = true;
+            }
+        }
+
+#endif
+        return bTimeElapsed;
     }
 
     //
@@ -224,6 +247,9 @@ class TLogHelper
     void PrintProgress(const XCHAR * szFormat, ...)
     {
         va_list argList;
+
+        // Always reset the time trigger
+        TimeTrigger = 0;
 
         // Only print progress when the cooldown is ready
         if(ProgressReady())
@@ -380,8 +406,10 @@ class TLogHelper
     ULONGLONG ByteCount;                            // For user's convenience: Current number of bytes
     ULONGLONG StartTime;                            // Start time of an operation, in milliseconds
     ULONGLONG EndTime;                              // End time of an operation, in milliseconds
+    DWORD TimeTrigger;                              // For triggering elapsed timers
     DWORD TotalFiles;                               // For user's convenience: Total number of files
     DWORD FileCount;                                // For user's convenience: Curernt number of files
+    DWORD TickCount;
     DWORD DontPrintResult:1;                        // If true, supresset pringing result from the destructor
 
     protected:

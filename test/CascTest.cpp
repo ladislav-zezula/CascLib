@@ -526,14 +526,15 @@ static DWORD GetNumberOfWorkerThreads()
 
 static PCASC_FIND_DATA GetNextFindData(PCASC_FIND_DATA_ARRAY pFiles)
 {
+    TLogHelper * pLogHelper = pFiles->pLogHelper;
     DWORD ItemIndex;
 
     // Atomically increment the value in the file array
     ItemIndex = CascInterlockedIncrement(&pFiles->ItemIndex) - 1;
     if(ItemIndex < pFiles->ItemCount)
     {
-        if(ItemIndex != 0 && (ItemIndex % 50) == 0)
-            pFiles->pLogHelper->PrintProgress("Extracting file %u of %u", ItemIndex, pFiles->ItemCount);
+        if(pLogHelper->TimeElapsed(1000))
+            pLogHelper->PrintProgress("Extracting file %u of %u", ItemIndex, pFiles->ItemCount);
         return &pFiles->cf[ItemIndex];
     }
 
@@ -663,7 +664,8 @@ static DWORD Storage_SeekFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
             while(TotalRead < FileSize)
             {
                 // Show the progress to the user
-                LogHelper.PrintProgress("Extracting file (%u %%) ...", (DWORD)((TotalRead * 100) / FileSize));
+                if(LogHelper.TimeElapsed(1000))
+                    LogHelper.PrintProgress("Extracting file (%u %%) ...", (DWORD)((TotalRead * 100) / FileSize));
 
                 // Get the amount of bytes to read
                 DWORD dwBytesToRead = sizeof(Buffer);
@@ -709,7 +711,8 @@ static DWORD Storage_SeekFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
                     BYTE Buffer2[0x1000];
 
                     // Show the progress
-                    LogHelper.PrintProgress("Testing seek operations (%u of %u) ...", i, 0x1000);
+                    if(LogHelper.TimeElapsed(1000))
+                        LogHelper.PrintProgress("Testing seek operations (%u of %u) ...", i, 0x1000);
 
                     // Determine offset and length
                     ByteOffset = ((RandomHi << 0x20) | RandomLo) % FileSize;
@@ -815,7 +818,7 @@ static DWORD Storage_EnumFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
             while(bFileFound)
             {
                 // Increment the index
-                if(dwFileIndex != 0 && (dwFileIndex % 10000) == 0)
+                if(LogHelper.TimeElapsed(1000))
                     LogHelper.PrintProgress("Searching storage (%u of %u) ...", dwFileIndex, dwTotalFileCount);
                 dwFileIndex++;
 
@@ -1016,10 +1019,15 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO & StorInfo
     // Prepare the path
     CascStrPrintf(szParams, _countof(szParams), _T("%hs/%hs"), CASC_PATH_ROOT, StorInfo.szPath);
 
-    // Open the online storage
+    // Prepare the callbacks
     OpenArgs.PfnProgressCallback = OnlineStorage_OpenCB;
     OpenArgs.PtrProgressParam = &LogHelper;
-    OpenArgs.dwFlags = CASC_FEATURE_LOCAL_CDNS | CASC_FEATURE_LOCAL_VERSIONS;
+    
+    // Enable or disable reusing VERSIONS and CDNS
+    if(strstr(StorInfo.szPath, "current") == NULL)
+        OpenArgs.dwFlags |= CASC_FEATURE_LOCAL_CDNS | CASC_FEATURE_LOCAL_VERSIONS;
+
+    // Open the online storage
     if(CascOpenStorageEx(szParams, &OpenArgs, true, &hStorage))
     {
         TEST_PARAMS Params;
@@ -1081,11 +1089,12 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO & StorInfo
 
 static STORAGE_INFO StorageInfo1[] =
 {
-    //- Storage folder name --------  - Compound file name hash --------  - Compound file data hash --------  - Example file to extract ---
+    //- Storage folder name --------        - Compound file name hash --------  - Compound file data hash --------  - Example file to extract ---
     {"Beta TVFS/00001",                     "44833489ccf495e78d3a8f2ee9688ba6", "96e6457b649b11bcee54d52fa4be12e5", "ROOT"},
     {"Beta TVFS/00002",                     "0ada2ba6b0decfa4013e0465f577abf1", "4da83fa60e0e505d14a5c21284142127", "ENCODING"},
 
     {"CoD4/3376209",                        "e01180b36a8cfd82cb2daa862f5bbf3e", "79cd4cfc9eddad53e4b4d394c36b8b0c", "zone/base.xpak" },
+    {"CoD4-MW/8042902/.build.info",         "cd54a9444812e168b3b920b1479eff71", "033f77f6309bf6c21984fc10d09e5a72" },
 
     {"Diablo III/30013",                    "86ba76b46c88eb7c6188d28a27d00f49", "19e37cc3c178ea0521369c09d67791ac", "ENCODING"},
     {"Diablo III/50649",                    "18cd3eb87a46e2d3aa0c57d1d8f8b8ff", "9225b3fa85dd958209ad20495ff6457e", "ENCODING"},
@@ -1101,6 +1110,7 @@ static STORAGE_INFO StorageInfo1[] =
     {"Heroes of the Storm/65943",           "c5d75f4e12dbc05d4560fe61c4b88773", "f046b2ed9ecc7b27d2a114e16c34c8fd", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
     {"Heroes of the Storm/75589",           "ae2209f1fcb26c730e9757a42bcce17e", "a7f7fbf1e04c87ead423fb567cd6fa5c", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
     {"Heroes of the Storm/81376",           "25597a3f8adc3fa79df243197fecd1cc", "2c36eb3dde7d545a0fa413ccebf84202", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
+    {"Heroes of the Storm/88936",           "e3a4794fcb627f0768ff97834119d20a", "7d2cec9779e9c8baf0f1304df5921858"},
 
     {"Overwatch/24919/data/casc",           "53afa15570c29bd40bba4707b607657e", "6f9131fc0e7ad558328bbded2c996959", "ROOT"},
     {"Overwatch/47161",                     "53db1f3da005211204997a6b50aa71e1", "12be32a2f86ea1f4e0bf2b62fe4b7f6e", "TactManifest\\Win_SPWin_RCN_LesMX_EExt.apm"},
@@ -1155,20 +1165,20 @@ static STORAGE_INFO StorageInfo2[] =
     {"Hearthstone/160183/hearthstone-25.0.3.160183.159202.versions*hsb*us", "34b821747a7911eb98c9141153470fdd", "85096ab761616e1069a4fa5c1da28d9d"},
     {"Hearthstone/160183*hsb*us",                                           "34b821747a7911eb98c9141153470fdd", "85096ab761616e1069a4fa5c1da28d9d"},
     {"WoW/45745-custom-cdn*http://us.falloflordaeron.com:8000*wow*us",      "d0af10b6c692fc123d6e0a5c192b58da", "14c043c71ad53c9288daf1ecba692662", "interface/framexml/localization.lua"},
-    {"WoW/45779-tvfs/versions",                                             "1f844a28db5b034a6d9cf8f1e9ff44bb", "df1e1073535daf33cead043708bbae67"},
-    {"WoW/46144-tvfs/versions",                                             "55ae44be3c3b64dd9bc99111bfe5aeee", "67964ce23f95083a63ace09d11a9c7b1"},
-    {"WoW/46902-wow_classic*wow_classic*us",                                "019c84177164c3cffe72691da519c1e0", "167c2be33ac6323b598ee6e02a5ccf1f"},
-    {"WoW/46902-wow_classic",                                               "019c84177164c3cffe72691da519c1e0", "167c2be33ac6323b598ee6e02a5ccf1f"},
-    {"WoW/47186-ptr/versions",                                              "a2f0a4e939f6f058461c0733a59f9945", "b34daa19feff877e038f1cd9e7ee8799", "interface/framexml/localization.lua"},
-    {"WoW/47186-ptr*wowt*us",                                               "a2f0a4e939f6f058461c0733a59f9945", "b34daa19feff877e038f1cd9e7ee8799", "interface/framexml/localization.lua"},
-    {"WoW/current*wow*us",                                                  NULL,                               NULL, "interface/framexml/localization.lua"},
+    {"WoW/45745-meta/wow-45745-custom-cdn.versions*wow*us",                 "d0af10b6c692fc123d6e0a5c192b58da", "14c043c71ad53c9288daf1ecba692662", "interface/framexml/localization.lua"},
+    {"WoW/45745-meta/wow-45779-tvfs.versions",                              "1f844a28db5b034a6d9cf8f1e9ff44bb", "df1e1073535daf33cead043708bbae67"},
+    {"WoW/45745-meta/wow-46144-tvfs.versions",                              "55ae44be3c3b64dd9bc99111bfe5aeee", "67964ce23f95083a63ace09d11a9c7b1"},
+    {"WoW/45745-meta/wow-46902-classic.versions*wow_classic*us",            "019c84177164c3cffe72691da519c1e0", "167c2be33ac6323b598ee6e02a5ccf1f"},
+    {"WoW/45745-meta/wow-47186-ptr.versions",                               "a2f0a4e939f6f058461c0733a59f9945", "b34daa19feff877e038f1cd9e7ee8799", "interface/framexml/localization.lua"},
+    {"WoW/45745-meta*wowt*us",                                              "a2f0a4e939f6f058461c0733a59f9945", "b34daa19feff877e038f1cd9e7ee8799", "interface/framexml/localization.lua"},
+    {"WoW/5####-current*wow*us",                                            NULL,                               NULL, "interface/framexml/localization.lua"},
 };
 
 //-----------------------------------------------------------------------------
 // Main
 
 #define LOAD_STORAGES_CMD_LINE
-//#define LOAD_STORAGES_LOCAL
+#define LOAD_STORAGES_LOCAL
 #define LOAD_STORAGES_ONLINE
 
 int main(int argc, char * argv[])
@@ -1182,16 +1192,6 @@ int main(int argc, char * argv[])
 #if defined(_MSC_VER) && defined(_DEBUG)
     _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif  // defined(_MSC_VER) && defined(_DEBUG)
-
-/*
-    CASC_BLOB FileData;
-    if(LoadFileToMemory(_T("e:\\response_http.txt"), FileData) == ERROR_SUCCESS)
-    {
-        CASC_MIME_RESPONSE MimeResponse;
-
-        MimeResponse.ParseResponse((char *)FileData.pbData, FileData.cbData);
-    }
-*/
 
 #ifdef LOAD_STORAGES_CMD_LINE
     //
