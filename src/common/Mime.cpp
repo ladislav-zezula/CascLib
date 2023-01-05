@@ -648,7 +648,7 @@ DWORD CASC_MIME::Load(char * data, CASC_MIME_RESPONSE & MimeResponse)
 
     // Debug: dump the MIME data to file
 #ifdef _DEBUG
-    CascDumpData("E:\\mime_raw_data.txt", data, MimeResponse.response_length);
+    //CascDumpData("E:\\mime_raw_data.txt", data, MimeResponse.response_length);
 #endif
 
     // Special handling of HTTP responses
