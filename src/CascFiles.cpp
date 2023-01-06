@@ -1348,8 +1348,16 @@ DWORD FetchCascFile(TCascStorage * hs, CPATH_TYPE PathType, LPBYTE pbEKey, LPCTS
                 return ERROR_SUCCESS;
         }
 
-        // Try to download files
+        // Try to download the file into the "data/<type>" path
         if(hs->szDataPath != NULL)
+        {
+            dwErrCode = FetchCascFile(hs, hs->szDataPath, PathType, pbEKey, szExtension, LocalPath);
+            if(dwErrCode == ERROR_SUCCESS)
+                return ERROR_SUCCESS;
+        }
+
+        // Try to download the file into the "<type>" path
+        if(hs->szRootPath != NULL)
         {
             dwErrCode = FetchCascFile(hs, hs->szRootPath, PathType, pbEKey, szExtension, LocalPath);
             if(dwErrCode == ERROR_SUCCESS)

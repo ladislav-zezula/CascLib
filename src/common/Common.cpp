@@ -293,44 +293,56 @@ void CascStrCopy(wchar_t * szTarget, size_t cchTarget, const wchar_t * szSource,
 //-----------------------------------------------------------------------------
 // Safe version of s(w)printf
 
-size_t CascStrPrintf(char * buffer, size_t nCount, const char * format, ...)
+size_t CascStrPrintfV(char * buffer, size_t nCount, const char * format, va_list argList)
 {
     char * buffend;
-    va_list argList;
 
-    // Start the argument list
-    va_start(argList, format);
-    
 #ifdef CASCLIB_PLATFORM_WINDOWS
     StringCchVPrintfExA(buffer, nCount, &buffend, NULL, 0, format, argList);
-//  buffend = buffer + vsnprintf(buffer, nCount, format, argList);
 #else
     buffend = buffer + vsnprintf(buffer, nCount, format, argList);
 #endif
-    
-    // End the argument list
+
+    return (buffend - buffer);
+}
+
+size_t CascStrPrintf(char * buffer, size_t nCount, const char * format, ...)
+{
+    va_list argList;
+    size_t length;
+
+    // Start the argument list
+    va_start(argList, format);
+    length = CascStrPrintfV(buffer, nCount, format, argList);
     va_end(argList);
+
+    return length;
+}
+
+size_t CascStrPrintfV(wchar_t * buffer, size_t nCount, const wchar_t * format, va_list argList)
+{
+    wchar_t * buffend;
+
+#ifdef CASCLIB_PLATFORM_WINDOWS
+    StringCchVPrintfExW(buffer, nCount, &buffend, NULL, 0, format, argList);
+#else
+    buffend = buffer + vswprintf(buffer, nCount, format, argList);
+#endif
+
     return (buffend - buffer);
 }
 
 size_t CascStrPrintf(wchar_t * buffer, size_t nCount, const wchar_t * format, ...)
 {
-    wchar_t * buffend;
     va_list argList;
+    size_t length;
 
     // Start the argument list
     va_start(argList, format);
-
-#ifdef CASCLIB_PLATFORM_WINDOWS
-    StringCchVPrintfExW(buffer, nCount, &buffend, NULL, 0, format, argList);
-//  buffend = buffer + vswprintf(buffer, nCount, format, argList);
-#else
-    buffend = buffer + vswprintf(buffer, nCount, format, argList);
-#endif
-
-    // End the argument list
+    length = CascStrPrintfV(buffer, nCount, format, argList);
     va_end(argList);
-    return (buffend - buffer);
+
+    return length;
 }
 
 //-----------------------------------------------------------------------------

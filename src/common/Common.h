@@ -325,7 +325,9 @@ void CascStrCopy(wchar_t * szTarget, size_t cchTarget, const wchar_t * szSource,
 //-----------------------------------------------------------------------------
 // Safe version of s(w)printf
 
+size_t CascStrPrintfV(char * buffer, size_t nCount, const char * format, va_list argList);
 size_t CascStrPrintf(char * buffer, size_t nCount, const char * format, ...);
+size_t CascStrPrintfV(wchar_t * buffer, size_t nCount, const wchar_t * format, va_list argList);
 size_t CascStrPrintf(wchar_t * buffer, size_t nCount, const wchar_t * format, ...);
 
 //-----------------------------------------------------------------------------
