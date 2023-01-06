@@ -38,6 +38,7 @@ class TLogHelper
 
 #ifdef CASCLIB_PLATFORM_WINDOWS
         InitializeCriticalSection(&Locker);
+        TickCount = GetTickCount();
 #endif
 
         // Remember the startup time
@@ -94,6 +95,28 @@ class TLogHelper
     }
 
     //
+    // Measurement of elapsed time
+    //
+
+    bool TimeElapsed(DWORD Milliseconds)
+    {
+        bool bTimeElapsed = false;
+
+#ifdef CASCLIB_PLATFORM_WINDOWS
+        if(GetTickCount() > (TickCount + Milliseconds))
+        {
+            TickCount = GetTickCount();
+            if(CascInterlockedIncrement(&TimeTrigger) == 1)
+            {
+                bTimeElapsed = true;
+            }
+        }
+
+#endif
+        return bTimeElapsed;
+    }
+
+    //
     //  Printing functions
     //
 
@@ -102,15 +125,15 @@ class TLogHelper
     {
         char * szBufferPtr;
         char * szBufferEnd;
-        char szMessage[0x200];
-        size_t nRemainingWidth;
-        size_t nConsoleWidth = GetConsoleWidth();
+        size_t nNewPrinted;
         size_t nLength = 0;
         DWORD dwErrCode = GetCascError();
+        XCHAR szMessage[0x200];
+        char szBuffer[0x200];
 
         // Always start the buffer with '\r'
-        szBufferEnd = szMessage + sizeof(szMessage);
-        szBufferPtr = szMessage;
+        szBufferEnd = szBuffer + _countof(szBuffer);
+        szBufferPtr = szBuffer;
         *szBufferPtr++ = '\r';
 
         // Print the prefix, if needed
@@ -124,70 +147,9 @@ class TLogHelper
         }
 
         // Construct the message
-        while(szFormat[0] != 0)
-        {
-            // Sanity check
-            assert(szBufferPtr < szBufferEnd);
-
-            // Is there a format character?
-            if(szFormat[0] == '%')
-            {
-                if(szFormat[1] == '%')
-                {
-                    *szBufferPtr++ = '%';
-                    szFormat += 2;
-                    continue;
-                }
-
-                // String argument
-                if(IsFormatSpecifier(szFormat, "%s"))
-                {
-                    const XCHAR * szArg = va_arg(argList, XCHAR *);
-                    szBufferPtr = StringCopy(szBufferPtr, szArg);
-                    szFormat += 2;
-                    continue;
-                }
-
-                // 64-bit integer argument
-                if(IsFormatSpecifier(szFormat, "%llu"))
-                {
-                    szBufferPtr += CascStrPrintf(szBufferPtr, (szBufferEnd - szBufferPtr), fmt_I64u, va_arg(argList, ULONGLONG));
-                    szFormat += 4;
-                    continue;
-                }
-
-                // 64-bit integer argument (hexa)
-                if(IsFormatSpecifier(szFormat, "%llX"))
-                {
-                    szBufferPtr += CascStrPrintf(szBufferPtr, (szBufferEnd - szBufferPtr), fmt_I64X, va_arg(argList, ULONGLONG));
-                    szFormat += 4;
-                    continue;
-                }
-
-                // 32-bit integer argument
-                if(IsFormatSpecifier(szFormat, "%u"))
-                {
-                    szBufferPtr += CascStrPrintf(szBufferPtr, (szBufferEnd - szBufferPtr), "%u", va_arg(argList, DWORD));
-                    szFormat += 2;
-                    continue;
-                }
-
-                // 32-bit integer argument
-                if (IsFormatSpecifier(szFormat, "%08X"))
-                {
-                    szBufferPtr += CascStrPrintf(szBufferPtr, (szBufferEnd - szBufferPtr), "%08X", va_arg(argList, DWORD));
-                    szFormat += 4;
-                    continue;
-                }
-
-                // Unknown format specifier
-                assert(false);
-            }
-            else
-            {
-                *szBufferPtr++ = *szFormat++;
-            }
-        }
+        nLength = CascStrPrintfV(szMessage, _countof(szMessage), szFormat, argList);
+        CascStrCopy(szBufferPtr, (szBufferEnd - szBufferPtr), szMessage);
+        szBufferPtr += nLength;
 
         // Append the last error
         if(bPrintLastError)
@@ -196,26 +158,41 @@ class TLogHelper
             szBufferPtr += nLength;
         }
 
+        // Remember how much did we print
+        nNewPrinted = (szBufferPtr - szBuffer);
+
         // Shall we pad the string?
-        nLength = szBufferPtr - szMessage;
-        if(nLength < nConsoleWidth)
+        if((nLength = (szBufferPtr - szMessage)) < nPrevPrinted)
         {
-            // Pad the string with spaces to fill it up to the end of the line
-            nRemainingWidth = nConsoleWidth - nLength - 1;
-            memset(szBufferPtr, 0x20, nRemainingWidth);
-            szBufferPtr += nRemainingWidth;
+            size_t nPadding = nPrevPrinted - nLength;
+
+            if((size_t)(nLength + nPadding) > (size_t)(szBufferEnd - szBufferPtr))
+                nPadding = (szBufferEnd - szBufferPtr);
+            
+            memset(szBufferPtr, ' ', nPadding);
+            szBufferPtr += nPadding;
         }
 
-        // Put the newline, if requested
-        *szBufferPtr++ = bPrintEndOfLine ? '\n' : 0;
-        *szBufferPtr = 0;
+        // Shall we add new line?
+        if((bPrintEndOfLine != false) && (szBufferPtr < szBufferEnd))
+        {
+            *szBufferPtr++ = '\n';
+            *szBufferPtr = 0;
+        }
 
         // Remember if we printed a message
-        if(bPrintEndOfLine)
+        if(bPrintEndOfLine != false)
+        {
             bMessagePrinted = true;
+            nPrevPrinted = 0;
+        }
+        else
+        {
+            nPrevPrinted = nNewPrinted;
+        }
 
-        // Spit out the text in one single printf
-        printf("%s", szMessage);
+        // Finally print the message
+        printf("%s", szBuffer);
         nMessageCounter++;
         return dwErrCode;
     }
@@ -224,6 +201,9 @@ class TLogHelper
     void PrintProgress(const XCHAR * szFormat, ...)
     {
         va_list argList;
+
+        // Always reset the time trigger
+        TimeTrigger = 0;
 
         // Only print progress when the cooldown is ready
         if(ProgressReady())
@@ -380,8 +360,10 @@ class TLogHelper
     ULONGLONG ByteCount;                            // For user's convenience: Current number of bytes
     ULONGLONG StartTime;                            // Start time of an operation, in milliseconds
     ULONGLONG EndTime;                              // End time of an operation, in milliseconds
+    DWORD TimeTrigger;                              // For triggering elapsed timers
     DWORD TotalFiles;                               // For user's convenience: Total number of files
     DWORD FileCount;                                // For user's convenience: Curernt number of files
+    DWORD TickCount;
     DWORD DontPrintResult:1;                        // If true, supresset pringing result from the destructor
 
     protected:
@@ -405,30 +387,10 @@ class TLogHelper
         return szBuffer;
     }
 
-    size_t GetConsoleWidth()
-    {
-        // Only check this once per 100 messages
-        if(nSaveConsoleWidth == 0 || (nMessageCounter % 100) == 0)
-        {
-#ifdef CASCLIB_PLATFORM_WINDOWS
-            CONSOLE_SCREEN_BUFFER_INFO ScreenInfo;
-            GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &ScreenInfo);
-            nSaveConsoleWidth = (ScreenInfo.srWindow.Right - ScreenInfo.srWindow.Left);
-#else
-            // On non-Windows platforms, we assume that width of the console line
-            // is 100 characters
-            nSaveConsoleWidth = 100;
-#endif
-        }
-
-        return nSaveConsoleWidth;
-    }
-
     const char * szMainTitle;                       // Title of the text (usually name)
     const char * szSubTitle;                        // Title of the text (can be name of the tested file)
-    size_t nSaveConsoleWidth;                       // Saved width of the console window, in chars
     size_t nMessageCounter;
-    size_t nTextLength;                             // Length of the previous progress message
+    size_t nPrevPrinted;                            // Length of the previously printed message
     time_t dwPrevTickCount;
     bool bMessagePrinted;
 };

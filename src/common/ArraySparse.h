@@ -205,6 +205,7 @@ class CASC_SPARSE_ARRAY
         if(m_pLevel0 != NULL)
         {
             m_pLevel0->Free(0);
+            delete m_pLevel0;
         }
     }
 

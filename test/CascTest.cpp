@@ -41,18 +41,18 @@
 // Defines
 
 #ifdef CASCLIB_PLATFORM_WINDOWS
-#define CASC_PATH_ROOT "/Multimedia/CASC"
-#define CASC_WORK_ROOT "/Multimedia/CASC/Work"
+#define CASC_PATH_ROOT      "/Multimedia/CASC"
+#define CASC_WORK_ROOT      "/Multimedia/CASC/Work"
 #endif
 
 #ifdef CASCLIB_PLATFORM_LINUX
-#define CASC_PATH_ROOT "/media/ladik/CascStorages/CASC"
-#define CASC_WORK_ROOT "/home/ladik/CASC/Work"
+#define CASC_PATH_ROOT      "/media/ladik/CascStorages/CASC"
+#define CASC_WORK_ROOT      "/home/ladik/CASC/Work"
 #endif
 
 #ifdef CASCLIB_PLATFORM_MAC
-#define CASC_PATH_ROOT "/media/ladik/CascStorages"
-#define CASC_WORK_ROOT "/home/ladik/CASC/Work"  // TODO
+#define CASC_PATH_ROOT      "/media/ladik/CascStorages"
+#define CASC_WORK_ROOT      "/home/ladik/CASC/Work"         // TODO
 #endif
 
 static const char szCircleChar[] = "|/-\\";
@@ -63,22 +63,13 @@ static const char szCircleChar[] = "|/-\\";
 // Local structures
 
 // For local storages
-typedef struct _STORAGE_INFO1
+typedef struct _STORAGE_INFO
 {
     LPCSTR szPath;                          // Path to the CASC storage
     LPCSTR szNameHash;                      // MD5 of all file names extracted sequentially
     LPCSTR szDataHash;                      // MD5 of all file data extracted sequentially
-    LPCSTR szFileName;                      // Example file in the storage
-} STORAGE_INFO1, *PSTORAGE_INFO1;
-
-// For online storages
-typedef struct _STORAGE_INFO2
-{
-    LPCSTR szCustomCDN;                     // Pointer to custom CDN
-    LPCSTR szCodeName;                      // Codename of the product
-    LPCSTR szRegion;                        // Region of the product. If NULL, CascLib will open the first one in the "versions"
-    LPCSTR szFile;                          // Example file in the storage
-} STORAGE_INFO2, *PSTORAGE_INFO2;
+    LPCSTR szFileName;                      // file in the storage
+} STORAGE_INFO, *PSTORAGE_INFO;
 
 // For running tests on an open storage
 struct TEST_PARAMS
@@ -248,30 +239,6 @@ static LPTSTR MakeFullPath(LPTSTR szBuffer, size_t ccBuffer, LPCSTR szStorage)
     return CopyPath(szBuffer, szBufferEnd, szStorage);
 }
 
-static bool AppendParamSuffix(LPTSTR szBuffer, size_t cchBuffer, LPCSTR szSuffix)
-{
-    LPTSTR szBufferPtr = szBuffer + _tcslen(szBuffer);
-    LPTSTR szBufferEnd = szBuffer + cchBuffer;
-
-    if(szSuffix && szSuffix[0])
-    {
-        // Append the colon
-        if((szBufferPtr + 1) < szBufferEnd)
-        {
-            *szBufferPtr++ = '*';
-        }
-
-        // Append the suffix
-        if((szBufferPtr + strlen(szSuffix)) < szBufferEnd)
-        {
-            CascStrCopy(szBufferPtr, (szBufferEnd - szBufferPtr), szSuffix);
-            return true;
-        }
-    }
-
-    return false;
-}
-
 static LPCTSTR GetTheProperListfile(HANDLE hStorage, LPCTSTR szListFile)
 {
     DWORD dwFeatures = 0;
@@ -359,14 +326,19 @@ static PCASC_FILE_SPAN_INFO GetFileInfo(HANDLE hFile, CASC_FILE_FULL_INFO & File
     return pSpans;
 }
 
+static const char * GetHash(LPBYTE md5_binary, char * szBuffer)
+{
+    StringFromBinary(md5_binary, MD5_HASH_SIZE, szBuffer);
+    return szBuffer;
+}
+
 static const char * GetHash(MD5_CTX & HashContext, char * szBuffer)
 {
     unsigned char md5_binary[MD5_HASH_SIZE];
 
     // Finalize the hashing
     MD5_Final(md5_binary, &HashContext);
-    StringFromBinary(md5_binary, MD5_HASH_SIZE, szBuffer);
-    return szBuffer;
+    return GetHash(md5_binary, szBuffer);
 }
 
 static DWORD ExtractFile(TLogHelper & LogHelper, TEST_PARAMS & Params, CASC_FIND_DATA & cf)
@@ -552,14 +524,19 @@ static DWORD GetNumberOfWorkerThreads()
     return dwThreadCount;
 }
 
-static PCASC_FIND_DATA GetNextInLine(PCASC_FIND_DATA_ARRAY pFiles)
+static PCASC_FIND_DATA GetNextFindData(PCASC_FIND_DATA_ARRAY pFiles)
 {
+    TLogHelper * pLogHelper = pFiles->pLogHelper;
     DWORD ItemIndex;
 
     // Atomically increment the value in the file array
     ItemIndex = CascInterlockedIncrement(&pFiles->ItemIndex) - 1;
     if(ItemIndex < pFiles->ItemCount)
+    {
+        if(pLogHelper->TimeElapsed(1000))
+            pLogHelper->PrintProgress("Extracting file %u of %u", ItemIndex, pFiles->ItemCount);
         return &pFiles->cf[ItemIndex];
+    }
 
     // If we overflowed the total number of files, it means that we are done
     return NULL;
@@ -570,17 +547,10 @@ static DWORD WINAPI Worker_ExtractFiles(PCASC_FIND_DATA_ARRAY pFiles)
     PCASC_FIND_DATA pFindData;
 
     // Retrieve the next-in-line found file
-    while((pFindData = GetNextInLine(pFiles)) != NULL)
+    while((pFindData = GetNextFindData(pFiles)) != NULL)
     {
         ExtractFile(*pFiles->pLogHelper, *pFiles->pTestParams, *pFindData);
     }
-
-    // Keep extracting files for a very long time
-//  for (size_t i = 0; i < 1000000; i++)
-//  {
-//      ExtractFile(*pFiles->pLogHelper, *pFiles->pTestParams, pFiles->cf[rand() % pFiles->ItemCount]);
-//  }
-
     return 0;
 }
 
@@ -592,13 +562,13 @@ static void RunExtractWorkers(PCASC_FIND_DATA_ARRAY pFiles)
     size_t dwCoresUsed = GetNumberOfWorkerThreads();
 
     // Run up to 40 worker threads
-    for (size_t i = 0; i < dwCoresUsed; i++)
+    for(size_t i = 0; i < dwCoresUsed; i++)
     {
         threads.emplace_back(&Worker_ExtractFiles, pFiles);
     }
 
     // Let them threads finish their job
-    for (auto &thread : threads)
+    for(auto &thread : threads)
     {
         thread.join();
     }
@@ -619,7 +589,7 @@ static void RunExtractWorkers(PCASC_FIND_DATA_ARRAY pFiles)
         dwCoresUsed = _countof(ThreadHandles);
 
     // Run up to 40 worker threads
-    for (DWORD i = 0; i < dwCoresUsed; i++)
+    for(DWORD i = 0; i < dwCoresUsed; i++)
     {
         ThreadHandles[dwThreads] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)Worker_ExtractFiles, pFiles, 0, &dwThreadId); 
         if(ThreadHandles[dwThreads] != NULL)
@@ -694,7 +664,8 @@ static DWORD Storage_SeekFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
             while(TotalRead < FileSize)
             {
                 // Show the progress to the user
-                LogHelper.PrintProgress("Extracting file (%u %%) ...", (DWORD)((TotalRead * 100) / FileSize));
+                if(LogHelper.TimeElapsed(1000))
+                    LogHelper.PrintProgress("Extracting file (%u %%) ...", (DWORD)((TotalRead * 100) / FileSize));
 
                 // Get the amount of bytes to read
                 DWORD dwBytesToRead = sizeof(Buffer);
@@ -740,7 +711,8 @@ static DWORD Storage_SeekFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
                     BYTE Buffer2[0x1000];
 
                     // Show the progress
-                    LogHelper.PrintProgress("Testing seek operations (%u of %u) ...", i, 0x1000);
+                    if(LogHelper.TimeElapsed(1000))
+                        LogHelper.PrintProgress("Testing seek operations (%u of %u) ...", i, 0x1000);
 
                     // Determine offset and length
                     ByteOffset = ((RandomHi << 0x20) | RandomLo) % FileSize;
@@ -843,11 +815,11 @@ static DWORD Storage_EnumFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
         if(hFind != INVALID_HANDLE_VALUE)
         {
             // Keep searching as long as we found something
-            while (bFileFound)
+            while(bFileFound)
             {
                 // Increment the index
-//              if(!_stricmp(pFiles->cf[dwFileIndex].szFileName, "00000f8465973be812c8f2f7c105f02f"))
-//                  __debugbreak();
+                if(LogHelper.TimeElapsed(1000))
+                    LogHelper.PrintProgress("Searching storage (%u of %u) ...", dwFileIndex, dwTotalFileCount);
                 dwFileIndex++;
 
                 // Prevent array overflow
@@ -931,7 +903,7 @@ static DWORD Storage_ReadFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
     return Storage_EnumFiles(LogHelper, Params);
 }
 
-static DWORD LocalStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO1 & StorInfo)
+static DWORD LocalStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO & StorInfo)
 {
     TLogHelper LogHelper(StorInfo.szPath);
     HANDLE hStorage;
@@ -1033,57 +1005,55 @@ static bool WINAPI OnlineStorage_OpenCB(
     return false;
 }
 
-static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO2 & StorInfo)
+static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO & StorInfo)
 {
     CASC_OPEN_STORAGE_ARGS OpenArgs = {sizeof(CASC_OPEN_STORAGE_ARGS)};
-    TLogHelper LogHelper(StorInfo.szCodeName);
+    TLogHelper LogHelper(StorInfo.szPath);
     HANDLE hStorage;
     TCHAR szParams[MAX_PATH+0x40];
     DWORD dwErrCode = ERROR_SUCCESS;
-    bool bSucceeded = false;
 
+    LogHelper.PrintMessage("Root File: %s", StorInfo.szPath);
     LogHelper.PrintProgress("Opening storage ...");
 
     // Prepare the path
-    CascStrPrintf(szParams, _countof(szParams), _T("%hs/%hs"), CASC_WORK_ROOT, StorInfo.szCodeName);
+    CascStrPrintf(szParams, _countof(szParams), _T("%hs/%hs"), CASC_PATH_ROOT, StorInfo.szPath);
 
-    // Append custom CDN URL, if any
-    AppendParamSuffix(szParams, _countof(szParams), StorInfo.szCustomCDN);
-
-    // Append codename, if any
-    if(AppendParamSuffix(szParams, _countof(szParams), StorInfo.szCodeName))
-    {
-        // Append region, if any
-        AppendParamSuffix(szParams, _countof(szParams), StorInfo.szRegion);
-    }
-
-    // Open te online storage
+    // Prepare the callbacks
     OpenArgs.PfnProgressCallback = OnlineStorage_OpenCB;
     OpenArgs.PtrProgressParam = &LogHelper;
-    OpenArgs.dwFlags = CASC_FEATURE_LOCAL_CDNS | CASC_FEATURE_LOCAL_VERSIONS;
+    
+    // Enable or disable reusing VERSIONS and CDNS
+    if(strstr(StorInfo.szPath, "current") == NULL)
+        OpenArgs.dwFlags |= CASC_FEATURE_LOCAL_CDNS | CASC_FEATURE_LOCAL_VERSIONS;
+
+    // Open the online storage
     if(CascOpenStorageEx(szParams, &OpenArgs, true, &hStorage))
     {
-        if(StorInfo.szFile == NULL)
-        {
-            TEST_PARAMS Params;
+        TEST_PARAMS Params;
 
-            // Configure the test parameters
-            Params.hStorage = hStorage;
-            Params.szFileName = NULL;
-            Params.bOnlineStorage = true;
-            dwErrCode = PfnRunTest(LogHelper, Params);
-        }
-        else
+        // Check a specific file
+        if(StorInfo.szFileName != NULL)
         {
             CASC_FILE_FULL_INFO FileInfo = {0};
             HANDLE hFile = NULL;
+            char szBuffer[MD5_STRING_SIZE + 1];
+            bool bSucceeded = false;
 
             // Just get the file info
-            LogHelper.PrintProgress("Querying file \"%s\" ...", GetPlainFileName(StorInfo.szFile));
-            if(CascOpenFile(hStorage, StorInfo.szFile, 0, CASC_OPEN_BY_NAME, &hFile))
+            LogHelper.PrintProgress("Querying file \"%s\" ...", GetPlainFileName(StorInfo.szFileName));
+            if(CascOpenFile(hStorage, StorInfo.szFileName, 0, CASC_OPEN_BY_NAME, &hFile))
             {
                 if(CascGetFileInfo(hFile, CascFileFullInfo, &FileInfo, sizeof(CASC_FILE_FULL_INFO), NULL))
+                {
+                    LogHelper.PrintMessage("  File name:     %s", StorInfo.szFileName);
+                    LogHelper.PrintMessage("  File hash:     %s", GetHash(FileInfo.CKey, szBuffer));
+                    LogHelper.PrintMessage("  File size:     %08X", FileInfo.ContentSize);
+                    LogHelper.PrintMessage("  Locale flags:  %08X", FileInfo.LocaleFlags);
+                    LogHelper.PrintMessage("  Content flags: %08X", FileInfo.ContentFlags);
                     bSucceeded = true;
+                }
+
                 CascCloseFile(hFile);
             }
 
@@ -1091,18 +1061,22 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO2 & StorInf
             if(bSucceeded == false)
             {
                 dwErrCode = GetCascError();
-                LogHelper.PrintError("Failed to retrieve file information.", StorInfo.szFile);
+                LogHelper.PrintError("Failed to retrieve file information.", StorInfo.szFileName);
             }
         }
-        
-        // Show the result on success
-        if(bSucceeded)
-            LogHelper.PrintMessage(" ");
+
+        // Configure the test parameters
+        Params.szExpectedNameHash = StorInfo.szNameHash;
+        Params.szExpectedDataHash = StorInfo.szDataHash;
+        Params.hStorage = hStorage;
+        Params.szFileName = NULL;
+        Params.bOnlineStorage = true;
+        dwErrCode = PfnRunTest(LogHelper, Params);
         CascCloseStorage(hStorage);
     }
     else
     {
-        LogHelper.PrintError("Error: Failed to open storage %s", StorInfo.szCodeName);
+        LogHelper.PrintError("Error: Failed to open storage %s", StorInfo.szPath);
         assert(GetCascError() != ERROR_SUCCESS);
         dwErrCode = GetCascError();
     }
@@ -1113,199 +1087,128 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO2 & StorInf
 //-----------------------------------------------------------------------------
 // Storage list
 
-static STORAGE_INFO1 StorageInfo1[] =
+static STORAGE_INFO StorageInfo1[] =
 {
-    //- Storage folder name --------  - Compound file name hash --------  - Compound file data hash --------  - Example file to extract ---
-    {"Beta TVFS/00001",               "44833489ccf495e78d3a8f2ee9688ba6", "96e6457b649b11bcee54d52fa4be12e5", "ROOT"},
-    {"Beta TVFS/00002",               "0ada2ba6b0decfa4013e0465f577abf1", "4da83fa60e0e505d14a5c21284142127", "ENCODING"},
+    //- Storage folder name --------        - Compound file name hash --------  - Compound file data hash --------  - Example file to extract ---
+    {"Beta TVFS/00001",                     "44833489ccf495e78d3a8f2ee9688ba6", "96e6457b649b11bcee54d52fa4be12e5", "ROOT"},
+    {"Beta TVFS/00002",                     "0ada2ba6b0decfa4013e0465f577abf1", "4da83fa60e0e505d14a5c21284142127", "ENCODING"},
 
-    {"CoD4/3376209",                  "e01180b36a8cfd82cb2daa862f5bbf3e", "79cd4cfc9eddad53e4b4d394c36b8b0c", "zone/base.xpak" },
+    {"CoD4/3376209",                        "e01180b36a8cfd82cb2daa862f5bbf3e", "79cd4cfc9eddad53e4b4d394c36b8b0c", "zone/base.xpak" },
+    {"CoD4-MW/8042902/.build.info",         "cd54a9444812e168b3b920b1479eff71", "033f77f6309bf6c21984fc10d09e5a72" },
 
-    {"Diablo III/30013",              "86ba76b46c88eb7c6188d28a27d00f49", "19e37cc3c178ea0521369c09d67791ac", "ENCODING"},
-    {"Diablo III/50649",              "18cd3eb87a46e2d3aa0c57d1d8f8b8ff", "9225b3fa85dd958209ad20495ff6457e", "ENCODING"},
-    {"Diablo III/58979",              "3c5e033739bb58ce1107e59b8d30962a", "901dd9dde4e793ee42414c81874d1c8f", "ENCODING"},
-    {"Diablo III/68722",              "34cb5a5cea775b7194d9cd0ec3458d3b", "eeaa6a963aa19d93bdafc049fe6d3aaf", "ENCODING"},
+    {"Diablo III/30013",                    "86ba76b46c88eb7c6188d28a27d00f49", "19e37cc3c178ea0521369c09d67791ac", "ENCODING"},
+    {"Diablo III/50649",                    "18cd3eb87a46e2d3aa0c57d1d8f8b8ff", "9225b3fa85dd958209ad20495ff6457e", "ENCODING"},
+    {"Diablo III/58979",                    "3c5e033739bb58ce1107e59b8d30962a", "901dd9dde4e793ee42414c81874d1c8f", "ENCODING"},
+    {"Diablo III/68722",                    "34cb5a5cea775b7194d9cd0ec3458d3b", "eeaa6a963aa19d93bdafc049fe6d3aaf", "ENCODING"},
 
-    {"Heroes of the Storm/29049",     "98396c1a521e5dee511d835b9e8086c7", "b37e7edc07d465a8e97b47cabcd3fc04", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_autoai1.dds"},
-    {"Heroes of the Storm/30027",     "6bcbe7c889cc465e4993f92d6ae1ee75", "978f6332a2f2149d74d48414b834c8f6", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_claim1.dds"},
-    {"Heroes of the Storm/30414",     "4b377fa69dab736b2ae495920663832e", "367eef337676c902bf6855f54bbda182", "mods\\heromods\\murky.stormmod\\base.stormdata\\gamedata\\buttondata.xml"},
-    {"Heroes of the Storm/31726",     "f997a06b3f8c10d9095e542f1ef83a74", "0eb064b28fc6203a48321a15d17f7df8", "mods\\heroes.stormmod\\base.stormassets\\Assets\\modeltextures.db"},
-    {"Heroes of the Storm/39445",     "c672b26f8f14ab2e68a9f9d7d6ca6062", "62376a66045c7806e865ef4b056c7060", "versions.osxarchive\\Versions\\Base39153\\Heroes.app\\Contents\\_CodeSignature\\CodeResources"},
-    {"Heroes of the Storm/50286",     "d1d57e83cbd72cbecd76916c22f6c4b6", "c1fe97f5fc04a2824449b6c43cf31ce5", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
-    {"Heroes of the Storm/65943",     "c5d75f4e12dbc05d4560fe61c4b88773", "f046b2ed9ecc7b27d2a114e16c34c8fd", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
-    {"Heroes of the Storm/75589",     "ae2209f1fcb26c730e9757a42bcce17e", "a7f7fbf1e04c87ead423fb567cd6fa5c", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
-    {"Heroes of the Storm/81376",     "25597a3f8adc3fa79df243197fecd1cc", "2c36eb3dde7d545a0fa413ccebf84202", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
+    {"Heroes of the Storm/29049",           "98396c1a521e5dee511d835b9e8086c7", "b37e7edc07d465a8e97b47cabcd3fc04", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_autoai1.dds"},
+    {"Heroes of the Storm/30027",           "6bcbe7c889cc465e4993f92d6ae1ee75", "978f6332a2f2149d74d48414b834c8f6", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_claim1.dds"},
+    {"Heroes of the Storm/30414",           "4b377fa69dab736b2ae495920663832e", "367eef337676c902bf6855f54bbda182", "mods\\heromods\\murky.stormmod\\base.stormdata\\gamedata\\buttondata.xml"},
+    {"Heroes of the Storm/31726",           "f997a06b3f8c10d9095e542f1ef83a74", "0eb064b28fc6203a48321a15d17f7df8", "mods\\heroes.stormmod\\base.stormassets\\Assets\\modeltextures.db"},
+    {"Heroes of the Storm/39445",           "c672b26f8f14ab2e68a9f9d7d6ca6062", "62376a66045c7806e865ef4b056c7060", "versions.osxarchive\\Versions\\Base39153\\Heroes.app\\Contents\\_CodeSignature\\CodeResources"},
+    {"Heroes of the Storm/50286",           "d1d57e83cbd72cbecd76916c22f6c4b6", "c1fe97f5fc04a2824449b6c43cf31ce5", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
+    {"Heroes of the Storm/65943",           "c5d75f4e12dbc05d4560fe61c4b88773", "f046b2ed9ecc7b27d2a114e16c34c8fd", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
+    {"Heroes of the Storm/75589",           "ae2209f1fcb26c730e9757a42bcce17e", "a7f7fbf1e04c87ead423fb567cd6fa5c", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
+    {"Heroes of the Storm/81376",           "25597a3f8adc3fa79df243197fecd1cc", "2c36eb3dde7d545a0fa413ccebf84202", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
+    {"Heroes of the Storm/88936",           "e3a4794fcb627f0768ff97834119d20a", "7d2cec9779e9c8baf0f1304df5921858"},
 
-    {"Overwatch/24919/data/casc",     "53afa15570c29bd40bba4707b607657e", "6f9131fc0e7ad558328bbded2c996959", "ROOT"},
-    {"Overwatch/47161",               "53db1f3da005211204997a6b50aa71e1", "12be32a2f86ea1f4e0bf2b62fe4b7f6e", "TactManifest\\Win_SPWin_RCN_LesMX_EExt.apm"},
-    {"Overwatch/72127",               "bef17230badb29e5c7dad18a2b30df8a", "bae70b787316d724646b954978284c14", "TactManifest\\Win_SPWin_RCN_LesMX_EExt.apm"},
+    {"Overwatch/24919/data/casc",           "53afa15570c29bd40bba4707b607657e", "6f9131fc0e7ad558328bbded2c996959", "ROOT"},
+    {"Overwatch/47161",                     "53db1f3da005211204997a6b50aa71e1", "12be32a2f86ea1f4e0bf2b62fe4b7f6e", "TactManifest\\Win_SPWin_RCN_LesMX_EExt.apm"},
+    {"Overwatch/72127",                     "bef17230badb29e5c7dad18a2b30df8a", "bae70b787316d724646b954978284c14", "TactManifest\\Win_SPWin_RCN_LesMX_EExt.apm"},
 
-    {"Starcraft/2457",                "3eabb81825735cf66c0fc10990f423fa", "ce752a323819c369fba03401ba400332", "music\\radiofreezerg.ogg"},
-    {"Starcraft/4037",                "bb2b76d657a841953fe093b75c2bdaf6", "2f1e9df40da0f6f682ffecbbd920d4fc", "music\\radiofreezerg.ogg"},
-    {"Starcraft/4261",                "59ea96addacccb73938fdf688d7aa29b", "4e07a768999c7887c8c21364961ab07a", "music\\radiofreezerg.ogg"},
-    {"Starcraft/6434",                "e3f929b881ad07028578d202f97c107e", "9bf9597b1f10d32944194334e8dc442a", "music\\radiofreezerg.ogg"},
-    {"Starcraft/8713",                "57da9e2768368d3e31473a70a9286a69", "6a425e9d9e7f3b44773a021ea89f85e3", "music\\radiofreezerg.ogg"},
+    {"Starcraft/2457",                      "3eabb81825735cf66c0fc10990f423fa", "ce752a323819c369fba03401ba400332", "music\\radiofreezerg.ogg"},
+    {"Starcraft/4037",                      "bb2b76d657a841953fe093b75c2bdaf6", "2f1e9df40da0f6f682ffecbbd920d4fc", "music\\radiofreezerg.ogg"},
+    {"Starcraft/4261",                      "59ea96addacccb73938fdf688d7aa29b", "4e07a768999c7887c8c21364961ab07a", "music\\radiofreezerg.ogg"},
+    {"Starcraft/6434",                      "e3f929b881ad07028578d202f97c107e", "9bf9597b1f10d32944194334e8dc442a", "music\\radiofreezerg.ogg"},
+    {"Starcraft/8713",                      "57da9e2768368d3e31473a70a9286a69", "6a425e9d9e7f3b44773a021ea89f85e3", "music\\radiofreezerg.ogg"},
 
-    {"Starcraft II/45364/\\/",        "28f8b15b5bbd87c16796246eac3f800c", "f9cd7fc20fa53701846109d3d6947d08", "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
-    {"Starcraft II/75025",            "79c044e1286b7b18478556e571901294", "e290febb90e06e97b4db6f0eb519ca91", "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
-    {"Starcraft II/81102",            "cb6bea299820895f6dcbc72067553743", "63b47f03b1717ded751e0d24d3ddff4f", "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
+    {"Starcraft II/45364/\\/",              "28f8b15b5bbd87c16796246eac3f800c", "f9cd7fc20fa53701846109d3d6947d08", "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
+    {"Starcraft II/75025",                  "79c044e1286b7b18478556e571901294", "e290febb90e06e97b4db6f0eb519ca91", "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
+    {"Starcraft II/81102",                  "cb6bea299820895f6dcbc72067553743", "63b47f03b1717ded751e0d24d3ddff4f", "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
 
-    {"Warcraft III/09231",            "8147106d7c05eaaf3f3611cc6f5314fe", "1b47c84d9b4ce58beeb2604a934cf83c", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
-    {"Warcraft III/09655",            "f3f5470aa0ab4939fa234d3e29c3d347", "e45792b7459dc0c78ecb25130fa34d88", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
-    {"Warcraft III/11889",            "ff36cd4f58aae23bd77d4a90c333bdb5", "4cba488e57f7dccfb77eca8c86578a37", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
-    {"Warcraft III/13369",            "9c3fce648bf75d93a8765e84dcd10377", "4ac831db9bf0734f01b9d20455a68ab6", "ENCODING" },
-    {"Warcraft III/14883",            "a4b269415f1f4adec4df8bb736dc1297", "3fd108674117ad4f93885bdd1a525f30", NULL },
-    {"Warcraft III/15801",            "e1c3cfa897c8a25ef493455469955186", "f162cd3448219fd9956f9ff8fb5ba915", NULL },
+    {"Warcraft III/09655",                  "f3f5470aa0ab4939fa234d3e29c3d347", "e45792b7459dc0c78ecb25130fa34d88", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
+    {"Warcraft III/11889",                  "ff36cd4f58aae23bd77d4a90c333bdb5", "4cba488e57f7dccfb77eca8c86578a37", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
+    {"Warcraft III/13369",                  "9c3fce648bf75d93a8765e84dcd10377", "4ac831db9bf0734f01b9d20455a68ab6", "ENCODING" },
+    {"Warcraft III/14883",                  "a4b269415f1f4adec4df8bb736dc1297", "3fd108674117ad4f93885bdd1a525f30", NULL },
+    {"Warcraft III/15801",                  "e1c3cfa897c8a25ef493455469955186", "f162cd3448219fd9956f9ff8fb5ba915", NULL },
 
-    {"WoW/18125",                     "b31531af094f78f58592249c4d216a8e", "e5c9b3f0da7806d8b239c13bff1d836e", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/18379",                     "fab30626cf94ed1523519729c3701812", "606e4bfd6f8100ae875eb4c00789233b", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/18865",                     "7f252a8c6001938f601b0c91abbb0f2a", "cee96fa43cddc008f564b4615fdbd109", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/18888",                     "a007d0433c71ddc6e9acaa45cbdc4e61", "a093c596240a6b71de125eaa83ea8568", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/19116",                     "a3be9cfd4a15ba184e21eed9ec90417b", "11a973871aef6ab3236676a25381a1e6", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/19342",                     "66f0de0cff477e1d8e982683771f1ada", "69b4c91c977b875fd0a6ffbf89b06408", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/21742",                     "a357c3cbed98e83ac5cd394ceabc01e8", "90ce1aac44299aa2ac6fb44d249d2561", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/22267",                     "101949dfbed06d417d24a65054e8a6b6", "4ef8df3cf9b00b5c7b2c1b9f4166ec0d", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/23420",                     "e62a798989e6db00044b079e74faa1eb", "854e58816e6eb2795d14fe81470ad19e", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/29981",                     "a35f7de61584644d4877aac1380ef090", "3cba30b5e439a6e59b0953d17da9ac6c", "dbfilesclient\\battlepetspeciesstate.db2"},
+    {"WoW/18125",                           "b31531af094f78f58592249c4d216a8e", "e5c9b3f0da7806d8b239c13bff1d836e", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/18379",                           "fab30626cf94ed1523519729c3701812", "606e4bfd6f8100ae875eb4c00789233b", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/18865",                           "7f252a8c6001938f601b0c91abbb0f2a", "cee96fa43cddc008f564b4615fdbd109", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/18888",                           "a007d0433c71ddc6e9acaa45cbdc4e61", "a093c596240a6b71de125eaa83ea8568", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/19116",                           "a3be9cfd4a15ba184e21eed9ec90417b", "11a973871aef6ab3236676a25381a1e6", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/19342",                           "66f0de0cff477e1d8e982683771f1ada", "69b4c91c977b875fd0a6ffbf89b06408", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/21742",                           "a357c3cbed98e83ac5cd394ceabc01e8", "90ce1aac44299aa2ac6fb44d249d2561", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/22267",                           "101949dfbed06d417d24a65054e8a6b6", "4ef8df3cf9b00b5c7b2c1b9f4166ec0d", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/23420",                           "e62a798989e6db00044b079e74faa1eb", "854e58816e6eb2795d14fe81470ad19e", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/29981",                           "a35f7de61584644d4877aac1380ef090", "3cba30b5e439a6e59b0953d17da9ac6c", "dbfilesclient\\battlepetspeciesstate.db2"},
 
-    {"WoW/31299*wow",                 "6220549f2b8936af6e63179f6ece78ab", "05627c131969bd9394fb345f4037e249", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/31299*wowt",                "959fa63cbcd9ced02a8977ed128df828", "423c1b99b14a615a02d8ffc7a7eff4ef", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/31299*wow_classic",         "184794b8a191429e2aae9b8a5334651b", "b46bd2f81ead285e810e5a049ca2db74", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/31299*wow",                       "6220549f2b8936af6e63179f6ece78ab", "05627c131969bd9394fb345f4037e249", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/31299*wowt",                      "959fa63cbcd9ced02a8977ed128df828", "423c1b99b14a615a02d8ffc7a7eff4ef", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/31299*wow_classic",               "184794b8a191429e2aae9b8a5334651b", "b46bd2f81ead285e810e5a049ca2db74", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
 
-    {"WoW/47067*wow",                 "6f257405278d42a39e6a6bd9e7385652", "34e8ccae337be5a00203417c1eb56f80", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/47067*wowt",                "e6ad508bfa8a0ac254da91f6512ff571", "d4fe823586aae75b193b3b3ab2458e73", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/47067*wow_classic",         "309d02ad4a7df0fc6574f23d0cb88f6a", "3aae26808a5255477ab49df20b95fb18", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/47067*wow_classic_ptr",     "8eccef865f29bbb944e657000db3bd7c", "90e060138fdcf23f92611e08d9a3bb3d", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/47067*wow_classic_era",     "de105dabf85e24ec4478865cd84939bb", "47071bdea7e593e5481e2775c4813626", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/47067*wow_classic_era_ptr", "cefa2f0e794f987e3c9779dc9e20d1be", "a0736b9aa5dfcd68dcc1fd2b3247ed1d", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/37497-classic",                   "0ea14727815658accd02949e67960ca2", "102511c7ef53af35b5c3d4a837f076b9"},
+    {"WoW/38598-classic-tbcbeta",           "f180854366627a11d433fa59f4158b5a", "97423f756948e9437defc32b3bec4895"},
+    {"WoW/38707-classic-tbc",               "d03bddef0bfa657d471c65d65ad5f584", "08cc37803156adaddca74a09211106bd"},
+    {"WoW/40892-classic-tbc/.build.info",   "e53c27cf8d79885b16ca31e6f291917d", "5ae578d0f8986c709477106fa63d8cfb"},
+
+    {"WoW/47067*wow",                       "6f257405278d42a39e6a6bd9e7385652", "34e8ccae337be5a00203417c1eb56f80", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/47067*wowt",                      "e6ad508bfa8a0ac254da91f6512ff571", "d4fe823586aae75b193b3b3ab2458e73", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/47067*wow_classic",               "309d02ad4a7df0fc6574f23d0cb88f6a", "3aae26808a5255477ab49df20b95fb18", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/47067*wow_classic_ptr",           "8eccef865f29bbb944e657000db3bd7c", "90e060138fdcf23f92611e08d9a3bb3d", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/47067*wow_classic_era",           "de105dabf85e24ec4478865cd84939bb", "47071bdea7e593e5481e2775c4813626", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/47067*wow_classic_era_ptr",       "cefa2f0e794f987e3c9779dc9e20d1be", "a0736b9aa5dfcd68dcc1fd2b3247ed1d", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
 };
 
-static LPCSTR szCdn1 = "ribbit://us.version.battle.net/v1/products";
-static LPCSTR szCdn2 = "http://us.falloflordaeron.com:8000";
-
-static STORAGE_INFO2 StorageInfo2[] =
+static STORAGE_INFO StorageInfo2[] =
 {
-//  {NULL,   "agent",       "us"},
-//  {NULL,   "bna",         "us"},
-//  {NULL,   "catalogs" },
-//  {NULL,   "clnt",        "us"},
-//  {NULL,   "hsb",         "us"},
-    {szCdn2, "wow",         "us"},
-    {szCdn1, "wowt",        "us", "interface/framexml/localization.lua"},
-    {szCdn1, "wow_classic", "us"},
+    {"Hearthstone/160183/hearthstone-25.0.3.160183.159202.versions*hsb*us", "34b821747a7911eb98c9141153470fdd", "85096ab761616e1069a4fa5c1da28d9d"},
+    {"Hearthstone/160183*hsb*us",                                           "34b821747a7911eb98c9141153470fdd", "85096ab761616e1069a4fa5c1da28d9d"},
+    {"WoW/45745-custom-cdn*http://us.falloflordaeron.com:8000*wow*us",      "d0af10b6c692fc123d6e0a5c192b58da", "14c043c71ad53c9288daf1ecba692662", "interface/framexml/localization.lua"},
+    {"WoW/45745-meta/wow-45745-custom-cdn.versions*wow*us",                 "d0af10b6c692fc123d6e0a5c192b58da", "14c043c71ad53c9288daf1ecba692662", "interface/framexml/localization.lua"},
+    {"WoW/45745-meta/wow-45779-tvfs.versions",                              "1f844a28db5b034a6d9cf8f1e9ff44bb", "df1e1073535daf33cead043708bbae67"},
+    {"WoW/45745-meta/wow-46144-tvfs.versions",                              "55ae44be3c3b64dd9bc99111bfe5aeee", "67964ce23f95083a63ace09d11a9c7b1"},
+    {"WoW/45745-meta/wow-46902-classic.versions*wow_classic*us",            "019c84177164c3cffe72691da519c1e0", "167c2be33ac6323b598ee6e02a5ccf1f"},
+    {"WoW/45745-meta/wow-47186-ptr.versions",                               "a2f0a4e939f6f058461c0733a59f9945", "b34daa19feff877e038f1cd9e7ee8799", "interface/framexml/localization.lua"},
+    {"WoW/45745-meta*wowt*us",                                              "a2f0a4e939f6f058461c0733a59f9945", "b34daa19feff877e038f1cd9e7ee8799", "interface/framexml/localization.lua"},
+    {"WoW/5####-current*wow*us",                                            NULL,                               NULL, "interface/framexml/localization.lua"},
 };
 
 //-----------------------------------------------------------------------------
 // Main
 
-typedef uint64_t ULONG64;
-
-LPBYTE MapFileToMemory(LPCTSTR szFileName, size_t * PtrLength)
-{
-    ULARGE_INTEGER FileSize = {0};
-    HANDLE hFile;
-    HANDLE hMap;
-    LPBYTE pbFileData = NULL;
-    int nError = ERROR_SUCCESS;
-
-    // Load the file to memory
-    hFile = CreateFile(szFileName, FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
-    if(hFile != INVALID_HANDLE_VALUE)
-    {
-        // Get the file size
-        FileSize.LowPart = GetFileSize(hFile, &FileSize.HighPart);
-        if(FileSize.HighPart == 0 && 2 < FileSize.LowPart && FileSize.LowPart < 0x02000000)
-        {
-            // Create file section
-            hMap = CreateFileMapping(hFile, NULL, PAGE_READONLY, 0, 0, NULL);
-            if(hMap != NULL)
-            {
-                // Map the entire file to memory
-                pbFileData = (LPBYTE)MapViewOfFile(hMap, FILE_MAP_READ, 0, 0, 0);
-                if(pbFileData == NULL)
-                {
-                    nError = GetLastError();
-                }
-
-                // Close the mapping
-                CloseHandle(hMap);
-            }
-            else
-                nError = GetLastError();
-        }
-        else
-            SetLastError(ERROR_FILE_TOO_LARGE);
-
-        // Close the file
-        CloseHandle(hFile);
-    }
-    else
-        nError = GetLastError();
-
-    // Return results
-    if(PtrLength != NULL)
-        PtrLength[0] = (size_t)FileSize.QuadPart;
-    if(nError != ERROR_SUCCESS)
-        SetLastError(nError);
-    return pbFileData;
-}
-
+#define LOAD_STORAGES_CMD_LINE
+#define LOAD_STORAGES_LOCAL
+#define LOAD_STORAGES_ONLINE
 
 int main(int argc, char * argv[])
 {
     DWORD dwErrCode = ERROR_SUCCESS;
 
+    CASCLIB_UNUSED(argc);
+    CASCLIB_UNUSED(argv);
     printf("\n");
 
 #if defined(_MSC_VER) && defined(_DEBUG)
     _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif  // defined(_MSC_VER) && defined(_DEBUG)
 
-#ifdef _DEBUG
-/*
-    CASC_SPARSE_ARRAY FileDataIds;
-    //CASC_ARRAY FileDataIds;
-    PULONG64 Int64Array;
-    size_t nLength;
-
-    if(FileDataIds.Create<ULONG64>(0x10) == ERROR_SUCCESS)
-    {
-        Int64Array = (PULONG64)MapFileToMemory(_T("e:\\file-data-ids.bin"), &nLength);
-        if(Int64Array != NULL)
-        {
-            for(size_t i = 0; i < (nLength / 8); i++)
-            {
-                if(Int64Array[i] != 0)
-                {
-                    ULONG64 * RefElement;
-
-                    if((RefElement = (ULONG64 *)FileDataIds.InsertAt(i + 0x10000000)) != NULL)
-                    {
-                        RefElement[0] = Int64Array[i];
-                    }
-                }
-            }
-        }
-
-        FileDataIds.Dump("e:\\file-data-ids2.bin");
-        printf("Bytes allocated: %u\n", (DWORD)FileDataIds.BytesAllocated());
-    }
-*/
-#endif
-
+#ifdef LOAD_STORAGES_CMD_LINE
     //
     // Run tests for each storage entered on command line
     //
     for(int i = 1; i < argc; i++)
     {
-        STORAGE_INFO1 StorInfo = {argv[i]};
+        STORAGE_INFO StorInfo = {argv[i]};
 
         // Attempt to open the storage and extract single file
         dwErrCode = LocalStorage_Test(Storage_ReadFiles, StorInfo);
         if(dwErrCode != ERROR_SUCCESS && dwErrCode != ERROR_FILE_NOT_FOUND)
             break;
     }
+#endif  // LOAD_STORAGES_CMD_LINE
 
+#ifdef LOAD_STORAGES_LOCAL
     //
     // Run the tests for every local storage in my collection
     //
@@ -1316,21 +1219,24 @@ int main(int argc, char * argv[])
         if(dwErrCode != ERROR_SUCCESS && dwErrCode != ERROR_FILE_NOT_FOUND)
             break;
     }
+#endif  // LOAD_STORAGES_LOCAL
 
+#ifdef LOAD_STORAGES_ONLINE
     //
     // Run the tests for every available online storage in my collection
     //
-    for (size_t i = 0; i < _countof(StorageInfo2); i++)
+    for(size_t i = 0; i < _countof(StorageInfo2); i++)
     {
         // Attempt to open the storage and extract single file
         dwErrCode = OnlineStorage_Test(Storage_EnumFiles, StorageInfo2[i]);
         if(dwErrCode != ERROR_SUCCESS)
             break;
     }
+#endif  // LOAD_STORAGES_ONLINE
 
-#ifdef _MSC_VER
-    //_CrtDumpMemoryLeaks();
-#endif  // _MSC_VER
+#if defined(_MSC_VER) && defined(_DEBUG)
+    _CrtDumpMemoryLeaks();
+#endif  // defined(_MSC_VER) && defined(_DEBUG)
 
     return (int)dwErrCode;
 }
