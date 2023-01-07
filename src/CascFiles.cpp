@@ -912,7 +912,7 @@ static DWORD LoadCsvFile(TCascStorage * hs, LPCTSTR szFileName, PARSE_CSV_FILE P
 }
 
 // Loading an online file (VERSIONS or CDNS)
-static DWORD LoadCsvFile(TCascStorage * hs, PARSE_REGION_LINE PfnParseRegionLine, LPCTSTR szFileName, LPCSTR szColumnName, DWORD dwCacheFeature)
+static DWORD LoadCsvFile(TCascStorage * hs, PARSE_REGION_LINE PfnParseRegionLine, LPCTSTR szFileName, LPCSTR szColumnName, bool bForceDownload)
 {
     CASC_PATH<TCHAR> LocalPath;
     CASC_BLOB FileData;
@@ -922,7 +922,7 @@ static DWORD LoadCsvFile(TCascStorage * hs, PARSE_REGION_LINE PfnParseRegionLine
     // Prepare the loading / downloading
     LocalPath.SetPathRoot(hs->szRootPath);
     LocalPath.AppendString(szFileName, true);
-    LocalPath.SetLocalCaching(hs->dwFeatures & dwCacheFeature);
+    LocalPath.SetLocalCaching(bForceDownload == false);
 
     // If the storage is defined as online, we can download the file, if it doesn't exist
     if(hs->dwFeatures & CASC_FEATURE_ONLINE)
@@ -1602,50 +1602,51 @@ DWORD LoadBuildFile_Versions_Cdns(TCascStorage * hs)
     LPCTSTR szVersions = _T("versions");
     DWORD dwErrCode;
     TCHAR szBuffer[MAX_PATH];
+    bool bForceDownload = (hs->dwFeatures & CASC_FEATURE_FORCE_DOWNLOAD) ? true : false;
 
     // The default name of the build file is "versions". However, the caller may select different file
-    if(hs->szBuildFile && hs->szBuildFile[0])
-        szVersions = GetPlainFileName(hs->szBuildFile);
-    dwErrCode = LoadCsvFile(hs, ParseRegionLine_Versions, szVersions, "Region!STRING:0", CASC_FEATURE_LOCAL_VERSIONS);
+    if(hs->szMainFile && hs->szMainFile[0])
+        szVersions = GetPlainFileName(hs->szMainFile);
+    dwErrCode = LoadCsvFile(hs, ParseRegionLine_Versions, szVersions, "Region!STRING:0", bForceDownload);
 
     // We also need to load the "cdns" file
     if(dwErrCode == ERROR_SUCCESS)
     {
         // The default CDNS file is "cdns". However, if the build file is different, we change "cdns" as well
         // Example: If the build file name is "hearthstone-25.0.3.160183.159202.versions", then we want "hearthstone-25.0.3.160183.159202.cdns"
-        if(hs->szBuildFile && hs->szBuildFile[0])
+        if(hs->szMainFile && hs->szMainFile[0])
         {
-            if(ReplaceVersionsWithCdns(szBuffer, _countof(szBuffer), hs->szBuildFile))
+            if(ReplaceVersionsWithCdns(szBuffer, _countof(szBuffer), hs->szMainFile))
             {
-                dwErrCode = LoadCsvFile(hs, ParseRegionLine_Cdns, szBuffer, "Name!STRING:0", CASC_FEATURE_LOCAL_CDNS);
+                dwErrCode = LoadCsvFile(hs, ParseRegionLine_Cdns, szBuffer, "Name!STRING:0", bForceDownload);
                 if(dwErrCode == ERROR_SUCCESS)
                     return dwErrCode;
             }
         }
 
         // Fall back to the default "cdns" file
-        dwErrCode = LoadCsvFile(hs, ParseRegionLine_Cdns, _T("cdns"), "Name!STRING:0", CASC_FEATURE_LOCAL_CDNS);
+        dwErrCode = LoadCsvFile(hs, ParseRegionLine_Cdns, _T("cdns"), "Name!STRING:0", bForceDownload);
     }
     return dwErrCode;
 }
 
-DWORD LoadBuildFile(TCascStorage * hs)
+DWORD LoadMainFile(TCascStorage * hs)
 {
     DWORD dwErrCode = ERROR_NOT_SUPPORTED;
 
     // The build file must be known at this point, even for online storage
     // that are to bo created
-    assert(hs->szBuildFile != NULL);
+    assert(hs->szMainFile != NULL);
 
     // Perform support for each build file type
     switch(hs->BuildFileType)
     {
         case CascBuildDb:       // Older storages have "build.db"
-            dwErrCode = LoadCsvFile(hs, hs->szBuildFile, ParseFile_BuildDb, false);
+            dwErrCode = LoadCsvFile(hs, hs->szMainFile, ParseFile_BuildDb, false);
             break;
 
         case CascBuildInfo:     // Current storages have "build.db"
-            dwErrCode = LoadCsvFile(hs, hs->szBuildFile, ParseFile_BuildInfo, true);
+            dwErrCode = LoadCsvFile(hs, hs->szMainFile, ParseFile_BuildInfo, true);
             break;
 
         case CascVersions:      // Online storages have "versions+cdns"

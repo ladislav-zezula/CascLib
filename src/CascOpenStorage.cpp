@@ -61,7 +61,7 @@ TCascStorage::TCascStorage()
     pRootHandler = NULL;
     dwRefCount = 1;
 
-    szRootPath = szDataPath = szIndexPath = szFilesPath = szConfigPath = szBuildFile = NULL;
+    szRootPath = szDataPath = szIndexPath = szFilesPath = szConfigPath = szMainFile = NULL;
     szCdnHostUrl = szCdnServers = szCdnPath = szCodeName = NULL;
     szIndexFormat = NULL;
     szRegion = NULL;
@@ -106,7 +106,7 @@ TCascStorage::~TCascStorage()
     CASC_FREE(szIndexPath);
     CASC_FREE(szFilesPath);
     CASC_FREE(szConfigPath);
-    CASC_FREE(szBuildFile);
+    CASC_FREE(szMainFile);
     CASC_FREE(szCdnHostUrl);
     CASC_FREE(szCdnServers);
     CASC_FREE(szCdnPath);
@@ -1088,7 +1088,7 @@ static bool GetStoragePathProduct(TCascStorage * hs, void * pvStorageInfo, size_
     return (szBuffer != NULL);
 }
 
-static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs, LPCTSTR szBuildFile, CBLD_TYPE BuildFileType, DWORD dwFeatures)
+static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs, LPCTSTR szMainFile, CBLD_TYPE BuildFileType, DWORD dwFeatures)
 {
     LPCTSTR szCdnHostUrl = NULL;
     LPCTSTR szCodeName = NULL;
@@ -1121,18 +1121,18 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs, L
 
     // Merge features
     hs->dwFeatures |= (dwFeatures & (CASC_FEATURE_DATA_ARCHIVES | CASC_FEATURE_DATA_FILES | CASC_FEATURE_ONLINE));
-    hs->dwFeatures |= (pArgs->dwFlags & (CASC_FEATURE_LOCAL_VERSIONS | CASC_FEATURE_LOCAL_CDNS));
+    hs->dwFeatures |= (pArgs->dwFlags & CASC_FEATURE_FORCE_DOWNLOAD);
     hs->BuildFileType = BuildFileType;
 
     // Copy the name of the build file
-    hs->szBuildFile = CascNewStr(szBuildFile);
+    hs->szMainFile = CascNewStr(szMainFile);
 
     // Construct the root path from the name of the build file
-    CASC_PATH<TCHAR> RootPath(szBuildFile, NULL);
+    CASC_PATH<TCHAR> RootPath(szMainFile, NULL);
     hs->szRootPath = RootPath.New(true);
 
     // If either of the root path or build file is known, it's an error
-    if(hs->szRootPath == NULL || hs->szBuildFile == NULL)
+    if(hs->szRootPath == NULL || hs->szMainFile == NULL)
     {
         dwErrCode = ERROR_NOT_ENOUGH_MEMORY;
     }
@@ -1159,8 +1159,8 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs, L
         if(hs->dwFeatures & CASC_FEATURE_ONLINE)
             sockets_set_caching(true);
 
-        // Now, load the storage build file (".build.info", ".build.db" or "versions")
-        dwErrCode = LoadBuildFile(hs);
+        // Now, load the main storage file (".build.info", ".build.db" or "versions")
+        dwErrCode = LoadMainFile(hs);
     }
 
     // Proceed with loading the CDN config file

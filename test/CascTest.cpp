@@ -1024,8 +1024,8 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO & StorInfo
     OpenArgs.PtrProgressParam = &LogHelper;
     
     // Enable or disable reusing VERSIONS and CDNS
-    if(strstr(StorInfo.szPath, "current") == NULL)
-        OpenArgs.dwFlags |= CASC_FEATURE_LOCAL_CDNS | CASC_FEATURE_LOCAL_VERSIONS;
+    if(strstr(StorInfo.szPath, "current") != NULL)
+        OpenArgs.dwFlags |= CASC_FEATURE_FORCE_DOWNLOAD;
 
     // Open the online storage
     if(CascOpenStorageEx(szParams, &OpenArgs, true, &hStorage))
@@ -1177,7 +1177,7 @@ static STORAGE_INFO StorageInfo2[] =
 //-----------------------------------------------------------------------------
 // Main
 
-#define LOAD_STORAGES_CMD_LINE
+//#define LOAD_STORAGES_CMD_LINE
 #define LOAD_STORAGES_LOCAL
 #define LOAD_STORAGES_ONLINE
 

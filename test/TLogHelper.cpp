@@ -162,7 +162,7 @@ class TLogHelper
         nNewPrinted = (szBufferPtr - szBuffer);
 
         // Shall we pad the string?
-        if((nLength = (szBufferPtr - szMessage)) < nPrevPrinted)
+        if((nLength = (szBufferPtr - szBuffer)) < nPrevPrinted)
         {
             size_t nPadding = nPrevPrinted - nLength;
 
@@ -175,10 +175,8 @@ class TLogHelper
 
         // Shall we add new line?
         if((bPrintEndOfLine != false) && (szBufferPtr < szBufferEnd))
-        {
             *szBufferPtr++ = '\n';
-            *szBufferPtr = 0;
-        }
+        *szBufferPtr = 0;
 
         // Remember if we printed a message
         if(bPrintEndOfLine != false)

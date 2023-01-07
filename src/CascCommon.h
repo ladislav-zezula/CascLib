@@ -286,8 +286,8 @@ struct TCascStorage
     LPTSTR  szIndexPath;                            // The directory where index files are
     LPTSTR  szFilesPath;                            // The directory where raw files are
     LPTSTR  szConfigPath;                           // The directory with configs
-    LPTSTR  szBuildFile;                            // Build file name (.build.info, .build.db, versions)
-    LPTSTR  szCdnHostUrl;                           // URL of the ribbit/http server where to download the VERSIONS and CDNS files
+    LPTSTR  szMainFile;                             // Main storage file (".build.info", ".build.db", "versions")
+    LPTSTR  szCdnHostUrl;                           // URL of the ribbit/http server where to download the "versions" and "cdns" files
     LPTSTR  szCdnServers;                           // List of CDN servers, separated by space
     LPTSTR  szCdnPath;                              // Remote CDN sub path for the product
     LPSTR   szRegion;                               // Product region. Only when "versions" is used as storage root file
@@ -459,7 +459,7 @@ DWORD CheckCascBuildFileDirs(CASC_BUILD_FILE & BuildFile, LPCTSTR szLocalPath);
 DWORD CheckOnlineStorage(PCASC_OPEN_STORAGE_ARGS pArgs, CASC_BUILD_FILE & BuildFile, DWORD dwFeatures);
 DWORD CheckArchiveFilesDirectories(TCascStorage * hs);
 DWORD CheckDataFilesDirectory(TCascStorage * hs);
-DWORD LoadBuildFile(TCascStorage * hs);
+DWORD LoadMainFile(TCascStorage * hs);
 DWORD LoadCdnConfigFile(TCascStorage * hs);
 DWORD LoadCdnBuildFile(TCascStorage * hs);
 
