@@ -31,6 +31,7 @@
 #ifdef _MSC_VER
 #pragma warning(disable: 4505)              // 'XXX' : unreferenced local function has been removed
 #include <crtdbg.h>
+#pragma comment(lib, "winmm.lib")
 #endif
 
 #ifdef CASCLIB_PLATFORM_LINUX
@@ -130,24 +131,6 @@ static LPCTSTR szListFile2 = _T("\\Ladik\\Appdir\\CascLib\\listfile\\listfile8x.
 
 //-----------------------------------------------------------------------------
 // Local functions
-
-static bool IsFileKey(LPCSTR szFileName)
-{
-    BYTE KeyBuffer[MD5_HASH_SIZE];
-    bool bIsKey = false;
-
-    if(szFileName && szFileName[0])
-    {
-        // The length must be at least the length of the CKey
-        if(strlen(szFileName) < MD5_STRING_SIZE)
-            return false;
-
-        // Convert the BLOB to binary.
-        bIsKey = (BinaryFromString(szFileName, MD5_STRING_SIZE, KeyBuffer) == ERROR_SUCCESS);
-    }
-
-    return bIsKey;
-}
 
 // Compares the expected hash with the real one. If they match, returns "match"
 // If the expected hash is not available, returns empty string
