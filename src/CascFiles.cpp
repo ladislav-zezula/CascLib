@@ -1545,29 +1545,40 @@ DWORD CheckArchiveFilesDirectories(TCascStorage * hs)
     assert(hs->szDataPath == NULL);
     assert(hs->szIndexPath == NULL);
 
+    LPTSTR szDataPath = NULL;
+    LPTSTR szConfigPath = NULL;
+    LPTSTR szIndexPath = NULL;
+
     // Try all known subdirectories for the game data sub dirs
     for(size_t i = 0; i < _countof(DataDirs); i++)
     {
-        if((hs->szDataPath = CheckForDirectory(hs->szRootPath, DataDirs[i])) != NULL)
+        if((szDataPath = CheckForDirectory(hs->szRootPath, DataDirs[i])) != NULL)
         {
-            break;
+            // If we found the data path, we also need to initialize the index path
+
+            // Check the config folder
+            if((szConfigPath = CheckForDirectory(szDataPath, _T("config"))) != NULL)
+            {
+                // First, check for more common "data" subdirectory
+                if((szIndexPath = CheckForDirectory(szDataPath, _T("data"))) == NULL)
+                {
+                    // Second, try the "darch" subdirectory (older builds of HOTS - Alpha)
+                    szIndexPath = CheckForDirectory(szDataPath, _T("darch"));
+                }
+
+                if(szIndexPath != NULL)
+                {
+                    hs->szDataPath = szDataPath;
+                    hs->szConfigPath = szConfigPath;
+                    hs->szIndexPath = szIndexPath;
+                    return ERROR_SUCCESS;
+                }
+            }
         }
-    }
 
-    // If we found the data path, we also need to initialize the index path
-    if(hs->szDataPath != NULL)
-    {
-        // Check the config folder
-        if((hs->szConfigPath = CheckForDirectory(hs->szDataPath, _T("config"))) == NULL)
-            return ERROR_FILE_NOT_FOUND;
-
-        // First, check for more common "data" subdirectory
-        if((hs->szIndexPath = CheckForDirectory(hs->szDataPath, _T("data"))) != NULL)
-            return ERROR_SUCCESS;
-
-        // Second, try the "darch" subdirectory (older builds of HOTS - Alpha)
-        if((hs->szIndexPath = CheckForDirectory(hs->szDataPath, _T("darch"))) != NULL)
-            return ERROR_SUCCESS;
+        CASC_FREE(szDataPath);
+        CASC_FREE(szConfigPath);
+        CASC_FREE(szIndexPath);
     }
 
     // One of the paths was not found
