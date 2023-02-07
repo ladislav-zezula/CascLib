@@ -1410,6 +1410,23 @@ static LPTSTR CheckForDirectory(LPCTSTR szParentFolder, LPCTSTR szSubFolder)
     return szLocalPath;
 }
 
+static LPTSTR CheckForDirectories(LPCTSTR szParentFolder, ...)
+{
+    LPCTSTR szSubDir;
+    va_list argList;
+    LPTSTR szFolder = NULL;
+
+    va_start(argList, szParentFolder);
+    while((szSubDir = va_arg(argList, LPCTSTR)) != NULL)
+    {
+        if((szFolder = CheckForDirectory(szParentFolder, szSubDir)) != NULL)
+            break;
+    }
+    va_end(argList);
+
+    return szFolder;
+}
+
 //-----------------------------------------------------------------------------
 // Public functions
 
@@ -1554,31 +1571,22 @@ DWORD CheckArchiveFilesDirectories(TCascStorage * hs)
     {
         if((szDataPath = CheckForDirectory(hs->szRootPath, DataDirs[i])) != NULL)
         {
-            // If we found the data path, we also need to initialize the index path
-
             // Check the config folder
             if((szConfigPath = CheckForDirectory(szDataPath, _T("config"))) != NULL)
             {
                 // First, check for more common "data" subdirectory
-                if((szIndexPath = CheckForDirectory(szDataPath, _T("data"))) == NULL)
-                {
-                    // Second, try the "darch" subdirectory (older builds of HOTS - Alpha)
-                    szIndexPath = CheckForDirectory(szDataPath, _T("darch"));
-                }
-
-                if(szIndexPath != NULL)
+                // Second, try the "darch" subdirectory (older builds of HOTS - Alpha)
+                if((szIndexPath = CheckForDirectories(szDataPath, _T("data"), _T("darch"), NULL)) != NULL)
                 {
                     hs->szDataPath = szDataPath;
                     hs->szConfigPath = szConfigPath;
                     hs->szIndexPath = szIndexPath;
                     return ERROR_SUCCESS;
                 }
+                CASC_FREE(szConfigPath);
             }
+            CASC_FREE(szDataPath);
         }
-
-        CASC_FREE(szDataPath);
-        CASC_FREE(szConfigPath);
-        CASC_FREE(szIndexPath);
     }
 
     // One of the paths was not found

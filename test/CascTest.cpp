@@ -1079,6 +1079,8 @@ static STORAGE_INFO StorageInfo1[] =
     {"CoD4/3376209",                        "e01180b36a8cfd82cb2daa862f5bbf3e", "79cd4cfc9eddad53e4b4d394c36b8b0c", "zone/base.xpak" },
     {"CoD4-MW/8042902/.build.info",         "cd54a9444812e168b3b920b1479eff71", "033f77f6309bf6c21984fc10d09e5a72" },
 
+    {"Diablo II Resurrected/71776",         "99dcca1dc54d44c1532291ac73ee7c58", "180984fc02ee90875d0504952f177f9a", "ENCODING"},
+
     {"Diablo III/30013",                    "86ba76b46c88eb7c6188d28a27d00f49", "19e37cc3c178ea0521369c09d67791ac", "ENCODING"},
     {"Diablo III/50649",                    "18cd3eb87a46e2d3aa0c57d1d8f8b8ff", "9225b3fa85dd958209ad20495ff6457e", "ENCODING"},
     {"Diablo III/58979",                    "3c5e033739bb58ce1107e59b8d30962a", "901dd9dde4e793ee42414c81874d1c8f", "ENCODING"},
