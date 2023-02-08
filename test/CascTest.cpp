@@ -338,8 +338,7 @@ static DWORD ExtractFile(TLogHelper & LogHelper, TEST_PARAMS & Params, CASC_FIND
     // Show the file name to the user if open succeeded
     MakeShortName(szShortName, sizeof(szShortName), cf);
 
-    //if(!_stricmp(cf.szPlainName, "84fd9825f313363fd2528cd999bcc852"))
-    //    __debugbreak();
+    //BREAKIF(_stricmp(cf.szPlainName, "84fd9825f313363fd2528cd999bcc852") == 0);
 
     // Show the progress, if open succeeded
     //LogHelper.PrintProgress("Extracting: (%u of %u) %s ...", LogHelper.FileCount, LogHelper.TotalFiles, szShortName);
@@ -1072,6 +1071,7 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO & StorInfo
 
 static STORAGE_INFO StorageInfo1[] =
 {
+
     //- Storage folder name --------        - Compound file name hash --------  - Compound file data hash --------  - Example file to extract ---
     {"Beta TVFS/00001",                     "44833489ccf495e78d3a8f2ee9688ba6", "96e6457b649b11bcee54d52fa4be12e5", "ROOT"},
     {"Beta TVFS/00002",                     "0ada2ba6b0decfa4013e0465f577abf1", "4da83fa60e0e505d14a5c21284142127", "ENCODING"},
@@ -1107,9 +1107,10 @@ static STORAGE_INFO StorageInfo1[] =
     {"Starcraft/6434",                      "e3f929b881ad07028578d202f97c107e", "9bf9597b1f10d32944194334e8dc442a", "music\\radiofreezerg.ogg"},
     {"Starcraft/8713",                      "57da9e2768368d3e31473a70a9286a69", "6a425e9d9e7f3b44773a021ea89f85e3", "music\\radiofreezerg.ogg"},
 
-    {"Starcraft II/45364/\\/",              "28f8b15b5bbd87c16796246eac3f800c", "f9cd7fc20fa53701846109d3d6947d08", "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
-    {"Starcraft II/75025",                  "79c044e1286b7b18478556e571901294", "e290febb90e06e97b4db6f0eb519ca91", "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
-    {"Starcraft II/81102",                  "cb6bea299820895f6dcbc72067553743", "63b47f03b1717ded751e0d24d3ddff4f", "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
+    {"Starcraft II/45364/\\/",              "28f8b15b5bbd87c16796246eac3f800c", "f9cd7fc20fa53701846109d3d6947d08", NULL},
+    {"Starcraft II/75025",                  "79c044e1286b7b18478556e571901294", "e290febb90e06e97b4db6f0eb519ca91", NULL},
+    {"Starcraft II/81102",                  "cb6bea299820895f6dcbc72067553743", "63b47f03b1717ded751e0d24d3ddff4f", NULL},
+    {"Starcraft II/89720",                  "67d69f09ea73431b22165443c416c1dc", "8a494ff3baaa9a410950f9361a7fb044", "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
 
     {"Warcraft III/09655",                  "f3f5470aa0ab4939fa234d3e29c3d347", "e45792b7459dc0c78ecb25130fa34d88", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
     {"Warcraft III/11889",                  "ff36cd4f58aae23bd77d4a90c333bdb5", "4cba488e57f7dccfb77eca8c86578a37", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
@@ -1143,6 +1144,7 @@ static STORAGE_INFO StorageInfo1[] =
     {"WoW/47067*wow_classic_ptr",           "8eccef865f29bbb944e657000db3bd7c", "90e060138fdcf23f92611e08d9a3bb3d", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"WoW/47067*wow_classic_era",           "de105dabf85e24ec4478865cd84939bb", "47071bdea7e593e5481e2775c4813626", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"WoW/47067*wow_classic_era_ptr",       "cefa2f0e794f987e3c9779dc9e20d1be", "a0736b9aa5dfcd68dcc1fd2b3247ed1d", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+
 };
 
 static STORAGE_INFO StorageInfo2[] =
