@@ -1,8 +1,8 @@
 /*****************************************************************************/
 /* TLogHelper.cpp                         Copyright (c) Ladislav Zezula 2013 */
 /*---------------------------------------------------------------------------*/
-/* Helper class for reporting StormLib tests                                 */
-/* This file should be included directly from StormTest.cpp using #include   */
+/* Helper class for reporting StormLib and CascLib tests                     */
+/* This file should be included directly from test source using #include     */
 /*---------------------------------------------------------------------------*/
 /*   Date    Ver   Who  Comment                                              */
 /* --------  ----  ---  -------                                              */
@@ -11,6 +11,10 @@
 
 //-----------------------------------------------------------------------------
 // String replacements for format strings
+
+#ifdef _MSC_VER
+#pragma warning (disable:4995)              // warning C4995: '_tcscpy': name was marked as #pragma deprecated
+#endif
 
 #if defined(STORMLIB_WINDOWS) || defined(CASCLIB_PLATFORM_WINDOWS)
 #define TEST_PLATFORM_WINDOWS
