@@ -48,7 +48,7 @@
 //-----------------------------------------------------------------------------
 // CascLib private defines
 
-#ifdef _DEBUG
+#if defined(_DEBUG) && defined(CASCLIB_DEV)
 #define BREAK_ON_XKEY3(CKey, v0, v1, v2) if(CKey[0] == v0 && CKey[1] == v1 && CKey[2] == v2) { __debugbreak(); }
 #define BREAKIF(condition)               if(condition)  { __debugbreak(); }
 #else
@@ -60,7 +60,7 @@
 #define CASC_MAGIC_FILE     0x454C494643534143      // 'CASCFILE'
 #define CASC_MAGIC_FIND     0x444E494643534143      // 'CASCFIND'
 
-// The maximum size of an inline file
+// The maximum size of an online file
 #define CASC_MAX_ONLINE_FILE_SIZE   0x40000000
 
 //-----------------------------------------------------------------------------
