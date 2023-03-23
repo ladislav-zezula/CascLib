@@ -1064,7 +1064,6 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO & StorInfo
 static STORAGE_INFO StorageInfo1[] =
 {
     //- Storage folder name --------        - Compound file name hash --------  - Compound file data hash --------  - Example file to extract ---
-/*
     {"Beta TVFS/00001",                     "be2ba8b6d02279a1b68c4ee28f07641f", "96e6457b649b11bcee54d52fa4be12e5", "ROOT"},
     {"Beta TVFS/00002",                     "09fd84ef909ad314d84dc1f037e87ca3", "4da83fa60e0e505d14a5c21284142127", "ENCODING"},
 
@@ -1072,13 +1071,13 @@ static STORAGE_INFO StorageInfo1[] =
     {"CoD4-MW/8042902/.build.info",         "cd54a9444812e168b3b920b1479eff71", "033f77f6309bf6c21984fc10d09e5a72" },
 
     {"Diablo II Resurrected/71776",         "99dcca1dc54d44c1532291ac73ee7c58", "180984fc02ee90875d0504952f177f9a", "ENCODING"},
-*/
+
     {"Diablo III/30013",                    "86ba76b46c88eb7c6188d28a27d00f49", "19e37cc3c178ea0521369c09d67791ac", "ENCODING"},
     {"Diablo III/50649",                    "18cd3eb87a46e2d3aa0c57d1d8f8b8ff", "9225b3fa85dd958209ad20495ff6457e", "ENCODING"},
     {"Diablo III/58979",                    "3c5e033739bb58ce1107e59b8d30962a", "901dd9dde4e793ee42414c81874d1c8f", "ENCODING"},
     {"Diablo III/68722",                    "34cb5a5cea775b7194d9cd0ec3458d3b", "eeaa6a963aa19d93bdafc049fe6d3aaf", "ENCODING"},
 
-    {"Diablo IV/39517",                     "00000000000000000000000000000000", "00000000000000000000000000000000", "Diablo IV.exe"},
+    {"Diablo IV/39517",                     "5ed287e1ad3b5f1a08f3551eaecc66fb", "e646133acbc9c664ab5b1947578250c4", "Diablo IV.exe"},
 
     {"Heroes of the Storm/29049",           "98396c1a521e5dee511d835b9e8086c7", "b37e7edc07d465a8e97b47cabcd3fc04", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_autoai1.dds"},
     {"Heroes of the Storm/30027",           "6bcbe7c889cc465e4993f92d6ae1ee75", "978f6332a2f2149d74d48414b834c8f6", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_claim1.dds"},
