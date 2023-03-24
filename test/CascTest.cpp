@@ -1131,10 +1131,10 @@ static STORAGE_INFO StorageInfo1[] =
     {"WoW/38707-classic-tbc",               "d03bddef0bfa657d471c65d65ad5f584", "08cc37803156adaddca74a09211106bd"},
     {"WoW/40892-classic-tbc/.build.info",   "e53c27cf8d79885b16ca31e6f291917d", "5ae578d0f8986c709477106fa63d8cfb"},
 
-    {"WoW/47067*wow",                       "6f257405278d42a39e6a6bd9e7385652", "34e8ccae337be5a00203417c1eb56f80", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/47067*wowt",                      "e6ad508bfa8a0ac254da91f6512ff571", "d4fe823586aae75b193b3b3ab2458e73", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/47067*wow",                       "de79cbc0f878ae4f4e064a94ad89d331", "70a641d4100b97d77b9b6b3e5a07ee13", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/47067*wowt",                      "52bd7178aa6d98f8742d784f76841783", "ef347dfc36cbbef09587384cb9095839", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"WoW/47067*wow_classic",               "309d02ad4a7df0fc6574f23d0cb88f6a", "3aae26808a5255477ab49df20b95fb18", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/47067*wow_classic_ptr",           "8eccef865f29bbb944e657000db3bd7c", "90e060138fdcf23f92611e08d9a3bb3d", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/47067*wow_classic_ptr",           "184106a4b8eee1f27f5b3db9222d46e0", "cd68e3fd59c97c4b69265bd949b77959", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"WoW/47067*wow_classic_era",           "de105dabf85e24ec4478865cd84939bb", "47071bdea7e593e5481e2775c4813626", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"WoW/47067*wow_classic_era_ptr",       "cefa2f0e794f987e3c9779dc9e20d1be", "a0736b9aa5dfcd68dcc1fd2b3247ed1d", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
 
