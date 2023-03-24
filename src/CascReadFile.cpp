@@ -1042,6 +1042,13 @@ bool WINAPI CascGetFileSize64(HANDLE hFile, PULONGLONG PtrFileSize)
     TCascFile * hf;
     DWORD dwErrCode;
 
+    // Validate the file pointer
+    if(PtrFileSize == NULL)
+    {
+        SetCascError(ERROR_INVALID_PARAMETER);
+        return false;
+    }
+
     // Validate the file handle
     if((hf = TCascFile::IsValid(hFile)) == NULL)
     {
@@ -1049,11 +1056,11 @@ bool WINAPI CascGetFileSize64(HANDLE hFile, PULONGLONG PtrFileSize)
         return false;
     }
 
-    // Validate the file pointer
-    if(PtrFileSize == NULL)
+    // If the content key is zeros, we treat the file as a file with size of 0
+    if(hf->ContentSize == 0)
     {
-        SetCascError(ERROR_INVALID_PARAMETER);
-        return false;
+        PtrFileSize[0] = 0;
+        return true;
     }
 
     // ENCODING on older storages: Content size is not present in the BUILD file
@@ -1194,6 +1201,13 @@ bool WINAPI CascReadFile(HANDLE hFile, void * pvBuffer, DWORD dwBytesToRead, PDW
     {
         SetCascError(ERROR_INVALID_HANDLE);
         return false;
+    }
+
+    // Check files with zero size
+    if(hf->ContentSize == 0)
+    {
+        PtrBytesRead[0] = 0;
+        return true;
     }
 
     // If we don't have file frames loaded, we need to do it now.

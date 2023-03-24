@@ -336,12 +336,9 @@ static DWORD ExtractFile(TLogHelper & LogHelper, TEST_PARAMS & Params, CASC_FIND
     bool bReadOk = true;
 
     // Show the file name to the user if open succeeded
+    //BREAKIF(_stricmp(cf.szPlainName, "base:BaseComplexTypeDescriptorSizes.dat") == 0);
+    //BREAKIF(_stricmp(cf.szPlainName, "DivideAndConquer.w3m:war3map.doo") == 0);
     MakeShortName(szShortName, sizeof(szShortName), cf);
-
-    //BREAKIF(_stricmp(cf.szPlainName, "84fd9825f313363fd2528cd999bcc852") == 0);
-
-    // Show the progress, if open succeeded
-    //LogHelper.PrintProgress("Extracting: (%u of %u) %s ...", LogHelper.FileCount, LogHelper.TotalFiles, szShortName);
 
     // Did the open succeed?
     if(CascOpenFile(Params.hStorage, szOpenName, 0, Params.dwOpenFlags | CASC_STRICT_DATA_CHECK, &hFile))
@@ -495,12 +492,9 @@ static DWORD GetNumberOfWorkerThreads()
         dwThreadCount = MAXIMUM_WAIT_OBJECTS;
 #endif
 
-    //
-    // Only 1 worker thread in debug version
-    //
-
 #ifdef _DEBUG
-    //dwThreadCount = 1;
+    // Only 1 worker thread in debug version
+    dwThreadCount = 1;
 #endif
 
     return dwThreadCount;
@@ -744,6 +738,7 @@ static DWORD Storage_SeekFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
 static DWORD Storage_EnumFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
 {
     PCASC_FIND_DATA_ARRAY pFiles;
+    PCASC_FIND_DATA pFindData;
     CASC_FIND_DATA cf;
     MD5_CTX NameHashCtx;
     MD5_CTX DataHashCtx;
@@ -762,7 +757,7 @@ static DWORD Storage_EnumFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
     bool bFileFound = true;
 
     // Create the output file for dumping all file names
-//  Params.fp1 = OpenOutputTextFile(hStorage, "\\list-%s-%u-002.txt");
+    //Params.fp1 = OpenOutputTextFile(hStorage, "\\list-%s-%u-001.txt");
 
     // Dump the storage
 //  LogHelper.PrintProgress("Dumping storage ...");
@@ -804,15 +799,12 @@ static DWORD Storage_EnumFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
                     LogHelper.PrintProgress("Searching storage (%u of %u) ...", dwFileIndex, dwTotalFileCount);
                 dwFileIndex++;
 
+                // Debug
+                //BREAKIF(dwFileIndex == 0x4D);
+
                 // Prevent array overflow
-                if(dwFileIndex < dwTotalFileCount)
-                {
-                    bFileFound = CascFindNextFile(hFind, &pFiles->cf[dwFileIndex]);
-                }
-                else
-                {
-                    bFileFound = CascFindNextFile(hFind, &cf);
-                }
+                pFindData = (dwFileIndex < dwTotalFileCount) ? &pFiles->cf[dwFileIndex] : &cf;
+                bFileFound = CascFindNextFile(hFind, pFindData);
             }
 
             // Finalize searching
@@ -1071,20 +1063,21 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO & StorInfo
 
 static STORAGE_INFO StorageInfo1[] =
 {
-
     //- Storage folder name --------        - Compound file name hash --------  - Compound file data hash --------  - Example file to extract ---
-    {"Beta TVFS/00001",                     "44833489ccf495e78d3a8f2ee9688ba6", "96e6457b649b11bcee54d52fa4be12e5", "ROOT"},
-    {"Beta TVFS/00002",                     "0ada2ba6b0decfa4013e0465f577abf1", "4da83fa60e0e505d14a5c21284142127", "ENCODING"},
+    {"Beta TVFS/00001",                     "be2ba8b6d02279a1b68c4ee28f07641f", "96e6457b649b11bcee54d52fa4be12e5", "ROOT"},
+    {"Beta TVFS/00002",                     "09fd84ef909ad314d84dc1f037e87ca3", "4da83fa60e0e505d14a5c21284142127", "ENCODING"},
 
     {"CoD4/3376209",                        "e01180b36a8cfd82cb2daa862f5bbf3e", "79cd4cfc9eddad53e4b4d394c36b8b0c", "zone/base.xpak" },
     {"CoD4-MW/8042902/.build.info",         "cd54a9444812e168b3b920b1479eff71", "033f77f6309bf6c21984fc10d09e5a72" },
 
-    {"Diablo II Resurrected/71776",         "99dcca1dc54d44c1532291ac73ee7c58", "180984fc02ee90875d0504952f177f9a", "ENCODING"},
+    {"Diablo II Resurrected/71776",         "8518f7457729368bcbfc8db60203de78", "180984fc02ee90875d0504952f177f9a", "ENCODING"},
 
     {"Diablo III/30013",                    "86ba76b46c88eb7c6188d28a27d00f49", "19e37cc3c178ea0521369c09d67791ac", "ENCODING"},
     {"Diablo III/50649",                    "18cd3eb87a46e2d3aa0c57d1d8f8b8ff", "9225b3fa85dd958209ad20495ff6457e", "ENCODING"},
     {"Diablo III/58979",                    "3c5e033739bb58ce1107e59b8d30962a", "901dd9dde4e793ee42414c81874d1c8f", "ENCODING"},
     {"Diablo III/68722",                    "34cb5a5cea775b7194d9cd0ec3458d3b", "eeaa6a963aa19d93bdafc049fe6d3aaf", "ENCODING"},
+
+    {"Diablo IV/39517",                     "5ed287e1ad3b5f1a08f3551eaecc66fb", "e646133acbc9c664ab5b1947578250c4", "Diablo IV.exe"},
 
     {"Heroes of the Storm/29049",           "98396c1a521e5dee511d835b9e8086c7", "b37e7edc07d465a8e97b47cabcd3fc04", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_autoai1.dds"},
     {"Heroes of the Storm/30027",           "6bcbe7c889cc465e4993f92d6ae1ee75", "978f6332a2f2149d74d48414b834c8f6", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_claim1.dds"},
@@ -1112,11 +1105,11 @@ static STORAGE_INFO StorageInfo1[] =
     {"Starcraft II/81102",                  "cb6bea299820895f6dcbc72067553743", "63b47f03b1717ded751e0d24d3ddff4f", NULL},
     {"Starcraft II/89720",                  "67d69f09ea73431b22165443c416c1dc", "8a494ff3baaa9a410950f9361a7fb044", "mods\\novastoryassets.sc2mod\\base2.sc2maps\\maps\\campaign\\nova\\nova04.sc2map\\base.sc2data\\GameData\\ActorData.xml"},
 
-    {"Warcraft III/09655",                  "f3f5470aa0ab4939fa234d3e29c3d347", "e45792b7459dc0c78ecb25130fa34d88", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
-    {"Warcraft III/11889",                  "ff36cd4f58aae23bd77d4a90c333bdb5", "4cba488e57f7dccfb77eca8c86578a37", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
-    {"Warcraft III/13369",                  "9c3fce648bf75d93a8765e84dcd10377", "4ac831db9bf0734f01b9d20455a68ab6", "ENCODING" },
-    {"Warcraft III/14883",                  "a4b269415f1f4adec4df8bb736dc1297", "3fd108674117ad4f93885bdd1a525f30", NULL },
-    {"Warcraft III/15801",                  "e1c3cfa897c8a25ef493455469955186", "f162cd3448219fd9956f9ff8fb5ba915", NULL },
+    {"Warcraft III/09655",                  "a6b6a6fc519cd1071df65caa56ee7c33", "e45792b7459dc0c78ecb25130fa34d88", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
+    {"Warcraft III/11889",                  "5c6bd442c248bad0db50303e0505f147", "4cba488e57f7dccfb77eca8c86578a37", "frFR-War3Local.mpq:Maps/FrozenThrone/Campaign/NightElfX06Interlude.w3x:war3map.j" },
+    {"Warcraft III/13369",                  "3212bcad20f7c6ad0eb0864ca9444bb6", "4ac831db9bf0734f01b9d20455a68ab6", "ENCODING" },
+    {"Warcraft III/14883",                  "773180e32ac2fac8bd4cd4dfc2ab30a6", "3fd108674117ad4f93885bdd1a525f30", NULL },
+    {"Warcraft III/15801",                  "ad571ee968f77bbddc811fd215ee1d37", "f162cd3448219fd9956f9ff8fb5ba915", NULL },
 
     {"WoW/18125",                           "b31531af094f78f58592249c4d216a8e", "e5c9b3f0da7806d8b239c13bff1d836e", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"WoW/18379",                           "fab30626cf94ed1523519729c3701812", "606e4bfd6f8100ae875eb4c00789233b", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
@@ -1164,6 +1157,7 @@ static STORAGE_INFO StorageInfo2[] =
 //-----------------------------------------------------------------------------
 // Main
 
+//#define LOAD_STORAGES_SINGLE_DEV
 //#define LOAD_STORAGES_CMD_LINE
 #define LOAD_STORAGES_LOCAL
 #define LOAD_STORAGES_ONLINE
@@ -1179,6 +1173,25 @@ int main(int argc, char * argv[])
 #if defined(_MSC_VER) && defined(_DEBUG)
     _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif  // defined(_MSC_VER) && defined(_DEBUG)
+
+#ifdef LOAD_STORAGES_SINGLE_DEV
+    {
+        HANDLE hStorage;
+        HANDLE hFile;
+        BYTE Buffer[0x100];
+
+        //if(CascOpenStorage(_T("e:\\Multimedia\\CASC\\Beta TVFS\\00001"), 0, &hStorage))
+        if(CascOpenStorage(_T("e:\\Multimedia\\CASC\\Diablo IV\\39517"), 0, &hStorage))
+        {
+            if(CascOpenFile(hStorage, "base:ComplexTypeDescriptorSizes.dat", 0, 0, &hFile))
+            {
+                CascReadFile(hFile, Buffer, sizeof(Buffer), NULL);
+                CascCloseFile(hFile);
+            }
+            CascCloseStorage(hStorage);
+        }
+    }
+#endif
 
 #ifdef LOAD_STORAGES_CMD_LINE
     //
