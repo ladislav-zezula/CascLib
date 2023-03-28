@@ -1078,6 +1078,7 @@ static STORAGE_INFO StorageInfo1[] =
     {"Diablo III/68722",                    "34cb5a5cea775b7194d9cd0ec3458d3b", "eeaa6a963aa19d93bdafc049fe6d3aaf", "ENCODING"},
 
     {"Diablo IV/39517",                     "5ed287e1ad3b5f1a08f3551eaecc66fb", "e646133acbc9c664ab5b1947578250c4", "Diablo IV.exe"},
+    {"Diablo IV/39812-open-beta",           "8f50184d3c5aa5050996c4ebb61cb7ad", "5711f0b48ac785fc81590574527482cc", "Diablo IV.exe"},
 
     {"Heroes of the Storm/29049",           "98396c1a521e5dee511d835b9e8086c7", "b37e7edc07d465a8e97b47cabcd3fc04", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_autoai1.dds"},
     {"Heroes of the Storm/30027",           "6bcbe7c889cc465e4993f92d6ae1ee75", "978f6332a2f2149d74d48414b834c8f6", "mods\\core.stormmod\\base.stormassets\\assets\\textures\\aicommand_claim1.dds"},
@@ -1146,12 +1147,12 @@ static STORAGE_INFO StorageInfo2[] =
     {"Hearthstone/160183*hsb*us",                                           "34b821747a7911eb98c9141153470fdd", "85096ab761616e1069a4fa5c1da28d9d"},
     {"WoW/45745-custom-cdn*http://us.falloflordaeron.com:8000*wow*us",      "d0af10b6c692fc123d6e0a5c192b58da", "14c043c71ad53c9288daf1ecba692662", "interface/framexml/localization.lua"},
     {"WoW/45745-meta/wow-45745-custom-cdn.versions*wow*us",                 "d0af10b6c692fc123d6e0a5c192b58da", "14c043c71ad53c9288daf1ecba692662", "interface/framexml/localization.lua"},
-    {"WoW/45745-meta/wow-45779-tvfs.versions",                              "1f844a28db5b034a6d9cf8f1e9ff44bb", "df1e1073535daf33cead043708bbae67"},
-    {"WoW/45745-meta/wow-46144-tvfs.versions",                              "55ae44be3c3b64dd9bc99111bfe5aeee", "67964ce23f95083a63ace09d11a9c7b1"},
+    {"WoW/45745-meta/wow-45779-tvfs.versions",                              "d813f08b4fe9c7abf05423f376f4d4dc", "1af9fe15cbfa4c241b4feeb624c0adad"},
+    {"WoW/45745-meta/wow-46144-tvfs.versions",                              "50ac6d8ac0541bda851240673448950c", "18da21eefaf45ca422b46fd0abf8126a"},
     {"WoW/45745-meta/wow-46902-classic.versions*wow_classic*us",            "019c84177164c3cffe72691da519c1e0", "167c2be33ac6323b598ee6e02a5ccf1f"},
-    {"WoW/45745-meta/wow-47186-ptr.versions",                               "a2f0a4e939f6f058461c0733a59f9945", "b34daa19feff877e038f1cd9e7ee8799", "interface/framexml/localization.lua"},
-    {"WoW/45745-meta*wowt*us",                                              "a2f0a4e939f6f058461c0733a59f9945", "b34daa19feff877e038f1cd9e7ee8799", "interface/framexml/localization.lua"},
-    {"WoW/5####-current*wow*us",                                            NULL,                               NULL, "interface/framexml/localization.lua"},
+    {"WoW/45745-meta/wow-47186-ptr.versions",                               "f94967b233aacf85c1e156dadfcd8c41", "a46d682b095dc5f7af5bff66117320e4", "interface/framexml/localization.lua"},
+    {"WoW/45745-meta*wowt*us",                                              "f94967b233aacf85c1e156dadfcd8c41", "a46d682b095dc5f7af5bff66117320e4", "interface/framexml/localization.lua"},
+    {"WoW/5####-current*wow*us",                                            NULL,                               NULL,                               "interface/framexml/localization.lua"},
 };
 
 //-----------------------------------------------------------------------------

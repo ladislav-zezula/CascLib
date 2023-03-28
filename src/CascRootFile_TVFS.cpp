@@ -787,10 +787,6 @@ DWORD RootHandler_CreateTVFS(TCascStorage * hs, CASC_BLOB & RootFile)
     TVFS_DIRECTORY_HEADER RootHeader;
     DWORD dwErrCode;
 
-#ifdef CASCLIB_DEV
-    printf("\n");
-#endif
-
     // Capture the entire root directory
     dwErrCode = TRootHandler_TVFS::CaptureDirectoryHeader(RootHeader, RootFile);
     if(dwErrCode == ERROR_SUCCESS)
