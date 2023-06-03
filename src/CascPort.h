@@ -13,7 +13,7 @@
 #define __CASCPORT_H__
 
 #ifndef __cplusplus
-    #include <stdbool.h>
+  #include <stdbool.h>
 #endif
 
 //-----------------------------------------------------------------------------
@@ -30,6 +30,14 @@
   #define _CRT_SECURE_NO_DEPRECATE
   #define _CRT_NON_CONFORMING_SWPRINTFS
 
+  // Projects that use CascLib.h header must be built with WIN32_LEAN_AND_MEAN defined,
+  // otherwise there will be loads of conflicting symbols
+  #if defined(_MSC_VER) && defined(_INC_WINDOWS) && !defined(WIN32_LEAN_AND_MEAN)
+    #pragma message("WIN32_LEAN_AND_MEAN not defined.")
+    #pragma message("Please, add '#define WIN32_LEAN_AND_MEAN' into your project's headers")
+  #endif
+
+  // Prevent duplicate symbols defined by Windows headers
   #ifndef WIN32_LEAN_AND_MEAN
     #define WIN32_LEAN_AND_MEAN
   #endif
