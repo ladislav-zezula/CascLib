@@ -62,7 +62,7 @@ char * CASC_SOCKET::ReadResponse(const char * request, size_t request_length, CA
     while(send(HandleToSocket(sock), request, (int)request_length, MSG_NOSIGNAL) == SOCKET_ERROR)
     {
         // If the connection was closed by the remote host, we try to reconnect
-        if(ReconnectAfterShutdown(sock, remoteItem) == (HANDLE)(INVALID_SOCKET))
+        if(ReconnectAfterShutdown(sock, remoteItem) == SocketToHandle(INVALID_SOCKET))
         {
             SetCascError(ERROR_NETWORK_NOT_AVAILABLE);
             CascUnlock(Lock);
@@ -214,7 +214,7 @@ HANDLE CASC_SOCKET::CreateAndConnect(PADDRINFO remoteItem)
     SOCKET sock;
 
     // Create new socket
-    // On error, returns returns INVALID_SOCKET (-1) on Windows, -1 on Linux
+    // On error, returns returns INVALID_SOCKET (0 on Windows, -1 on Linux)
     if((sock = socket(remoteItem->ai_family, remoteItem->ai_socktype, remoteItem->ai_protocol)) > 0)
     {
         // Connect to the remote host
@@ -222,7 +222,7 @@ HANDLE CASC_SOCKET::CreateAndConnect(PADDRINFO remoteItem)
         if(connect(sock, remoteItem->ai_addr, (int)remoteItem->ai_addrlen) == 0)
             return SocketToHandle(sock);
 
-        // Failed. Close the socket and return 0
+        // Failed. Close the socket and return INVALID_SOCKET
         closesocket(sock);
         sock = INVALID_SOCKET;
     }
@@ -239,7 +239,7 @@ HANDLE CASC_SOCKET::ReconnectAfterShutdown(HANDLE & sock, PADDRINFO remoteItem)
         case WSAECONNRESET: // Windows
         {
             // Close the old socket
-            if(sock != (HANDLE)(INVALID_SOCKET))
+            if(sock != SocketToHandle(INVALID_SOCKET))
                 closesocket(HandleToSocket(sock));
 
             // Attempt to reconnect
@@ -249,7 +249,7 @@ HANDLE CASC_SOCKET::ReconnectAfterShutdown(HANDLE & sock, PADDRINFO remoteItem)
     }
 
     // Another problem
-    return (HANDLE)(INVALID_SOCKET);
+    return SocketToHandle(INVALID_SOCKET);
 }
 
 PCASC_SOCKET CASC_SOCKET::New(PADDRINFO remoteList, PADDRINFO remoteItem, const char * hostName, unsigned portNum, HANDLE sock)
