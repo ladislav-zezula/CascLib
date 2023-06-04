@@ -11,7 +11,7 @@
 #define _CRT_NON_CONFORMING_SWPRINTFS
 #define _CRT_SECURE_NO_DEPRECATE
 #define __INCLUDE_CRYPTOGRAPHY__
-#define __CASCLIB_SELF__                    // Don't use CascLib.lib
+#define __CASCLIB_SELF__                   // Don't use CascLib.lib
 #include <stdio.h>
 #include <time.h>
 
