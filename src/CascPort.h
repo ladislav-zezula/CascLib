@@ -30,13 +30,6 @@
   #define _CRT_SECURE_NO_DEPRECATE
   #define _CRT_NON_CONFORMING_SWPRINTFS
 
-  // Projects that use CascLib.h header should be built with WIN32_LEAN_AND_MEAN defined,
-  // otherwise there will be loads of conflicting symbols
-  #if defined(_MSC_VER) && defined(_INC_WINDOWS) && !defined(WIN32_LEAN_AND_MEAN)
-    #pragma message("Warning: Windows.h was included without WIN32_LEAN_AND_MEAN defined.")
-    #pragma message("         Please, add '#define WIN32_LEAN_AND_MEAN' into your project's headers")
-  #endif
-
   // Prevent duplicate symbols defined by Windows headers
   #ifndef WIN32_LEAN_AND_MEAN
     #define WIN32_LEAN_AND_MEAN
@@ -54,7 +47,6 @@
   #include <direct.h>
   #include <malloc.h>
   #include <windows.h>
-  #include <ws2tcpip.h>
   #include <strsafe.h>
 
   #define CASCLIB_PLATFORM_LITTLE_ENDIAN
