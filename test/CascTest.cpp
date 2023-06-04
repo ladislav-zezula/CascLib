@@ -567,7 +567,7 @@ static void RunExtractWorkers(PCASC_FIND_DATA_ARRAY pFiles)
     // Run up to 40 worker threads
     for(DWORD i = 0; i < dwCoresUsed; i++)
     {
-        ThreadHandles[dwThreads] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)Worker_ExtractFiles, pFiles, 0, &dwThreadId); 
+        ThreadHandles[dwThreads] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)Worker_ExtractFiles, pFiles, 0, &dwThreadId);
         if(ThreadHandles[dwThreads] != NULL)
             dwThreads++;
     }
@@ -996,7 +996,7 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO & StorInfo
     // Prepare the callbacks
     OpenArgs.PfnProgressCallback = OnlineStorage_OpenCB;
     OpenArgs.PtrProgressParam = &LogHelper;
-    
+
     // Enable or disable reusing VERSIONS and CDNS
     if(strstr(StorInfo.szPath, "current") != NULL)
         OpenArgs.dwFlags |= CASC_FEATURE_FORCE_DOWNLOAD;
