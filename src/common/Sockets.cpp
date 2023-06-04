@@ -22,6 +22,10 @@
 
 #define BUFFER_INITIAL_SIZE 0x8000
 
+#ifndef INVALID_SOCKET
+#define INVALID_SOCKET (SOCKET)(-1)             // Not defined in Linux
+#endif
+
 CASC_SOCKET_CACHE SocketCache;
 
 //-----------------------------------------------------------------------------
@@ -29,12 +33,12 @@ CASC_SOCKET_CACHE SocketCache;
 
 static SOCKET inline HandleToSocket(HANDLE sock)
 {
-    return (SOCKET)(INT_PTR)(sock);
+    return (SOCKET)(intptr_t)(sock);
 }
 
 static HANDLE inline SocketToHandle(SOCKET sock)
 {
-    return (HANDLE)(INT_PTR)(sock);
+    return (HANDLE)(intptr_t)(sock);
 }
 
 //-----------------------------------------------------------------------------
