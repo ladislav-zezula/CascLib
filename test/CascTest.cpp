@@ -29,7 +29,7 @@
 #include "TLogHelper.cpp"
 
 #ifdef _MSC_VER
-#pragma warning(disable: 4505)              // 'XXX' : unreferenced local function has been removed
+#pragma warning(disable: 4505)              // 'XXX' : unreferenced local function has been removed 
 #include <crtdbg.h>
 #pragma comment(lib, "winmm.lib")
 #endif
