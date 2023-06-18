@@ -75,6 +75,7 @@ extern "C" {
 //-----------------------------------------------------------------------------
 // Defines
 
+// Version information
 #define CASCLIB_VERSION                 0x0300  // CascLib version - integral (3.0)
 #define CASCLIB_VERSION_STRING           "3.0"  // CascLib version - string
 
@@ -153,6 +154,9 @@ extern "C" {
 // Maximum length of encryption key
 #define CASC_KEY_LENGTH 0x10
 
+// Default format string for the file ID
+#define CASC_FILEID_FORMAT          "FILE%08X.dat"
+
 //-----------------------------------------------------------------------------
 // Structures
 
@@ -191,7 +195,7 @@ typedef enum _CASC_FILE_INFO_CLASS
 typedef enum _CASC_NAME_TYPE
 {
     CascNameFull,                               // Fully qualified file name
-    CascNameDataId,                             // Name created from file data id (FILE%08X.dat)
+    CascNameDataId,                             // Name created from file data id (CASC_FILEID_FORMAT)
     CascNameCKey,                               // Name created as string representation of CKey
     CascNameEKey                                // Name created as string representation of EKey
 } CASC_NAME_TYPE, *PCASC_NAME_TYPE;
