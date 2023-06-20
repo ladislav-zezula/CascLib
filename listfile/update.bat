@@ -1,14 +1,14 @@
 @echo off
 echo  - Listfile for WoW 8.2 or newer ----------------------------------------------------
-ren   listfile8x.csv listfile8x-old.csv
-wget  https://wow.tools/casc/listfile/download/csv -O listfile8x-new.csv
-start /wait CascView.exe /merge "listfile8x-old.csv+listfile8x-new.csv" listfile8x.csv
-del   listfile8x-old.csv
-del   listfile8x-new.csv
+ren   listfile.csv listfile-old.csv
+wget  https://github.com/wowdev/wow-listfile/raw/master/community-listfile.csv -O listfile-new.csv
+start /wait CascView.exe /merge "listfile-old.csv+listfile-new.csv" listfile.csv
+del   listfile-old.csv
+del   listfile-new.csv
 
 echo  - Listfile for WoW pre 8.2 ---------------------------------------------------------
-ren   listfile6x.txt listfile6x-old.txt
-wget  https://github.com/wowdev/wow-listfile/raw/master/listfile.txt -O listfile6x-new.txt
-start /wait CascView.exe /merge "listfile6x-old.txt+listfile6x-new.txt" listfile6x.txt
-del   listfile6x-old.txt
-del   listfile6x-new.txt
+ren   listfile.txt listfile-old.txt
+wget  https://github.com/wowdev/wow-listfile/raw/master/listfile.txt -O listfile-new.txt
+start /wait CascView.exe /merge "listfile-old.txt+listfile-new.txt" listfile.txt
+del   listfile-old.txt
+del   listfile-new.txt

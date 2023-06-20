@@ -126,8 +126,8 @@ typedef DWORD (*PFN_RUN_TEST)(TLogHelper & LogHelper, TEST_PARAMS & Params);
 //-----------------------------------------------------------------------------
 // Local variables
 
-static LPCTSTR szListFile1 = _T("\\Ladik\\Appdir\\CascLib\\listfile\\listfile6x.txt");
-static LPCTSTR szListFile2 = _T("\\Ladik\\Appdir\\CascLib\\listfile\\listfile8x.csv");
+static LPCTSTR szListFile_CSV = _T("\\Ladik\\Appdir\\CascLib\\listfile\\listfile.csv");
+static LPCTSTR szListFile_TXT = _T("\\Ladik\\Appdir\\CascLib\\listfile\\listfile.txt");
 
 //-----------------------------------------------------------------------------
 // Local functions
@@ -233,10 +233,10 @@ static LPCTSTR GetTheProperListfile(HANDLE hStorage, LPCTSTR szListFile)
     // Check the storage format. If WoW 8.2+, we need the CSV listfile
     CascGetStorageInfo(hStorage, CascStorageFeatures, &dwFeatures, sizeof(dwFeatures), NULL);
     if(dwFeatures & CASC_FEATURE_FNAME_HASHES_OPTIONAL)
-        return szListFile2;
+        return szListFile_CSV;
 
     if(dwFeatures & CASC_FEATURE_FNAME_HASHES)
-        return szListFile1;
+        return szListFile_TXT;
 
     return NULL;
 }
@@ -1194,20 +1194,28 @@ int main(int argc, char * argv[])
 #ifdef LOAD_STORAGES_SINGLE_DEV
     {
         CASC_OPEN_STORAGE_ARGS OpenArgs = {sizeof(CASC_OPEN_STORAGE_ARGS)};
+        CASC_FIND_DATA cf;
         HANDLE hStorage;
+        HANDLE hFind;
         HANDLE hFile;
+        LPCSTR szFile = "DBFilesClient\\Achievement.db2";
         BYTE Buffer[0x100];
 
         OpenArgs.PfnProgressCallback = OnlineStorage_OpenCB_Simple;
         OpenArgs.PtrProgressParam = NULL;
 
-        //if(CascOpenStorage(_T("e:\\Multimedia\\CASC\\Beta TVFS\\00001"), 0, &hStorage))
-        if(CascOpenStorageEx(_T("e:\\Multimedia\\CASC\\WoW\\50000\\CascCache*wow*eu"), &OpenArgs, true, &hStorage))
+        //if(CascOpenStorageEx(_T("e:\\Multimedia\\CASC\\WoW\\50000\\CascCache\\versions"), &OpenArgs, true, &hStorage))
+        if(CascOpenStorageEx(_T("e:\\Multimedia\\CASC\\WoW\\50000"), &OpenArgs, true, &hStorage))
         {
-            if(CascOpenFile(hStorage, "DBFilesClient\\Achievement.db2", 0, 0, &hFile))
+            hFind = CascFindFirstFile(hStorage, szFile, &cf, szListFile_CSV);
+            if(hFind != INVALID_HANDLE_VALUE)
             {
-                CascReadFile(hFile, Buffer, sizeof(Buffer), NULL);
-                CascCloseFile(hFile);
+                if(CascOpenFile(hStorage, szFile, 0, CASC_OVERCOME_ENCRYPTED, &hFile))
+                {
+                    CascReadFile(hFile, Buffer, sizeof(Buffer), NULL);
+                    CascCloseFile(hFile);
+                }
+                CascFindClose(hFind);
             }
             CascCloseStorage(hStorage);
         }
