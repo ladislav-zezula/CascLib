@@ -1539,10 +1539,10 @@ DWORD CheckCascBuildFileDirs(CASC_BUILD_FILE & BuildFile, LPCTSTR szLocalPath)
     return dwErrCode;
 }
 
-DWORD CheckOnlineStorage(PCASC_OPEN_STORAGE_ARGS pArgs, CASC_BUILD_FILE & BuildFile, DWORD dwFeatures)
+DWORD CheckOnlineStorage(PCASC_OPEN_STORAGE_ARGS pArgs, CASC_BUILD_FILE & BuildFile)
 {
     // If the online storage is required, we try to extract the product code
-    if((dwFeatures & CASC_FEATURE_ONLINE) && (pArgs->szCodeName != NULL))
+    if(pArgs->szCodeName != NULL)
     {
         CASC_PATH<TCHAR> FilePath(pArgs->szLocalPath, _T("versions"), NULL);
 

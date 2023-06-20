@@ -1390,7 +1390,7 @@ bool WINAPI CascOpenStorageEx(LPCTSTR szParams, PCASC_OPEN_STORAGE_ARGS pArgs, b
         if((hs = new TCascStorage()) != NULL)
         {
             CASC_BUILD_FILE BuildFile = {NULL};
-            DWORD dwFeatures = bOnlineStorage ? CASC_FEATURE_ONLINE : 0;
+            DWORD dwFeatures = 0;
             
             // Check for one of the supported main files (.build.info, .build.db, versions)
             if((dwErrCode = CheckCascBuildFileExact(BuildFile, pArgs->szLocalPath)) == ERROR_SUCCESS)
@@ -1405,9 +1405,9 @@ bool WINAPI CascOpenStorageEx(LPCTSTR szParams, PCASC_OPEN_STORAGE_ARGS pArgs, b
             }
 
             // If the caller requested an online storage, we must have the code name
-            else if((dwErrCode = CheckOnlineStorage(pArgs, BuildFile, dwFeatures)) == ERROR_SUCCESS)
+            else if(bOnlineStorage && (dwErrCode = CheckOnlineStorage(pArgs, BuildFile)) == ERROR_SUCCESS)
             {
-                dwErrCode = LoadCascStorage(hs, pArgs, BuildFile.szFullPath, BuildFile.BuildFileType, dwFeatures | CASC_FEATURE_DATA_FILES);
+                dwErrCode = LoadCascStorage(hs, pArgs, BuildFile.szFullPath, BuildFile.BuildFileType, dwFeatures | CASC_FEATURE_DATA_FILES | CASC_FEATURE_ONLINE);
             }
         }
     }
