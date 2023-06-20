@@ -1158,10 +1158,26 @@ static STORAGE_INFO StorageInfo2[] =
 //-----------------------------------------------------------------------------
 // Main
 
-//#define LOAD_STORAGES_SINGLE_DEV
+static bool WINAPI OnlineStorage_OpenCB_Simple(
+    void * /* PtrUserParam */,                  // User-specific parameter passed to the callback
+    LPCSTR szWork,                              // Text for the current activity (example: "Loading "ENCODING" file")
+    LPCSTR szObject,                            // (optional) name of the object tied to the activity (example: index file name)
+    DWORD dwValue,                              // (optional) current object being processed
+    DWORD dwTotal)                              // (optional) If non-zero, this is the total number of objects to process
+{
+    LPCSTR szFmtx = (dwTotal != 0) ? ("%s (%u of %u)    \r") : ("%s    \r");
+    CHAR szFormat[256];
+
+    CascStrPrintf(szFormat, _countof(szFormat), szFmtx, szWork, dwValue, dwTotal);
+    printf(szFormat, szObject);
+    return false;
+}
+
+
+#define LOAD_STORAGES_SINGLE_DEV
 //#define LOAD_STORAGES_CMD_LINE
-#define LOAD_STORAGES_LOCAL
-#define LOAD_STORAGES_ONLINE
+//#define LOAD_STORAGES_LOCAL
+//#define LOAD_STORAGES_ONLINE
 
 int main(int argc, char * argv[])
 {
@@ -1177,14 +1193,18 @@ int main(int argc, char * argv[])
 
 #ifdef LOAD_STORAGES_SINGLE_DEV
     {
+        CASC_OPEN_STORAGE_ARGS OpenArgs = {sizeof(CASC_OPEN_STORAGE_ARGS)};
         HANDLE hStorage;
         HANDLE hFile;
         BYTE Buffer[0x100];
 
+        OpenArgs.PfnProgressCallback = OnlineStorage_OpenCB_Simple;
+        OpenArgs.PtrProgressParam = NULL;
+
         //if(CascOpenStorage(_T("e:\\Multimedia\\CASC\\Beta TVFS\\00001"), 0, &hStorage))
-        if(CascOpenStorage(_T("e:\\Multimedia\\CASC\\Diablo IV\\39517"), 0, &hStorage))
+        if(CascOpenStorageEx(_T("e:\\Multimedia\\CASC\\WoW\\50000\\CascCache*wow*eu"), &OpenArgs, true, &hStorage))
         {
-            if(CascOpenFile(hStorage, "base:ComplexTypeDescriptorSizes.dat", 0, 0, &hFile))
+            if(CascOpenFile(hStorage, "DBFilesClient\\Achievement.db2", 0, 0, &hFile))
             {
                 CascReadFile(hFile, Buffer, sizeof(Buffer), NULL);
                 CascCloseFile(hFile);
