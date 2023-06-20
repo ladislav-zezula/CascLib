@@ -1020,6 +1020,29 @@ bool WINAPI CascGetFileInfo(HANDLE hFile, CASC_FILE_INFO_CLASS InfoClass, void *
     return (pbOutputValue != NULL);
 }
 
+bool WINAPI CascSetFileFlags(HANDLE hFile, DWORD dwOpenFlags)
+{
+    TCascFile * hf;
+
+    // Validate the file handle
+    if((hf = TCascFile::IsValid(hFile)) == NULL)
+    {
+        SetCascError(ERROR_INVALID_HANDLE);
+        return false;
+    }
+
+    // Currently, only CASC_OVERCOME_ENCRYPTED can be changed
+    if(dwOpenFlags & ~CASC_OVERCOME_ENCRYPTED)
+    {
+        SetCascError(ERROR_INVALID_PARAMETER);
+        return false;
+    }
+
+    // Set "overcome encrypted" flag. Will apply on next CascReadFile
+    hf->bOvercomeEncrypted = (dwOpenFlags & CASC_OVERCOME_ENCRYPTED) ? TRUE : FALSE;
+    return true;
+}
+
 //
 // THE FILE SIZE PROBLEM
 //

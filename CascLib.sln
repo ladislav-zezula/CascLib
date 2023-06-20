@@ -2,11 +2,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.26430.4
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CascLib", "CascLib_vs22.vcxproj", "{78424708-1F6E-4D4B-920C-FB6D26847055}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CascLib", "CascLib.vcxproj", "{78424708-1F6E-4D4B-920C-FB6D26847055}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CascLib_dll", "CascLib_vs22_dll.vcxproj", "{CB385198-50B1-4CF4-883B-11F042DED6AA}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CascLib_dll", "CascLib_dll.vcxproj", "{CB385198-50B1-4CF4-883B-11F042DED6AA}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CascLib_test", "CascLib_vs22_test.vcxproj", "{9403EA00-98F8-4D02-80B0-65D9168B0CCC}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CascLib_test", "CascLib_test.vcxproj", "{9403EA00-98F8-4D02-80B0-65D9168B0CCC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
