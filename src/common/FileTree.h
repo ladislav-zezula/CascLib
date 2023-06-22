@@ -82,7 +82,7 @@ class CASC_FILE_TREE
     // Retrieve the maximum FileDataId ever inserted
     DWORD GetNextFileDataId();
 
-#ifdef _DEBUG
+#ifdef CASCLIB_DEBUG
     void DumpFileDataIds(const char * szFileName)
     {
         FileDataIds.Dump(szFileName);

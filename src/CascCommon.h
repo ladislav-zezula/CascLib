@@ -21,6 +21,10 @@
     #include <zlib.h>
 #endif
 
+#if defined(_DEBUG) && !defined(CASCLIB_NODEBUG)
+#define CASCLIB_DEBUG
+#endif
+
 #include "CascPort.h"
 #include "common/Common.h"
 #include "common/Array.h"
@@ -48,7 +52,7 @@
 //-----------------------------------------------------------------------------
 // CascLib private defines
 
-#if defined(_DEBUG) && defined(CASCLIB_DEV)
+#if defined(CASCLIB_DEBUG) && defined(CASCLIB_DEV)
 #define BREAK_ON_XKEY3(CKey, v0, v1, v2) if(CKey[0] == v0 && CKey[1] == v1 && CKey[2] == v2) { __debugbreak(); }
 #define BREAKIF(condition)               if(condition)  { __debugbreak(); }
 #else
@@ -506,7 +510,7 @@ DWORD RootHandler_CreateInstall(TCascStorage * hs, CASC_BLOB & InstallFile);
 //-----------------------------------------------------------------------------
 // Dumpers (CascDumpData.cpp)
 
-#ifdef _DEBUG
+#ifdef CASCLIB_DEBUG
 void CascDumpData(LPCSTR szFileName, const void * pvData, size_t cbData);
 void CascDumpFile(HANDLE hFile, const char * szDumpFile = NULL);
 void CascDumpStorage(HANDLE hStorage, const char * szDumpFile = NULL);

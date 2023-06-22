@@ -81,7 +81,7 @@ typedef struct _FILE_ROOT_GROUP
 //-----------------------------------------------------------------------------
 // Debug local stuff
 
-#if defined(_MSC_VER) && defined(_DEBUG)
+#if defined(_MSC_VER) && defined(CASCLIB_DEBUG)
 static FILE * fp = NULL;
 static bool bLogEntries = true;
 
@@ -114,7 +114,7 @@ struct TRootHandler_WoW : public TFileTreeRoot
 
     TRootHandler_WoW(ROOT_FORMAT RFormat, DWORD HashlessFileCount) : TFileTreeRoot(FTREE_FLAGS_WOW)
     {
-        // Turn off the "we know file names" bit 
+        // Turn off the "we know file names" bit
         FileCounterHashless = HashlessFileCount;
         FileCounter = 0;
         RootFormat = RFormat;
@@ -180,7 +180,7 @@ struct TRootHandler_WoW : public TFileTreeRoot
                 return pbRootPtr + (sizeof(FILE_ROOT_ENTRY) * RootGroup.Header.NumberOfFiles);
 
             case RootFormatWoW82:
-                
+
                 // Verify the position of array of CONTENT_KEY
                 if((pbRootPtr + (sizeof(CONTENT_KEY) * RootGroup.Header.NumberOfFiles)) > pbRootEnd)
                     return NULL;
@@ -254,12 +254,6 @@ struct TRootHandler_WoW : public TFileTreeRoot
         {
             // Set the file data ID
             FileDataId = FileDataId + RootGroup.FileDataIds[i];
-            
-#if defined(_MSC_VER) && defined(_DEBUG)
-            if(FileDataId == 3314016)
-                __debugbreak();
-            LogEntry(FileDataId, pCKey);
-#endif
 
             // Find the item in the central storage. Insert it to the tree
             if((pCKeyEntry = FindCKeyEntry_CKey(hs, pCKey->Value)) != NULL)
@@ -387,7 +381,7 @@ struct TRootHandler_WoW : public TFileTreeRoot
     */
 
     DWORD ParseWowRootFile_Level1(
-        TCascStorage * hs, 
+        TCascStorage * hs,
         LPBYTE pbRootPtr,
         LPBYTE pbRootEnd,
         DWORD dwLocaleMask,
@@ -419,7 +413,7 @@ struct TRootHandler_WoW : public TFileTreeRoot
         if(dwErrCode == ERROR_SUCCESS)
             dwErrCode = ParseWowRootFile_Level1(hs, pbRootPtr, pbRootEnd, dwLocaleMask, 1);
 
-#ifdef _DEBUG
+#ifdef CASCLIB_DEBUG
         // Dump the array of the file data IDs
         //FileTree.DumpFileDataIds("e:\\file-data-ids.bin");
 #endif

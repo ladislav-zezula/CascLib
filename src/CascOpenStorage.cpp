@@ -29,7 +29,7 @@
 
 #define CHECKED_KEY {0x00, 0x00, 0x0F, 0x84}
 
-#if defined(_DEBUG) && defined(CHECKED_KEY)
+#if defined(CASCLIB_DEBUG) && defined(CHECKED_KEY)
 
 inline bool CheckForXKey(LPBYTE XKey)
 {
@@ -117,7 +117,7 @@ TCascStorage::~TCascStorage()
     // Free the blobs
     FreeCascBlob(&CdnConfigKey);
     FreeCascBlob(&CdnBuildKey);
-    
+
     FreeCascBlob(&ArchiveGroup);
     FreeCascBlob(&ArchivesKey);
     FreeCascBlob(&PatchArchivesKey);
@@ -423,8 +423,8 @@ static int LoadEncodingCKeyPage(TCascStorage * hs, CASC_ENCODING_HEADER & EnHead
         if(pFileEntry->EKeyCount == 0)
             break;
 
-        // Example of a file entry with multiple EKeys: 
-        // Overwatch build 24919, CKey: 0e 90 94 fa d2 cb 85 ac d0 7c ea 09 f9 c5 ba 00 
+        // Example of a file entry with multiple EKeys:
+        // Overwatch build 24919, CKey: 0e 90 94 fa d2 cb 85 ac d0 7c ea 09 f9 c5 ba 00
 //      BREAKIF(pFileEntry->EKeyCount > 1);
 //      BREAK_ON_XKEY3(pFileEntry->CKey, 0x34, 0x82, 0x1f);
 
@@ -613,7 +613,7 @@ int CaptureDownloadTag(CASC_DOWNLOAD_HEADER & DlHeader, CASC_TAG_ENTRY1 & DlTag,
         pbFilePtr++;
     if(pbFilePtr >= pbFileEnd)
         return ERROR_BAD_FORMAT;
-    
+
     // Save the length of the tag name
     DlTag.NameLength = (pbFilePtr - pbSaveFilePtr);
     pbFilePtr++;
@@ -630,7 +630,7 @@ int CaptureDownloadTag(CASC_DOWNLOAD_HEADER & DlHeader, CASC_TAG_ENTRY1 & DlTag,
     // Get the bitmap length.
     // If the bitmap is last in the list and it's shorter than declared, we make it shorter
     DlTag.BitmapLength = GetTagBitmapLength(pbFilePtr, pbFileEnd, DlHeader.EntryCount);
-    
+
     // Get the entry length
     DlTag.TagLength = (pbFilePtr - pbSaveFilePtr) + DlTag.BitmapLength;
     return ERROR_SUCCESS;
@@ -769,7 +769,7 @@ static int LoadDownloadManifest(TCascStorage * hs)
         if(dwErrCode == ERROR_SUCCESS)
         {
             // Parse the entire download manifest
-            dwErrCode = LoadDownloadManifest(hs, DlHeader, DownloadFile.pbData, DownloadFile.pbData + DownloadFile.cbData); 
+            dwErrCode = LoadDownloadManifest(hs, DlHeader, DownloadFile.pbData, DownloadFile.pbData + DownloadFile.cbData);
         }
     }
 
@@ -1391,7 +1391,7 @@ bool WINAPI CascOpenStorageEx(LPCTSTR szParams, PCASC_OPEN_STORAGE_ARGS pArgs, b
         if((hs = new TCascStorage()) != NULL)
         {
             CASC_BUILD_FILE BuildFile = {NULL};
-            
+
             // Check for one of the supported main files (.build.info, .build.db, versions)
             if((dwErrCode = CheckCascBuildFileExact(BuildFile, pArgs->szLocalPath)) == ERROR_SUCCESS)
             {
@@ -1426,7 +1426,7 @@ bool WINAPI CascOpenStorageEx(LPCTSTR szParams, PCASC_OPEN_STORAGE_ARGS pArgs, b
 }
 
 //
-// Opens a local CASC storage 
+// Opens a local CASC storage
 //
 // szParams: "local_path:code_name", like "C:\\Games\\World of Warcraft:wowt"
 //
