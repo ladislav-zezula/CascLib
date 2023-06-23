@@ -1039,7 +1039,7 @@ bool WINAPI CascSetFileFlags(HANDLE hFile, DWORD dwOpenFlags)
     }
 
     // Set "overcome encrypted" flag. Will apply on next CascReadFile
-    hf->bOvercomeEncrypted = (dwOpenFlags & CASC_OVERCOME_ENCRYPTED) ? TRUE : FALSE;
+    hf->bOvercomeEncrypted = (dwOpenFlags & CASC_OVERCOME_ENCRYPTED) != 0;
     return true;
 }
 
