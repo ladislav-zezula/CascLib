@@ -1166,7 +1166,7 @@ static bool WINAPI OnlineStorage_OpenCB_Simple(
     DWORD dwTotal)                              // (optional) If non-zero, this is the total number of objects to process
 {
     LPCSTR szFmtx = (dwTotal != 0) ? ("%s (%u of %u)    \r") : ("%s    \r");
-    CHAR szFormat[256];
+    char szFormat[256];
 
     CascStrPrintf(szFormat, _countof(szFormat), szFmtx, szWork, dwValue, dwTotal);
     printf(szFormat, szObject);
