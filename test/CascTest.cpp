@@ -1205,7 +1205,7 @@ int main(int argc, char * argv[])
         OpenArgs.PtrProgressParam = NULL;
 
         //if(CascOpenStorageEx(_T("e:\\Multimedia\\CASC\\WoW\\50000\\CascCache\\versions"), &OpenArgs, true, &hStorage))
-        if(CascOpenStorageEx(_T("e:\\Multimedia\\CASC\\WoW\\50000"), &OpenArgs, true, &hStorage))
+        if(CascOpenStorageEx(_T("e:\\Multimedia\\CASC\\WoW\\18125"), &OpenArgs, true, &hStorage))
         {
             hFind = CascFindFirstFile(hStorage, szFile, &cf, szListFile_CSV);
             if(hFind != INVALID_HANDLE_VALUE)
