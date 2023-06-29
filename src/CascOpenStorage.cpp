@@ -1072,7 +1072,7 @@ static bool GetStoragePathProduct(TCascStorage * hs, void * pvStorageInfo, size_
         // Append the product code name, if any
         if(hs->szCodeName != NULL)
         {
-            *szBuffer++ = _T(':');
+            *szBuffer++ = _T(CASC_PARAM_SEPARATOR);
             CascStrCopy(szBuffer, (szBufferEnd - szBuffer), hs->szCodeName);
             szBuffer += _tcslen(hs->szCodeName);
         }
@@ -1080,7 +1080,7 @@ static bool GetStoragePathProduct(TCascStorage * hs, void * pvStorageInfo, size_
         // Append the product region, if any
         if(hs->szRegion != NULL)
         {
-            *szBuffer++ = _T(':');
+            *szBuffer++ = _T(CASC_PARAM_SEPARATOR);
             CascStrCopy(szBuffer, (szBufferEnd - szBuffer), hs->szRegion);
         }
     }
@@ -1247,10 +1247,10 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs, L
     return dwErrCode;
 }
 
-// Check for URL pattern. Note that the string may be terminated by ':' instead of '\0'
+// Check for URL pattern. Note that the string may be terminated by CASC_PARAM_SEPARATOR instead of '\0'
 static bool IsUrl(LPCTSTR szString)
 {
-    while(szString[0] != 0 && szString[0] != '*')
+    while(szString[0] != 0 && szString[0] != CASC_PARAM_SEPARATOR)
     {
         // Check for "://"
         if(!_tcsncmp(szString, _T("://"), 3))
@@ -1273,7 +1273,7 @@ static LPTSTR GetNextParam(LPTSTR szParamsPtr, bool bMustBeUrl = false)
     if(szParamsPtr != NULL)
     {
         // Find the separator ("*") or end of string
-        if((szSeparator = _tcschr(szParamsPtr, _T('*'))) != NULL)
+        if((szSeparator = _tcschr(szParamsPtr, _T(CASC_PARAM_SEPARATOR))) != NULL)
         {
             // Check for URL pattern, if needed
             if(bMustBeUrl && IsUrl(szSeparator + 1) == false)
