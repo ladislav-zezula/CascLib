@@ -757,7 +757,7 @@ static DWORD Storage_EnumFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
     bool bFileFound = true;
 
     // Create the output file for dumping all file names
-    //Params.fp1 = OpenOutputTextFile(hStorage, "\\list-%s-%u-001.txt");
+    Params.fp1 = OpenOutputTextFile(hStorage, "\\list-%s-%u-001.txt");
 
     // Dump the storage
 //  LogHelper.PrintProgress("Dumping storage ...");
@@ -1175,7 +1175,7 @@ static bool WINAPI OnlineStorage_OpenCB_Simple(
 
 
 //#define LOAD_STORAGES_SINGLE_DEV
-#define LOAD_STORAGES_CMD_LINE
+define LOAD_STORAGES_CMD_LINE
 #define LOAD_STORAGES_LOCAL
 #define LOAD_STORAGES_ONLINE
 
