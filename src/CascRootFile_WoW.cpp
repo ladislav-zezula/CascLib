@@ -82,6 +82,7 @@ typedef struct _FILE_ROOT_GROUP
 // Debug local stuff
 
 #if defined(_MSC_VER) && defined(CASCLIB_DEBUG)
+/*
 static FILE * fp = NULL;
 static bool bLogEntries = true;
 
@@ -101,6 +102,7 @@ static void LogEntry(DWORD FileDataId, PCONTENT_KEY pCKey)
         fprintf(fp, "File Data ID: %u, CKey = %s\n", FileDataId, szCKey);
     }
 }
+*/
 #endif
 
 //-----------------------------------------------------------------------------
