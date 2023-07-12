@@ -228,7 +228,7 @@ class TLogHelper
 
 #ifdef TEST_PLATFORM_WINDOWS
         InitializeCriticalSection(&Locker);
-        TickCount = GetTickCount64();
+        TickCount = GetTickCount();
 #endif
 
         // Remember the startup time
@@ -591,10 +591,10 @@ class TLogHelper
     ULONGLONG ByteCount;                            // For user's convenience: Current number of bytes
     ULONGLONG StartTime;                            // Start time of an operation, in milliseconds
     ULONGLONG EndTime;                              // End time of an operation, in milliseconds
-    ULONGLONG TickCount;
     const char * UserString;
     DWORD UserCount;
     DWORD UserTotal;
+    DWORD TickCount;
     DWORD TimeTrigger;                              // For triggering elapsed timers
     DWORD TotalFiles;                               // For user's convenience: Total number of files
     DWORD FileCount;                                // For user's convenience: Curernt number of files
