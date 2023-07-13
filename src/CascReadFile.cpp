@@ -180,8 +180,9 @@ static DWORD ParseBlteHeader(PCASC_FILE_SPAN pFileSpan, PCASC_CKEY_ENTRY pCKeyEn
         if(cbEncodedBuffer < FIELD_OFFSET(BLTE_ENCODED_HEADER, MustBe0F))
             return ERROR_BAD_FORMAT;
 
-        // Note that some newer WoW builds have the entire encoded part zeroed
-        // Tested on WoW retail 50401, file DBFilesClient\\LoreTextPublic.db2
+        // Note that the entire encoded BLTE header may be zeroed and the game will still run
+        // Tested on WoW Classic 49821, file "Sound\\Music\\GlueScreenMusic\\wow_main_theme.mp3"
+        // Data File: data.004, file offset 00000000-18BDD2AA
         if(pEncodedHeader->EncodedSize != 0 && pEncodedHeader->EncodedSize != pCKeyEntry->EncodedSize)
             return ERROR_BAD_FORMAT;
 
