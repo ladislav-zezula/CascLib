@@ -1066,7 +1066,7 @@ static STORAGE_INFO StorageInfo1[] =
     //- Storage folder name --------        - Compound file name hash --------  - Compound file data hash --------  - Example file to extract ---
     {"Beta TVFS/00001",                     "be2ba8b6d02279a1b68c4ee28f07641f", "96e6457b649b11bcee54d52fa4be12e5", "ROOT"},
     {"Beta TVFS/00002",                     "09fd84ef909ad314d84dc1f037e87ca3", "4da83fa60e0e505d14a5c21284142127", "ENCODING"},
-/*
+
     {"CoD4/3376209",                        "e01180b36a8cfd82cb2daa862f5bbf3e", "79cd4cfc9eddad53e4b4d394c36b8b0c", "zone/base.xpak" },
     {"CoD4-MW/8042902/.build.info",         "cd54a9444812e168b3b920b1479eff71", "033f77f6309bf6c21984fc10d09e5a72" },
 
@@ -1131,7 +1131,7 @@ static STORAGE_INFO StorageInfo1[] =
     {"WoW/38598-classic-tbcbeta",           "777021f77c2ad16349d9b68484df40e2", "97423f756948e9437defc32b3bec4895"},
     {"WoW/38707-classic-tbc",               "70d621467a36bd768cdbaf0527ef1863", "08cc37803156adaddca74a09211106bd"},
     {"WoW/40892-classic-tbc/.build.info",   "5e9dc8fdb7ffba6c22bcad2330618d1e", "5ae578d0f8986c709477106fa63d8cfb"},
-*/
+
     {"WoW/49821-classic",                   "e54423b6514443aa8d4c326d01db9f87", "0f72450e6f4c7c4dcd06c121bc334d9b", "Sound\\Music\\GlueScreenMusic\\wow_main_theme.mp3"},
 
     {"WoW/47067*wow",                       "3a8bcfd1a19bc4f376aa8cc08653c584", "70a641d4100b97d77b9b6b3e5a07ee13", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
