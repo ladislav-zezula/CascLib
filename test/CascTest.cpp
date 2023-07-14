@@ -1131,7 +1131,6 @@ static STORAGE_INFO StorageInfo1[] =
     {"WoW/38598-classic-tbcbeta",           "777021f77c2ad16349d9b68484df40e2", "97423f756948e9437defc32b3bec4895"},
     {"WoW/38707-classic-tbc",               "70d621467a36bd768cdbaf0527ef1863", "08cc37803156adaddca74a09211106bd"},
     {"WoW/40892-classic-tbc/.build.info",   "5e9dc8fdb7ffba6c22bcad2330618d1e", "5ae578d0f8986c709477106fa63d8cfb"},
-
     {"WoW/49821-classic",                   "e54423b6514443aa8d4c326d01db9f87", "0f72450e6f4c7c4dcd06c121bc334d9b", "Sound\\Music\\GlueScreenMusic\\wow_main_theme.mp3"},
 
     {"WoW/47067*wow",                       "3a8bcfd1a19bc4f376aa8cc08653c584", "70a641d4100b97d77b9b6b3e5a07ee13", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
