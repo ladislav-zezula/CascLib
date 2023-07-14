@@ -161,9 +161,8 @@ static void VerifyHeaderSpan(PBLTE_ENCODED_HEADER pBlteHeader, ULONGLONG HeaderO
 }
 #endif
 
-static DWORD ParseBlteHeader(PCASC_FILE_SPAN pFileSpan, PCASC_CKEY_ENTRY pCKeyEntry, ULONGLONG HeaderOffset, LPBYTE pbEncodedBuffer, size_t cbEncodedBuffer, size_t * pcbHeaderSize)
+static DWORD ParseBlteHeader(PCASC_FILE_SPAN pFileSpan, ULONGLONG HeaderOffset, LPBYTE pbEncodedBuffer, size_t cbEncodedBuffer, size_t * pcbHeaderSize)
 {
-    PBLTE_ENCODED_HEADER pEncodedHeader = (PBLTE_ENCODED_HEADER)pbEncodedBuffer;
     PBLTE_HEADER pBlteHeader = (PBLTE_HEADER)pbEncodedBuffer;
     DWORD ExpectedHeaderSize;
     DWORD ExHeaderSize = 0;
@@ -176,29 +175,28 @@ static DWORD ParseBlteHeader(PCASC_FILE_SPAN pFileSpan, PCASC_CKEY_ENTRY pCKeyEn
     // On local files, there is just BLTE_HEADER
     if(ConvertBytesToInteger_4_LE(pBlteHeader->Signature) != BLTE_HEADER_SIGNATURE)
     {
+        PBLTE_ENCODED_HEADER pEncodedHeader;
+
         // There must be at least some bytes
         if(cbEncodedBuffer < FIELD_OFFSET(BLTE_ENCODED_HEADER, MustBe0F))
             return ERROR_BAD_FORMAT;
+        pEncodedHeader = (PBLTE_ENCODED_HEADER)pbEncodedBuffer;
 
-        // Note that the entire encoded BLTE header may be zeroed and the game will still run
+        // Since Jul-2023, users report that the the encoded part of the BLTE header
+        // may contain zeros or even complete garbage. Do NOT test anything else than the signature
         // Tested on WoW Classic 49821, file "Sound\\Music\\GlueScreenMusic\\wow_main_theme.mp3"
-        // Data File: data.004, file offset 00000000-18BDD2AA
-        if(pEncodedHeader->EncodedSize != 0 && pEncodedHeader->EncodedSize != pCKeyEntry->EncodedSize)
+        // Data File: data.004, file offset 00000000-18BDD2AA (encoded header zeroed)
+        if(ConvertBytesToInteger_4_LE(pEncodedHeader->Signature) != BLTE_HEADER_SIGNATURE)
             return ERROR_BAD_FORMAT;
+        pBlteHeader = (PBLTE_HEADER)(pEncodedHeader->Signature);
+        ExHeaderSize = FIELD_OFFSET(BLTE_ENCODED_HEADER, Signature);
 
 #ifdef CASCLIB_DEBUG
         // Not really needed, it's here just for explanation of what the values mean
         //assert(memcmp(pCKeyEntry->EKey, pEncodedHeader->EKey.Value, MD5_HASH_SIZE) == 0);
         VerifyHeaderSpan(pEncodedHeader, HeaderOffset);
 #endif
-        // Capture the EKey
-        ExHeaderSize = FIELD_OFFSET(BLTE_ENCODED_HEADER, Signature);
-        pBlteHeader = (PBLTE_HEADER)(pbEncodedBuffer + ExHeaderSize);
     }
-
-    // Verify the signature
-    if(ConvertBytesToInteger_4_LE(pBlteHeader->Signature) != BLTE_HEADER_SIGNATURE)
-        return ERROR_BAD_FORMAT;
 
     // Capture the header size. If this is non-zero, then array
     // of chunk headers follow. Otherwise, the file is just one chunk
@@ -409,7 +407,7 @@ static DWORD LoadEncodedHeaderAndSpanFrames(PCASC_FILE_SPAN pFileSpan, PCASC_CKE
         if(FileStream_Read(pFileSpan->pStream, &ReadOffset, pbEncodedBuffer, (DWORD)cbEncodedBuffer))
         {
             // Parse the BLTE header
-            dwErrCode = ParseBlteHeader(pFileSpan, pCKeyEntry, ReadOffset, pbEncodedBuffer, cbEncodedBuffer, &cbHeaderSize);
+            dwErrCode = ParseBlteHeader(pFileSpan, ReadOffset, pbEncodedBuffer, cbEncodedBuffer, &cbHeaderSize);
             if(dwErrCode == ERROR_SUCCESS)
             {
                 // If the headers are larger than the initial read size, we read the missing data

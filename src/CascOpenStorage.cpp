@@ -1178,6 +1178,13 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs, L
         dwErrCode = LoadCdnBuildFile(hs);
     }
 
+    // Make sure we have a build number. If we don't, we assign a build number
+    // that is derived from the first beta TVFS build number
+    if(hs->dwBuildNumber == 0)
+    {
+        hs->dwBuildNumber = 21742 + hs->InstallCKey.ContentSize;
+    }
+
     // Create the array of CKey entries. Each entry represents a file in the storage
     if(dwErrCode == ERROR_SUCCESS)
     {
