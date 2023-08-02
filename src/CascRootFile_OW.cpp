@@ -204,10 +204,10 @@ struct TRootHandler_OW : public TFileTreeRoot
                     LoadContentManifestFile(hs, FileTree, pFileNode->pCKeyEntry, szFileName);
                     continue;
                 }
-                if(IsSpecialContentFile(szFileName, ".apm"))
-                {
-                    LoadApplicationPackageManifestFile(hs, FileTree, pFileNode->pCKeyEntry, szFileName);
-                }
+                //if(IsSpecialContentFile(szFileName, ".apm"))
+                //{
+                //    LoadApplicationPackageManifestFile(hs, FileTree, pFileNode->pCKeyEntry, szFileName);
+                //}
             }
         }
         return ERROR_SUCCESS;
