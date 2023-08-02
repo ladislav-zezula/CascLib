@@ -1091,9 +1091,9 @@ static STORAGE_INFO StorageInfo1[] =
     {"Heroes of the Storm/81376",           "25597a3f8adc3fa79df243197fecd1cc", "2c36eb3dde7d545a0fa413ccebf84202", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
     {"Heroes of the Storm/88936",           "e3a4794fcb627f0768ff97834119d20a", "7d2cec9779e9c8baf0f1304df5921858"},
 
-    {"Overwatch/24919/data/casc",           "53afa15570c29bd40bba4707b607657e", "6f9131fc0e7ad558328bbded2c996959", "ROOT"},
-    {"Overwatch/47161",                     "53db1f3da005211204997a6b50aa71e1", "12be32a2f86ea1f4e0bf2b62fe4b7f6e", "TactManifest\\Win_SPWin_RCN_LesMX_EExt.apm"},
-    {"Overwatch/72127",                     "bef17230badb29e5c7dad18a2b30df8a", "bae70b787316d724646b954978284c14", "TactManifest\\Win_SPWin_RCN_LesMX_EExt.apm"},
+    {"Overwatch/024919/data/casc",          "53afa15570c29bd40bba4707b607657e", "6f9131fc0e7ad558328bbded2c996959", "ROOT"},
+    {"Overwatch/047161",                    "53db1f3da005211204997a6b50aa71e1", "12be32a2f86ea1f4e0bf2b62fe4b7f6e", "TactManifest\\Win_SPWin_RCN_LesMX_EExt.apm"},
+    {"Overwatch/072127",                    "bef17230badb29e5c7dad18a2b30df8a", "bae70b787316d724646b954978284c14", "TactManifest\\Win_SPWin_RCN_LesMX_EExt.apm"},
 
     {"Starcraft/2457",                      "3eabb81825735cf66c0fc10990f423fa", "ce752a323819c369fba03401ba400332", "music\\radiofreezerg.ogg"},
     {"Starcraft/4037",                      "bb2b76d657a841953fe093b75c2bdaf6", "2f1e9df40da0f6f682ffecbbd920d4fc", "music\\radiofreezerg.ogg"},
@@ -1205,7 +1205,7 @@ int main(int argc, char * argv[])
         OpenArgs.PfnProgressCallback = OnlineStorage_OpenCB_Simple;
         OpenArgs.PtrProgressParam = NULL;
 
-        if(CascOpenStorageEx(_T("d:\\Hry\\World of Warcraft"), &OpenArgs, true, &hStorage))
+        if(CascOpenStorageEx(_T("e:\\Multimedia\\CASC\\Overwatch\\72127"), &OpenArgs, true, &hStorage))
         {
             hFind = CascFindFirstFile(hStorage, szFile, &cf, szListFile_TXT);
             if(hFind != INVALID_HANDLE_VALUE)

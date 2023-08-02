@@ -112,10 +112,10 @@ struct CASC_CKEY_ENTRY
     ULONGLONG TagBitMask;                           // Bitmap for the tags. 0 ig tags are not supported
     DWORD ContentSize;                              // Content size of the file
     DWORD EncodedSize;                              // Encoded size of the file
-    DWORD Flags;                                    // See CASC_CE_XXX
-    USHORT RefCount;                                // This is the number of file names referencing this entry
+    DWORD RefCount;                                 // This is the number of file names referencing this entry
+    USHORT Flags;                                   // See CASC_CE_XXX
     BYTE SpanCount;                                 // Number of spans for the file
-    BYTE Priority;                                  // Download priority
+    BYTE Priority;                                  // Number of spans for the file
 };
 typedef CASC_CKEY_ENTRY *PCASC_CKEY_ENTRY;
 
@@ -310,9 +310,43 @@ LPBYTE CaptureInteger32_BE(LPBYTE pbDataPtr, LPBYTE pbDataEnd, PDWORD PtrValue);
 LPBYTE CaptureByteArray(LPBYTE pbDataPtr, LPBYTE pbDataEnd, size_t nLength, LPBYTE pbOutput);
 LPBYTE CaptureContentKey(LPBYTE pbDataPtr, LPBYTE pbDataEnd, PCONTENT_KEY * PtrCKey);
 LPBYTE CaptureEncodedKey(LPBYTE pbEKey, LPBYTE pbData, BYTE EKeyLength);
-LPBYTE CaptureArray_(LPBYTE pbDataPtr, LPBYTE pbDataEnd, LPBYTE * PtrArray, size_t ItemSize, size_t ItemCount);
 
-#define CaptureArray(pbDataPtr, pbDataEnd, PtrArray, type, count) CaptureArray_(pbDataPtr, pbDataEnd, PtrArray, sizeof(type), count) 
+template <typename STRUCTURE>
+LPBYTE CaptureStructure(LPBYTE pbDataPtr, LPBYTE pbDataEnd, STRUCTURE ** lpStructure)
+{
+    if((pbDataPtr + sizeof(STRUCTURE)) <= pbDataEnd)
+    {
+        lpStructure[0] = (STRUCTURE *)(pbDataPtr);
+        return pbDataPtr + sizeof(STRUCTURE);
+    }
+    return NULL;
+}
+
+template <typename STRUCTURE>
+LPBYTE CaptureArray(LPBYTE pbDataPtr, LPBYTE pbDataEnd, STRUCTURE ** PtrArray, size_t nCount)
+{
+    size_t nTotalSize = nCount * sizeof(STRUCTURE);
+
+    if((pbDataPtr + nTotalSize) <= pbDataEnd)
+    {
+        PtrArray[0] = (STRUCTURE *)(pbDataPtr);
+        return pbDataPtr + nTotalSize;
+    }
+    return NULL;
+}
+
+template <typename STRUCTURE>
+LPBYTE CaptureArrayAsByte(LPBYTE pbDataPtr, LPBYTE pbDataEnd, LPBYTE * PtrArray, size_t nCount)
+{
+    size_t nTotalSize = nCount * sizeof(STRUCTURE);
+
+    if((pbDataPtr + nTotalSize) <= pbDataEnd)
+    {
+        PtrArray[0] = (LPBYTE)(pbDataPtr);
+        return pbDataPtr + nTotalSize;
+    }
+    return NULL;
+}
 
 //-----------------------------------------------------------------------------
 // String copying and conversion
@@ -571,8 +605,9 @@ bool CascCheckWildCard(const char * szString, const char * szWildCard);
 // Hashing functions
 
 bool CascIsValidMD5(LPBYTE pbMd5);
-void CascCalculateDataBlockHash(void * pvDataBlock, DWORD cbDataBlock, LPBYTE md5_hash);
-bool CascVerifyDataBlockHash(void * pvDataBlock, DWORD cbDataBlock, LPBYTE expected_md5);
+void CascHash_MD5(const void * pvDataBlock, size_t cbDataBlock, LPBYTE md5_hash);
+void CascHash_SHA1(const void * pvDataBlock, size_t cbDataBlock, LPBYTE sha1_hash);
+bool CascVerifyDataBlockHash(void * pvDataBlock, size_t cbDataBlock, LPBYTE expected_md5);
 
 //-----------------------------------------------------------------------------
 // Argument structure versioning

@@ -222,8 +222,11 @@
     <ClCompile Include="src\common\Mime.cpp" />
     <ClCompile Include="src\common\Sockets.cpp" />
     <ClCompile Include="src\DllMain.c" />
+    <ClCompile Include="src\hashes\sha1.cpp" />
     <ClCompile Include="src\jenkins\lookup3.c" />
-    <ClCompile Include="src\md5\md5.cpp" />
+    <ClCompile Include="src\hashes\md5.cpp" />
+    <ClCompile Include="src\overwatch\aes.cpp" />
+    <ClCompile Include="src\overwatch\cmf.cpp" />
     <ClCompile Include="src\zlib\adler32.c" />
     <ClCompile Include="src\zlib\crc32.c" />
     <ClCompile Include="src\zlib\inffast.c" />
@@ -249,7 +252,9 @@
     <ClInclude Include="src\common\Mime.h" />
     <ClInclude Include="src\common\Sockets.h" />
     <ClInclude Include="src\FileStream.h" />
-    <ClInclude Include="src\md5\md5.h" />
+    <ClInclude Include="src\hashes\md5.h" />
+    <ClInclude Include="src\hashes\sha1.h" />
+    <ClInclude Include="src\overwatch\aes.h" />
     <ClInclude Include="src\zlib\deflate.h" />
   </ItemGroup>
   <ItemGroup>

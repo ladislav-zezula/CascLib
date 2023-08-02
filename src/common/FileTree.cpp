@@ -344,6 +344,7 @@ PCASC_FILE_NODE CASC_FILE_TREE::InsertByName(PCASC_CKEY_ENTRY pCKeyEntry, const 
         {
             // Supply the name hash
             pFileNode->FileNameHash = FileNameHash;
+            //bNewNodeInserted = true;
 
             // Set the file data id and the extra values
             SetExtras(pFileNode, FileDataId, LocaleFlags, ContentFlags);
@@ -358,8 +359,7 @@ PCASC_FILE_NODE CASC_FILE_TREE::InsertByName(PCASC_CKEY_ENTRY pCKeyEntry, const 
             SetNodeFileName(pFileNode, szFileName);
 
             // If we created a new node, we need to increment the reference count
-            assert(pCKeyEntry->RefCount != 0xFFFF);
-            //bNewNodeInserted = true;
+            assert(pCKeyEntry->RefCount < 0xFFFFFFFF);
             pCKeyEntry->RefCount++;
             FileNodes++;
         }

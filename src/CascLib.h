@@ -131,6 +131,11 @@ extern "C" {
 #define MD5_STRING_SIZE                   0x20
 #endif
 
+#ifndef SHA1_HASH_SIZE
+#define SHA1_HASH_SIZE                    0x14
+#define SHA1_STRING_SIZE                  0x28
+#endif
+
 // Invalid values of all kind
 #define CASC_INVALID_INDEX          0xFFFFFFFF
 #define CASC_INVALID_SIZE           0xFFFFFFFF
