@@ -885,6 +885,10 @@
 					>
 				</File>
 				<File
+					RelativePath=".\src\overwatch\cpm.cpp"
+					>
+				</File>
+				<File
 					RelativePath=".\src\overwatch\cmf.cpp"
 					>
 				</File>

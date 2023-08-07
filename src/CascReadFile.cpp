@@ -229,7 +229,7 @@ static LPBYTE ReadMissingHeaderData(PCASC_FILE_SPAN pFileSpan, ULONGLONG DataFil
 {
     LPBYTE pbNewBuffer;
 
-    // Reallocate the buffer
+    // Reallocate the buffer. Note that if this fails, the original buffer is still valid
     pbNewBuffer = CASC_REALLOC(pbEncodedBuffer, cbTotalHeaderSize);
     if(pbNewBuffer != NULL)
     {

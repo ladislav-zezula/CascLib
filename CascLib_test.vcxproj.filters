@@ -210,6 +210,9 @@
     <ClInclude Include="src\overwatch\aes.h">
       <Filter>Source Files\overwatch</Filter>
     </ClInclude>
+    <ClInclude Include="src\overwatch\overwatch.h">
+      <Filter>Source Files\overwatch</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="doc\History.txt">

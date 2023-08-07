@@ -2,9 +2,10 @@
 @echo off
 
 :: Save the values of INCLUDE, LIB and PATH
+set PROJECT_DIR=%~dp0
 set SAVE_INCLUDE=%INCLUDE%
-set SAVE_LIB=%LIB%
 set SAVE_PATH=%PATH%
+set SAVE_LIB=%LIB%
 set LIB_NAME=CascLib
 
 :: Determine where the program files are, both for 64-bit and 32-bit Windows
@@ -56,9 +57,15 @@ devenv.com %3 /project "%LIB_NAME%" /rebuild "ReleaseUD|%SLN_TRG%"
 devenv.com %3 /project "%LIB_NAME%" /rebuild "ReleaseUS|%SLN_TRG%"
 
 :: Restore environment variables to the old level
+:RestoreEnvironment
 set INCLUDE=%SAVE_INCLUDE%
-set LIB=%SAVE_LIB%
 set PATH=%SAVE_PATH%
+set LIB=%SAVE_LIB%
+
+:: Delete environment variables that are set by Visual Studio
+set __VSCMD_PREINIT_PATH=
+set EXTERNAL_INCLUDE=
 set VSINSTALLDIR=
 set VCINSTALLDIR=
 set DevEnvDir=
+set LIBPATH=

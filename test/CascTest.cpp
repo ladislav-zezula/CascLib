@@ -1091,9 +1091,10 @@ static STORAGE_INFO StorageInfo1[] =
     {"Heroes of the Storm/81376",           "25597a3f8adc3fa79df243197fecd1cc", "2c36eb3dde7d545a0fa413ccebf84202", "mods\\gameplaymods\\percentscaling.stormmod\\base.stormdata\\GameData\\EffectData.xml"},
     {"Heroes of the Storm/88936",           "e3a4794fcb627f0768ff97834119d20a", "7d2cec9779e9c8baf0f1304df5921858"},
 
-    {"Overwatch/024919/data/casc",          "53afa15570c29bd40bba4707b607657e", "6f9131fc0e7ad558328bbded2c996959", "ROOT"},
-    {"Overwatch/047161",                    "53db1f3da005211204997a6b50aa71e1", "12be32a2f86ea1f4e0bf2b62fe4b7f6e", "TactManifest\\Win_SPWin_RCN_LesMX_EExt.apm"},
-    {"Overwatch/072127",                    "bef17230badb29e5c7dad18a2b30df8a", "bae70b787316d724646b954978284c14", "TactManifest\\Win_SPWin_RCN_LesMX_EExt.apm"},
+    {"Overwatch/024919/data/casc",          "379e5c9082c2a6bec78c71e5a77d46c9", "78cb77bf93d4563643b01f00831b3321", "ROOT"},
+    {"Overwatch/047161",                    "816d8adb3da20493e79f64559843f2d6", "2e935d3f8cc4cf62b94c1ba90214f7c8", "TactManifest\\Win_SPWin_RCN_LesMX_EExt.apm"},
+    {"Overwatch/072127",                    "a239ec86b6e94c512d37c4836d47bfe1", "26df45c35df2a9530f1912b5a88b2794", "TactManifest\\Win_SPWin_RCN_LesMX_EExt.apm"},
+    {"Overwatch/115380",                    "b4b03294e70ed0ef01235a312b46879d", "f8225c828c66e0c839dcf81e31827bdc", "ContentManifestFiles\\Windows-RDEV\\enUS\\speech\\05d0000000000093"},
 
     {"Starcraft/2457",                      "3eabb81825735cf66c0fc10990f423fa", "ce752a323819c369fba03401ba400332", "music\\radiofreezerg.ogg"},
     {"Starcraft/4037",                      "bb2b76d657a841953fe093b75c2bdaf6", "2f1e9df40da0f6f682ffecbbd920d4fc", "music\\radiofreezerg.ogg"},

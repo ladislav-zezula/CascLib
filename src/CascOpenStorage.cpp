@@ -147,7 +147,6 @@ TCascStorage * TCascStorage::Release()
         delete this;
         return NULL;
     }
-
     return this;
 }
 
@@ -941,7 +940,6 @@ __LoadRootFile:
         hs->pRootHandler->Copy(pOldRootHandler);
         delete pOldRootHandler;
     }
-
     return dwErrCode;
 }
 
@@ -1219,9 +1217,11 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs, L
 
         // Continue loading the manifest
         dwErrCode = LoadBuildManifest(hs, dwLocaleMask);
-        if(dwErrCode != ERROR_SUCCESS)
+
+        // If we fail to load the ROOT file, we take the file names from the INSTALL manifest
+        // Beware on low memory condition - in that case, we cannot guarantee a consistent state of the root file
+        if(dwErrCode != ERROR_SUCCESS && dwErrCode != ERROR_NOT_ENOUGH_MEMORY)
         {
-            // If we fail to load the ROOT file, we take the file names from the INSTALL manifest
             dwErrCode = LoadInstallManifest(hs);
         }
     }

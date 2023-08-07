@@ -226,6 +226,7 @@
     <ClCompile Include="src\jenkins\lookup3.c" />
     <ClCompile Include="src\hashes\md5.cpp" />
     <ClCompile Include="src\overwatch\aes.cpp" />
+    <ClCompile Include="src\overwatch\apm.cpp" />
     <ClCompile Include="src\overwatch\cmf.cpp" />
     <ClCompile Include="src\zlib\adler32.c" />
     <ClCompile Include="src\zlib\crc32.c" />

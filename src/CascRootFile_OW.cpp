@@ -104,7 +104,7 @@ typedef struct _APM_PACKAGE_ENTRY_V2
 } APM_PACKAGE_ENTRY_V2, *PAPM_PACKAGE_ENTRY_V2;
 
 //-----------------------------------------------------------------------------
-// Handler classes
+// Local functions (non-class)
 
 static bool IsManifestFolderName(const char * szFileName, const char * szManifestFolder, size_t nLength)
 {
@@ -125,6 +125,162 @@ static bool IsSpecialContentFile(const char * szFileName, const char * szExtensi
         }
     }
     return false;
+}
+
+//-----------------------------------------------------------------------------
+// Public functions (non-class)
+
+static void BinaryReverse64(LPBYTE GuidReversed, LPBYTE pbGuid)
+{
+    GuidReversed[0] = pbGuid[7];
+    GuidReversed[1] = pbGuid[6];
+    GuidReversed[2] = pbGuid[5];
+    GuidReversed[3] = pbGuid[4];
+    GuidReversed[4] = pbGuid[3];
+    GuidReversed[5] = pbGuid[2];
+    GuidReversed[6] = pbGuid[1];
+    GuidReversed[7] = pbGuid[0];
+}
+
+static const char * ExtractAssetSubString(char * szBuffer, size_t ccBuffer, const char * szPlainName)
+{
+    char * szBufferEnd = szBuffer + ccBuffer - 1;
+
+    while(szBuffer < szBufferEnd && szPlainName[0] != 0 && szPlainName[0] != '.' && szPlainName[0] != '_')
+        *szBuffer++ = *szPlainName++;
+
+    if(szBuffer <= szBufferEnd)
+        szBuffer[0] = 0;
+    return szPlainName;
+}
+
+static const char * AppendAssetSubString(char * szBuffer, size_t ccBuffer, const char * szPlainName)
+{
+    char * szBufferPtr = szBuffer + strlen(szBuffer);
+    char * szBufferEnd = szBuffer + ccBuffer - 1;
+
+    if(szBufferPtr < szBufferEnd)
+        *szBufferPtr++ = '-';
+
+    while(szBufferPtr < szBufferEnd && szPlainName[0] != '_')
+        *szBufferPtr++ = *szPlainName++;
+
+    szBufferPtr[0] = 0;
+    return szPlainName;
+}
+
+size_t BuildAssetFileNameTemplate(
+    char * szNameTemplate,
+    size_t ccNameTemplate,
+    const char * szPrefix,
+    const char * szAssetName)
+{
+    const char * szFileName = "0000000000000000";           // Base name for 64-bit GUID
+    const char * szFileExt = NULL;
+    char * szBufferEnd = szNameTemplate + ccNameTemplate;
+    char * szBufferPtr = szNameTemplate;
+    char * szPlainName;
+    char szPlatform[64] = {0};
+    char szLocale[64] = {0};
+    char szAsset[64] = {0};
+
+    // Parse the plain name
+    while(szAssetName[0] != '.')
+    {
+        // Watch start of the new field
+        if(szAssetName[0] == '_')
+        {
+            // Extract platform from "_SP"
+            if(szAssetName[1] == 'S' && szAssetName[2] == 'P' && !_strnicmp(szAssetName, "_SPWin_", 7))
+            {
+                CascStrCopy(szPlatform, _countof(szPlatform), "Windows");
+                szAssetName += 6;
+                continue;
+            }
+
+            // Extract "RDEV" or "RCN"
+            if(szAssetName[1] == 'R')
+            {
+                szAssetName = AppendAssetSubString(szPlatform, _countof(szPlatform), szAssetName + 1);
+                continue;
+            }
+
+            // Extract locale
+            if(szAssetName[1] == 'L')
+            {
+                szAssetName = ExtractAssetSubString(szLocale, _countof(szLocale), szAssetName + 2);
+                continue;
+            }
+
+            // Ignore "_EExt"
+            if(szAssetName[1] == 'E' && szAssetName[2] == 'E')
+            {
+                szAssetName += 5;
+                continue;
+            }
+
+            // Extract the asset name
+            szAssetName = ExtractAssetSubString(szAsset, _countof(szAsset), szAssetName + 1);
+
+            // Extract a possible extension
+            //if(!_stricmp(szAsset, "speech"))
+            //    szFileExt = ".wav";
+            //if(!_stricmp(szAsset, "text"))
+            //    szFileExt = ".text";
+            continue;
+        }
+        szAssetName++;
+    }
+
+    // Combine the path like "%PREFIX%\\%PLATFORM%-%DEV%\\%LOCALE%\\%ASSET%\\%PLAIN_NAME%.%EXTENSSION%"
+    if(szPrefix && szPrefix[0])
+        szBufferPtr += CascStrPrintf(szBufferPtr, (szBufferEnd - szBufferPtr), "%s\\", szPrefix);
+    if(szPlatform[0])
+        szBufferPtr += CascStrPrintf(szBufferPtr, (szBufferEnd - szBufferPtr), "%s\\", szPlatform);
+    if(szLocale[0])
+        szBufferPtr += CascStrPrintf(szBufferPtr, (szBufferEnd - szBufferPtr), "%s\\", szLocale);
+    if(szAsset[0])
+        szBufferPtr += CascStrPrintf(szBufferPtr, (szBufferEnd - szBufferPtr), "%s\\", szAsset);
+    szPlainName = szBufferPtr;
+
+    // Append file name and extension
+    if(szFileName && szFileName[0])
+        szBufferPtr += CascStrPrintf(szBufferPtr, (szBufferEnd - szBufferPtr), "%s", szFileName);
+    if(szFileExt && szFileExt[0])
+        CascStrPrintf(szBufferPtr, (szBufferEnd - szBufferPtr), "%s", szFileExt);
+
+    // Return the length of the path
+    return (szPlainName - szNameTemplate);
+}
+
+DWORD InsertAssetFile(
+    TCascStorage * hs,
+    CASC_FILE_TREE & FileTree,
+    char * szFileName,
+    size_t nPlainName,              // Offset of the plain name in the name template
+    LPBYTE pbCKey,
+    LPBYTE pbGuid)
+{
+    PCASC_CKEY_ENTRY pCKeyEntry;
+    DWORD dwErrCode = ERROR_SUCCESS;
+    BYTE GuidReversed[8];
+
+    // Try to find the CKey
+    if((pCKeyEntry = FindCKeyEntry_CKey(hs, pbCKey)) != NULL)
+    {
+        // Save the character at the end of the name (dot or EOS)
+        char chSaveChar = szFileName[nPlainName + 16];
+
+        // Imprint the GUID as binary value
+        BinaryReverse64(GuidReversed, pbGuid);
+        StringFromBinary(GuidReversed, sizeof(GuidReversed), szFileName + nPlainName);
+        szFileName[nPlainName + 16] = chSaveChar;
+
+        // Insert the asset to the file tree
+        if(FileTree.InsertByName(pCKeyEntry, szFileName) == NULL)
+            dwErrCode = ERROR_NOT_ENOUGH_MEMORY;
+    }
+    return dwErrCode;
 }
 
 //-----------------------------------------------------------------------------
@@ -156,10 +312,11 @@ struct TRootHandler_OW : public TFileTreeRoot
         dwFeatures |= (CASC_FEATURE_FILE_NAMES | CASC_FEATURE_ROOT_CKEY);
     }
 
-    int Load(TCascStorage * hs, CASC_CSV & Csv, size_t nFileNameIndex, size_t nCKeyIndex)
+    DWORD Load(TCascStorage * hs, CASC_CSV & Csv, size_t nFileNameIndex, size_t nCKeyIndex)
     {
         PCASC_CKEY_ENTRY pCKeyEntry;
         size_t nFileCount;
+        DWORD dwErrCode = ERROR_SUCCESS;
         BYTE CKey[MD5_HASH_SIZE];
 
         CASCLIB_UNUSED(hs);
@@ -201,16 +358,18 @@ struct TRootHandler_OW : public TFileTreeRoot
             {
                 if(IsSpecialContentFile(szFileName, ".cmf"))
                 {
-                    LoadContentManifestFile(hs, FileTree, pFileNode->pCKeyEntry, szFileName);
+                    dwErrCode = LoadContentManifestFile(hs, FileTree, pFileNode->pCKeyEntry, szFileName);
+                    if(dwErrCode != ERROR_SUCCESS)
+                        break;
                     continue;
                 }
-                //if(IsSpecialContentFile(szFileName, ".apm"))
-                //{
-                //    LoadApplicationPackageManifestFile(hs, FileTree, pFileNode->pCKeyEntry, szFileName);
-                //}
+                if(IsSpecialContentFile(szFileName, ".apm"))
+                {
+                    LoadApplicationPackageManifestFile(hs, FileTree, pFileNode->pCKeyEntry, szFileName);
+                }
             }
         }
-        return ERROR_SUCCESS;
+        return dwErrCode;
     }
 };
 

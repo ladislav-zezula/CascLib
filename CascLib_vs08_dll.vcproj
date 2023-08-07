@@ -566,6 +566,10 @@
 					>
 				</File>
 				<File
+					RelativePath=".\src\overwatch\apm.cpp"
+					>
+				</File>
+				<File
 					RelativePath=".\src\overwatch\cmf.cpp"
 					>
 				</File>

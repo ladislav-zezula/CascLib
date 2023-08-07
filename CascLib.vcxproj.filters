@@ -205,5 +205,8 @@
     <ClCompile Include="src\overwatch\aes.cpp">
       <Filter>Source Files\overwatch</Filter>
     </ClCompile>
+    <ClCompile Include="src\overwatch\apm.cpp">
+      <Filter>Source Files\overwatch</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

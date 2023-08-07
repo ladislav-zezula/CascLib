@@ -143,12 +143,9 @@ extern unsigned char IntToHexChar[];
 template <typename T>
 T * CASC_REALLOC(T * old_ptr, size_t count)
 {
-    T * new_ptr = (T *)realloc(old_ptr, count * sizeof(T));
-
-    // If realloc fails, then the old buffer remains unfreed
-    if(new_ptr == NULL)
-        free(old_ptr);
-    return new_ptr;
+    // Note: If realloc fails, then the old buffer remains unfreed!
+    // The caller needs to handle this
+    return (T *)realloc(old_ptr, count * sizeof(T));
 }
 
 template <typename T>

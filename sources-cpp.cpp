@@ -10,6 +10,7 @@
 #include "src\hashes\md5.cpp"
 #include "src\hashes\sha1.cpp"
 #include "src\overwatch\aes.cpp"
+#include "src\overwatch\apm.cpp"
 #include "src\overwatch\cmf.cpp"
 #include "src\CascDecompress.cpp"
 #include "src\CascDecrypt.cpp"
