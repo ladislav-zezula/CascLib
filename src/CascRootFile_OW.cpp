@@ -115,18 +115,6 @@ static bool IsManifestFolderName(const char * szFileName, const char * szManifes
     return false;
 }
 
-static bool IsSpecialContentFile(const char * szFileName, const char * szExtension)
-{
-    if(IsManifestFolderName(szFileName, "Manifest", 8) || IsManifestFolderName(szFileName, "TactManifest", 12))
-    {
-        if(!_stricmp(GetFileExtension(szFileName), szExtension))
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
 //-----------------------------------------------------------------------------
 // Public functions (non-class)
 
@@ -347,25 +335,30 @@ struct TRootHandler_OW : public TFileTreeRoot
         nFileCount = FileTree.GetCount();
 
         // Parse Content Manifest Files (.cmf)
-        for(size_t i = 0; i < nFileCount; i++)
+        for(size_t i = 0; i < nFileCount && dwErrCode == ERROR_SUCCESS; i++)
         {
             PCASC_FILE_NODE pFileNode;
+            const char * szExtension;
             char szFileName[MAX_PATH];
 
             // Get the n-th file
             pFileNode = (PCASC_FILE_NODE)FileTree.PathAt(szFileName, _countof(szFileName), i);
             if(pFileNode != NULL)
             {
-                if(IsSpecialContentFile(szFileName, ".cmf"))
+                if(IsManifestFolderName(szFileName, "Manifest", 8) || IsManifestFolderName(szFileName, "TactManifest", 12))
                 {
-                    dwErrCode = LoadContentManifestFile(hs, FileTree, pFileNode->pCKeyEntry, szFileName);
-                    if(dwErrCode != ERROR_SUCCESS)
-                        break;
-                    continue;
-                }
-                if(IsSpecialContentFile(szFileName, ".apm"))
-                {
-                    LoadApplicationPackageManifestFile(hs, FileTree, pFileNode->pCKeyEntry, szFileName);
+                    // Retrieve the file extension
+                    szExtension = GetFileExtension(szFileName);
+
+                    // Check for content manifest files
+                    if(!_stricmp(szExtension, ".cmf"))
+                    {
+                        dwErrCode = LoadContentManifestFile(hs, FileTree, pFileNode->pCKeyEntry, szFileName);
+                    }
+                    else if(!_stricmp(szExtension, ".apm"))
+                    {
+                        dwErrCode = LoadApplicationPackageManifestFile(hs, FileTree, pFileNode->pCKeyEntry, szFileName);
+                    }
                 }
             }
         }

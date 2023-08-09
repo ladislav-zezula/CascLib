@@ -79,10 +79,6 @@
 			<Tool
 				Name="VCFxCopTool"
 			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName) vs2008"
-			/>
 		</Configuration>
 		<Configuration
 			Name="DebugAD|x64"
@@ -145,10 +141,6 @@
 			<Tool
 				Name="VCFxCopTool"
 			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName) vs2008"
-			/>
 		</Configuration>
 		<Configuration
 			Name="DebugAS|Win32"
@@ -209,10 +201,6 @@
 			/>
 			<Tool
 				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName) vs2008"
 			/>
 		</Configuration>
 		<Configuration
@@ -276,10 +264,6 @@
 			<Tool
 				Name="VCFxCopTool"
 			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName) vs2008"
-			/>
 		</Configuration>
 		<Configuration
 			Name="ReleaseAD|Win32"
@@ -338,10 +322,6 @@
 			/>
 			<Tool
 				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName) vs2008"
 			/>
 		</Configuration>
 		<Configuration
@@ -403,10 +383,6 @@
 			<Tool
 				Name="VCFxCopTool"
 			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName) vs2008"
-			/>
 		</Configuration>
 		<Configuration
 			Name="ReleaseAS|Win32"
@@ -465,10 +441,6 @@
 			/>
 			<Tool
 				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName) vs2008"
 			/>
 		</Configuration>
 		<Configuration
@@ -530,10 +502,6 @@
 			<Tool
 				Name="VCFxCopTool"
 			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName) vs2008"
-			/>
 		</Configuration>
 		<Configuration
 			Name="DebugUD|Win32"
@@ -594,10 +562,6 @@
 			/>
 			<Tool
 				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName) vs2008"
 			/>
 		</Configuration>
 		<Configuration
@@ -661,10 +625,6 @@
 			<Tool
 				Name="VCFxCopTool"
 			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName) vs2008"
-			/>
 		</Configuration>
 		<Configuration
 			Name="DebugUS|Win32"
@@ -725,10 +685,6 @@
 			/>
 			<Tool
 				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName) vs2008"
 			/>
 		</Configuration>
 		<Configuration
@@ -792,10 +748,6 @@
 			<Tool
 				Name="VCFxCopTool"
 			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName) vs2008"
-			/>
 		</Configuration>
 		<Configuration
 			Name="ReleaseUD|Win32"
@@ -854,10 +806,6 @@
 			/>
 			<Tool
 				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName) vs2008"
 			/>
 		</Configuration>
 		<Configuration
@@ -919,10 +867,6 @@
 			<Tool
 				Name="VCFxCopTool"
 			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName) vs2008"
-			/>
 		</Configuration>
 		<Configuration
 			Name="ReleaseUS|Win32"
@@ -981,10 +925,6 @@
 			/>
 			<Tool
 				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName) vs2008"
 			/>
 		</Configuration>
 		<Configuration
@@ -1045,10 +985,6 @@
 			/>
 			<Tool
 				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName) vs2008"
 			/>
 		</Configuration>
 	</Configurations>

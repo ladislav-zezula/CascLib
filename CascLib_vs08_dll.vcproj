@@ -90,10 +90,6 @@
 			<Tool
 				Name="VCAppVerifierTool"
 			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName)"
-			/>
 		</Configuration>
 		<Configuration
 			Name="Debug|x64"
@@ -166,10 +162,6 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName)"
 			/>
 		</Configuration>
 		<Configuration
@@ -244,10 +236,6 @@
 			<Tool
 				Name="VCAppVerifierTool"
 			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName)"
-			/>
 		</Configuration>
 		<Configuration
 			Name="Release|x64"
@@ -321,10 +309,6 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-				CommandLine="PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName)"
 			/>
 		</Configuration>
 	</Configurations>

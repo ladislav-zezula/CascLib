@@ -289,9 +289,6 @@
     <Lib>
       <OutputFile>./bin/$(ProjectName)/$(Platform)/$(Configuration)/$(TargetName).lib</OutputFile>
     </Lib>
-    <PostBuildEvent>
-      <Command>PostBuild.bat $(ProjectName) $(Platform) $(Configuration)</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugAD|x64'">
     <Midl>
@@ -310,9 +307,6 @@
     <Lib>
       <OutputFile>./bin/$(ProjectName)/$(Platform)/$(Configuration)/$(TargetName).lib</OutputFile>
     </Lib>
-    <PostBuildEvent>
-      <Command>PostBuild.bat $(ProjectName) $(Platform) $(Configuration)</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugAS|Win32'">
     <ClCompile>
@@ -328,9 +322,6 @@
     <Lib>
       <OutputFile>./bin/$(ProjectName)/$(Platform)/$(Configuration)/$(TargetName).lib</OutputFile>
     </Lib>
-    <PostBuildEvent>
-      <Command>PostBuild.bat $(ProjectName) $(Platform) $(Configuration)</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugAS|x64'">
     <Midl>
@@ -349,9 +340,6 @@
     <Lib>
       <OutputFile>./bin/$(ProjectName)/$(Platform)/$(Configuration)/$(TargetName).lib</OutputFile>
     </Lib>
-    <PostBuildEvent>
-      <Command>PostBuild.bat $(ProjectName) $(Platform) $(Configuration)</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseAD|Win32'">
     <ClCompile>
@@ -366,9 +354,6 @@
     <Lib>
       <OutputFile>./bin/$(ProjectName)/$(Platform)/$(Configuration)/$(TargetName).lib</OutputFile>
     </Lib>
-    <PostBuildEvent>
-      <Command>PostBuild.bat $(ProjectName) $(Platform) $(Configuration)</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseAD|x64'">
     <Midl>
@@ -386,9 +371,6 @@
     <Lib>
       <OutputFile>./bin/$(ProjectName)/$(Platform)/$(Configuration)/$(TargetName).lib</OutputFile>
     </Lib>
-    <PostBuildEvent>
-      <Command>PostBuild.bat $(ProjectName) $(Platform) $(Configuration)</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseAS|Win32'">
     <ClCompile>
@@ -403,9 +385,6 @@
     <Lib>
       <OutputFile>./bin/$(ProjectName)/$(Platform)/$(Configuration)/$(TargetName).lib</OutputFile>
     </Lib>
-    <PostBuildEvent>
-      <Command>PostBuild.bat $(ProjectName) $(Platform) $(Configuration)</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseAS|x64'">
     <Midl>
@@ -423,9 +402,6 @@
     <Lib>
       <OutputFile>./bin/$(ProjectName)/$(Platform)/$(Configuration)/$(TargetName).lib</OutputFile>
     </Lib>
-    <PostBuildEvent>
-      <Command>PostBuild.bat $(ProjectName) $(Platform) $(Configuration)</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugUD|Win32'">
     <ClCompile>
@@ -441,9 +417,6 @@
     <Lib>
       <OutputFile>./bin/$(ProjectName)/$(Platform)/$(Configuration)/$(TargetName).lib</OutputFile>
     </Lib>
-    <PostBuildEvent>
-      <Command>PostBuild.bat $(ProjectName) $(Platform) $(Configuration)</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugUD|x64'">
     <Midl>
@@ -462,9 +435,6 @@
     <Lib>
       <OutputFile>./bin/$(ProjectName)/$(Platform)/$(Configuration)/$(TargetName).lib</OutputFile>
     </Lib>
-    <PostBuildEvent>
-      <Command>PostBuild.bat $(ProjectName) $(Platform) $(Configuration)</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugUS|Win32'">
     <ClCompile>
@@ -480,9 +450,6 @@
     <Lib>
       <OutputFile>./bin/$(ProjectName)/$(Platform)/$(Configuration)/$(TargetName).lib</OutputFile>
     </Lib>
-    <PostBuildEvent>
-      <Command>PostBuild.bat $(ProjectName) $(Platform) $(Configuration)</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugUS|x64'">
     <Midl>
@@ -501,9 +468,6 @@
     <Lib>
       <OutputFile>./bin/$(ProjectName)/$(Platform)/$(Configuration)/$(TargetName).lib</OutputFile>
     </Lib>
-    <PostBuildEvent>
-      <Command>PostBuild.bat $(ProjectName) $(Platform) $(Configuration)</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseUD|Win32'">
     <ClCompile>
@@ -518,9 +482,6 @@
     <Lib>
       <OutputFile>./bin/$(ProjectName)/$(Platform)/$(Configuration)/$(TargetName).lib</OutputFile>
     </Lib>
-    <PostBuildEvent>
-      <Command>PostBuild.bat $(ProjectName) $(Platform) $(Configuration)</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseUD|x64'">
     <Midl>
@@ -538,9 +499,6 @@
     <Lib>
       <OutputFile>./bin/$(ProjectName)/$(Platform)/$(Configuration)/$(TargetName).lib</OutputFile>
     </Lib>
-    <PostBuildEvent>
-      <Command>PostBuild.bat $(ProjectName) $(Platform) $(Configuration)</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseUS|Win32'">
     <ClCompile>
@@ -555,9 +513,6 @@
     <Lib>
       <OutputFile>./bin/$(ProjectName)/$(Platform)/$(Configuration)/$(TargetName).lib</OutputFile>
     </Lib>
-    <PostBuildEvent>
-      <Command>PostBuild.bat $(ProjectName) $(Platform) $(Configuration)</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseUS|x64'">
     <Midl>
@@ -575,9 +530,6 @@
     <Lib>
       <OutputFile>./bin/$(ProjectName)/$(Platform)/$(Configuration)/$(TargetName).lib</OutputFile>
     </Lib>
-    <PostBuildEvent>
-      <Command>PostBuild.bat $(ProjectName) $(Platform) $(Configuration)</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <Text Include="doc\History.txt" />

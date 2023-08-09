@@ -59,18 +59,19 @@ typedef struct _CASC_EKEY_ENTRY
 // in the storage. Note that the file may be present under several file names.
 
 // Flags for CASC_CKEY_ENTRY::Flags
-#define CASC_CE_FILE_IS_LOCAL      0x00000001       // The file is available locally. Keep this flag to have value of 1
-#define CASC_CE_HAS_CKEY           0x00000002       // The CKey is present in the entry
-#define CASC_CE_HAS_EKEY           0x00000004       // The EKey is present, at least partial one
-#define CASC_CE_HAS_EKEY_PARTIAL   0x00000008       // The EKey is only partial, padded by zeros. Always used with CASC_CE_HAS_EKEY
-#define CASC_CE_IN_ENCODING        0x00000010       // Present in the ENCODING manifest
-#define CASC_CE_IN_DOWNLOAD        0x00000020       // Present in the DOWNLOAD manifest
-#define CASC_CE_IN_BUILD           0x00000040       // Present in the BUILD (text) manifest
-#define CASC_CE_IN_ARCHIVE         0x00000080       // File is stored in an archive (for online storages)
-#define CASC_CE_FOLDER_ENTRY       0x00000100       // This CKey entry is a folder
-#define CASC_CE_FILE_SPAN          0x00000200       // This CKey entry is a follow-up file span
-#define CASC_CE_FILE_PATCH         0x00000400       // The file is in PATCH subfolder in remote storage
-#define CASC_CE_PLAIN_DATA         0x00000800       // The file data is not BLTE encoded, but in plain format
+#define CASC_CE_FILE_IS_LOCAL      0x0001           // The file is available locally. Keep this flag to have value of 1
+#define CASC_CE_HAS_CKEY           0x0002           // The CKey is present in the entry
+#define CASC_CE_HAS_EKEY           0x0004           // The EKey is present, at least partial one
+#define CASC_CE_HAS_EKEY_PARTIAL   0x0008           // The EKey is only partial, padded by zeros. Always used with CASC_CE_HAS_EKEY
+#define CASC_CE_IN_ENCODING        0x0010           // Present in the ENCODING manifest
+#define CASC_CE_IN_DOWNLOAD        0x0020           // Present in the DOWNLOAD manifest
+#define CASC_CE_IN_BUILD           0x0040           // Present in the BUILD (text) manifest
+#define CASC_CE_IN_ARCHIVE         0x0080           // File is stored in an archive (for online storages)
+#define CASC_CE_FOLDER_ENTRY       0x0100           // This CKey entry is a folder
+#define CASC_CE_FILE_SPAN          0x0200           // This CKey entry is a follow-up file span
+#define CASC_CE_FILE_PATCH         0x0400           // The file is in PATCH subfolder in remote storage
+#define CASC_CE_PLAIN_DATA         0x0800           // The file data is not BLTE encoded, but in plain format
+#define CASC_CE_OPEN_CKEY_ONCE     0x1000           // Used by CascLib test program - only opens a file with given CKey once, regardless on how many file names does it have
 
 // In-memory representation of a single entry. 
 struct CASC_CKEY_ENTRY
