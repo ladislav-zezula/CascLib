@@ -534,14 +534,22 @@
 				</File>
 			</Filter>
 			<Filter
-				Name="md5"
+				Name="hashes"
 				>
 				<File
-					RelativePath=".\src\md5\md5.cpp"
+					RelativePath=".\src\hashes\md5.cpp"
 					>
 				</File>
 				<File
-					RelativePath=".\src\md5\md5.h"
+					RelativePath=".\src\hashes\md5.h"
+					>
+				</File>
+				<File
+					RelativePath=".\src\hashes\sha1.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\src\hashes\sha1.h"
 					>
 				</File>
 			</Filter>
@@ -866,6 +874,22 @@
 				</File>
 				<File
 					RelativePath=".\src\common\Sockets.h"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="overwatch"
+				>
+				<File
+					RelativePath=".\src\overwatch\aes.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\src\overwatch\cpm.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\src\overwatch\cmf.cpp"
 					>
 				</File>
 			</Filter>

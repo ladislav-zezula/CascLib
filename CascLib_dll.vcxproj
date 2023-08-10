@@ -113,9 +113,6 @@
       <DataExecutionPrevention />
       <TargetMachine>MachineX86</TargetMachine>
     </Link>
-    <PostBuildEvent>
-      <Command>PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName)</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Midl>
@@ -140,9 +137,6 @@
       <DataExecutionPrevention />
       <TargetMachine>MachineX64</TargetMachine>
     </Link>
-    <PostBuildEvent>
-      <Command>PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName)</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -164,9 +158,6 @@
       <DataExecutionPrevention />
       <TargetMachine>MachineX86</TargetMachine>
     </Link>
-    <PostBuildEvent>
-      <Command>PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName)</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Midl>
@@ -191,9 +182,6 @@
       <DataExecutionPrevention />
       <TargetMachine>MachineX64</TargetMachine>
     </Link>
-    <PostBuildEvent>
-      <Command>PostBuild.bat $(ProjectName) $(PlatformName) $(ConfigurationName)</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\CascDecompress.cpp" />
@@ -222,8 +210,12 @@
     <ClCompile Include="src\common\Mime.cpp" />
     <ClCompile Include="src\common\Sockets.cpp" />
     <ClCompile Include="src\DllMain.c" />
+    <ClCompile Include="src\hashes\sha1.cpp" />
     <ClCompile Include="src\jenkins\lookup3.c" />
-    <ClCompile Include="src\md5\md5.cpp" />
+    <ClCompile Include="src\hashes\md5.cpp" />
+    <ClCompile Include="src\overwatch\aes.cpp" />
+    <ClCompile Include="src\overwatch\apm.cpp" />
+    <ClCompile Include="src\overwatch\cmf.cpp" />
     <ClCompile Include="src\zlib\adler32.c" />
     <ClCompile Include="src\zlib\crc32.c" />
     <ClCompile Include="src\zlib\inffast.c" />
@@ -249,7 +241,9 @@
     <ClInclude Include="src\common\Mime.h" />
     <ClInclude Include="src\common\Sockets.h" />
     <ClInclude Include="src\FileStream.h" />
-    <ClInclude Include="src\md5\md5.h" />
+    <ClInclude Include="src\hashes\md5.h" />
+    <ClInclude Include="src\hashes\sha1.h" />
+    <ClInclude Include="src\overwatch\aes.h" />
     <ClInclude Include="src\zlib\deflate.h" />
   </ItemGroup>
   <ItemGroup>

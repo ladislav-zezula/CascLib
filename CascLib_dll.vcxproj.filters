@@ -16,8 +16,11 @@
     <Filter Include="Header Files">
       <UniqueIdentifier>{ced3408f-6c90-4d4a-abf2-2704bd636c7b}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\md5">
+    <Filter Include="Source Files\hashes">
       <UniqueIdentifier>{c800c12f-4e09-44b6-899a-c58c7ca15b97}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\overwatch">
+      <UniqueIdentifier>{1aabe925-fbec-4b52-99ff-523b2bdd36af}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -114,8 +117,8 @@
     <ClCompile Include="src\CascIndexFiles.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\md5\md5.cpp">
-      <Filter>Source Files\md5</Filter>
+    <ClCompile Include="src\hashes\md5.cpp">
+      <Filter>Source Files\hashes</Filter>
     </ClCompile>
     <ClCompile Include="src\zlib\trees.c">
       <Filter>Source Files\zlib</Filter>
@@ -125,6 +128,18 @@
     </ClCompile>
     <ClCompile Include="src\common\Sockets.cpp">
       <Filter>Source Files\common</Filter>
+    </ClCompile>
+    <ClCompile Include="src\hashes\sha1.cpp">
+      <Filter>Source Files\hashes</Filter>
+    </ClCompile>
+    <ClCompile Include="src\overwatch\cmf.cpp">
+      <Filter>Source Files\overwatch</Filter>
+    </ClCompile>
+    <ClCompile Include="src\overwatch\aes.cpp">
+      <Filter>Source Files\overwatch</Filter>
+    </ClCompile>
+    <ClCompile Include="src\overwatch\apm.cpp">
+      <Filter>Source Files\overwatch</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -164,8 +179,8 @@
     <ClInclude Include="src\common\FileTree.h">
       <Filter>Source Files\common</Filter>
     </ClInclude>
-    <ClInclude Include="src\md5\md5.h">
-      <Filter>Source Files\md5</Filter>
+    <ClInclude Include="src\hashes\md5.h">
+      <Filter>Source Files\hashes</Filter>
     </ClInclude>
     <ClInclude Include="src\CascStructs.h">
       <Filter>Header Files</Filter>
@@ -181,6 +196,12 @@
     </ClInclude>
     <ClInclude Include="src\common\Path.h">
       <Filter>Source Files\common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\hashes\sha1.h">
+      <Filter>Source Files\hashes</Filter>
+    </ClInclude>
+    <ClInclude Include="src\overwatch\aes.h">
+      <Filter>Source Files\overwatch</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

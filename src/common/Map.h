@@ -15,7 +15,6 @@
 // Structures
 
 #define MIN_HASH_TABLE_SIZE     0x00000100      // The smallest size of the hash table.
-#define MAX_HASH_TABLE_SIZE     0x00800000      // The largest size of the hash table. Should be enough for any game.
 
 typedef int   (*PFNCOMPAREFUNC)(const void * pvObjectKey, const void * pvKey, size_t nKeyLength);
 typedef DWORD (*PFNHASHFUNC)(void * pvKey, size_t nKeyLength);
@@ -328,20 +327,22 @@ class CASC_MAP
 
     size_t GetNearestPowerOfTwo(size_t MaxItems)
     {
-        size_t PowerOfTwo;
+        size_t PowerOfTwo = MIN_HASH_TABLE_SIZE;
         
         // Round the hash table size up to the nearest power of two
-        for(PowerOfTwo = MIN_HASH_TABLE_SIZE; PowerOfTwo <= MAX_HASH_TABLE_SIZE; PowerOfTwo <<= 1)
+        while(PowerOfTwo < MaxItems)
         {
-            if(PowerOfTwo > MaxItems)
+            // Overflow check
+            if((PowerOfTwo << 1) < PowerOfTwo)
             {
-                return PowerOfTwo;
+                assert(false);
+                return 0;
             }
-        }
 
-        // If the hash table is too big, we cannot create the map
-        assert(false);
-        return 0;
+            // Shift the value
+            PowerOfTwo <<= 1;
+        }
+        return PowerOfTwo;
     }
 
     PFNHASHFUNC PfnCalcHashValue;
