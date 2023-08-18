@@ -31,8 +31,9 @@ set(SRC_FILES
     src/common/Mime.cpp
     src/common/RootHandler.cpp
     src/common/Sockets.cpp
+    src/hashes/md5.cpp
+    src/hashes/sha1.cpp
     src/jenkins/lookup3.c
-    src/md5/md5.cpp
     src/CascDecompress.cpp
     src/CascDecrypt.cpp
     src/CascDumpData.cpp
