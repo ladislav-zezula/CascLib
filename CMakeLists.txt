@@ -34,6 +34,9 @@ set(SRC_FILES
     src/hashes/md5.cpp
     src/hashes/sha1.cpp
     src/jenkins/lookup3.c
+    src/overwatch/apm.cpp
+    src/overwatch/cmf.cpp
+    src/overwatch/aes.cpp
     src/CascDecompress.cpp
     src/CascDecrypt.cpp
     src/CascDumpData.cpp
