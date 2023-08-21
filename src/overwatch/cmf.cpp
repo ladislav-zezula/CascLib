@@ -134,9 +134,6 @@ DWORD LoadContentManifestFile(TCascStorage * hs, CASC_FILE_TREE & FileTree, PCAS
     const char * szCmfPlainName = GetPlainFileName(szCmfFileName);
     DWORD dwErrCode;
 
-    //if(!_stricmp(szCmfPlainName, "Win_SPWin_RDEV_EExt.cmf"))
-    //    __debugbreak();
-
     // Load the entire internal file to memory
     if((dwErrCode = LoadInternalFileToMemory(hs, pCKeyEntry, CmfFile)) == ERROR_SUCCESS)
     {

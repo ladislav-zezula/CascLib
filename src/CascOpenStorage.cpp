@@ -890,7 +890,7 @@ __LoadRootFile:
                     dwErrCode = RootHandler_CreateTVFS(hs, RootFile);
                     break;
 
-                case CASC_WOW82_ROOT_SIGNATURE:
+                case CASC_WOW_ROOT_SIGNATURE:
                     dwErrCode = RootHandler_CreateWoW(hs, RootFile, dwLocaleMask);
                     break;
 

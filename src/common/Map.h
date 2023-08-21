@@ -35,7 +35,7 @@ typedef enum _KEY_TYPE
 inline DWORD CalcHashValue_Hash(void * pvKey, size_t /* nKeyLength */)
 {
     // Get the hash directly as value
-    return ConvertBytesToInteger_4((LPBYTE)pvKey);
+    return ConvertBytesToInteger_4_LE((LPBYTE)pvKey);
 }
 
 // Calculates hash value from a key
