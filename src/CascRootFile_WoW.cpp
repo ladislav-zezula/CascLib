@@ -53,16 +53,6 @@ typedef struct _FILE_ROOT_HEADER_30080
     DWORD FilesWithNameHash;
 } FILE_ROOT_HEADER_30080, *PFILE_ROOT_HEADER_30080;
 
-// ROOT file header, since 10.1.7
-typedef struct _FILE_ROOT_HEADER_1017
-{
-    DWORD Signature;                            // Must be CASC_WOW82_ROOT_SIGNATURE
-    DWORD SizeOfHeader;
-    DWORD Version;                              // Must be 1
-    DWORD TotalFiles;
-    DWORD FilesWithNameHash;
-} FILE_ROOT_HEADER_1017, *PFILE_ROOT_HEADER_1017;
-
 // On-disk version of root group. A root group contains a group of file
 // with the same locale and file flags
 typedef struct _FILE_ROOT_GROUP_HEADER
@@ -215,50 +205,6 @@ struct TRootHandler_WoW : public TFileTreeRoot
             }
         }
         return NULL;
->>>>>>> a08918b (Add missing overwatch source files)
-    }
-
-    // Check for the new format (World of Warcraft 10.1.7, build 50893)
-    static LPBYTE CaptureRootHeader_1017(LPBYTE pbRootPtr, LPBYTE pbRootEnd, PROOT_FORMAT RootFormat, PDWORD FileCounterHashless)
-    {
-        FILE_ROOT_HEADER_1017 RootHeader;
-
-        // Validate the root file header
-        if((pbRootPtr + sizeof(FILE_ROOT_HEADER_1017)) >= pbRootEnd)
-            return NULL;
-        memcpy(&RootHeader, pbRootPtr, sizeof(FILE_ROOT_HEADER_1017));
-
-        // Verify the root file header
-        if(RootHeader.Signature != CASC_WOW82_ROOT_SIGNATURE)
-            return NULL;
-        if(RootHeader.Version != 1)
-            return NULL;
-        if(RootHeader.FilesWithNameHash > RootHeader.TotalFiles)
-            return NULL;
-        // wow client doesn't seem to think this is a fatal error, we will do the same for now
-        if(RootHeader.SizeOfHeader < 4)
-            RootHeader.SizeOfHeader = 4;
-
-        *RootFormat = RootFormatWoW82;
-        *FileCounterHashless = RootHeader.TotalFiles - RootHeader.FilesWithNameHash;
-        return pbRootPtr + RootHeader.SizeOfHeader;
-    }
-
-    static LPBYTE CaptureRootHeader(LPBYTE pbRootPtr, LPBYTE pbRootEnd, PROOT_FORMAT RootFormat, PDWORD FileCounterHashless)
-    {
-        CaptureRootHeaderFunction CaptureRootHeaderFunctions[] =
-        {
-            &CaptureRootHeader_1017,
-            &CaptureRootHeader_82
-        };
-
-        for(size_t i = 0; i < _countof(CaptureRootHeaderFunctions); i++)
-            if(LPBYTE capturedRootPtr = CaptureRootHeaderFunctions[i](pbRootPtr, pbRootEnd, RootFormat, FileCounterHashless))
-                return capturedRootPtr;
-
-        *RootFormat = RootFormatWoW6x;
-        *FileCounterHashless = 0;
-        return pbRootPtr;
     }
 
     LPBYTE CaptureRootGroup(FILE_ROOT_GROUP & RootGroup, LPBYTE pbRootPtr, LPBYTE pbRootEnd)
