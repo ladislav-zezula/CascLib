@@ -435,7 +435,7 @@ PCASC_FILE_NODE CASC_FILE_TREE::PathAt(char * szBuffer, size_t cchBuffer, size_t
         RefFileNode = (PCASC_FILE_NODE *)FileDataIds.ItemAt(nItemIndex);
         if(RefFileNode != NULL)
         {
-            pFileNode = *(PCASC_FILE_NODE *)FileDataIds.ItemAt(nItemIndex);
+            pFileNode = RefFileNode[0];
         }
     }
     else
@@ -443,7 +443,7 @@ PCASC_FILE_NODE CASC_FILE_TREE::PathAt(char * szBuffer, size_t cchBuffer, size_t
         pFileNode = (PCASC_FILE_NODE)NodeTable.ItemAt(nItemIndex);
     }
 
-    // Construct the entire path
+    // Construct the full path
     PathAt(szBuffer, cchBuffer, pFileNode);
     return pFileNode;
 }
