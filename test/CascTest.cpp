@@ -1065,7 +1065,7 @@ static STORAGE_INFO StorageInfo1[] =
     //- Storage folder name --------        - Compound file name hash --------  - Compound file data hash --------  - Example file to extract ---
     {"Beta TVFS/00001",                     "be2ba8b6d02279a1b68c4ee28f07641f", "96e6457b649b11bcee54d52fa4be12e5", "ROOT"},
     {"Beta TVFS/00002",                     "09fd84ef909ad314d84dc1f037e87ca3", "4da83fa60e0e505d14a5c21284142127", "ENCODING"},
-/*
+
     {"CoD4/3376209",                        "e01180b36a8cfd82cb2daa862f5bbf3e", "79cd4cfc9eddad53e4b4d394c36b8b0c", "zone/base.xpak" },
     {"CoD4-MW/8042902/.build.info",         "cd54a9444812e168b3b920b1479eff71", "033f77f6309bf6c21984fc10d09e5a72" },
 
@@ -1111,7 +1111,7 @@ static STORAGE_INFO StorageInfo1[] =
     {"Warcraft III/13369",                  "3212bcad20f7c6ad0eb0864ca9444bb6", "4ac831db9bf0734f01b9d20455a68ab6", "ENCODING" },
     {"Warcraft III/14883",                  "773180e32ac2fac8bd4cd4dfc2ab30a6", "3fd108674117ad4f93885bdd1a525f30", NULL },
     {"Warcraft III/15801",                  "ad571ee968f77bbddc811fd215ee1d37", "f162cd3448219fd9956f9ff8fb5ba915", NULL },
-*/
+
     {"WoW/18125",                           "b31531af094f78f58592249c4d216a8e", "e5c9b3f0da7806d8b239c13bff1d836e", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"WoW/18379",                           "fab30626cf94ed1523519729c3701812", "606e4bfd6f8100ae875eb4c00789233b", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"WoW/18865",                           "7f252a8c6001938f601b0c91abbb0f2a", "cee96fa43cddc008f564b4615fdbd109", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
