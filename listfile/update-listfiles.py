@@ -83,14 +83,20 @@ def load_file_to_memory(file_name):
         print("[*] Loading: " + file_name)
         if file_name.startswith("https://"):
             response = requests.get(file_name, timeout=10000)
+            if response.status_code != 200:
+                print("[x] Download error (%u)" % response.status_code)
+                return None
             file_data = response.content.decode("utf-8")
         else:
             with open(file_name, "rt") as f:
                 file_data = f.read()
 
         # Check for valid content
-        if file_data is None or len(file_data) < 65535:
-            print("[x] Failed to load " + file_name)
+        if file_data is None:
+            print("[x] Nothing loaded from " + file_name)
+            return None
+        if len(file_data) < 65535:
+            print("[x] Data length is %u, aborting" % len(file_data))
             return None
         return file_data
 
@@ -110,10 +116,12 @@ def download_and_merge(remote_file, local_file, use_csv_sort):
 
     # Load the remote file
     remote_file_data = load_file_to_memory(remote_file)
-    local_file_data = load_file_to_memory(local_file)
+    if not remote_file_data:
+        return False
 
-    # Check if we downloaded something
-    if not remote_file_data or not local_file_data:
+    # Load the local file
+    local_file_data = load_file_to_memory(local_file)
+    if not local_file_data:
         return False
 
     # Convert both to text
@@ -126,7 +134,6 @@ def download_and_merge(remote_file, local_file, use_csv_sort):
     print("[*] Merging lines from the remote listfile ...")
     listfile_map = add_lines_to_map(listfile_map, remote_file_lines)
 
-    # Build the map in order to remove duplicities
     print("[*] Merging lines from the local listfile ...")
     listfile_map = add_lines_to_map(listfile_map, local_file_lines)
 
@@ -140,37 +147,49 @@ def download_and_merge(remote_file, local_file, use_csv_sort):
     # Write the final list
     try:
         print("[*] Backuping the listfile ...")
-        backup_file_name = local_file + ".bak"
-        if os.path.isfile(backup_file_name):
-            os.remove(backup_file_name)
-        shutil.copy2(local_file, backup_file_name)
+        shutil.copy2(local_file, local_file + ".bak")
 
         print("[*] Writing the final list ...")
         with open(local_file, "wt") as f:
             for key_value, listfile_line in listfile_map:
                 f.write(listfile_line + "\n")
+
+        if os.path.isdir("C:\\Tools64"):
+            shutil.copy2(local_file, os.path.join("C:\\Tools64", local_file))
+
     except Exception as e:
         print("[x] Failed to write the listfile ...")
         return False
     return True
+
+def pack_files_to_zip(zip_file_name, file1, file2):
+
+    # Create a ZIP archive
+    try:
+        print("[*] Adding listfiles to ZIP ...")
+        with zipfile.ZipFile("listfile-archive.zip", "w", compression = zipfile.ZIP_DEFLATED, compresslevel = 8) as zip:
+            zip.write(file1)
+            zip.write(file2)
+        return True
+    except Exception as e:
+        print("[x] Failed to store listfiles to ZIP")
+        pass
+    return False
 
 
 def main(argc, argv):
     global URL_LISTFILE_CSV
     global URL_LISTFILE_TXT
 
-    # Download and merge the CSV listfile
+    # Download and merge the CSV+TXT listfiles
     if not download_and_merge(URL_LISTFILE_CSV, "listfile.csv", True):
         return
     if not download_and_merge(URL_LISTFILE_TXT, "listfile.txt", False):
         return
 
-    # Add both to ZIP
-    print("[*] Adding files to ZIP ...")
-    zip = zipfile.ZipFile("listfile-archive.zip", "w")
-    zip.write("listfile.csv", "listfile.csv")
-    zip.write("listfile.txt", "listfile.txt")
-    zip.close()
+    # Pack the files into ZIP to overcome GitHub's 100 MB limit
+    if not pack_files_to_zip("listfile-archive.zip", "listfile.csv", "listfile.txt"):
+        return
     print("[*] Complete\n")
 
 if __name__ == "__main__" :
