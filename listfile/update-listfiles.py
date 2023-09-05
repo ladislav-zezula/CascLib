@@ -177,7 +177,7 @@ def pack_files_to_zip(zip_file_name, file1, file2):
     return False
 
 
-def main(argc, argv):
+def update_listfiles():
     global URL_LISTFILE_CSV
     global URL_LISTFILE_TXT
 
@@ -192,5 +192,66 @@ def main(argc, argv):
         return
     print("[*] Complete\n")
 
+
+def check_duplicity(lines_map, dup_list, key_string, file_name):
+    if key_string in lines_map:
+        dup_list.append(lines_map[key_string])
+        dup_list.append(file_name)
+    else:
+        lines_map[key_string] = file_name
+
+
+def print_duplicities(duplicities_list, header_line):
+    if len(duplicities_list):
+        print(header_line)
+        for single_line in duplicities_list:
+            print(single_line)
+        print("----------------------------------------------------")
+
+
+def find_duplicities(local_file):
+
+    if local_file is None:
+        local_file = "listfile.csv"
+
+    print("[*] Loading file: " + local_file)
+    local_file_data = load_file_to_memory(local_file)
+    if not local_file_data:
+        return False
+
+    print("[*] Splitting local listfile ...")
+    local_file_lines = local_file_data.splitlines()
+    lines_map_by_name = {}
+    lines_map_by_id = {}
+    duplicities_name = []
+    duplicities_id = []
+
+    print("[*] Looking for duplicities ...")
+    for single_line in local_file_lines:
+
+        # Get the File Data ID
+        normalized_line = normalize_line(single_line)
+        normalized_tokens = normalized_line.split(";")
+        if len(normalized_tokens) >= 0:
+
+            # Split the line to ID and name
+            file_data_id = normalized_tokens[0]
+            file_name1 = normalized_tokens[1]
+
+            # Check the map duplicities of ID and name 
+            check_duplicity(lines_map_by_name, duplicities_name, file_name1, single_line)
+            check_duplicity(lines_map_by_id, duplicities_id, file_data_id, single_line)
+
+    # Print the FileDataID duplicities
+    print_duplicities(duplicities_id,   "=== ID Duplicities =================================")
+    print_duplicities(duplicities_name, "=== Name Duplicities ===============================")
+
+
 if __name__ == "__main__" :
-    main(len(sys.argv), sys.argv)
+    if len(sys.argv) >= 2 and "dup" in sys.argv[1]:
+        if len(sys.argv) >= 3:
+            find_duplicities(sys.argv[2])
+        else:
+            find_duplicities(None)
+    else:
+        update_listfiles()
