@@ -9,7 +9,7 @@
 
 import os, re, requests, shutil, sys, zipfile
 
-URL_LISTFILE_CSV = "https://github.com/wowdev/wow-listfile/raw/master/community-listfile-withcapitals.csv"
+URL_LISTFILE_CSV = "https://github.com/wowdev/wow-listfile/releases/latest/download/community-listfile-withcapitals.csv"
 URL_LISTFILE_TXT = "https://github.com/wowdev/wow-listfile/raw/master/listfile.txt"
 
 
