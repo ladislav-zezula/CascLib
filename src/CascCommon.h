@@ -277,6 +277,22 @@ struct TCascStorage
                 hs->ClassName == CASC_MAGIC_STORAGE) ? hs : NULL;
     }
 
+    DWORD SetProductCodeName(LPCSTR szNewCodeName, size_t nLength = 0)
+    {
+        if(szCodeName == NULL && szNewCodeName != NULL)
+        {
+            // Make sure we have the length
+            if(nLength == 0)
+                nLength = strlen(szNewCodeName);
+
+            // Allocate the code name buffer and copy from ANSI string
+            if((szCodeName = CASC_ALLOC<TCHAR>(nLength + 1)) == NULL)
+                return ERROR_NOT_ENOUGH_MEMORY;
+            CascStrCopy(szCodeName, nLength + 1, szNewCodeName, nLength);
+        }
+        return ERROR_SUCCESS;
+    }
+
     // Class recognizer. Has constant value of 'CASCSTOR' (CASC_MAGIC_STORAGE)
     ULONGLONG ClassName;
 

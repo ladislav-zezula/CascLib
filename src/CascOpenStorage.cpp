@@ -1182,6 +1182,12 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs, L
         hs->dwBuildNumber = 21742 + hs->InstallCKey.ContentSize;
     }
 
+    // Make sure we have a code name. Not a case of WoW build 22267
+    if(hs->szCodeName == NULL && hs->dwBuildNumber == 22267)
+    {
+        hs->SetProductCodeName("wow", 3);
+    }
+
     // Create the array of CKey entries. Each entry represents a file in the storage
     if(dwErrCode == ERROR_SUCCESS)
     {

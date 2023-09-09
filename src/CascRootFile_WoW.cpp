@@ -14,6 +14,8 @@
 #include "CascLib.h"
 #include "CascCommon.h"
 
+//#define __WRITE_VERIFIED_FILENAMES              // If defined, TRootHandler_WoW will save all files whose hashes are confirmed
+
 //-----------------------------------------------------------------------------
 // Local structures
 
@@ -99,12 +101,12 @@ struct TRootHandler_WoW : public TFileTreeRoot
 
     typedef LPBYTE (*CAPTURE_ROOT_HEADER)(LPBYTE pbRootPtr, LPBYTE pbRootEnd, PROOT_FORMAT RootFormat, PDWORD FileCounterHashless);
 
-    TRootHandler_WoW(ROOT_FORMAT RFormat, DWORD HashlessFileCount) : TFileTreeRoot(FTREE_FLAGS_WOW)
+    TRootHandler_WoW(ROOT_FORMAT aRootFormat, DWORD aFileCounterHashless, LPCTSTR szDumpFile = NULL) : TFileTreeRoot(FTREE_FLAGS_WOW)
     {
         // Turn off the "we know file names" bit
-        FileCounterHashless = HashlessFileCount;
+        FileCounterHashless = aFileCounterHashless;
         FileCounter = 0;
-        RootFormat = RFormat;
+        RootFormat = aRootFormat;
 
         // Update the flags based on format
         switch(RootFormat)
@@ -117,7 +119,35 @@ struct TRootHandler_WoW : public TFileTreeRoot
                 dwFeatures |= CASC_FEATURE_ROOT_CKEY | CASC_FEATURE_LOCALE_FLAGS | CASC_FEATURE_CONTENT_FLAGS | CASC_FEATURE_FNAME_HASHES;
                 break;
         }
+
+        // Create the file for dumping listfile
+        if(szDumpFile && szDumpFile[0])
+        {
+            fp = _tfopen(szDumpFile, _T("wt"));
+        }
     }
+
+    ~TRootHandler_WoW()
+    {
+        if(fp != NULL)
+            fclose(fp);
+        fp = NULL;
+    }
+
+#ifdef __WRITE_VERIFIED_FILENAMES
+    void WriteVerifiedFileName(DWORD FileDataId, LPCSTR szFileName)
+    {
+        if(fp != NULL)
+        {
+            if(FileDataId != 0)
+                fprintf(fp, "%u;%s\n", FileDataId, szFileName);
+            else
+                fprintf(fp, "%s\n", szFileName);
+        }
+    }
+#else
+    #define WriteVerifiedFileName(FileDataId,szFileName)    /* */
+#endif
 
     // Check for the new format (World of Warcraft 10.1.7, build 50893)
     static LPBYTE CaptureRootHeader_50893(LPBYTE pbRootPtr, LPBYTE pbRootEnd, PROOT_FORMAT RootFormat, PDWORD FileCounterHashless)
@@ -550,6 +580,7 @@ struct TRootHandler_WoW : public TFileTreeRoot
                     pFileNode = FileTree.Find(FileNameHash);
                     if(pFileNode != NULL && pFileNode->NameLength == 0)
                     {
+                        WriteVerifiedFileName(0, szFileName);
                         FileTree.SetNodeFileName(pFileNode, szFileName);
                     }
                 }
@@ -562,6 +593,7 @@ struct TRootHandler_WoW : public TFileTreeRoot
     }
 
     ROOT_FORMAT RootFormat;                 // Root file format
+    FILE * fp;                              // Handle to the dump file
     DWORD FileCounterHashless;              // Number of files for which we don't have hash. Meaningless for WoW before 8.2.0
     DWORD FileCounter;                      // Counter of loaded files. Only used during loading of ROOT file
 };
@@ -573,6 +605,7 @@ DWORD RootHandler_CreateWoW(TCascStorage * hs, CASC_BLOB & RootFile, DWORD dwLoc
 {
     TRootHandler_WoW * pRootHandler = NULL;
     ROOT_FORMAT RootFormat = RootFormatWoW_v1;
+    LPCTSTR szDumpFile = NULL;
     LPBYTE pbRootFile = RootFile.pbData;
     LPBYTE pbRootEnd = RootFile.End();
     LPBYTE pbRootPtr;
@@ -583,8 +616,16 @@ DWORD RootHandler_CreateWoW(TCascStorage * hs, CASC_BLOB & RootFile, DWORD dwLoc
     if((pbRootPtr = TRootHandler_WoW::CaptureRootHeader(pbRootFile, pbRootEnd, &RootFormat, &FileCounterHashless)) == NULL)
         return ERROR_BAD_FORMAT;
 
-    // Create the WOW handler
-    pRootHandler = new TRootHandler_WoW(RootFormat, FileCounterHashless);
+#ifdef __WRITE_VERIFIED_FILENAMES
+    LPCTSTR szExtension = (RootFormat == RootFormatWoW_v1) ? _T("txt") : _T("csv");
+    TCHAR szBuffer[MAX_PATH];
+
+    CascStrPrintf(szBuffer, _countof(szBuffer), _T("\\listfile_wow_%u_%s.%s"), hs->dwBuildNumber, hs->szCodeName, szExtension);
+    szDumpFile = szBuffer;
+#endif
+
+    // Create the root handler
+    pRootHandler = new TRootHandler_WoW(RootFormat, FileCounterHashless, szDumpFile);
     if(pRootHandler != NULL)
     {
         //fp = fopen("E:\\file-data-ids2.txt", "wt");

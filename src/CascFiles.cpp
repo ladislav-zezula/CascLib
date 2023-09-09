@@ -496,16 +496,7 @@ static DWORD LoadVfsRootEntry(TCascStorage * hs, const char * szVariableName, co
 
 static DWORD LoadBuildProductId(TCascStorage * hs, const char * /* szVariableName */, const char * szDataBegin, const char * szDataEnd, void * /* pvParam */)
 {
-    size_t nLength = (szDataEnd - szDataBegin);
-
-    if(hs->szCodeName == NULL)
-    {
-        if((hs->szCodeName = CASC_ALLOC<TCHAR>(nLength + 1)) != NULL)
-        {
-            CascStrCopy(hs->szCodeName, nLength + 1, szDataBegin, nLength);
-        }
-    }
-
+    hs->SetProductCodeName(szDataBegin, (szDataEnd - szDataBegin));
     return ERROR_SUCCESS;
 }
 
@@ -557,14 +548,6 @@ static int LoadQueryKey(const CASC_CSV_COLUMN & Column, CASC_BLOB & Key)
         return ERROR_BAD_FORMAT;
 
     return LoadHashArray(&Key, Column.szValue, Column.szValue + Column.nLength, 1);
-}
-
-static void SetProductCodeName(TCascStorage * hs, LPCSTR szCodeName)
-{
-    if(hs->szCodeName == NULL && szCodeName != NULL)
-    {
-        hs->szCodeName = CascNewStrA2T(szCodeName);
-    }
 }
 
 static DWORD GetDefaultCdnServers(TCascStorage * hs, const CASC_CSV_COLUMN & Column)
@@ -661,12 +644,12 @@ static DWORD ParseFile_BuildInfo(TCascStorage * hs, CASC_CSV & Csv)
                 return ERROR_CANCELLED;
 
             // We now have preferred product to open
-            SetProductCodeName(hs, ProductsList[nChoiceIndex]);
+            hs->SetProductCodeName(ProductsList[nChoiceIndex]);
         }
         else if(nProductCount == 1)
         {
             // We now have preferred product to open
-            SetProductCodeName(hs, ProductsList[nDefault]);
+            hs->SetProductCodeName(ProductsList[nDefault]);
         }
         else
         {
@@ -692,7 +675,7 @@ static DWORD ParseFile_BuildInfo(TCascStorage * hs, CASC_CSV & Csv)
                     continue;
 
                 // Save the code name of the selected product
-                SetProductCodeName(hs, Csv[i]["Product!STRING:0"].szValue);
+                hs->SetProductCodeName(Csv[i]["Product!STRING:0"].szValue);
                 nSelected = i;
                 break;
             }
@@ -1273,6 +1256,23 @@ static DWORD HttpDownloadFile(
     }
 
     return dwErrCode;
+}
+
+DWORD SetProductCodeName(TCascStorage * hs, LPCSTR szCodeName, size_t nLength)
+{
+    if(hs->szCodeName == NULL && szCodeName != NULL)
+    {
+        // Make sure we have the length
+        if(nLength == 0)
+        {
+            nLength = strlen(szCodeName);
+        }
+
+        if((hs->szCodeName = CASC_ALLOC<TCHAR>(nLength + 1)) == NULL)
+            return ERROR_NOT_ENOUGH_MEMORY;
+        CascStrCopy(hs->szCodeName, nLength + 1, szCodeName, nLength);
+    }
+    return ERROR_SUCCESS;
 }
 
 DWORD FetchCascFile(
