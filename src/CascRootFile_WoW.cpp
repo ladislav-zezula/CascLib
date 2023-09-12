@@ -593,7 +593,7 @@ struct TRootHandler_WoW : public TFileTreeRoot
     }
 
     ROOT_FORMAT RootFormat;                 // Root file format
-    FILE * fp;                              // Handle to the dump file
+    FILE * fp = NULL;                       // Handle to the dump file
     DWORD FileCounterHashless;              // Number of files for which we don't have hash. Meaningless for WoW before 8.2.0
     DWORD FileCounter;                      // Counter of loaded files. Only used during loading of ROOT file
 };
