@@ -107,6 +107,7 @@ struct TRootHandler_WoW : public TFileTreeRoot
         FileCounterHashless = aFileCounterHashless;
         FileCounter = 0;
         RootFormat = aRootFormat;
+        fp = NULL;
 
         // Update the flags based on format
         switch(RootFormat)
