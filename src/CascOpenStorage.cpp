@@ -1343,6 +1343,13 @@ static DWORD ParseOpenParams(LPTSTR szParams, PCASC_OPEN_STORAGE_ARGS pArgs)
         pArgs->szRegion = szParamsPtr;
     }
 
+    // There could be region appended at the end
+    if((szParamsPtr = GetNextParam(szParamsPtr)) != NULL)
+    {
+        if(pArgs->szBuildKey && pArgs->szBuildKey[0])
+            return ERROR_INVALID_PARAMETER;
+        pArgs->szBuildKey = szParamsPtr;
+    }
     return ERROR_SUCCESS;
 }
 
