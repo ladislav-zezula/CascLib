@@ -1213,7 +1213,7 @@ int main(int argc, char * argv[])
         OpenArgs.PfnProgressCallback = OnlineStorage_OpenCB_Simple;
         OpenArgs.PtrProgressParam = NULL;
 
-        if(CascOpenStorageEx(_T("e:\\Multimedia\\CASC\\Beta TVFS\\00001\\data\\data\\0000000001.idx"), &OpenArgs, true, &hStorage))
+        if(CascOpenStorageEx(_T("E:\\Multimedia\\CASC\\Work\\bna*bna*us"), &OpenArgs, true, &hStorage))
         {
             //hFind = CascFindFirstFile(hStorage, szFile, &cf, szListFile_TXT);
             //if(hFind != INVALID_HANDLE_VALUE)

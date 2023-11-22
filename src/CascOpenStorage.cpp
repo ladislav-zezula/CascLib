@@ -913,6 +913,10 @@ __LoadRootFile:
                     break;
             }
         }
+        else
+        {
+            dwErrCode = ERROR_BAD_FORMAT;
+        }
     }
     else
     {
