@@ -1522,14 +1522,14 @@ DWORD CheckCascBuildFileExact(CASC_BUILD_FILE & BuildFile, LPCTSTR szLocalPath)
     }
 
     // Unrecognized file name
-    return ERROR_BAD_FORMAT;
+    return ERROR_FILE_NOT_FOUND;
 }
 
 DWORD CheckCascBuildFileDirs(CASC_BUILD_FILE & BuildFile, LPCTSTR szLocalPath)
 {
     CASC_PATH<TCHAR> WorkPath(szLocalPath, NULL);
-    DWORD dwErrCode = ERROR_FILE_NOT_FOUND;
-
+    DWORD dwLevelCount = 0;
+    
     // Clear the build file structure
     memset(&BuildFile, 0, sizeof(CASC_BUILD_FILE));
 
@@ -1547,16 +1547,15 @@ DWORD CheckCascBuildFileDirs(CASC_BUILD_FILE & BuildFile, LPCTSTR szLocalPath)
             }
         }
 
-        // Try to cut off one path path
-        if(!WorkPath.CutLastPart())
+        // Try to cut off one path path. Don't go indefinitely.
+        if((dwLevelCount > 5) || !WorkPath.CutLastPart())
         {
-            dwErrCode = ERROR_PATH_NOT_FOUND;
             break;
         }
     }
 
-    // Unrecognized file name
-    return dwErrCode;
+    // None of the supported file names was found
+    return ERROR_FILE_NOT_FOUND;
 }
 
 DWORD CheckOnlineStorage(PCASC_OPEN_STORAGE_ARGS pArgs, CASC_BUILD_FILE & BuildFile, bool bOnlineStorage)
@@ -1616,6 +1615,7 @@ DWORD CheckArchiveFilesDirectories(TCascStorage * hs)
 DWORD CheckDataFilesDirectory(TCascStorage * hs)
 {
     CASC_PATH<TCHAR> DataPath(hs->szRootPath, _T("data"), NULL);
+    DWORD dwErrCode;
     bool bTwoDigitFolderFound = false;
 
     // When CASC_FEATURE_ONLINE is not set, then the folder must exist
@@ -1623,17 +1623,15 @@ DWORD CheckDataFilesDirectory(TCascStorage * hs)
     {
         // Check if there are subfolders at all. If not, do not bother
         // the file system with open requests into data files folder
-        if(ScanDirectory(DataPath, CheckForTwoDigitFolder, NULL, &bTwoDigitFolderFound) != ERROR_SUCCESS)
-            return ERROR_PATH_NOT_FOUND;
+        if((dwErrCode = ScanDirectory(DataPath, CheckForTwoDigitFolder, NULL, &bTwoDigitFolderFound)) != ERROR_SUCCESS)
+            return dwErrCode;
 
         if(bTwoDigitFolderFound == false)
             return ERROR_PATH_NOT_FOUND;
     }
 
     // Create the path for raw files
-    if((hs->szFilesPath = DataPath.New()) == NULL)
-        return ERROR_NOT_ENOUGH_MEMORY;
-    return ERROR_SUCCESS;
+    return ((hs->szFilesPath = DataPath.New()) == NULL) ? ERROR_NOT_ENOUGH_MEMORY : ERROR_SUCCESS;
 }
 
 DWORD LoadBuildFile_Versions_Cdns(TCascStorage * hs)

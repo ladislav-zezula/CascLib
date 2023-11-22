@@ -777,6 +777,10 @@ static DWORD Storage_EnumFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
     MD5_Init(&NameHashCtx);
     MD5_Init(&DataHashCtx);
 
+#ifdef CASCLIB_WRITE_VERIFIED_FILENAMES
+    Params.bCheckFileData = 0;
+#endif
+
     // Allocate the structure holding all file information
     cbToAllocate = sizeof(CASC_FIND_DATA_ARRAY) + (dwTotalFileCount * sizeof(CASC_FIND_DATA));
     if((pFiles = (PCASC_FIND_DATA_ARRAY)(CASC_ALLOC<BYTE>(cbToAllocate))) != NULL)
@@ -1175,7 +1179,7 @@ static bool WINAPI OnlineStorage_OpenCB_Simple(
 }
 
 
-//#define LOAD_STORAGES_SINGLE_DEV
+#define LOAD_STORAGES_SINGLE_DEV
 #define LOAD_STORAGES_CMD_LINE
 #define LOAD_STORAGES_LOCAL
 //#define LOAD_STORAGES_ONLINE
@@ -1209,7 +1213,7 @@ int main(int argc, char * argv[])
         OpenArgs.PfnProgressCallback = OnlineStorage_OpenCB_Simple;
         OpenArgs.PtrProgressParam = NULL;
 
-        if(CascOpenStorageEx(_T("e:\\Multimedia\\CASC\\WoW\\51187*wowt"), &OpenArgs, true, &hStorage))
+        if(CascOpenStorageEx(_T("e:\\Multimedia\\CASC\\Beta TVFS\\00001\\data\\data\\0000000001.idx"), &OpenArgs, true, &hStorage))
         {
             //hFind = CascFindFirstFile(hStorage, szFile, &cf, szListFile_TXT);
             //if(hFind != INVALID_HANDLE_VALUE)

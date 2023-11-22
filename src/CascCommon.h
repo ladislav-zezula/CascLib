@@ -23,6 +23,7 @@
 
 #if defined(_DEBUG) && !defined(CASCLIB_NODEBUG)
 #define CASCLIB_DEBUG
+#define CASCLIB_WRITE_VERIFIED_FILENAMES            // If defined, TRootHandler_WoW will save all files whose hashes are confirmed
 #endif
 
 #include "CascPort.h"

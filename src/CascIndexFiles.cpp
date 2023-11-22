@@ -276,7 +276,7 @@ static DWORD LoadIndexItems(TCascStorage * hs, CASC_INDEX_HEADER & InHeader, EKE
     while((pbEKeyEntry + EntryLength) <= pbEKeyEnd)
     {
         // ENCODING for Starcraft II Beta
-        BREAK_ON_XKEY3(pbEKeyEntry, 0x8b, 0x0d, 0x9a);
+        // BREAK_ON_XKEY3(pbEKeyEntry, 0x8b, 0x0d, 0x9a);
 
         if(!PfnEKeyEntry(hs, InHeader, pbEKeyEntry))
             return ERROR_INDEX_PARSING_DONE;

@@ -14,8 +14,6 @@
 #include "CascLib.h"
 #include "CascCommon.h"
 
-//#define __WRITE_VERIFIED_FILENAMES              // If defined, TRootHandler_WoW will save all files whose hashes are confirmed
-
 //-----------------------------------------------------------------------------
 // Local structures
 
@@ -135,19 +133,25 @@ struct TRootHandler_WoW : public TFileTreeRoot
         fp = NULL;
     }
 
-#ifdef __WRITE_VERIFIED_FILENAMES
-    void WriteVerifiedFileName(DWORD FileDataId, LPCSTR szFileName)
+#ifdef CASCLIB_WRITE_VERIFIED_FILENAMES
+    void VerifyAndLogFileName(LPCSTR szFileName, ULONG FileDataId)
     {
-        if(fp != NULL)
+        PCASC_FILE_NODE pFileNode;
+        ULONGLONG FileNameHash = CalcFileNameHash(szFileName);
+        
+        if((pFileNode = FileTree.Find(FileNameHash)) != NULL)
         {
-            if(FileDataId != 0)
-                fprintf(fp, "%u;%s\n", FileDataId, szFileName);
-            else
-                fprintf(fp, "%s\n", szFileName);
+            if(pFileNode->FileNameHash == FileNameHash)
+            {
+                if(FileDataId != 0)
+                    fprintf(fp, "%u;%s\n", FileDataId, szFileName);
+                else
+                    fprintf(fp, "%s\n", szFileName);
+            }
         }
     }
 #else
-    #define WriteVerifiedFileName(FileDataId,szFileName)    /* */
+    #define VerifyAndLogFileName(szFileName, FileDataId)    /* */
 #endif
 
     // Check for the new format (World of Warcraft 10.1.7, build 50893)
@@ -538,6 +542,9 @@ struct TRootHandler_WoW : public TFileTreeRoot
                         break;
                     }
 
+                    // Try to verify the file name by hash
+                    VerifyAndLogFileName(szFileName, FileDataId);
+
                     //
                     // Several files were renamed around WoW build 50893 (10.1.7). Example:
                     //
@@ -574,14 +581,14 @@ struct TRootHandler_WoW : public TFileTreeRoot
                         break;
                     }
 
-                    // Calculate the hash of the file name
-                    FileNameHash = CalcFileNameHash(szFileName);
+                    // Try to verify the file name by hash
+                    VerifyAndLogFileName(szFileName, 0);
 
-                    // Try to find the file node by file name hash
+                    // Calculate the hash of the file name and lookup in tree
+                    FileNameHash = CalcFileNameHash(szFileName);
                     pFileNode = FileTree.Find(FileNameHash);
                     if(pFileNode != NULL && pFileNode->NameLength == 0)
                     {
-                        WriteVerifiedFileName(0, szFileName);
                         FileTree.SetNodeFileName(pFileNode, szFileName);
                     }
                 }
@@ -617,7 +624,7 @@ DWORD RootHandler_CreateWoW(TCascStorage * hs, CASC_BLOB & RootFile, DWORD dwLoc
     if((pbRootPtr = TRootHandler_WoW::CaptureRootHeader(pbRootFile, pbRootEnd, &RootFormat, &FileCounterHashless)) == NULL)
         return ERROR_BAD_FORMAT;
 
-#ifdef __WRITE_VERIFIED_FILENAMES
+#ifdef CASCLIB_WRITE_VERIFIED_FILENAMES
     LPCTSTR szExtension = (RootFormat == RootFormatWoW_v1) ? _T("txt") : _T("csv");
     TCHAR szBuffer[MAX_PATH];
 
