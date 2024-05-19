@@ -92,6 +92,7 @@ typedef enum _CSTRTG
     CascCacheInvalid,                               // Do not cache anything. Used as invalid value
     CascCacheNothing,                               // Do not cache anything. Used on internal files, where the content is loaded directly to the user buffer
     CascCacheLastFrame,                             // Only cache one file frame
+    CascCacheWholeFile,                             // cache whole file
 } CSTRTG, *PCSTRTG;
 
 // Tag file entry, loaded from the DOWNLOAD file

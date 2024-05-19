@@ -82,7 +82,8 @@ PCASC_FILE_NODE CASC_FILE_TREE::InsertNew(PCASC_CKEY_ENTRY pCKeyEntry)
     if(pFileNode != NULL)
     {
         // Initialize the file node's CKeyEntry
-        pFileNode->pCKeyEntry = pCKeyEntry;
+        pFileNode->pCKeyEntry[0] = pCKeyEntry;
+        pFileNode->KeySize = 1;
 
         // Don't insert the node into any of the arrays here.
         // That is the caller's responsibility
@@ -101,7 +102,8 @@ PCASC_FILE_NODE CASC_FILE_TREE::InsertNew()
     {
         // Initialize the file node
         pFileNode->FileNameHash = 0;
-        pFileNode->pCKeyEntry = NULL;
+        pFileNode->pCKeyEntry[0] = NULL;
+        pFileNode->KeySize = 0;
         pFileNode->Parent = 0;
         pFileNode->NameIndex = 0;
         pFileNode->NameLength = 0;
@@ -393,6 +395,7 @@ PCASC_FILE_NODE CASC_FILE_TREE::InsertByHash(PCASC_CKEY_ENTRY pCKeyEntry, ULONGL
 PCASC_FILE_NODE CASC_FILE_TREE::InsertById(PCASC_CKEY_ENTRY pCKeyEntry, DWORD FileDataId, DWORD LocaleFlags, DWORD ContentFlags)
 {
     PCASC_FILE_NODE pFileNode;
+    bool pHasCKey;
 
     // Sanity checks
     assert(FileDataIds.IsInitialized());
@@ -416,6 +419,26 @@ PCASC_FILE_NODE CASC_FILE_TREE::InsertById(PCASC_CKEY_ENTRY pCKeyEntry, DWORD Fi
             pCKeyEntry->RefCount++;
         }
     }
+    else if (pFileNode->KeySize < 16)
+    {
+        pHasCKey = false;
+        for (DWORD i = 0; i < pFileNode->KeySize; i++)
+        {
+            if (pFileNode->pCKeyEntry[i] == pCKeyEntry)
+            {
+                pHasCKey = true;
+                break;
+            }
+        }
+
+        // Several entry has cdn and local variant but different ckey and ekey
+        // Workaround: merge entries, only 16 alternative support
+        if (!pHasCKey)
+            pFileNode->pCKeyEntry[pFileNode->KeySize++] = pCKeyEntry;
+    }
+    else
+        DebugBreak();
+
     return pFileNode;
 }
 
@@ -526,8 +549,13 @@ PCASC_FILE_NODE CASC_FILE_TREE::Find(PCASC_CKEY_ENTRY pCKeyEntry)
         pFileNode = (PCASC_FILE_NODE)NodeTable.ItemAt(i);
         if((pFileNode->Flags & (CFN_FLAG_FOLDER | CFN_FLAG_MOUNT_POINT)) == 0)
         {
-            if(pFileNode->pCKeyEntry == pCKeyEntry)
-                return pFileNode;
+            for (DWORD i = 0; i < pFileNode->KeySize; i++)
+            {
+                if (pFileNode->pCKeyEntry[i] == pCKeyEntry)
+                    return pFileNode;
+            }
+            //if(pFileNode->pCKeyEntry == pCKeyEntry)
+            //    return pFileNode;
         }
     }
     return NULL;

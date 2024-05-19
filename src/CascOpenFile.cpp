@@ -455,3 +455,61 @@ bool WINAPI CascCloseFile(HANDLE hFile)
     return false;
 }
 
+bool WINAPI CascSetCacheStrategy(HANDLE hFile, bool bWholeFileCache)
+{
+    return SetCacheStrategy(hFile, bWholeFileCache ? CSTRTG::CascCacheWholeFile : CSTRTG::CascCacheLastFrame);
+}
+
+DWORD WINAPI CascGetFileId(HANDLE hStorage, LPCSTR szFileName)
+{
+    PCASC_CKEY_ENTRY pCKeyEntry = NULL;
+    TCascStorage* hs;
+    BYTE CKeyEKeyBuffer[MD5_HASH_SIZE];
+    DWORD FileDataId = CASC_INVALID_ID;
+
+    // Validate the storage handle
+    hs = TCascStorage::IsValid(hStorage);
+    if (hs == NULL)
+    {
+        SetCascError(ERROR_INVALID_HANDLE);
+        return false;
+    }
+
+    // The 'pvFileName' must be zero terminated ANSI file name
+    if (szFileName == NULL || szFileName[0] == 0)
+    {
+        SetCascError(ERROR_INVALID_PARAMETER);
+        return false;
+    }
+
+    // The first case: Try to find the file by name (using the root handler) (fastest!)
+    CASC_FILE_FULL_INFO info;
+    if (hs->pRootHandler->GetInfo(szFileName, &info))
+        return info.FileDataId;
+
+    // Slow methods
+    {
+        // Second case: If the file name is actually a file data id, we convert it to file data ID
+        if (IsFileDataIdName(szFileName, FileDataId))
+            pCKeyEntry = hs->pRootHandler->GetFile(hs, FileDataId);
+
+        if (pCKeyEntry == NULL)
+        {
+            // Third case: If the file name is a string representation of CKey/EKey, we try to query for CKey
+            if (IsFileCKeyEKeyName(szFileName, CKeyEKeyBuffer))
+            {
+                pCKeyEntry = FindCKeyEntry_CKey(hs, CKeyEKeyBuffer);
+                if (pCKeyEntry == NULL)
+                    pCKeyEntry = FindCKeyEntry_EKey(hs, CKeyEKeyBuffer);
+            }
+        }
+    }
+
+    if (pCKeyEntry == NULL || !hs->pRootHandler->GetInfo(pCKeyEntry, &info))
+    {
+        SetCascError(ERROR_FILE_NOT_FOUND);
+        return CASC_INVALID_ID;
+    }
+
+    return info.FileDataId;
+}

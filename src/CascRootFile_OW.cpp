@@ -353,11 +353,11 @@ struct TRootHandler_OW : public TFileTreeRoot
                     // Check for content manifest files
                     if(!_stricmp(szExtension, ".cmf"))
                     {
-                        dwErrCode = LoadContentManifestFile(hs, FileTree, pFileNode->pCKeyEntry, szFileName);
+                        dwErrCode = LoadContentManifestFile(hs, FileTree, pFileNode->pCKeyEntry[0], szFileName);
                     }
                     else if(!_stricmp(szExtension, ".apm"))
                     {
-                        dwErrCode = LoadApplicationPackageManifestFile(hs, FileTree, pFileNode->pCKeyEntry, szFileName);
+                        dwErrCode = LoadApplicationPackageManifestFile(hs, FileTree, pFileNode->pCKeyEntry[0], szFileName);
                     }
                 }
             }
