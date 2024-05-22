@@ -819,6 +819,116 @@ static DWORD ReadFile_WholeFile(TCascFile * hf, LPBYTE pbBuffer)
     return (DWORD)(pbBuffer - pbSaveBuffer);
 }
 
+static DWORD ReadFile_WholeCached(TCascFile* hf, LPBYTE pbBuffer, ULONGLONG BufferStartOffset, ULONGLONG BufferEndOffset)
+{
+    PCASC_CKEY_ENTRY pCKeyEntry = hf->pCKeyEntry;
+    PCASC_FILE_SPAN pFileSpan = hf->pFileSpan;
+    PCASC_FILE_FRAME pFileFrame = NULL;
+    ULONGLONG pContentSize = hf->ContentSize;
+    LPBYTE pbSaveBuffer = pbBuffer;
+    LPBYTE pbEncoded = NULL;
+    LPBYTE pbDecoded = pbDecoded = CASC_ALLOC<BYTE>(pContentSize);
+    LPBYTE pbDecodedBuffer = pbDecoded;
+    DWORD dwEncodedSize = 0;
+    DWORD dwBytesRead = 0;
+    DWORD dwErrCode = ERROR_SUCCESS;
+    bool bNeedFreeDecoded = true;
+
+    if (pbDecoded == NULL)
+    {
+        SetCascError(ERROR_NOT_ENOUGH_MEMORY);
+        return 0;
+    }
+
+    // Parse all file spans
+    for (DWORD SpanIndex = 0; SpanIndex < hf->SpanCount; SpanIndex++, pCKeyEntry++, pFileSpan++)
+    {
+        for (DWORD FrameIndex = 0; FrameIndex < pFileSpan->FrameCount; FrameIndex++)
+        {
+            // Get the current file frame
+            pFileFrame = pFileSpan->pFrames + FrameIndex;
+
+            // Check bytes read overflow
+            if ((dwBytesRead + pFileFrame->ContentSize) < dwBytesRead)
+            {
+                SetCascError(ERROR_BUFFER_OVERFLOW);
+                return 0;
+            }
+
+            if (dwEncodedSize < pFileFrame->EncodedSize)
+            {
+                // Free the encoded buffer
+                CASC_FREE(pbEncoded);
+
+                // Allocate the encoded frame
+                if ((pbEncoded = CASC_ALLOC<BYTE>(pFileFrame->EncodedSize)) == NULL)
+                {
+                    CASC_FREE(pbDecodedBuffer);
+                    SetCascError(ERROR_NOT_ENOUGH_MEMORY);
+                    return 0;
+                }
+
+                dwEncodedSize = pFileFrame->EncodedSize;
+            }
+
+            pbDecoded = pbDecodedBuffer + pFileFrame->StartOffset;
+
+            // Load the frame to the encoded buffer
+            if (FileStream_Read(pFileSpan->pStream, &pFileFrame->DataFileOffset, pbEncoded, pFileFrame->EncodedSize))
+            {
+                // Decode the frame
+                dwErrCode = DecodeFileFrame(hf, pCKeyEntry, pFileFrame, pbEncoded, pbDecoded, FrameIndex);
+
+                if (BufferEndOffset > BufferStartOffset && (pFileFrame->StartOffset <= BufferStartOffset && BufferStartOffset < pFileFrame->EndOffset))
+                {
+                    ULONGLONG EndOfCopy = CASCLIB_MIN(pFileFrame->EndOffset, BufferEndOffset);
+                    DWORD dwBytesToCopy = (DWORD)(EndOfCopy - BufferStartOffset);
+
+                    if (dwErrCode == ERROR_SUCCESS)
+                    {
+                        memcpy(pbBuffer, pbDecoded + (DWORD)(BufferStartOffset - pFileFrame->StartOffset), dwBytesToCopy);
+                        BufferStartOffset += dwBytesToCopy;
+                        pbBuffer += dwBytesToCopy;
+                    }
+                }
+
+                // If we are at the end of the read area, break all loops
+                if (dwErrCode != ERROR_SUCCESS)
+                    goto __WorkComplete;
+            }
+        }
+    }
+
+    // Free the encoded buffer
+    CASC_FREE(pbEncoded);
+
+__WorkComplete:
+
+    if (dwErrCode == ERROR_SUCCESS)
+    {
+        // If there is some data left in the frame, we set it as cache
+        if (pFileFrame != NULL && pbDecoded != NULL)
+        {
+            CASC_FREE(hf->pbFileCache);
+
+            hf->FileCacheStart = 0;
+            hf->FileCacheEnd = hf->ContentSize;
+            hf->pbFileCache = pbDecodedBuffer;
+            pbDecodedBuffer = NULL;
+            bNeedFreeDecoded = false;
+        }
+    }
+
+    // Final free of the decoded buffer, if needeed
+    if (bNeedFreeDecoded)
+        CASC_FREE(pbDecodedBuffer);
+    pbDecodedBuffer = NULL;
+
+    // Return the number of bytes read. Always set LastError.
+    SetCascError(dwErrCode);
+    return (DWORD)(pbBuffer - pbSaveBuffer);
+}
+
 static DWORD ReadFile_FrameCached(TCascFile * hf, LPBYTE pbBuffer, ULONGLONG StartOffset, ULONGLONG EndOffset)
 {
     PCASC_CKEY_ENTRY pCKeyEntry = hf->pCKeyEntry;
@@ -827,6 +937,7 @@ static DWORD ReadFile_FrameCached(TCascFile * hf, LPBYTE pbBuffer, ULONGLONG Sta
     LPBYTE pbSaveBuffer = pbBuffer;
     LPBYTE pbEncoded = NULL;
     LPBYTE pbDecoded = NULL;
+    DWORD dwEncodedSize = 0;
     DWORD dwBytesRead = 0;
     DWORD dwErrCode = ERROR_SUCCESS;
     bool bNeedFreeDecoded = true;
@@ -869,12 +980,20 @@ static DWORD ReadFile_FrameCached(TCascFile * hf, LPBYTE pbBuffer, ULONGLONG Sta
                         pbDecoded = pbBuffer;
                     }
 
-                    // Allocate the encoded frame
-                    if((pbEncoded = CASC_ALLOC<BYTE>(pFileFrame->EncodedSize)) == NULL)
+                    if (dwEncodedSize < pFileFrame->EncodedSize)
                     {
-                        CASC_FREE(pbDecoded);
-                        SetCascError(ERROR_NOT_ENOUGH_MEMORY);
-                        return 0;
+                        // Free the encoded buffer
+                        CASC_FREE(pbEncoded);
+
+                        // Allocate the encoded frame
+                        if ((pbEncoded = CASC_ALLOC<BYTE>(pFileFrame->EncodedSize)) == NULL)
+                        {
+                            CASC_FREE(pbDecoded);
+                            SetCascError(ERROR_NOT_ENOUGH_MEMORY);
+                            return 0;
+                        }
+
+                        dwEncodedSize = pFileFrame->EncodedSize;
                     }
 
                     // Load the frame to the encoded buffer
@@ -895,9 +1014,6 @@ static DWORD ReadFile_FrameCached(TCascFile * hf, LPBYTE pbBuffer, ULONGLONG Sta
                         }
                     }
 
-                    // Free the encoded buffer
-                    CASC_FREE(pbEncoded);
-
                     // If we are at the end of the read area, break all loops
                     if(dwErrCode != ERROR_SUCCESS || StartOffset >= EndOffset)
                         goto __WorkComplete;
@@ -907,6 +1023,9 @@ static DWORD ReadFile_FrameCached(TCascFile * hf, LPBYTE pbBuffer, ULONGLONG Sta
             }
         }
     }
+
+    // Free the encoded buffer
+    CASC_FREE(pbEncoded);
 
     __WorkComplete:
 
@@ -921,6 +1040,7 @@ static DWORD ReadFile_FrameCached(TCascFile * hf, LPBYTE pbBuffer, ULONGLONG Sta
             hf->FileCacheEnd = pFileFrame->EndOffset;
             hf->pbFileCache = pbDecoded;
             pbDecoded = NULL;
+            bNeedFreeDecoded = false;
         }
     }
 
@@ -1289,6 +1409,10 @@ bool WINAPI CascReadFile(HANDLE hFile, void * pvBuffer, DWORD dwBytesToRead, PDW
         // will stay in the cache - We expect the next read to continue from that offset.
         case CascCacheLastFrame:
             dwBytesRead2 = ReadFile_FrameCached(hf, pbBuffer, StartOffset, EndOffset);
+            break;
+
+        case CascCacheWholeFile:
+            dwBytesRead2 = ReadFile_WholeCached(hf, pbBuffer, StartOffset, EndOffset);
             break;
     }
 

@@ -86,6 +86,14 @@ struct TRootHandler
         return false;
     }
 
+    // Returns advanced info from the root file entry.
+    // szFileName - Pointer to the file name
+    // pFileInfo - Pointer to CASC_FILE_FULL_INFO structure
+    virtual bool GetInfo(const char* szFileName, struct _CASC_FILE_FULL_INFO* /* pFileInfo */)
+    {
+        return false;
+    }
+
     // Copies all items from the given root handler to the new one
     virtual size_t Copy(TRootHandler * /* pRoot */)
     {
@@ -124,6 +132,7 @@ struct TFileTreeRoot : public TRootHandler
     PCASC_CKEY_ENTRY GetFile(size_t nFileIndex, char * /* szFileName */, size_t /* ccFileName */);
     PCASC_CKEY_ENTRY Search(struct TCascSearch * pSearch, struct _CASC_FIND_DATA * pFindData);
     bool GetInfo(PCASC_CKEY_ENTRY pCKeyEntry, struct _CASC_FILE_FULL_INFO * pFileInfo);
+    bool GetInfo(const char* szFileName, struct _CASC_FILE_FULL_INFO* /* pFileInfo */) override;
     size_t Copy(TRootHandler * pRoot);
     size_t GetMaxFileIndex();
 

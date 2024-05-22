@@ -41,21 +41,47 @@ int TFileTreeRoot::Insert(
     return (pFileNode != NULL) ? ERROR_SUCCESS : ERROR_CAN_NOT_COMPLETE;
 }
 
-PCASC_CKEY_ENTRY TFileTreeRoot::GetFile(TCascStorage * /* hs */, const char * szFileName)
+PCASC_CKEY_ENTRY TFileTreeRoot::GetFile(TCascStorage * hs, const char * szFileName)
 {
     PCASC_FILE_NODE pFileNode;
     ULONGLONG FileNameHash = CalcFileNameHash(szFileName);
     
     pFileNode = FileTree.Find(FileNameHash);
-    return (pFileNode != NULL) ? pFileNode->pCKeyEntry : NULL;
+    if (pFileNode == NULL)
+        return NULL;
+
+    if (pFileNode->KeySize == 1 || hs->dwFeatures & CASC_FEATURE_ONLINE || pFileNode->pCKeyEntry[0]->Flags & CASC_CE_FILE_IS_LOCAL)
+        return pFileNode->pCKeyEntry[0];
+
+    for (DWORD i = 0; i < pFileNode->KeySize; i++)
+    {
+        if (pFileNode->pCKeyEntry[i]->Flags & CASC_CE_FILE_IS_LOCAL)
+            return pFileNode->pCKeyEntry[i];
+    }
+
+    return pFileNode->pCKeyEntry[0];
+    //return (pFileNode != NULL) ? pFileNode->pCKeyEntry : NULL;
 }
 
-PCASC_CKEY_ENTRY TFileTreeRoot::GetFile(TCascStorage * /* hs */, DWORD FileDataId)
+PCASC_CKEY_ENTRY TFileTreeRoot::GetFile(TCascStorage * hs, DWORD FileDataId)
 {
     PCASC_FILE_NODE pFileNode;
 
     pFileNode = FileTree.FindById(FileDataId);
-    return (pFileNode != NULL) ? pFileNode->pCKeyEntry : NULL;
+    if (pFileNode == NULL)
+        return NULL;
+
+    if (pFileNode->KeySize == 1 || hs->dwFeatures & CASC_FEATURE_ONLINE || pFileNode->pCKeyEntry[0]->Flags & CASC_CE_FILE_IS_LOCAL)
+        return pFileNode->pCKeyEntry[0];
+
+    for (DWORD i = 0; i < pFileNode->KeySize; i++)
+    {
+        if (pFileNode->pCKeyEntry[i]->Flags & CASC_CE_FILE_IS_LOCAL)
+            return pFileNode->pCKeyEntry[i];
+    }
+
+    return pFileNode->pCKeyEntry[0];
+    //return (pFileNode != NULL) ? pFileNode->pCKeyEntry : NULL;
 }
 
 PCASC_CKEY_ENTRY TFileTreeRoot::GetFile(size_t nFileIndex, char * szFileName, size_t ccFileName)
@@ -64,9 +90,24 @@ PCASC_CKEY_ENTRY TFileTreeRoot::GetFile(size_t nFileIndex, char * szFileName, si
     PCASC_FILE_NODE pFileNode;
 
     // Perform the search in the underlying file tree
-    if((pFileNode = FileTree.PathAt(szFileName, ccFileName, nFileIndex)) != NULL)
-        pCKeyEntry = pFileNode->pCKeyEntry;
-    return pCKeyEntry;
+    pFileNode = FileTree.PathAt(szFileName, ccFileName, nFileIndex);
+    //if((pFileNode = FileTree.PathAt(szFileName, ccFileName, nFileIndex)) != NULL)
+    //    pCKeyEntry = pFileNode->pCKeyEntry;
+    //return pCKeyEntry;
+
+    if (pFileNode == NULL)
+        return NULL;
+
+    if (pFileNode->KeySize == 1 /*|| hs->dwFeatures & CASC_FEATURE_ONLINE*/ || pFileNode->pCKeyEntry[0]->Flags & CASC_CE_FILE_IS_LOCAL)
+        return pFileNode->pCKeyEntry[0];
+
+    for (DWORD i = 0; i < pFileNode->KeySize; i++)
+    {
+        if (pFileNode->pCKeyEntry[i]->Flags & CASC_CE_FILE_IS_LOCAL)
+            return pFileNode->pCKeyEntry[i];
+    }
+
+    return pFileNode->pCKeyEntry[0];
 }
 
 PCASC_CKEY_ENTRY TFileTreeRoot::Search(TCascSearch * pSearch, PCASC_FIND_DATA pFindData)
@@ -93,7 +134,13 @@ PCASC_CKEY_ENTRY TFileTreeRoot::Search(TCascSearch * pSearch, PCASC_FIND_DATA pF
                     FileTree.GetExtras(pFileNode, &pFindData->dwFileDataId, &pFindData->dwLocaleFlags, &pFindData->dwContentFlags);
 
                     // Return the found CKey entry
-                    return pFileNode->pCKeyEntry;
+                    for (DWORD i = 0; i < pFileNode->KeySize; i++)
+                    {
+                        if (pFileNode->pCKeyEntry[i]->Flags & CASC_CE_FILE_IS_LOCAL)
+                            return pFileNode->pCKeyEntry[i];
+                    }
+
+                    return pFileNode->pCKeyEntry[0];
                 }
             }
         }
@@ -120,6 +167,20 @@ bool TFileTreeRoot::GetInfo(PCASC_CKEY_ENTRY pCKeyEntry, PCASC_FILE_FULL_INFO pF
     }
 
     return false;
+}
+
+bool TFileTreeRoot::GetInfo(const char* szFileName, PCASC_FILE_FULL_INFO pFileInfo)
+{
+    PCASC_FILE_NODE pFileNode;
+    ULONGLONG FileNameHash = CalcFileNameHash(szFileName);
+
+    pFileNode = FileTree.Find(FileNameHash);
+    if (pFileNode == NULL)
+        return NULL;
+
+    FileTree.GetExtras(pFileNode, &pFileInfo->FileDataId, &pFileInfo->LocaleFlags, &pFileInfo->ContentFlags);
+    pFileInfo->FileNameHash = pFileNode->FileNameHash;
+    return true;
 }
 
 size_t TFileTreeRoot::Copy(TRootHandler * pRoot)

@@ -25,7 +25,10 @@
 typedef struct _CASC_FILE_NODE
 {
     ULONGLONG FileNameHash;                         // Jenkins hash of the normalized file name (uppercase, backslashes)
-    PCASC_CKEY_ENTRY pCKeyEntry;                    // Pointer to the CKey entry
+    //PCASC_CKEY_ENTRY pCKeyEntry;                  // Pointer to the CKey entry
+    PCASC_CKEY_ENTRY pCKeyEntry[16];                // Pointer to the Alias CKey entry
+    DWORD KeySize;
+ 
 
     DWORD Parent;                                   // The index of a parent directory. If CASC_INVALID_INDEX, then this is the root item
     DWORD NameIndex;                                // Index of the node name. If CASC_INVALID_INDEX, then this node has no name

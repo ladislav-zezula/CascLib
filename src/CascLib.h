@@ -90,6 +90,7 @@ extern "C" {
 #define CASC_OVERCOME_ENCRYPTED     0x00000020  // When CascReadFile encounters a block encrypted with a key that is missing, the block is filled with zeros and returned as success
 #define CASC_OPEN_CKEY_ONCE         0x00000040  // Only opens a file with given CKey once, regardless on how many file names does it have. Used by CascLib test program
                                                 // If the file was already open before, CascOpenFile returns false and ERROR_FILE_ALREADY_OPENED
+#define CASC_CACHE_WHOLE_FILE       0x00000080  //
 
 #define CASC_LOCALE_ALL             0xFFFFFFFF
 #define CASC_LOCALE_ALL_WOW         0x0001F3F6  // All except enCN and enTW
@@ -389,6 +390,8 @@ bool   WINAPI CascGetFileSize64(HANDLE hFile, PULONGLONG PtrFileSize);
 bool   WINAPI CascSetFilePointer64(HANDLE hFile, LONGLONG DistanceToMove, PULONGLONG PtrNewPos, DWORD dwMoveMethod);
 bool   WINAPI CascReadFile(HANDLE hFile, void * lpBuffer, DWORD dwToRead, PDWORD pdwRead);
 bool   WINAPI CascCloseFile(HANDLE hFile);
+bool   WINAPI CascSetCacheStrategy(HANDLE hFile, bool bWholeFileCache);
+DWORD  WINAPI CascGetFileId(HANDLE hStorage, LPCSTR szFileName);
 
 DWORD  WINAPI CascGetFileSize(HANDLE hFile, PDWORD pdwFileSizeHigh);
 DWORD  WINAPI CascSetFilePointer(HANDLE hFile, LONG lFilePos, LONG * PtrFilePosHigh, DWORD dwMoveMethod);
