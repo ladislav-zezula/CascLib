@@ -75,29 +75,28 @@ set(TEST_SRC_FILES
     test/CascTest.cpp
 )
 
-add_definitions(-D_7ZIP_ST -DBZ_STRICT_ANSI)
-
 option(CASC_UNICODE "Compile UNICODE version instead of ANSI one (Visual Studio only)" OFF)
 
 if(WIN32)
-    if(MSVC)
-        message(STATUS "Using MSVC")
-        add_definitions(-D_7ZIP_ST)
-    else()
-        message(STATUS "Using mingw")
-    endif()
     set(LINK_LIBS ${LINK_LIBS} wininet)
     if(CASC_UNICODE)
-    message(STATUS "Build UNICODE version")
+        message(STATUS "Build UNICODE version")
         add_definitions(-DUNICODE -D_UNICODE)
     else()
-    message(STATUS "Build ANSI version")
+        message(STATUS "Build ANSI version")
     endif()
 endif()
 
 option(CASC_BUILD_SHARED_LIB "Compile dynamically linked library" ON)
 if(CASC_BUILD_SHARED_LIB)
     message(STATUS "Build dynamically linked library")
+
+    if (WIN32)
+        list(APPEND SRC_FILES
+            src/DllMain.c
+            src/DllMain.def)
+    endif()
+
     add_library(casc SHARED ${SRC_FILES} ${HEADER_FILES})
 
     if(APPLE)
@@ -128,7 +127,7 @@ if(CASC_BUILD_SHARED_LIB)
     if(WIN32)
         set_target_properties(casc PROPERTIES OUTPUT_NAME CascLib)
     endif()
-    target_compile_definitions(casc PUBLIC CASCLIB_NO_AUTO_LINK_LIBRARY)
+    target_compile_definitions(casc PUBLIC CASCLIB_NO_AUTO_LINK_LIBRARY CASCLIB_NODEBUG)
 endif()
 
 option(CASC_BUILD_TESTS "Build Test application" OFF)
@@ -170,7 +169,7 @@ if(CASC_BUILD_STATIC_LIB)
         set_target_properties(casc_static PROPERTIES VERSION 1.0.0)
         set_target_properties(casc_static PROPERTIES SOVERSION 1)
     endif()
-    target_compile_definitions(casc_static PUBLIC CASCLIB_NO_AUTO_LINK_LIBRARY)
+    target_compile_definitions(casc_static PUBLIC CASCLIB_NO_AUTO_LINK_LIBRARY CASCLIB_NODEBUG)
 endif()
 
 
