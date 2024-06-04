@@ -72,6 +72,12 @@ extern "C" {
   #endif
 #endif
 
+#if defined(CASCLIB_DETECT_UNICODE_MISMATCHES)
+#if defined(_UNICODE) != defined(CASCLIB_UNICODE)
+#error CascLib was not built with the same UNICODE setting as your project
+#endif
+#endif
+
 //-----------------------------------------------------------------------------
 // Defines
 
