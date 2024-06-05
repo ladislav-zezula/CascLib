@@ -77,14 +77,17 @@ set(TEST_SRC_FILES
 
 option(CASC_UNICODE "Compile UNICODE version instead of ANSI one (Visual Studio only)" OFF)
 
+set(PUBLIC_COMPILE_DEFINITIONS CASCLIB_NO_AUTO_LINK_LIBRARY CASCLIB_NODEBUG)
 if(WIN32)
-    set(LINK_LIBS ${LINK_LIBS} wininet)
+    list(APPEND LINK_LIBS wininet)
     if(CASC_UNICODE)
         message(STATUS "Build UNICODE version")
         add_definitions(-DUNICODE -D_UNICODE)
+        list(APPEND PUBLIC_COMPILE_DEFINITIONS CASCLIB_UNICODE)
     else()
         message(STATUS "Build ANSI version")
     endif()
+    list(APPEND PUBLIC_COMPILE_DEFINITIONS CASCLIB_DETECT_UNICODE_MISMATCHES)
 endif()
 
 option(CASC_BUILD_SHARED_LIB "Compile dynamically linked library" ON)
@@ -127,7 +130,7 @@ if(CASC_BUILD_SHARED_LIB)
     if(WIN32)
         set_target_properties(casc PROPERTIES OUTPUT_NAME CascLib)
     endif()
-    target_compile_definitions(casc PUBLIC CASCLIB_NO_AUTO_LINK_LIBRARY CASCLIB_NODEBUG)
+    target_compile_definitions(casc PUBLIC ${PUBLIC_COMPILE_DEFINITIONS})
 endif()
 
 option(CASC_BUILD_TESTS "Build Test application" OFF)
@@ -169,7 +172,7 @@ if(CASC_BUILD_STATIC_LIB)
         set_target_properties(casc_static PROPERTIES VERSION 1.0.0)
         set_target_properties(casc_static PROPERTIES SOVERSION 1)
     endif()
-    target_compile_definitions(casc_static PUBLIC CASCLIB_NO_AUTO_LINK_LIBRARY CASCLIB_NODEBUG)
+    target_compile_definitions(casc_static PUBLIC ${PUBLIC_COMPILE_DEFINITIONS})
 endif()
 
 
