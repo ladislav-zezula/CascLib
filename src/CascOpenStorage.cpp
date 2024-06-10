@@ -442,7 +442,7 @@ static DWORD LoadEncodingManifest(TCascStorage * hs)
     DWORD dwErrCode = ERROR_SUCCESS;
 
     // Inform the user about what we are doing
-    if(InvokeProgressCallback(hs, "Loading ENCODING manifest", NULL, 0, 0))
+    if(InvokeProgressCallback(hs, CascProgressLoadingManifest, "ENCODING", 0, 0))
         return ERROR_CANCELLED;
 
     // Fill-in the information from the index entry and insert it to the file tree
@@ -753,7 +753,7 @@ static int LoadDownloadManifest(TCascStorage * hs)
     DWORD dwErrCode = ERROR_SUCCESS;
 
     // Inform the user about what we are doing
-    if(InvokeProgressCallback(hs, "Loading DOWNLOAD manifest", NULL, 0, 0))
+    if(InvokeProgressCallback(hs, CascProgressLoadingManifest, "DOWNLOAD", 0, 0))
         return ERROR_CANCELLED;
 
     // Load the entire DOWNLOAD file to memory
@@ -786,7 +786,7 @@ static int LoadInstallManifest(TCascStorage * hs)
     DWORD dwErrCode = ERROR_SUCCESS;
 
     // Inform the user about what we are doing
-    if(InvokeProgressCallback(hs, "Loading INSTALL manifest", NULL, 0, 0))
+    if(InvokeProgressCallback(hs, CascProgressLoadingManifest, "INSTALL", 0, 0))
         return ERROR_CANCELLED;
 
     // Load the entire DOWNLOAD file to memory
@@ -854,7 +854,7 @@ static int LoadBuildManifest(TCascStorage * hs, DWORD dwLocaleMask)
     assert(hs->pRootHandler == NULL);
 
     // Inform the user about what we are doing
-    if(InvokeProgressCallback(hs, "Loading ROOT manifest", NULL, 0, 0))
+    if(InvokeProgressCallback(hs, CascProgressLoadingManifest, "ROOT", 0, 0))
         return ERROR_CANCELLED;
 
     // Locale: The default parameter is 0 - in that case, we load all locales
@@ -926,7 +926,7 @@ __LoadRootFile:
     // Handle reparsing of the root file
     if(dwErrCode == ERROR_REPARSE_ROOT && pCKeyEntry != &hs->RootFile)
     {
-        if(InvokeProgressCallback(hs, "Loading ROOT manifest (reparsed)", NULL, 0, 0))
+        if(InvokeProgressCallback(hs, CascProgressLoadingManifest, "ROOT (reparsed)", 0, 0))
             return ERROR_CANCELLED;
 
         // Replace the root handler

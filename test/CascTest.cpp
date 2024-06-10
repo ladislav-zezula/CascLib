@@ -968,9 +968,35 @@ static DWORD SpeedStorage_Test(PFN_RUN_TEST PfnRunTest, LPCSTR szStorage, LPCSTR
     return dwErrCode;
 }
 
+// Get the English version of the progress message
+static LPCSTR GetProgressMessageAsText(CASC_PROGRESS_MSG Message)
+{
+    switch(Message)
+    {
+        case CascProgressLoadingFile:
+            return "Loading file: %s";
+
+        case CascProgressLoadingManifest:
+            return "Loading manifest: %s";
+
+        case CascProgressDownloadingFile:
+            return "Downloading file: %s";
+
+        case CascProgressLoadingIndexes:
+            return "Loading index files";
+
+        case CascProgressDownloadingArchiveIndexes:
+            return "Downloading archive indexes";
+
+        default:
+            assert(false);
+            return NULL;
+    }
+}
+
 static bool WINAPI OnlineStorage_OpenCB(
     void * PtrUserParam,                        // User-specific parameter passed to the callback
-    LPCSTR szWork,                              // Text for the current activity (example: "Loading "ENCODING" file")
+    CASC_PROGRESS_MSG Message,                  // Progress message
     LPCSTR szObject,                            // (optional) name of the object tied to the activity (example: index file name)
     DWORD,                                      // (optional) current object being processed
     DWORD)                                      // (optional) If non-zero, this is the total number of objects to process
@@ -978,7 +1004,35 @@ static bool WINAPI OnlineStorage_OpenCB(
     TLogHelper * pLogHelper = (TLogHelper *)PtrUserParam;
 
     if(pLogHelper != NULL)
-        pLogHelper->PrintProgress(szWork, szObject);
+    {
+        // Get the English version of the progress message
+        LPCSTR szWork = GetProgressMessageAsText(Message);
+
+        // Show the progress message, if any
+        if(szWork != NULL)
+        {
+            pLogHelper->PrintProgress(szWork, szObject);
+        }
+    }
+    return false;
+}
+
+static bool WINAPI OnlineStorage_OpenCB_Simple(
+    void * /* PtrUserParam */,                  // User-specific parameter passed to the callback
+    CASC_PROGRESS_MSG Message,                  // Progress message
+    LPCSTR szObject,                            // (optional) name of the object tied to the activity (example: index file name)
+    DWORD dwValue,                              // (optional) current object being processed
+    DWORD dwTotal)                              // (optional) If non-zero, this is the total number of objects to process
+{
+    LPCSTR szFmtx = (dwTotal != 0) ? ("%s (%u of %u)    \r") : ("%s    \r");
+    LPCSTR szWork;
+    char szFormat[256];
+
+    if((szWork = GetProgressMessageAsText(Message)) != NULL)
+    {
+        CascStrPrintf(szFormat, _countof(szFormat), szFmtx, szWork, dwValue, dwTotal);
+        printf(szFormat, szObject);
+    }
     return false;
 }
 
@@ -1067,9 +1121,9 @@ static DWORD OnlineStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO & StorInfo
 static STORAGE_INFO StorageInfo1[] =
 {
     //- Storage folder name --------        - Compound file name hash --------  - Compound file data hash --------  - Example file to extract ---
-//  {"Beta TVFS/00001",                     "be2ba8b6d02279a1b68c4ee28f07641f", "96e6457b649b11bcee54d52fa4be12e5", "ROOT"},
-//  {"Beta TVFS/00002",                     "09fd84ef909ad314d84dc1f037e87ca3", "4da83fa60e0e505d14a5c21284142127", "ENCODING"},
-/*
+    {"Beta TVFS/00001",                     "be2ba8b6d02279a1b68c4ee28f07641f", "96e6457b649b11bcee54d52fa4be12e5", "ROOT"},
+    {"Beta TVFS/00002",                     "09fd84ef909ad314d84dc1f037e87ca3", "4da83fa60e0e505d14a5c21284142127", "ENCODING"},
+
     {"CoD4/3376209",                        "e01180b36a8cfd82cb2daa862f5bbf3e", "79cd4cfc9eddad53e4b4d394c36b8b0c", "zone/base.xpak" },
     {"CoD4-MW/8042902/.build.info",         "cd54a9444812e168b3b920b1479eff71", "033f77f6309bf6c21984fc10d09e5a72" },
 
@@ -1115,7 +1169,7 @@ static STORAGE_INFO StorageInfo1[] =
     {"Warcraft III/13369",                  "3212bcad20f7c6ad0eb0864ca9444bb6", "4ac831db9bf0734f01b9d20455a68ab6", "ENCODING" },
     {"Warcraft III/14883",                  "773180e32ac2fac8bd4cd4dfc2ab30a6", "3fd108674117ad4f93885bdd1a525f30", NULL },
     {"Warcraft III/15801",                  "ad571ee968f77bbddc811fd215ee1d37", "f162cd3448219fd9956f9ff8fb5ba915", NULL },
-*/
+
     {"WoW/18125",                           "b31531af094f78f58592249c4d216a8e", "e5c9b3f0da7806d8b239c13bff1d836e", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"WoW/18379",                           "fab30626cf94ed1523519729c3701812", "606e4bfd6f8100ae875eb4c00789233b", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"WoW/18865",                           "7f252a8c6001938f601b0c91abbb0f2a", "cee96fa43cddc008f564b4615fdbd109", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
@@ -1127,8 +1181,8 @@ static STORAGE_INFO StorageInfo1[] =
     {"WoW/23420",                           "e62a798989e6db00044b079e74faa1eb", "854e58816e6eb2795d14fe81470ad19e", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"WoW/29981",                           "e939d6bfb739eda7049c7ef74efccf60", "3cba30b5e439a6e59b0953d17da9ac6c", "dbfilesclient\\battlepetspeciesstate.db2"},
 
-    {"WoW/31299*wow",                       "d8c1557632959c8eac6c8b4699e40077", "05627c131969bd9394fb345f4037e249", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/31299*wowt",                      "29a147d37b904ace4683ae5aaac7efc3", "423c1b99b14a615a02d8ffc7a7eff4ef", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/31299*wow",                       "72a7210d758f613424be322bce256899", "05627c131969bd9394fb345f4037e249", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/31299*wowt",                      "cc2cba58dbbf95c3d5d0bc07dbc173cb", "423c1b99b14a615a02d8ffc7a7eff4ef", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"WoW/31299*wow_classic",               "54f2491ce97f1eae0a57d02aa16f0e43", "b46bd2f81ead285e810e5a049ca2db74", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
 
     {"WoW/37497-classic",                   "f7bf0942184f4ff727b2f539fa6ceff0", "102511c7ef53af35b5c3d4a837f076b9"},
@@ -1137,8 +1191,8 @@ static STORAGE_INFO StorageInfo1[] =
     {"WoW/40892-classic-tbc/.build.info",   "5e9dc8fdb7ffba6c22bcad2330618d1e", "5ae578d0f8986c709477106fa63d8cfb"},
     {"WoW/49821-classic",                   "e54423b6514443aa8d4c326d01db9f87", "0f72450e6f4c7c4dcd06c121bc334d9b", "Sound\\Music\\GlueScreenMusic\\wow_main_theme.mp3"},
 
-    {"WoW/47067*wow",                       "67124947fdd8ea3d1a07850ac40215c0", "70a641d4100b97d77b9b6b3e5a07ee13", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/47067*wowt",                      "0bb892cb57a215033e43ac767663f478", "ef347dfc36cbbef09587384cb9095839", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/47067*wow",                       "8dff8888c1c50dee17073f3a6f6b0767", "70a641d4100b97d77b9b6b3e5a07ee13", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/47067*wowt",                      "1af31b60f438be0c66cea9f42b3caf46", "ef347dfc36cbbef09587384cb9095839", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"WoW/47067*wow_classic",               "92e498a7ed7fb6e6cc52b8292dd0864b", "3aae26808a5255477ab49df20b95fb18", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"WoW/47067*wow_classic_ptr",           "7cc806b043c18c59dd024ec13bf5c2f1", "cd68e3fd59c97c4b69265bd949b77959", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"WoW/47067*wow_classic_era",           "10c8c72c16c55ee44c5554aabe4284da", "47071bdea7e593e5481e2775c4813626", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
@@ -1150,39 +1204,23 @@ static STORAGE_INFO StorageInfo2[] =
 {
     {"Hearthstone/160183/hearthstone-25.0.3.160183.159202.versions*hsb*us", "34b821747a7911eb98c9141153470fdd", "85096ab761616e1069a4fa5c1da28d9d"},
     {"Hearthstone/160183*hsb*us",                                           "34b821747a7911eb98c9141153470fdd", "85096ab761616e1069a4fa5c1da28d9d"},
-    {"WoW/45745-custom-cdn*http://us.falloflordaeron.com:8000*wow*us",      "dd04f7077f57464dc59f39a468daecc3", "e5c03ef3dd196ec24054dbc370fb2fc5", "interface/framexml/localization.lua"},
-    {"WoW/45745-meta/wow-45745-custom-cdn.versions*wow*us",                 "f3df28f29b36d50e8e3f68dbb599e035", "e5c03ef3dd196ec24054dbc370fb2fc5", "interface/framexml/localization.lua"},
-    {"WoW/45745-meta/wow-45779-tvfs.versions",                              "6fdd73187625ded008be03573d686e52", "dab6a1f3586a2a1408a8152ad7f9f1ad"},
-    {"WoW/45745-meta/wow-46144-tvfs.versions",                              "3ce71e0d7ae10c8913be0c226b4684d1", "24d04d1f9f516979a51102f479027c70"},
+    {"WoW/45745-custom-cdn*http://us.falloflordaeron.com:8000*wow*us",      "f0f3686925c71d46c9d681baad866fa3", "e5c03ef3dd196ec24054dbc370fb2fc5", "interface/framexml/localization.lua"},
+    {"WoW/45745-meta/wow-45745-custom-cdn.versions*wow*us",                 "f0f3686925c71d46c9d681baad866fa3", "e5c03ef3dd196ec24054dbc370fb2fc5", "interface/framexml/localization.lua"},
+    {"WoW/45745-meta/wow-45779-tvfs.versions",                              "34db7de6a728deb1fd5592f9b595963d", "dab6a1f3586a2a1408a8152ad7f9f1ad"},
+    {"WoW/45745-meta/wow-46144-tvfs.versions",                              "dde4a3c3709a005923e2ed41a397708e", "24d04d1f9f516979a51102f479027c70"},
     {"WoW/45745-meta/wow-46902-classic.versions*wow_classic*us",            "92e498a7ed7fb6e6cc52b8292dd0864b", "3aae26808a5255477ab49df20b95fb18"},
-    {"WoW/45745-meta/wow-47186-ptr.versions",                               "7fe5398e286400a47d5f3162998a013a", "e1fff62f0147dd079a0cf73890255863", "interface/framexml/localization.lua"},
-    {"WoW/45745-meta*wowt*us",                                              "7fe5398e286400a47d5f3162998a013a", "e1fff62f0147dd079a0cf73890255863", "interface/framexml/localization.lua"},
-    {"WoW/5####-current*wow*us",                                            NULL,                               NULL,                               "interface/framexml/localization.lua"},
+    {"WoW/45745-meta/wow-47186-ptr.versions",                               "ee1a4868dde8e3261d5fb98c276bf82a", "e1fff62f0147dd079a0cf73890255863", "interface/framexml/localization.lua"},
+    {"WoW/45745-meta*wowt*us",                                              "ee1a4868dde8e3261d5fb98c276bf82a", "e1fff62f0147dd079a0cf73890255863", "interface/framexml/localization.lua"},
+    {"WoW/5####-current*wow*us",                                            "049627e5db398fd336e8c685cbcd49a0", "7683c27407ad6b051e6d1e4f6409f94e", "interface/framexml/localization.lua"},
 };
 
 //-----------------------------------------------------------------------------
 // Main
 
-static bool WINAPI OnlineStorage_OpenCB_Simple(
-    void * /* PtrUserParam */,                  // User-specific parameter passed to the callback
-    LPCSTR szWork,                              // Text for the current activity (example: "Loading "ENCODING" file")
-    LPCSTR szObject,                            // (optional) name of the object tied to the activity (example: index file name)
-    DWORD dwValue,                              // (optional) current object being processed
-    DWORD dwTotal)                              // (optional) If non-zero, this is the total number of objects to process
-{
-    LPCSTR szFmtx = (dwTotal != 0) ? ("%s (%u of %u)    \r") : ("%s    \r");
-    char szFormat[256];
-
-    CascStrPrintf(szFormat, _countof(szFormat), szFmtx, szWork, dwValue, dwTotal);
-    printf(szFormat, szObject);
-    return false;
-}
-
-
-#define LOAD_STORAGES_SINGLE_DEV
+//#define LOAD_STORAGES_SINGLE_DEV
 #define LOAD_STORAGES_CMD_LINE
 #define LOAD_STORAGES_LOCAL
-//#define LOAD_STORAGES_ONLINE
+#define LOAD_STORAGES_ONLINE
 
 int main(int argc, char * argv[])
 {
@@ -1202,9 +1240,9 @@ int main(int argc, char * argv[])
 #ifdef LOAD_STORAGES_SINGLE_DEV
     {
         CASC_OPEN_STORAGE_ARGS OpenArgs = {sizeof(CASC_OPEN_STORAGE_ARGS)};
-        CASC_FIND_DATA cf;
+        //CASC_FIND_DATA cf;
         HANDLE hStorage;
-        HANDLE hFind;
+        //HANDLE hFind;
         HANDLE hFile;
         LPCSTR szFile = "interface/icons/inv_armor_explorer_d_01_helm.blp";     // FileDataId = 2965132
         //LPCSTR szFile = "interface/icons/inv_helm_armor_explorer_d_01.blp";     // FileDataId = 2965132

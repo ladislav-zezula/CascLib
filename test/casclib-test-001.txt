@@ -1,82 +1,79 @@
-
-E:\Ladik\Appdir\CascLib\bin\CascLib_test\x64\Release>CascLib_test.exe
-
 -- "Beta TVFS/00001" ---------------------------------------------------------------------
 Extracted: 31 of 36 files (3 282 793 bytes total)
 Name Hash: be2ba8b6d02279a1b68c4ee28f07641f (match)
 Data Hash: 96e6457b649b11bcee54d52fa4be12e5 (match)
-TotalTime: 0.5 second(s)
+TotalTime: 0.35 second(s)
 Work complete.
 
 -- "Beta TVFS/00002" ---------------------------------------------------------------------
 Extracted: 11055 of 11056 files (2 213 444 bytes total)
 Name Hash: 09fd84ef909ad314d84dc1f037e87ca3 (match)
 Data Hash: 4da83fa60e0e505d14a5c21284142127 (match)
-TotalTime: 0.56 second(s)
+TotalTime: 0.108 second(s)
 Work complete.
 
 -- "CoD4/3376209" ------------------------------------------------------------------------
-Extracted: 5039 of 7513 files (296 760 677 072 bytes total)
+Extracted: 5038 of 7513 files (296 760 677 072 bytes total)
 Name Hash: e01180b36a8cfd82cb2daa862f5bbf3e (match)
 Data Hash: 79cd4cfc9eddad53e4b4d394c36b8b0c (match)
-TotalTime: 1793.106 second(s)
+TotalTime: 2633.956 second(s)
 Work complete.
 
 -- "CoD4-MW/8042902/.build.info" ---------------------------------------------------------
 Extracted: 43696 of 48586 files (161 928 801 609 bytes total)
 Name Hash: cd54a9444812e168b3b920b1479eff71 (match)
 Data Hash: 033f77f6309bf6c21984fc10d09e5a72 (match)
-TotalTime: 1535.454 second(s)
+TotalTime: 757.501 second(s)
 Work complete.
 
 -- "Diablo II Resurrected/71776" ---------------------------------------------------------
-Extracted: 165640 of 170778 files (42 605 434 562 bytes total)
+Extracted: 165639 of 170778 files (42 605 434 523 bytes total)
 Name Hash: 8518f7457729368bcbfc8db60203de78 (match)
 Data Hash: 180984fc02ee90875d0504952f177f9a (match)
-TotalTime: 508.317 second(s)
+TotalTime: 413.989 second(s)
 Work complete.
 
 -- "Diablo III/30013" --------------------------------------------------------------------
 Warning: Base\Textures\a1dun_Leor_NS_01_Executioner_scn_autoLM.tex: Read error (offset 00000000:0006C000)
-Extracted: 580271 of 660310 files (29 416 700 302 bytes total)
+Extracted: 580270 of 660310 files (29 416 694 782 bytes total)
 Name Hash: 86ba76b46c88eb7c6188d28a27d00f49 (match)
 Data Hash: 19e37cc3c178ea0521369c09d67791ac (match)
-TotalTime: 491.979 second(s)
+TotalTime: 466.178 second(s)
 Work complete.
 
 -- "Diablo III/50649" --------------------------------------------------------------------
-Extracted: 658496 of 669461 files (34 998 319 500 bytes total)
+Extracted: 658497 of 669461 files (34 998 324 140 bytes total)
 Name Hash: 18cd3eb87a46e2d3aa0c57d1d8f8b8ff (match)
 Data Hash: 9225b3fa85dd958209ad20495ff6457e (match)
-TotalTime: 338.643 second(s)
+TotalTime: 395.824 second(s)
 Work complete.
 
 -- "Diablo III/58979" --------------------------------------------------------------------
 Extracted: 658951 of 669944 files (35 094 852 330 bytes total)
 Name Hash: 3c5e033739bb58ce1107e59b8d30962a (match)
 Data Hash: 901dd9dde4e793ee42414c81874d1c8f (match)
-TotalTime: 371.700 second(s)
+TotalTime: 350.979 second(s)
 Work complete.
 
 -- "Diablo III/68722" --------------------------------------------------------------------
-Extracted: 659622 of 670614 files (35 117 203 568 bytes total)
+Extracted: 659621 of 670614 files (35 117 197 364 bytes total)
 Name Hash: 34cb5a5cea775b7194d9cd0ec3458d3b (match)
 Data Hash: eeaa6a963aa19d93bdafc049fe6d3aaf (match)
-TotalTime: 394.218 second(s)
+TotalTime: 356.541 second(s)
 Work complete.
 
 -- "Diablo IV/39517" ---------------------------------------------------------------------
 Extracted: 897911 of 993516 files (63 522 662 274 bytes total)
 Name Hash: 5ed287e1ad3b5f1a08f3551eaecc66fb (match)
 Data Hash: e646133acbc9c664ab5b1947578250c4 (match)
-TotalTime: 1973.539 second(s)
+TotalTime: 1030.446 second(s)
 Work complete.
 
 -- "Diablo IV/39812-open-beta" -----------------------------------------------------------
 Extracted: 897913 of 993517 files (124 758 658 176 bytes total)
 Name Hash: 8f50184d3c5aa5050996c4ebb61cb7ad (match)
 Data Hash: 5711f0b48ac785fc81590574527482cc (match)
-TotalTime: 3306.786 second(s)
+TotalTime: 1545.958 second(s)
 Work complete.
 
 -- "Heroes of the Storm/29049" -----------------------------------------------------------
@@ -84,98 +81,98 @@ Warning: fd45b0f59067a8dda512b740c782cd70: Read error (offset 00000000:00670000)
 Extracted: 37610 of 40822 files (5 046 908 280 bytes total)
 Name Hash: 98396c1a521e5dee511d835b9e8086c7 (match)
 Data Hash: b37e7edc07d465a8e97b47cabcd3fc04 (match)
-TotalTime: 56.452 second(s)
+TotalTime: 98.833 second(s)
 Work complete.
 
 -- "Heroes of the Storm/30027" -----------------------------------------------------------
 Extracted: 35409 of 36609 files (4 895 451 129 bytes total)
 Name Hash: 6bcbe7c889cc465e4993f92d6ae1ee75 (match)
 Data Hash: 978f6332a2f2149d74d48414b834c8f6 (match)
-TotalTime: 54.346 second(s)
+TotalTime: 80.474 second(s)
 Work complete.
 
 -- "Heroes of the Storm/30414" -----------------------------------------------------------
 Extracted: 39137 of 40285 files (5 052 407 778 bytes total)
 Name Hash: 4b377fa69dab736b2ae495920663832e (match)
 Data Hash: 367eef337676c902bf6855f54bbda182 (match)
-TotalTime: 52.108 second(s)
+TotalTime: 71.652 second(s)
 Work complete.
 
 -- "Heroes of the Storm/31726" -----------------------------------------------------------
 Extracted: 111720 of 126738 files (5 687 939 502 bytes total)
 Name Hash: f997a06b3f8c10d9095e542f1ef83a74 (match)
 Data Hash: 0eb064b28fc6203a48321a15d17f7df8 (match)
-TotalTime: 60.168 second(s)
+TotalTime: 78.172 second(s)
 Work complete.
 
 -- "Heroes of the Storm/39445" -----------------------------------------------------------
-Extracted: 406725 of 452991 files (11 937 584 056 bytes total)
+Extracted: 406721 of 452991 files (11 937 487 159 bytes total)
 Name Hash: c672b26f8f14ab2e68a9f9d7d6ca6062 (match)
 Data Hash: 62376a66045c7806e865ef4b056c7060 (match)
-TotalTime: 199.513 second(s)
+TotalTime: 200.784 second(s)
 Work complete.
 
 -- "Heroes of the Storm/50286" -----------------------------------------------------------
-Extracted: 677483 of 750124 files (17 796 617 116 bytes total)
+Extracted: 677484 of 750124 files (17 796 675 825 bytes total)
 Name Hash: d1d57e83cbd72cbecd76916c22f6c4b6 (match)
 Data Hash: c1fe97f5fc04a2824449b6c43cf31ce5 (match)
-TotalTime: 248.722 second(s)
+TotalTime: 255.458 second(s)
 Work complete.
 
 -- "Heroes of the Storm/65943" -----------------------------------------------------------
-Extracted: 1140861 of 1268461 files (23 755 947 634 bytes total)
+Extracted: 1140861 of 1268461 files (23 755 748 852 bytes total)
 Name Hash: c5d75f4e12dbc05d4560fe61c4b88773 (match)
 Data Hash: f046b2ed9ecc7b27d2a114e16c34c8fd (match)
-TotalTime: 310.379 second(s)
+TotalTime: 323.853 second(s)
 Work complete.
 
 -- "Heroes of the Storm/75589" -----------------------------------------------------------
-Extracted: 1316771 of 1464959 files (26 360 825 533 bytes total)
+Extracted: 1316767 of 1464959 files (26 360 762 444 bytes total)
 Name Hash: ae2209f1fcb26c730e9757a42bcce17e (match)
 Data Hash: a7f7fbf1e04c87ead423fb567cd6fa5c (match)
-TotalTime: 521.980 second(s)
+TotalTime: 379.198 second(s)
 Work complete.
 
 -- "Heroes of the Storm/81376" -----------------------------------------------------------
-Extracted: 1374193 of 1529777 files (27 682 246 503 bytes total)
+Extracted: 1374149 of 1529777 files (27 681 500 975 bytes total)
 Name Hash: 25597a3f8adc3fa79df243197fecd1cc (match)
 Data Hash: 2c36eb3dde7d545a0fa413ccebf84202 (match)
-TotalTime: 484.523 second(s)
+TotalTime: 323.435 second(s)
 Work complete.
 
 -- "Heroes of the Storm/88936" -----------------------------------------------------------
-Extracted: 1438825 of 1600206 files (28 473 557 333 bytes total)
+Extracted: 1438791 of 1600206 files (28 472 803 088 bytes total)
 Name Hash: e3a4794fcb627f0768ff97834119d20a (match)
 Data Hash: 7d2cec9779e9c8baf0f1304df5921858 (match)
-TotalTime: 464.817 second(s)
+TotalTime: 329.617 second(s)
 Work complete.
 
 -- "Overwatch/024919/data/casc" ----------------------------------------------------------
 Extracted: 341443 of 356475 files (7 779 931 867 bytes total)
 Name Hash: 379e5c9082c2a6bec78c71e5a77d46c9 (match)
 Data Hash: 78cb77bf93d4563643b01f00831b3321 (match)
-TotalTime: 344.706 second(s)
+TotalTime: 271.296 second(s)
 Work complete.
 
 -- "Overwatch/047161" --------------------------------------------------------------------
-Extracted: 941637 of 9111142 files (29 557 346 151 bytes total)
+Extracted: 941631 of 9111142 files (29 557 257 836 bytes total)
 Name Hash: 816d8adb3da20493e79f64559843f2d6 (match)
 Data Hash: 2e935d3f8cc4cf62b94c1ba90214f7c8 (match)
-TotalTime: 8548.522 second(s)
+TotalTime: 372.576 second(s)
 Work complete.
 
 -- "Overwatch/072127" --------------------------------------------------------------------
 Extracted: 442069 of 978889 files (36 976 337 272 bytes total)
 Name Hash: a239ec86b6e94c512d37c4836d47bfe1 (match)
 Data Hash: 26df45c35df2a9530f1912b5a88b2794 (match)
-TotalTime: 1090.636 second(s)
+TotalTime: 429.200 second(s)
 Work complete.
 
 -- "Overwatch/115380" --------------------------------------------------------------------
 Extracted: 694162 of 1715577 files (72 888 388 733 bytes total)
 Name Hash: b4b03294e70ed0ef01235a312b46879d (match)
 Data Hash: f8225c828c66e0c839dcf81e31827bdc (match)
-TotalTime: 1761.433 second(s)
+TotalTime: 808.158 second(s)
 Work complete.
 
 -- "Starcraft/2457" ----------------------------------------------------------------------
@@ -183,105 +180,105 @@ Warning: HD2\TileSet\platform.dds.vr4: Read error (offset 00000000:00260000)
 Extracted: 39954 of 47561 files (7 314 330 382 bytes total)
 Name Hash: 3eabb81825735cf66c0fc10990f423fa (match)
 Data Hash: ce752a323819c369fba03401ba400332 (match)
-TotalTime: 115.229 second(s)
+TotalTime: 88.201 second(s)
 Work complete.
 
 -- "Starcraft/4037" ----------------------------------------------------------------------
 Extracted: 40539 of 48206 files (8 905 990 937 bytes total)
 Name Hash: bb2b76d657a841953fe093b75c2bdaf6 (match)
 Data Hash: 2f1e9df40da0f6f682ffecbbd920d4fc (match)
-TotalTime: 128.708 second(s)
+TotalTime: 96.545 second(s)
 Work complete.
 
 -- "Starcraft/4261" ----------------------------------------------------------------------
 Extracted: 40539 of 48206 files (8 906 727 530 bytes total)
 Name Hash: 59ea96addacccb73938fdf688d7aa29b (match)
 Data Hash: 4e07a768999c7887c8c21364961ab07a (match)
-TotalTime: 140.205 second(s)
+TotalTime: 97.250 second(s)
 Work complete.
 
 -- "Starcraft/6434" ----------------------------------------------------------------------
 Extracted: 42972 of 51762 files (11 248 611 752 bytes total)
 Name Hash: e3f929b881ad07028578d202f97c107e (match)
 Data Hash: 9bf9597b1f10d32944194334e8dc442a (match)
-TotalTime: 209.473 second(s)
+TotalTime: 108.723 second(s)
 Work complete.
 
 -- "Starcraft/8713" ----------------------------------------------------------------------
 Extracted: 43051 of 53023 files (11 277 754 637 bytes total)
 Name Hash: 57da9e2768368d3e31473a70a9286a69 (match)
 Data Hash: 6a425e9d9e7f3b44773a021ea89f85e3 (match)
-TotalTime: 279.888 second(s)
+TotalTime: 107.890 second(s)
 Work complete.
 
 -- "Starcraft II/45364/\/" ---------------------------------------------------------------
-Extracted: 489913 of 512806 files (48 552 838 515 bytes total)
+Extracted: 489913 of 512806 files (48 552 838 566 bytes total)
 Name Hash: 28f8b15b5bbd87c16796246eac3f800c (match)
 Data Hash: f9cd7fc20fa53701846109d3d6947d08 (match)
-TotalTime: 495.171 second(s)
+TotalTime: 461.39 second(s)
 Work complete.
 
 -- "Starcraft II/75025" ------------------------------------------------------------------
-Extracted: 652452 of 701765 files (43 288 886 351 bytes total)
+Extracted: 652455 of 701765 files (43 289 248 579 bytes total)
 Name Hash: 79c044e1286b7b18478556e571901294 (match)
 Data Hash: e290febb90e06e97b4db6f0eb519ca91 (match)
-TotalTime: 671.905 second(s)
+TotalTime: 506.55 second(s)
 Work complete.
 
 -- "Starcraft II/81102" ------------------------------------------------------------------
-Extracted: 720436 of 774708 files (46 300 083 425 bytes total)
+Extracted: 720432 of 774708 files (46 299 998 215 bytes total)
 Name Hash: cb6bea299820895f6dcbc72067553743 (match)
 Data Hash: 63b47f03b1717ded751e0d24d3ddff4f (match)
-TotalTime: 892.935 second(s)
+TotalTime: 537.439 second(s)
 Work complete.
 
 -- "Starcraft II/89720" ------------------------------------------------------------------
-Extracted: 721496 of 777173 files (45 531 633 221 bytes total)
+Extracted: 721500 of 777173 files (45 531 580 284 bytes total)
 Name Hash: 67d69f09ea73431b22165443c416c1dc (match)
 Data Hash: 8a494ff3baaa9a410950f9361a7fb044 (match)
-TotalTime: 891.364 second(s)
+TotalTime: 511.207 second(s)
 Work complete.
 
 -- "Warcraft III/09655" ------------------------------------------------------------------
-Extracted: 52165 of 85974 files (2 138 882 692 bytes total)
+Extracted: 52166 of 85974 files (2 138 882 692 bytes total)
 Name Hash: a6b6a6fc519cd1071df65caa56ee7c33 (match)
 Data Hash: e45792b7459dc0c78ecb25130fa34d88 (match)
-TotalTime: 37.225 second(s)
+TotalTime: 42.212 second(s)
 Work complete.
 
 -- "Warcraft III/11889" ------------------------------------------------------------------
 Extracted: 47034 of 65133 files (2 242 028 774 bytes total)
 Name Hash: 5c6bd442c248bad0db50303e0505f147 (match)
 Data Hash: 4cba488e57f7dccfb77eca8c86578a37 (match)
-TotalTime: 38.144 second(s)
+TotalTime: 35.156 second(s)
 Work complete.
 
 -- "Warcraft III/13369" ------------------------------------------------------------------
-Extracted: 64157 of 75363 files (19 111 666 371 bytes total)
+Extracted: 64156 of 75363 files (19 111 666 371 bytes total)
 Name Hash: 3212bcad20f7c6ad0eb0864ca9444bb6 (match)
 Data Hash: 4ac831db9bf0734f01b9d20455a68ab6 (match)
-TotalTime: 215.264 second(s)
+TotalTime: 175.403 second(s)
 Work complete.
 
 -- "Warcraft III/14883" ------------------------------------------------------------------
 Extracted: 103441 of 110774 files (45 582 113 066 bytes total)
 Name Hash: 773180e32ac2fac8bd4cd4dfc2ab30a6 (match)
 Data Hash: 3fd108674117ad4f93885bdd1a525f30 (match)
-TotalTime: 591.974 second(s)
+TotalTime: 352.37 second(s)
 Work complete.
 
 -- "Warcraft III/15801" ------------------------------------------------------------------
 Extracted: 110870 of 117783 files (45 481 756 450 bytes total)
 Name Hash: ad571ee968f77bbddc811fd215ee1d37 (match)
 Data Hash: f162cd3448219fd9956f9ff8fb5ba915 (match)
-TotalTime: 657.352 second(s)
+TotalTime: 366.72 second(s)
 Work complete.
 
 -- "WoW/18125" ---------------------------------------------------------------------------
 Extracted: 706216 of 741532 files (39 933 706 614 bytes total)
 Name Hash: b31531af094f78f58592249c4d216a8e (match)
 Data Hash: e5c9b3f0da7806d8b239c13bff1d836e (match)
-TotalTime: 557.221 second(s)
+TotalTime: 522.182 second(s)
 Work complete.
 
 -- "WoW/18379" ---------------------------------------------------------------------------
@@ -289,176 +286,183 @@ Warning: item\objectcomponen...apon\mace_1h_pandaraid_d_02green.blp: Read error 
 Extracted: 717937 of 755451 files (41 086 310 294 bytes total)
 Name Hash: fab30626cf94ed1523519729c3701812 (match)
 Data Hash: 606e4bfd6f8100ae875eb4c00789233b (match)
-TotalTime: 614.409 second(s)
+TotalTime: 550.94 second(s)
 Work complete.
 
 -- "WoW/18865" ---------------------------------------------------------------------------
 Extracted: 798304 of 839291 files (45 649 948 780 bytes total)
 Name Hash: 7f252a8c6001938f601b0c91abbb0f2a (match)
 Data Hash: cee96fa43cddc008f564b4615fdbd109 (match)
-TotalTime: 1214.571 second(s)
+TotalTime: 1034.81 second(s)
 Work complete.
 
 -- "WoW/18888" ---------------------------------------------------------------------------
-Extracted: 801021 of 842097 files (45 743 673 203 bytes total)
+Extracted: 801021 of 842097 files (45 743 679 646 bytes total)
 Name Hash: a007d0433c71ddc6e9acaa45cbdc4e61 (match)
 Data Hash: a093c596240a6b71de125eaa83ea8568 (match)
-TotalTime: 1226.958 second(s)
+TotalTime: 1037.567 second(s)
 Work complete.
 
 -- "WoW/19116" ---------------------------------------------------------------------------
-Extracted: 803274 of 844075 files (45 692 715 436 bytes total)
+Extracted: 803275 of 844075 files (45 692 715 871 bytes total)
 Name Hash: a3be9cfd4a15ba184e21eed9ec90417b (match)
 Data Hash: 11a973871aef6ab3236676a25381a1e6 (match)
-TotalTime: 1253.558 second(s)
+TotalTime: 1054.243 second(s)
 Work complete.
 
 -- "WoW/19342" ---------------------------------------------------------------------------
 Warning: world\maps\azeroth\azeroth_26_35_tex1.adt: Read error (offset 00000000:00004000)
-Extracted: 803273 of 843944 files (45 694 946 447 bytes total)
+Extracted: 803272 of 843944 files (45 694 923 371 bytes total)
 Name Hash: 66f0de0cff477e1d8e982683771f1ada (match)
 Data Hash: 69b4c91c977b875fd0a6ffbf89b06408 (match)
-TotalTime: 1226.387 second(s)
+TotalTime: 1038.379 second(s)
 Work complete.
 
 -- "WoW/21742" ---------------------------------------------------------------------------
-Extracted: 822489 of 867780 files (48 122 888 456 bytes total)
+Extracted: 822488 of 867780 files (48 122 537 732 bytes total)
 Name Hash: a357c3cbed98e83ac5cd394ceabc01e8 (match)
 Data Hash: 90ce1aac44299aa2ac6fb44d249d2561 (match)
-TotalTime: 582.109 second(s)
+TotalTime: 565.931 second(s)
 Work complete.
 
 -- "WoW/22267" ---------------------------------------------------------------------------
 Extracted: 1084416 of 1145875 files (61 370 784 026 bytes total)
 Name Hash: 101949dfbed06d417d24a65054e8a6b6 (match)
 Data Hash: 4ef8df3cf9b00b5c7b2c1b9f4166ec0d (match)
-TotalTime: 2826.336 second(s)
+TotalTime: 1737.786 second(s)
 Work complete.
 
 -- "WoW/23420" ---------------------------------------------------------------------------
-Extracted: 1109003 of 1173038 files (62 519 196 827 bytes total)
+Extracted: 1109002 of 1173038 files (62 519 151 961 bytes total)
 Name Hash: e62a798989e6db00044b079e74faa1eb (match)
 Data Hash: 854e58816e6eb2795d14fe81470ad19e (match)
-TotalTime: 785.601 second(s)
+TotalTime: 713.922 second(s)
 Work complete.
 
 -- "WoW/29981" ---------------------------------------------------------------------------
-Extracted: 1529592 of 1643480 files (93 337 461 983 bytes total)
+Extracted: 1529591 of 1643480 files (93 337 489 343 bytes total)
 Name Hash: e939d6bfb739eda7049c7ef74efccf60 (match)
 Data Hash: 3cba30b5e439a6e59b0953d17da9ac6c (match)
-TotalTime: 1483.755 second(s)
+TotalTime: 1087.854 second(s)
 Work complete.
 
 -- "WoW/31299*wow" -----------------------------------------------------------------------
-Extracted: 1585207 of 1703947 files (96 971 696 188 bytes total)
-Name Hash: d8c1557632959c8eac6c8b4699e40077 (match)
+Extracted: 1585208 of 1703947 files (96 971 730 128 bytes total)
+Name Hash: 72a7210d758f613424be322bce256899 (HASH MISMATCH)
 Data Hash: 05627c131969bd9394fb345f4037e249 (match)
-TotalTime: 1617.705 second(s)
+TotalTime: 1168.799 second(s)
 Work complete.
 
 -- "WoW/31299*wowt" ----------------------------------------------------------------------
-Extracted: 1588536 of 1709518 files (97 789 498 945 bytes total)
-Name Hash: 29a147d37b904ace4683ae5aaac7efc3 (match)
+Extracted: 1588533 of 1709518 files (97 789 274 817 bytes total)
+Name Hash: cc2cba58dbbf95c3d5d0bc07dbc173cb (HASH MISMATCH)
 Data Hash: 423c1b99b14a615a02d8ffc7a7eff4ef (match)
-TotalTime: 1704.867 second(s)
+TotalTime: 1183.219 second(s)
 Work complete.
 
 -- "WoW/31299*wow_classic" ---------------------------------------------------------------
 Extracted: 205203 of 215569 files (7 919 894 530 bytes total)
 Name Hash: 54f2491ce97f1eae0a57d02aa16f0e43 (match)
 Data Hash: b46bd2f81ead285e810e5a049ca2db74 (match)
-TotalTime: 159.197 second(s)
+TotalTime: 111.60 second(s)
 Work complete.
 
 -- "WoW/37497-classic" -------------------------------------------------------------------
-Extracted: 204577 of 215007 files (7 740 608 720 bytes total)
+Extracted: 204576 of 215007 files (7 740 606 016 bytes total)
 Name Hash: f7bf0942184f4ff727b2f539fa6ceff0 (match)
 Data Hash: 102511c7ef53af35b5c3d4a837f076b9 (match)
-TotalTime: 144.746 second(s)
+TotalTime: 92.859 second(s)
 Work complete.
 
 -- "WoW/38598-classic-tbcbeta" -----------------------------------------------------------
-Extracted: 204588 of 215014 files (7 762 249 593 bytes total)
+Extracted: 204587 of 215014 files (7 762 246 373 bytes total)
 Name Hash: 777021f77c2ad16349d9b68484df40e2 (match)
 Data Hash: 97423f756948e9437defc32b3bec4895 (match)
-TotalTime: 129.570 second(s)
+TotalTime: 92.128 second(s)
 Work complete.
 
 -- "WoW/38707-classic-tbc" ---------------------------------------------------------------
-Extracted: 267185 of 281147 files (12 489 950 057 bytes total)
+Extracted: 267183 of 281147 files (12 489 882 355 bytes total)
 Name Hash: 70d621467a36bd768cdbaf0527ef1863 (match)
 Data Hash: 08cc37803156adaddca74a09211106bd (match)
-TotalTime: 208.743 second(s)
+TotalTime: 139.525 second(s)
 Work complete.
 
 -- "WoW/40892-classic-tbc/.build.info" ---------------------------------------------------
 Extracted: 205339 of 216026 files (8 867 245 990 bytes total)
 Name Hash: 5e9dc8fdb7ffba6c22bcad2330618d1e (match)
 Data Hash: 5ae578d0f8986c709477106fa63d8cfb (match)
-TotalTime: 154.180 second(s)
+TotalTime: 101.567 second(s)
 Work complete.
 
 -- "WoW/49821-classic" -------------------------------------------------------------------
 Extracted: 205547 of 216153 files (8 636 021 694 bytes total)
 Name Hash: e54423b6514443aa8d4c326d01db9f87 (match)
 Data Hash: 0f72450e6f4c7c4dcd06c121bc334d9b (match)
-TotalTime: 104.263 second(s)
+TotalTime: 75.307 second(s)
 Work complete.
 
 -- "WoW/47067*wow" -----------------------------------------------------------------------
-Extracted: 2146500 of 2352844 files (143 489 091 583 bytes total)
-Name Hash: 67124947fdd8ea3d1a07850ac40215c0 (match)
+Extracted: 2146500 of 2352844 files (143 489 112 177 bytes total)
+Name Hash: 8dff8888c1c50dee17073f3a6f6b0767 (HASH MISMATCH)
 Data Hash: 70a641d4100b97d77b9b6b3e5a07ee13 (match)
-TotalTime: 3161.564 second(s)
+TotalTime: 1820.394 second(s)
 Work complete.
 
 -- "WoW/47067*wowt" ----------------------------------------------------------------------
-Extracted: 2146512 of 2352854 files (143 470 167 977 bytes total)
-Name Hash: 0bb892cb57a215033e43ac767663f478 (match)
+Extracted: 2146511 of 2352854 files (143 470 194 969 bytes total)
+Name Hash: 1af31b60f438be0c66cea9f42b3caf46 (HASH MISMATCH)
 Data Hash: ef347dfc36cbbef09587384cb9095839 (match)
-TotalTime: 5155.386 second(s)
+TotalTime: 1811.111 second(s)
 Work complete.
 
 -- "WoW/47067*wow_classic" ---------------------------------------------------------------
-Extracted: 372771 of 394222 files (19 266 275 708 bytes total)
+Extracted: 372773 of 394222 files (19 266 311 504 bytes total)
 Name Hash: 92e498a7ed7fb6e6cc52b8292dd0864b (match)
 Data Hash: 3aae26808a5255477ab49df20b95fb18 (match)
-TotalTime: 350.891 second(s)
+TotalTime: 237.779 second(s)
 Work complete.
 
 -- "WoW/47067*wow_classic_ptr" -----------------------------------------------------------
-Extracted: 373310 of 394844 files (18 835 398 052 bytes total)
+Extracted: 373311 of 394844 files (18 835 398 078 bytes total)
 Name Hash: 7cc806b043c18c59dd024ec13bf5c2f1 (match)
 Data Hash: cd68e3fd59c97c4b69265bd949b77959 (match)
-TotalTime: 309.717 second(s)
+TotalTime: 207.540 second(s)
 Work complete.
 
 -- "WoW/47067*wow_classic_era" -----------------------------------------------------------
 Extracted: 207090 of 217696 files (9 092 436 610 bytes total)
 Name Hash: 10c8c72c16c55ee44c5554aabe4284da (match)
 Data Hash: 47071bdea7e593e5481e2775c4813626 (match)
-TotalTime: 67.939 second(s)
+TotalTime: 49.416 second(s)
 Work complete.
 
 -- "WoW/47067*wow_classic_era_ptr" -------------------------------------------------------
 Extracted: 207090 of 217696 files (9 092 800 397 bytes total)
 Name Hash: 13792a23d629af232febfe9dc00a6958 (match)
 Data Hash: a0736b9aa5dfcd68dcc1fd2b3247ed1d (match)
-TotalTime: 8.899 second(s)
+TotalTime: 8.552 second(s)
+Work complete.
+
+-- "WoW/51187*wowt" ----------------------------------------------------------------------
+Extracted: 2236146 of 2459280 files (153 157 477 256 bytes total)
+Name Hash: 84f02e337fe85806180d935252153f2b (match)
+Data Hash: e10061cb5cafbaf16926f898929a352a (match)
+TotalTime: 1509.457 second(s)
 Work complete.
 
 -- "Hearthstone/160183/hearthstone-25.0.3.160183.159202.versions*hsb*us" -----------------
 Root File: Hearthstone/160183/hearthstone-25.0.3.160183.159202.versions*hsb*us
 Name Hash: 34b821747a7911eb98c9141153470fdd (match)
 Data Hash: 85096ab761616e1069a4fa5c1da28d9d (match)
-TotalTime: 1.447 second(s)
+TotalTime: 0.261 second(s)
 Work complete.
 
 -- "Hearthstone/160183*hsb*us" -----------------------------------------------------------
 Root File: Hearthstone/160183*hsb*us
 Name Hash: 34b821747a7911eb98c9141153470fdd (match)
 Data Hash: 85096ab761616e1069a4fa5c1da28d9d (match)
-TotalTime: 0.41 second(s)
+TotalTime: 0.16 second(s)
 Work complete.
 
 -- "WoW/45745-custom-cdn*http://us.falloflordaeron.com:8000*wow*us" ----------------------
@@ -468,9 +472,9 @@ Root File: WoW/45745-custom-cdn*http://us.falloflordaeron.com:8000*wow*us
   File size:     000001A5
   Locale flags:  00000002
   Content flags: 02380000
-Name Hash: dd04f7077f57464dc59f39a468daecc3 (HASH MISMATCH)
+Name Hash: f0f3686925c71d46c9d681baad866fa3 (HASH MISMATCH)
 Data Hash: e5c03ef3dd196ec24054dbc370fb2fc5 (match)
-TotalTime: 18.4 second(s)
+TotalTime: 7.772 second(s)
 Work complete.
 
 -- "WoW/45745-meta/wow-45745-custom-cdn.versions*wow*us" ---------------------------------
@@ -480,30 +484,30 @@ Root File: WoW/45745-meta/wow-45745-custom-cdn.versions*wow*us
   File size:     000001A5
   Locale flags:  00000002
   Content flags: 02380000
-Name Hash: dd04f7077f57464dc59f39a468daecc3 (HASH MISMATCH)
+Name Hash: f0f3686925c71d46c9d681baad866fa3 (HASH MISMATCH)
 Data Hash: e5c03ef3dd196ec24054dbc370fb2fc5 (match)
-TotalTime: 13.985 second(s)
+TotalTime: 4.816 second(s)
 Work complete.
 
 -- "WoW/45745-meta/wow-45779-tvfs.versions" ----------------------------------------------
 Root File: WoW/45745-meta/wow-45779-tvfs.versions
-Name Hash: 6fdd73187625ded008be03573d686e52 (HASH MISMATCH)
+Name Hash: 34db7de6a728deb1fd5592f9b595963d (HASH MISMATCH)
 Data Hash: dab6a1f3586a2a1408a8152ad7f9f1ad (match)
-TotalTime: 4.583 second(s)
+TotalTime: 3.898 second(s)
 Work complete.
 
 -- "WoW/45745-meta/wow-46144-tvfs.versions" ----------------------------------------------
 Root File: WoW/45745-meta/wow-46144-tvfs.versions
-Name Hash: 3ce71e0d7ae10c8913be0c226b4684d1 (HASH MISMATCH)
+Name Hash: dde4a3c3709a005923e2ed41a397708e (HASH MISMATCH)
 Data Hash: 24d04d1f9f516979a51102f479027c70 (match)
-TotalTime: 5.817 second(s)
+TotalTime: 6.476 second(s)
 Work complete.
 
 -- "WoW/45745-meta/wow-46902-classic.versions*wow_classic*us" ----------------------------
 Root File: WoW/45745-meta/wow-46902-classic.versions*wow_classic*us
 Name Hash: 92e498a7ed7fb6e6cc52b8292dd0864b (match)
 Data Hash: 3aae26808a5255477ab49df20b95fb18 (match)
-TotalTime: 1.654 second(s)
+TotalTime: 1.622 second(s)
 Work complete.
 
 -- "WoW/45745-meta/wow-47186-ptr.versions" -----------------------------------------------
@@ -513,9 +517,9 @@ Root File: WoW/45745-meta/wow-47186-ptr.versions
   File size:     000001A5
   Locale flags:  00000002
   Content flags: 02380000
-Name Hash: 7fe5398e286400a47d5f3162998a013a (HASH MISMATCH)
+Name Hash: ee1a4868dde8e3261d5fb98c276bf82a (HASH MISMATCH)
 Data Hash: e1fff62f0147dd079a0cf73890255863 (match)
-TotalTime: 4.669 second(s)
+TotalTime: 3.955 second(s)
 Work complete.
 
 -- "WoW/45745-meta*wowt*us" --------------------------------------------------------------
@@ -525,9 +529,9 @@ Root File: WoW/45745-meta*wowt*us
   File size:     000001A5
   Locale flags:  00000002
   Content flags: 02380000
-Name Hash: 7fe5398e286400a47d5f3162998a013a (HASH MISMATCH)
+Name Hash: ee1a4868dde8e3261d5fb98c276bf82a (HASH MISMATCH)
 Data Hash: e1fff62f0147dd079a0cf73890255863 (match)
-TotalTime: 2.923 second(s)
+TotalTime: 2.912 second(s)
 Work complete.
 
 -- "WoW/5####-current*wow*us" ------------------------------------------------------------
@@ -537,10 +541,7 @@ Root File: WoW/5####-current*wow*us
   File size:     000001A5
   Locale flags:  00000002
   Content flags: 02380000
-Name Hash: 0567e70c5089df0173129bb555bd7cc5
-Data Hash: fac2cc8a2e98cfb556de2c486bf45d2c
-TotalTime: 34.303 second(s)
+Name Hash: 049627e5db398fd336e8c685cbcd49a0
+Data Hash: 7683c27407ad6b051e6d1e4f6409f94e
+TotalTime: 40.800 second(s)
 Work complete.
-
-
-E:\Ladik\AppDir\CascLib\bin\CascLib_test\x64\Release>

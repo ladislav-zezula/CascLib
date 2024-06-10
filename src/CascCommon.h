@@ -473,7 +473,7 @@ inline void FreeCascBlob(PCASC_BLOB pBlob)
 //-----------------------------------------------------------------------------
 // Text file parsing (CascFiles.cpp)
 
-bool  InvokeProgressCallback(TCascStorage * hs, LPCSTR szMessage, LPCSTR szObject, DWORD CurrentValue, DWORD TotalValue);
+bool  InvokeProgressCallback(TCascStorage * hs, CASC_PROGRESS_MSG Message, LPCSTR szObject, DWORD CurrentValue, DWORD TotalValue);
 DWORD GetFileSpanInfo(PCASC_CKEY_ENTRY pCKeyEntry, PULONGLONG PtrContentSize, PULONGLONG PtrEncodedSize = NULL);
 DWORD FetchCascFile(TCascStorage * hs, CPATH_TYPE PathType, LPBYTE pbEKey, LPCTSTR szExtension, CASC_PATH<TCHAR> & LocalPath, PCASC_ARCHIVE_INFO pArchiveInfo = NULL);
 DWORD CheckCascBuildFileExact(CASC_BUILD_FILE & BuildFile, LPCTSTR szLocalPath);

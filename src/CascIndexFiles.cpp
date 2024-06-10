@@ -487,7 +487,7 @@ static DWORD ProcessLocalIndexFiles(TCascStorage * hs, EKEY_ENTRY_CALLBACK PfnEK
         CASC_INDEX & IndexFile = hs->IndexFiles[i];
 
         // Inform the user about what we are doing
-        if(InvokeProgressCallback(hs, "Loading index files", NULL, i, dwIndexCount))
+        if(InvokeProgressCallback(hs, CascProgressLoadingIndexes, NULL, i, dwIndexCount))
         {
             dwErrCode = ERROR_CANCELLED;
             break;
@@ -514,7 +514,7 @@ static DWORD LoadLocalIndexFiles(TCascStorage * hs)
     DWORD dwErrCode;
 
     // Inform the user about what we are doing
-    if(InvokeProgressCallback(hs, "Loading index files", NULL, 0, 0))
+    if(InvokeProgressCallback(hs, CascProgressLoadingIndexes, NULL, 0, 0))
         return ERROR_CANCELLED;
 
     // Perform the directory scan
@@ -749,7 +749,7 @@ static DWORD LoadArchiveIndexFiles(TCascStorage * hs)
         LPBYTE pbIndexHash = hs->ArchivesKey.pbData + (i * MD5_HASH_SIZE);
 
         // Inform the user about what we are doing
-        if(InvokeProgressCallback(hs, "Downloading archive indexes", NULL, (DWORD)(i), (DWORD)(nArchiveCount)))
+        if(InvokeProgressCallback(hs, CascProgressDownloadingArchiveIndexes, NULL, (DWORD)(i), (DWORD)(nArchiveCount)))
         {
             dwErrCode = ERROR_CANCELLED;
             break;
