@@ -35,8 +35,9 @@ typedef enum _ROOT_FORMAT
     RootFormatWoW_v2,                           // Since build 30080 (WoW 8.2.0)
 } ROOT_FORMAT, *PROOT_FORMAT;
 
-// ROOT file header since build 58221 (11.1.0.58221)
-typedef struct _FILE_ROOT_GROUP_HEADER_58221
+// The last byte of the structure causes wrong alignment with default compiler options
+#pragma pack(push, 1)
+typedef struct _FILE_ROOT_GROUP_HEADER_58221    // Since build 58221 (11.1.0.58221)
 {
     DWORD NumberOfFiles;                        // Number of entries
     DWORD LocaleFlags;                          // File locale mask (CASC_LOCALE_XXX)
@@ -45,6 +46,7 @@ typedef struct _FILE_ROOT_GROUP_HEADER_58221
     BYTE ContentFlags3;
 
 } FILE_ROOT_GROUPHEADER_58221, *PFILE_ROOT_GROUPHEADER_58221;
+#pragma pack(pop)
 
 // ROOT file header since build 50893 (10.1.7)
 typedef struct _FILE_ROOT_HEADER_50893
