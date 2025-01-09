@@ -1217,7 +1217,7 @@ static STORAGE_INFO StorageInfo2[] =
 //-----------------------------------------------------------------------------
 // Main
 
-//#define LOAD_STORAGES_SINGLE_DEV
+#define LOAD_STORAGES_SINGLE_DEV
 #define LOAD_STORAGES_CMD_LINE
 #define LOAD_STORAGES_LOCAL
 #define LOAD_STORAGES_ONLINE
@@ -1248,10 +1248,10 @@ int main(int argc, char * argv[])
         //LPCSTR szFile = "interface/icons/inv_helm_armor_explorer_d_01.blp";     // FileDataId = 2965132
         BYTE Buffer[0x100];
 
-        OpenArgs.PfnProgressCallback = OnlineStorage_OpenCB_Simple;
-        OpenArgs.PtrProgressParam = NULL;
+        //OpenArgs.PfnProgressCallback = OnlineStorage_OpenCB_Simple;
+        //OpenArgs.PtrProgressParam = NULL;
 
-        if(CascOpenStorageEx(_T("E:\\Multimedia\\CASC\\Work\\bna*bna*us"), &OpenArgs, true, &hStorage))
+        if(CascOpenStorageEx(_T("d:\\Hry\\World of Warcraft"), &OpenArgs, true, &hStorage))
         {
             //hFind = CascFindFirstFile(hStorage, szFile, &cf, szListFile_TXT);
             //if(hFind != INVALID_HANDLE_VALUE)

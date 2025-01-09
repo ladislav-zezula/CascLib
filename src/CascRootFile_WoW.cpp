@@ -35,6 +35,19 @@ typedef enum _ROOT_FORMAT
     RootFormatWoW_v2,                           // Since build 30080 (WoW 8.2.0)
 } ROOT_FORMAT, *PROOT_FORMAT;
 
+// The last byte of the structure causes wrong alignment with default compiler options
+#pragma pack(push, 1)
+typedef struct _FILE_ROOT_GROUP_HEADER_58221    // Since build 58221 (11.1.0.58221)
+{
+    DWORD NumberOfFiles;                        // Number of entries
+    DWORD LocaleFlags;                          // File locale mask (CASC_LOCALE_XXX)
+    DWORD ContentFlags1;
+    DWORD ContentFlags2;
+    BYTE ContentFlags3;
+
+} FILE_ROOT_GROUPHEADER_58221, *PFILE_ROOT_GROUPHEADER_58221;
+#pragma pack(pop)
+
 // ROOT file header since build 50893 (10.1.7)
 typedef struct _FILE_ROOT_HEADER_50893
 {
@@ -43,7 +56,7 @@ typedef struct _FILE_ROOT_HEADER_50893
     DWORD Version;                              // Must be 1
     DWORD TotalFiles;
     DWORD FilesWithNameHash;
-} FILE_ROOT_HEADER_50893, * PFILE_ROOT_HEADER_50893;
+} FILE_ROOT_HEADER_50893, *PFILE_ROOT_HEADER_50893;
 
 // ROOT file header since build 30080 (8.2.0)
 typedef struct _FILE_ROOT_HEADER_30080
@@ -97,7 +110,7 @@ struct TRootHandler_WoW : public TFileTreeRoot
 {
     public:
 
-    typedef LPBYTE (*CAPTURE_ROOT_HEADER)(LPBYTE pbRootPtr, LPBYTE pbRootEnd, PROOT_FORMAT RootFormat, PDWORD FileCounterHashless);
+    typedef LPBYTE (*CAPTURE_ROOT_HEADER)(LPBYTE pbRootPtr, LPBYTE pbRootEnd, PROOT_FORMAT RootFormat, PDWORD FileCounterHashless, PDWORD Version);
 
     TRootHandler_WoW(ROOT_FORMAT aRootFormat, DWORD aFileCounterHashless, LPCTSTR szDumpFile = NULL) : TFileTreeRoot(FTREE_FLAGS_WOW)
     {
@@ -155,7 +168,7 @@ struct TRootHandler_WoW : public TFileTreeRoot
 #endif
 
     // Check for the new format (World of Warcraft 10.1.7, build 50893)
-    static LPBYTE CaptureRootHeader_50893(LPBYTE pbRootPtr, LPBYTE pbRootEnd, PROOT_FORMAT RootFormat, PDWORD FileCounterHashless)
+    static LPBYTE CaptureRootHeader_50893(LPBYTE pbRootPtr, LPBYTE pbRootEnd, PROOT_FORMAT RootFormat, PDWORD FileCounterHashless, PDWORD Version)
     {
         FILE_ROOT_HEADER_50893 RootHeader;
 
@@ -167,7 +180,7 @@ struct TRootHandler_WoW : public TFileTreeRoot
         // Verify the root file header
         if(RootHeader.Signature != CASC_WOW_ROOT_SIGNATURE)
             return NULL;
-        if(RootHeader.Version != 1)
+        if(RootHeader.Version != 1 && RootHeader.Version != 2)
             return NULL;
         if(RootHeader.FilesWithNameHash > RootHeader.TotalFiles)
             return NULL;
@@ -177,11 +190,12 @@ struct TRootHandler_WoW : public TFileTreeRoot
 
         *RootFormat = RootFormatWoW_v2;
         *FileCounterHashless = RootHeader.TotalFiles - RootHeader.FilesWithNameHash;
+        *Version = RootHeader.Version;
         return pbRootPtr + RootHeader.SizeOfHeader;
     }
 
     // Check for the root format for build 30080+ (WoW 8.2.0)
-    static LPBYTE CaptureRootHeader_30080(LPBYTE pbRootPtr, LPBYTE pbRootEnd, PROOT_FORMAT RootFormat, PDWORD FileCounterHashless)
+    static LPBYTE CaptureRootHeader_30080(LPBYTE pbRootPtr, LPBYTE pbRootEnd, PROOT_FORMAT RootFormat, PDWORD FileCounterHashless, PDWORD Version)
     {
         FILE_ROOT_HEADER_30080 RootHeader;
 
@@ -198,11 +212,12 @@ struct TRootHandler_WoW : public TFileTreeRoot
 
         *RootFormat = RootFormatWoW_v2;
         *FileCounterHashless = RootHeader.TotalFiles - RootHeader.FilesWithNameHash;
+        *Version = 0;
         return pbRootPtr + sizeof(FILE_ROOT_HEADER_30080);
     }
 
     // Check for the root format for build 18125+ (WoW 6.0.1)
-    static LPBYTE CaptureRootHeader_18125(LPBYTE pbRootPtr, LPBYTE pbRootEnd, PROOT_FORMAT RootFormat, PDWORD FileCounterHashless)
+    static LPBYTE CaptureRootHeader_18125(LPBYTE pbRootPtr, LPBYTE pbRootEnd, PROOT_FORMAT RootFormat, PDWORD FileCounterHashless, PDWORD Version)
     {
         size_t DataLength;
 
@@ -218,10 +233,11 @@ struct TRootHandler_WoW : public TFileTreeRoot
 
         *RootFormat = RootFormatWoW_v1;
         *FileCounterHashless = 0;
+        *Version = 0;
         return pbRootPtr;
     }
 
-    static LPBYTE CaptureRootHeader(LPBYTE pbRootPtr, LPBYTE pbRootEnd, PROOT_FORMAT RootFormat, PDWORD FileCounterHashless)
+    static LPBYTE CaptureRootHeader(LPBYTE pbRootPtr, LPBYTE pbRootEnd, PROOT_FORMAT RootFormat, PDWORD FileCounterHashless, PDWORD Version)
     {
         CAPTURE_ROOT_HEADER PfnCaptureRootHeader[] =
         {
@@ -234,7 +250,7 @@ struct TRootHandler_WoW : public TFileTreeRoot
         {
             LPBYTE pbCapturedPtr;
 
-            if((pbCapturedPtr = PfnCaptureRootHeader[i](pbRootPtr, pbRootEnd, RootFormat, FileCounterHashless)) != NULL)
+            if((pbCapturedPtr = PfnCaptureRootHeader[i](pbRootPtr, pbRootEnd, RootFormat, FileCounterHashless, Version)) != NULL)
             {
                 return pbCapturedPtr;
             }
@@ -242,16 +258,34 @@ struct TRootHandler_WoW : public TFileTreeRoot
         return NULL;
     }
 
-    LPBYTE CaptureRootGroup(FILE_ROOT_GROUP & RootGroup, LPBYTE pbRootPtr, LPBYTE pbRootEnd)
+    LPBYTE CaptureRootGroup(FILE_ROOT_GROUP & RootGroup, LPBYTE pbRootPtr, LPBYTE pbRootEnd, DWORD dwRootVersion)
     {
         // Reset the entire root group structure
         memset(&RootGroup, 0, sizeof(FILE_ROOT_GROUP));
 
-        // Validate the locale block header
-        if((pbRootPtr + sizeof(FILE_ROOT_GROUP_HEADER)) >= pbRootEnd)
-            return NULL;
-        memcpy(&RootGroup.Header, pbRootPtr, sizeof(FILE_ROOT_GROUP_HEADER));
-        pbRootPtr = pbRootPtr + sizeof(FILE_ROOT_GROUP_HEADER);
+        if(dwRootVersion == 0 || dwRootVersion == 1)
+        {
+            // Validate the locale block header
+            if((pbRootPtr + sizeof(FILE_ROOT_GROUP_HEADER)) >= pbRootEnd)
+                return NULL;
+            memcpy(&RootGroup.Header, pbRootPtr, sizeof(FILE_ROOT_GROUP_HEADER));
+            pbRootPtr = pbRootPtr + sizeof(FILE_ROOT_GROUP_HEADER);
+        }
+        else if(dwRootVersion == 2)
+        {
+            PFILE_ROOT_GROUPHEADER_58221 pRootGroupHeader;
+            
+            // Get pointer to the root group header
+            if((pbRootPtr + sizeof(FILE_ROOT_GROUPHEADER_58221)) >= pbRootEnd)
+                return NULL;
+            pRootGroupHeader = (PFILE_ROOT_GROUPHEADER_58221)pbRootPtr;
+            pbRootPtr = pbRootPtr + sizeof(FILE_ROOT_GROUPHEADER_58221);
+
+            // Convert to old ContentFlags for now...
+            RootGroup.Header.NumberOfFiles = pRootGroupHeader->NumberOfFiles;
+            RootGroup.Header.ContentFlags = pRootGroupHeader->ContentFlags1 | pRootGroupHeader->ContentFlags2 | (DWORD)(pRootGroupHeader->ContentFlags3 << 17);
+            RootGroup.Header.LocaleFlags = pRootGroupHeader->LocaleFlags;
+        }
 
         // Validate the array of file data IDs
         if((pbRootPtr + (sizeof(DWORD) * RootGroup.Header.NumberOfFiles)) >= pbRootEnd)
@@ -380,7 +414,8 @@ struct TRootHandler_WoW : public TFileTreeRoot
         LPBYTE pbRootEnd,
         DWORD dwLocaleMask,
         BYTE bOverrideLowViolence,
-        BYTE bAudioLocale)
+        BYTE bAudioLocale,
+        DWORD dwRootVersion)
     {
         FILE_ROOT_GROUP RootBlock;
 
@@ -395,7 +430,7 @@ struct TRootHandler_WoW : public TFileTreeRoot
             //OutputDebugStringA(szMessage);
 
             // Validate the file locale block
-            pbRootPtr = CaptureRootGroup(RootBlock, pbRootPtr, pbRootEnd);
+            pbRootPtr = CaptureRootGroup(RootBlock, pbRootPtr, pbRootEnd, dwRootVersion);
             if(pbRootPtr == NULL)
                 return ERROR_BAD_FORMAT;
 
@@ -481,33 +516,34 @@ struct TRootHandler_WoW : public TFileTreeRoot
         LPBYTE pbRootPtr,
         LPBYTE pbRootEnd,
         DWORD dwLocaleMask,
-        BYTE bAudioLocale)
+        BYTE bAudioLocale,
+        DWORD dwRootVersion)
     {
         DWORD dwErrCode;
 
         // Load the locale as-is
-        dwErrCode = ParseWowRootFile_Level2(hs, pbRootPtr, pbRootEnd, dwLocaleMask, false, bAudioLocale);
+        dwErrCode = ParseWowRootFile_Level2(hs, pbRootPtr, pbRootEnd, dwLocaleMask, false, bAudioLocale, dwRootVersion);
         if(dwErrCode != ERROR_SUCCESS)
             return dwErrCode;
 
         // If we wanted enGB, we also load enUS for the missing files
         if(dwLocaleMask == CASC_LOCALE_ENGB)
-            ParseWowRootFile_Level2(hs, pbRootPtr, pbRootEnd, CASC_LOCALE_ENUS, false, bAudioLocale);
+            ParseWowRootFile_Level2(hs, pbRootPtr, pbRootEnd, CASC_LOCALE_ENUS, false, bAudioLocale, dwRootVersion);
 
         if(dwLocaleMask == CASC_LOCALE_PTPT)
-            ParseWowRootFile_Level2(hs, pbRootPtr, pbRootEnd, CASC_LOCALE_PTBR, false, bAudioLocale);
+            ParseWowRootFile_Level2(hs, pbRootPtr, pbRootEnd, CASC_LOCALE_PTBR, false, bAudioLocale, dwRootVersion);
 
         return ERROR_SUCCESS;
     }
 
     // WoW.exe: 004146C7 (BuildManifest::Load)
-    DWORD Load(TCascStorage * hs, LPBYTE pbRootPtr, LPBYTE pbRootEnd, DWORD dwLocaleMask)
+    DWORD Load(TCascStorage * hs, LPBYTE pbRootPtr, LPBYTE pbRootEnd, DWORD dwLocaleMask, DWORD dwRootVersion)
     {
         DWORD dwErrCode;
 
-        dwErrCode = ParseWowRootFile_Level1(hs, pbRootPtr, pbRootEnd, dwLocaleMask, 0);
+        dwErrCode = ParseWowRootFile_Level1(hs, pbRootPtr, pbRootEnd, dwLocaleMask, 0, dwRootVersion);
         if(dwErrCode == ERROR_SUCCESS)
-            dwErrCode = ParseWowRootFile_Level1(hs, pbRootPtr, pbRootEnd, dwLocaleMask, 1);
+            dwErrCode = ParseWowRootFile_Level1(hs, pbRootPtr, pbRootEnd, dwLocaleMask, 1, dwRootVersion);
 
 #ifdef CASCLIB_DEBUG
         // Dump the array of the file data IDs
@@ -618,10 +654,11 @@ DWORD RootHandler_CreateWoW(TCascStorage * hs, CASC_BLOB & RootFile, DWORD dwLoc
     LPBYTE pbRootEnd = RootFile.End();
     LPBYTE pbRootPtr;
     DWORD FileCounterHashless = 0;
+    DWORD RootVersion = 0;
     DWORD dwErrCode = ERROR_BAD_FORMAT;
 
     // Verify the root header
-    if((pbRootPtr = TRootHandler_WoW::CaptureRootHeader(pbRootFile, pbRootEnd, &RootFormat, &FileCounterHashless)) == NULL)
+    if((pbRootPtr = TRootHandler_WoW::CaptureRootHeader(pbRootFile, pbRootEnd, &RootFormat, &FileCounterHashless, &RootVersion)) == NULL)
         return ERROR_BAD_FORMAT;
 
 #ifdef CASCLIB_WRITE_VERIFIED_FILENAMES
@@ -639,7 +676,7 @@ DWORD RootHandler_CreateWoW(TCascStorage * hs, CASC_BLOB & RootFile, DWORD dwLoc
         //fp = fopen("E:\\file-data-ids2.txt", "wt");
 
         // Load the root directory. If load failed, we free the object
-        dwErrCode = pRootHandler->Load(hs, pbRootPtr, pbRootEnd, dwLocaleMask);
+        dwErrCode = pRootHandler->Load(hs, pbRootPtr, pbRootEnd, dwLocaleMask, RootVersion);
         if(dwErrCode != ERROR_SUCCESS)
         {
             delete pRootHandler;
