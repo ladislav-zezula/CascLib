@@ -9,6 +9,7 @@ goto:eof
 :SELECT_LIB
 set PROJECT_DIR=%~dp0
 set LIBRARY_NAME=CascLibWDK
+set SAVE_PATH=%PATH%
 
 :BUILD_LIB_32
 echo Building %LIBRARY_NAME%.lib (32-bit) ...
@@ -28,11 +29,17 @@ build.exe -czgw
 del buildfre_wlh_amd64.log
 echo.
 
-:COPY_LIBS
-copy /Y .\objfre_wlh_amd64\amd64\%LIBRARY_NAME%.lib ..\aaa\lib64\%LIBRARY_NAME%.lib >nul
-copy /Y .\objfre_w2k_x86\i386\%LIBRARY_NAME%.lib ..\aaa\lib32\%LIBRARY_NAME%.lib >nul
+:COPY_OUTPUT
+if not exist ..\aaa goto CLEANUP
+if not exist ..\aaa\inc   md ..\aaa\inc
+if not exist ..\aaa\lib32 md ..\aaa\lib32
+if not exist ..\aaa\lib64 md ..\aaa\lib64
+copy /Y .\src\CascLib.h  ..\aaa\inc >nul
 copy /Y .\src\CascPort.h ..\aaa\inc >nul
-copy /Y .\src\CascLib.h ..\aaa\inc >nul
+copy /Y .\objfre_wlh_amd64\amd64\%LIBRARY_NAME%.lib ..\aaa\lib64\%LIBRARY_NAME%.lib >nul
+copy /Y .\objfre_w2k_x86\i386\%LIBRARY_NAME%.lib    ..\aaa\lib32\%LIBRARY_NAME%.lib >nul
 
 :CLEANUP
 if exist build.bat del build.bat
+set PATH=%SAVE_PATH%
+set SAVE_PATH=

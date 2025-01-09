@@ -23,7 +23,7 @@
 
 #if defined(_DEBUG) && !defined(CASCLIB_NODEBUG)
 #define CASCLIB_DEBUG
-#define CASCLIB_WRITE_VERIFIED_FILENAMES            // If defined, TRootHandler_WoW will save all files whose hashes are confirmed
+//#define CASCLIB_WRITE_VERIFIED_FILENAMES            // If defined, TRootHandler_WoW will save all files whose hashes are confirmed
 #endif
 
 #include "CascPort.h"
@@ -110,14 +110,13 @@ typedef struct _CASC_BUILD_FILE
 } CASC_BUILD_FILE, *PCASC_BUILD_FILE;
 
 // Information about index file
-struct CASC_INDEX
+typedef struct _CASC_INDEX
 {
     CASC_BLOB FileData;
     LPTSTR szFileName;                              // Full name of the index file
     DWORD NewSubIndex;                              // New subindex
     DWORD OldSubIndex;                              // Old subindex
-};
-typedef CASC_INDEX * PCASC_INDEX;
+} CASC_INDEX, *PCASC_INDEX;
 
 // Normalized header of the index files.
 // Both version 1 and version 2 are converted to this structure
