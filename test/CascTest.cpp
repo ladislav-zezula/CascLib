@@ -1197,7 +1197,7 @@ static STORAGE_INFO StorageInfo1[] =
     {"WoW/47067*wow_classic_ptr",           "7cc806b043c18c59dd024ec13bf5c2f1", "cd68e3fd59c97c4b69265bd949b77959", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"WoW/47067*wow_classic_era",           "10c8c72c16c55ee44c5554aabe4284da", "47071bdea7e593e5481e2775c4813626", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"WoW/47067*wow_classic_era_ptr",       "13792a23d629af232febfe9dc00a6958", "a0736b9aa5dfcd68dcc1fd2b3247ed1d", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/51187*wowt",                      "84f02e337fe85806180d935252153f2b", "e10061cb5cafbaf16926f898929a352a"},
+    {"WoW/51187*wowt",                      "1cfab6004e8528c4af971c8d183f43db", "e10061cb5cafbaf16926f898929a352a"},
 };
 
 static STORAGE_INFO StorageInfo2[] =
