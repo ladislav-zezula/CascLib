@@ -1181,8 +1181,8 @@ static STORAGE_INFO StorageInfo1[] =
     {"WoW/23420",                           "e62a798989e6db00044b079e74faa1eb", "854e58816e6eb2795d14fe81470ad19e", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"WoW/29981",                           "e939d6bfb739eda7049c7ef74efccf60", "3cba30b5e439a6e59b0953d17da9ac6c", "dbfilesclient\\battlepetspeciesstate.db2"},
 
-    {"WoW/31299*wow",                       "72a7210d758f613424be322bce256899", "05627c131969bd9394fb345f4037e249", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/31299*wowt",                      "cc2cba58dbbf95c3d5d0bc07dbc173cb", "423c1b99b14a615a02d8ffc7a7eff4ef", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/31299*wow",                       "57666b8f3808f2a7e741484454bb1d0d", "05627c131969bd9394fb345f4037e249", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/31299*wowt",                      "cac8a9f6a6de5e548c447af39ad35486", "423c1b99b14a615a02d8ffc7a7eff4ef", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"WoW/31299*wow_classic",               "54f2491ce97f1eae0a57d02aa16f0e43", "b46bd2f81ead285e810e5a049ca2db74", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
 
     {"WoW/37497-classic",                   "f7bf0942184f4ff727b2f539fa6ceff0", "102511c7ef53af35b5c3d4a837f076b9"},
@@ -1191,8 +1191,8 @@ static STORAGE_INFO StorageInfo1[] =
     {"WoW/40892-classic-tbc/.build.info",   "5e9dc8fdb7ffba6c22bcad2330618d1e", "5ae578d0f8986c709477106fa63d8cfb"},
     {"WoW/49821-classic",                   "e54423b6514443aa8d4c326d01db9f87", "0f72450e6f4c7c4dcd06c121bc334d9b", "Sound\\Music\\GlueScreenMusic\\wow_main_theme.mp3"},
 
-    {"WoW/47067*wow",                       "8dff8888c1c50dee17073f3a6f6b0767", "70a641d4100b97d77b9b6b3e5a07ee13", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
-    {"WoW/47067*wowt",                      "1af31b60f438be0c66cea9f42b3caf46", "ef347dfc36cbbef09587384cb9095839", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/47067*wow",                       "33a54ec95624ddaecfbbbabc47636c8f", "70a641d4100b97d77b9b6b3e5a07ee13", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
+    {"WoW/47067*wowt",                      "32b73ed56ca09a88e2ac22817a08af90", "ef347dfc36cbbef09587384cb9095839", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"WoW/47067*wow_classic",               "92e498a7ed7fb6e6cc52b8292dd0864b", "3aae26808a5255477ab49df20b95fb18", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"WoW/47067*wow_classic_ptr",           "7cc806b043c18c59dd024ec13bf5c2f1", "cd68e3fd59c97c4b69265bd949b77959", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"WoW/47067*wow_classic_era",           "10c8c72c16c55ee44c5554aabe4284da", "47071bdea7e593e5481e2775c4813626", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
@@ -1204,14 +1204,15 @@ static STORAGE_INFO StorageInfo2[] =
 {
     {"Hearthstone/160183/hearthstone-25.0.3.160183.159202.versions*hsb*us", "34b821747a7911eb98c9141153470fdd", "85096ab761616e1069a4fa5c1da28d9d"},
     {"Hearthstone/160183*hsb*us",                                           "34b821747a7911eb98c9141153470fdd", "85096ab761616e1069a4fa5c1da28d9d"},
-    {"WoW/45745-custom-cdn*http://us.falloflordaeron.com:8000*wow*us",      "f0f3686925c71d46c9d681baad866fa3", "e5c03ef3dd196ec24054dbc370fb2fc5", "interface/framexml/localization.lua"},
-    {"WoW/45745-meta/wow-45745-custom-cdn.versions*wow*us",                 "f0f3686925c71d46c9d681baad866fa3", "e5c03ef3dd196ec24054dbc370fb2fc5", "interface/framexml/localization.lua"},
-    {"WoW/45745-meta/wow-45779-tvfs.versions",                              "34db7de6a728deb1fd5592f9b595963d", "dab6a1f3586a2a1408a8152ad7f9f1ad"},
-    {"WoW/45745-meta/wow-46144-tvfs.versions",                              "dde4a3c3709a005923e2ed41a397708e", "24d04d1f9f516979a51102f479027c70"},
+    {"WoW/45745-custom-cdn*http://us.falloflordaeron.com:8000*wow*us",      "7bc4a3e55dbbd8096d3cd04dd865f905", "e5c03ef3dd196ec24054dbc370fb2fc5", "interface/framexml/localization.lua"},
+    {"WoW/45745-meta/wow-45745-custom-cdn.versions*wow*us",                 "7bc4a3e55dbbd8096d3cd04dd865f905", "e5c03ef3dd196ec24054dbc370fb2fc5", "interface/framexml/localization.lua"},
+    {"WoW/45745-meta/wow-45779-tvfs.versions",                              "3a66cb8b3c51b754b264e2d46498c672", "dab6a1f3586a2a1408a8152ad7f9f1ad"},
+    {"WoW/45745-meta/wow-46144-tvfs.versions",                              "327b3c655da26c83aad477934bd04e21", "24d04d1f9f516979a51102f479027c70"},
     {"WoW/45745-meta/wow-46902-classic.versions*wow_classic*us",            "92e498a7ed7fb6e6cc52b8292dd0864b", "3aae26808a5255477ab49df20b95fb18"},
-    {"WoW/45745-meta/wow-47186-ptr.versions",                               "ee1a4868dde8e3261d5fb98c276bf82a", "e1fff62f0147dd079a0cf73890255863", "interface/framexml/localization.lua"},
-    {"WoW/45745-meta*wowt*us",                                              "ee1a4868dde8e3261d5fb98c276bf82a", "e1fff62f0147dd079a0cf73890255863", "interface/framexml/localization.lua"},
-    {"WoW/5####-current*wow*us",                                            "049627e5db398fd336e8c685cbcd49a0", "7683c27407ad6b051e6d1e4f6409f94e", "interface/framexml/localization.lua"},
+    {"WoW/45745-meta/wow-47186-ptr.versions",                               "065f6ce7bfc89f783ee35e5411b88a8f", "e1fff62f0147dd079a0cf73890255863", "interface/framexml/localization.lua"},
+    {"WoW/45745-meta*wowt*us",                                              "065f6ce7bfc89f783ee35e5411b88a8f", "e1fff62f0147dd079a0cf73890255863", "interface/framexml/localization.lua"},
+    {"WoW/5####-current*wow*us",                                            "a77b379e63ce2ec1a1c1a7068edb9677", "71632219a773858bbc410c49fe6254cc"},
+    {"WoW/63728-new-tvfs*wow*us",                                           "36611c553b503f16f1ae4302c618f857", "c989df2962dc62199622757a9526e95b"},
 };
 
 //-----------------------------------------------------------------------------
