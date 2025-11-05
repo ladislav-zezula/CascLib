@@ -1169,6 +1169,7 @@ static STORAGE_INFO StorageInfo1[] =
     {"Warcraft III/13369",                  "3212bcad20f7c6ad0eb0864ca9444bb6", "4ac831db9bf0734f01b9d20455a68ab6", "ENCODING" },
     {"Warcraft III/14883",                  "773180e32ac2fac8bd4cd4dfc2ab30a6", "3fd108674117ad4f93885bdd1a525f30", NULL },
     {"Warcraft III/15801",                  "ad571ee968f77bbddc811fd215ee1d37", "f162cd3448219fd9956f9ff8fb5ba915", NULL },
+    {"Warcraft III/23175",                  "f142dc1aa5a9b64553d7f05d126cf72e", "0107f8037578bcd3419534ef092672ad", NULL },
 
     {"WoW/18125",                           "b31531af094f78f58592249c4d216a8e", "e5c9b3f0da7806d8b239c13bff1d836e", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"WoW/18379",                           "fab30626cf94ed1523519729c3701812", "606e4bfd6f8100ae875eb4c00789233b", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
@@ -1198,6 +1199,7 @@ static STORAGE_INFO StorageInfo1[] =
     {"WoW/47067*wow_classic_era",           "10c8c72c16c55ee44c5554aabe4284da", "47071bdea7e593e5481e2775c4813626", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"WoW/47067*wow_classic_era_ptr",       "13792a23d629af232febfe9dc00a6958", "a0736b9aa5dfcd68dcc1fd2b3247ed1d", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"WoW/51187*wowt",                      "1cfab6004e8528c4af971c8d183f43db", "e10061cb5cafbaf16926f898929a352a"},
+
 };
 
 static STORAGE_INFO StorageInfo2[] =
@@ -1240,6 +1242,27 @@ int main(int argc, char * argv[])
 
 #ifdef LOAD_STORAGES_SINGLE_DEV
     {
+/*
+        CASC_OPEN_STORAGE_ARGS OpenArgs = {sizeof(CASC_OPEN_STORAGE_ARGS)};
+        ULONGLONG FileSize = 0;
+        HANDLE hStorage;
+        HANDLE hFile;
+
+        // Prepare the callbacks
+        OpenArgs.PfnProgressCallback = OnlineStorage_OpenCB;
+
+        // Open the online storage
+        if(CascOpenStorageEx(_T("e:\\Multimedia\\CASC\\Work\\odin*odin*eu*b166bdb29359f05a2e876423f413a89c"), &OpenArgs, true, &hStorage))
+        {
+            if(CascOpenFile(hStorage, "ROOT", 0, CASC_OVERCOME_ENCRYPTED | CASC_OPEN_CKEY_ONCE, &hFile))
+            {
+                CascGetFileSize64(hFile, &FileSize);
+                CascCloseFile(hFile);
+            }
+            CascCloseStorage(hStorage);
+        }
+*/
+/*
         CASC_OPEN_STORAGE_ARGS OpenArgs = {sizeof(CASC_OPEN_STORAGE_ARGS)};
         //CASC_FIND_DATA cf;
         HANDLE hStorage;
@@ -1266,6 +1289,7 @@ int main(int argc, char * argv[])
             }
             CascCloseStorage(hStorage);
         }
+*/
     }
 #endif
 
