@@ -193,7 +193,7 @@ bool OpenFileByCKeyEntry(TCascStorage * hs, PCASC_CKEY_ENTRY pCKeyEntry, DWORD d
     TCascFile * hf = NULL;
     DWORD dwErrCode = ERROR_FILE_NOT_FOUND;
 
-    // If the CKey entry is NULL, we consider the file non-existant
+    // If the CKey entry is NULL, we consider the file non-existent
     if(pCKeyEntry != NULL)
     {
         // Create the file handle structure

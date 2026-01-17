@@ -29,7 +29,7 @@
 #define TVFS_FOLDER_SIZE_MASK        0x7FFFFFFF     // Mask to get length of the folder
 
 // Uncomment this to parse TVFS root files for World of Warcraft
-// Note that this is signigicantly slower than using the legacy ROOT file
+// Note that this is significantly slower than using the legacy ROOT file
 //#define TVFS_PARSE_WOW_ROOT
 
 //-----------------------------------------------------------------------------

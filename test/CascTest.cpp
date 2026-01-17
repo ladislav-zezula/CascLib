@@ -718,7 +718,7 @@ static DWORD Storage_SeekFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
                     // Compare the loaded data blocks
                     if(memcmp(Buffer, Buffer2, Length))
                     {
-                        LogHelper.PrintMessage("Error: Data mismatchat offset %llX, length %u.", ByteOffset, Length);
+                        LogHelper.PrintMessage("Error: Data mismatch at offset %llX, length %u.", ByteOffset, Length);
                         dwErrCode = GetCascError();
                         break;
                     }

@@ -28,7 +28,7 @@ extern "C" {
 #endif
 
 //-----------------------------------------------------------------------------
-// Use the apropriate library
+// Use the appropriate library
 //
 // The library type is encoded in the library name as the following
 // CascLibXYZ.lib

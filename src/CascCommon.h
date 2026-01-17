@@ -313,7 +313,7 @@ struct TCascStorage
     LPTSTR  szCdnPath;                              // Remote CDN sub path for the product
     LPSTR   szRegion;                               // Product region. Only when "versions" is used as storage root file
     LPSTR   szBuildKey;                             // Product build key, aka MD5 of the build file
-    DWORD dwDefaultLocale;                          // Mask of installed localles
+    DWORD dwDefaultLocale;                          // Mask of installed locales
     DWORD dwBuildNumber;                            // Product build number
     DWORD dwRefCount;                               // Number of references
     DWORD dwFeatures;                               // List of CASC features. See CASC_FEATURE_XXX
@@ -353,7 +353,7 @@ struct TCascStorage
     size_t TotalFiles;                              // Total number of files in the storage, some may not be present locally
     size_t EKeyEntries;                             // Number of CKeyEntry-ies loaded from text build file
     size_t EKeyLength;                              // EKey length from the index files
-    DWORD FileOffsetBits;                           // Number of bits in the storage offset which mean data segent offset
+    DWORD FileOffsetBits;                           // Number of bits in the storage offset which mean data segment offset
 
     CASC_KEY_MAP KeyMap;                            // Growable map of encryption keys
     ULONGLONG  LastFailKeyName;                     // The value of the encryption key that recently was NOT found.
@@ -394,7 +394,7 @@ struct TCascFile
     DWORD bDownloadFileIf:1;                        // If true, then the data will be downloaded from the online storage if missing
     DWORD bCloseFileStream:1;                       // If true, file stream needs to be closed during CascCloseFile
     DWORD bOvercomeEncrypted:1;                     // If true, then CascReadFile will fill the part that is encrypted (and key was not found) with zeros
-    DWORD bFreeCKeyEntries:1;                       // If true, dectructor will free the array of CKey entries
+    DWORD bFreeCKeyEntries:1;                       // If true, destructor will free the array of CKey entries
 
     ULONGLONG FileCacheStart;                       // Starting offset of the file cached area
     ULONGLONG FileCacheEnd;                         // Ending offset of the file cached area
