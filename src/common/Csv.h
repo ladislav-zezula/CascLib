@@ -39,6 +39,11 @@ struct CASC_CSV_COLUMN
         nLength = 0;
     }
 
+    bool Empty() const
+    {
+        return (szValue == NULL || nLength == 0);
+    }
+
     const char * szValue;
     size_t nLength;
 };

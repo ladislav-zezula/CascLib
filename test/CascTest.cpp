@@ -1242,7 +1242,7 @@ int main(int argc, char * argv[])
 
 #ifdef LOAD_STORAGES_SINGLE_DEV
     {
-/*
+
         CASC_OPEN_STORAGE_ARGS OpenArgs = {sizeof(CASC_OPEN_STORAGE_ARGS)};
         ULONGLONG FileSize = 0;
         HANDLE hStorage;
@@ -1252,7 +1252,7 @@ int main(int argc, char * argv[])
         OpenArgs.PfnProgressCallback = OnlineStorage_OpenCB;
 
         // Open the online storage
-        if(CascOpenStorageEx(_T("e:\\Multimedia\\CASC\\Work\\odin*odin*eu*b166bdb29359f05a2e876423f413a89c"), &OpenArgs, true, &hStorage))
+        if(CascOpenStorageEx(_T("e:\\Ladik\\Incoming\\diablo"), &OpenArgs, true, &hStorage))
         {
             if(CascOpenFile(hStorage, "ROOT", 0, CASC_OVERCOME_ENCRYPTED | CASC_OPEN_CKEY_ONCE, &hFile))
             {
@@ -1261,7 +1261,7 @@ int main(int argc, char * argv[])
             }
             CascCloseStorage(hStorage);
         }
-*/
+
 /*
         CASC_OPEN_STORAGE_ARGS OpenArgs = {sizeof(CASC_OPEN_STORAGE_ARGS)};
         //CASC_FIND_DATA cf;
