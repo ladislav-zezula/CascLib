@@ -1166,7 +1166,7 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs, L
     }
 
     // Proceed with loading the CDN config file
-    if(dwErrCode == ERROR_SUCCESS)
+    if(dwErrCode == ERROR_SUCCESS && hs->CdnConfigKey.Valid())
     {
         dwErrCode = LoadCdnConfigFile(hs);
         if(dwErrCode != ERROR_SUCCESS && (hs->dwFeatures & CASC_FEATURE_ONLINE) == 0)

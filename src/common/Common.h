@@ -548,6 +548,11 @@ struct CASC_BLOB
         return pbData + cbData;
     }
 
+    bool Valid() const
+    {
+        return pbData && cbData;
+    }
+
     LPBYTE pbData;
     size_t cbData;
 };

@@ -542,14 +542,23 @@ static DWORD LoadBuildNumber(TCascStorage * hs, const char * /* szVariableName *
     return ERROR_BAD_FORMAT;
 }
 
-static int LoadQueryKey(const CASC_CSV_COLUMN & Column, CASC_BLOB & Key)
+static DWORD LoadQueryKey(const CASC_CSV_COLUMN & Column, CASC_BLOB & Key)
 {
-    // Check the input data
-    if(Column.szValue == NULL)
-        return ERROR_BUFFER_OVERFLOW;
-    if(Column.nLength != MD5_STRING_SIZE)
-        return ERROR_BAD_FORMAT;
+    // Check for existence
+    if(Column.Empty())
+    {
+        Key.Free();
+        return ERROR_SUCCESS;
+    }
 
+    // Check for invalid length
+    if(Column.nLength && Column.nLength != MD5_STRING_SIZE)
+    {
+        assert(false);
+        return ERROR_BAD_FORMAT;
+    }
+
+    // Convert the text value into binary blob
     return LoadHashArray(&Key, Column.szValue, Column.szValue + Column.nLength, 1);
 }
 
@@ -586,19 +595,24 @@ static DWORD GetDefaultLocaleByRegion(LPCSTR szRegion)
 
 static DWORD GetDefaultLocaleMask(const CASC_CSV_COLUMN & Column)
 {
-    LPCSTR szTagEnd = Column.szValue + Column.nLength - 4;
-    LPCSTR szTagPtr;
     DWORD dwLocaleValue;
     DWORD dwLocaleMask = 0;
 
-    // Go through the whole tag string
-    for(szTagPtr = Column.szValue; szTagPtr <= szTagEnd; szTagPtr++)
+    // Check whether the column contains some data
+    if(!Column.Empty())
     {
-        // Try to recognize the 4-char locale code
-        if((dwLocaleValue = GetLocaleValue(szTagPtr)) != CASC_LOCALE_NONE)
+        LPCSTR szTagEnd = Column.szValue + Column.nLength - 4;
+        LPCSTR szTagPtr;
+
+        // Go through the whole tag string
+        for(szTagPtr = Column.szValue; szTagPtr <= szTagEnd; szTagPtr++)
         {
-            dwLocaleMask |= dwLocaleValue;
-            szTagPtr += 3;  // Will be moved by 1 more at the end of the loop
+            // Try to recognize the 4-char locale code
+            if((dwLocaleValue = GetLocaleValue(szTagPtr)) != CASC_LOCALE_NONE)
+            {
+                dwLocaleMask |= dwLocaleValue;
+                szTagPtr += 3;  // Will be moved by 1 more at the end of the loop
+            }
         }
     }
     return dwLocaleMask;
@@ -714,13 +728,13 @@ static DWORD ParseFile_BuildInfo(TCascStorage * hs, CASC_CSV & Csv)
 
         // If we found version, extract a build number
         const CASC_CSV_COLUMN & VerColumn = Csv[nSelected]["Version!STRING:0"];
-        if(VerColumn.szValue && VerColumn.nLength)
+        if(!VerColumn.Empty())
         {
             LoadBuildNumber(hs, NULL, VerColumn.szValue, VerColumn.szValue + VerColumn.nLength, NULL);
         }
 
-        // Verify all variables
-        return (hs->CdnBuildKey.pbData != NULL && hs->CdnConfigKey.pbData != NULL) ? ERROR_SUCCESS : ERROR_BAD_FORMAT;
+        // At least the build key must be valid here
+        return hs->CdnBuildKey.Valid() ? ERROR_SUCCESS : ERROR_BAD_FORMAT;
     }
 
     return ERROR_FILE_NOT_FOUND;
