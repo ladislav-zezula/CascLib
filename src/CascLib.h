@@ -166,6 +166,7 @@ extern "C" {
 #define CASC_FEATURE_DATA_FILES     0x00000200  // The storage supports raw files stored in %CascRoot%\xx\yy\xxyy## (CKey-based)
 #define CASC_FEATURE_ONLINE         0x00000400  // Load the missing files from online CDNs
 #define CASC_FEATURE_FORCE_DOWNLOAD 0x00001000  // (Online) always download "versions" and "cdns" even if it exists locally
+#define CASC_FEATURE_ALLOW_DOWNLOAD 0x00002000  // Allow downloading internal files, if they are not present locally
 
 // Macro to convert FileDataId to the argument of CascOpenFile
 #define CASC_FILE_DATA_ID(FileDataId) ((LPCSTR)(size_t)FileDataId)
