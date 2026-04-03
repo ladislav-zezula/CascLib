@@ -720,11 +720,8 @@ static DWORD ParseFile_BuildInfo(TCascStorage * hs, CASC_CSV & Csv)
         hs->dwDefaultLocale = GetDefaultLocaleMask(Csv[nSelected]["Tags!STRING:0"]);
 
         // Get the CDN servers and hosts
-        if(hs->dwFeatures & CASC_FEATURE_ONLINE)
-        {
-            GetDefaultCdnServers(hs, Csv[nSelected]["CDN Hosts!STRING:0"]);
-            GetDefaultCdnPath(hs, Csv[nSelected]["CDN Path!STRING:0"]);
-        }
+        GetDefaultCdnServers(hs, Csv[nSelected]["CDN Hosts!STRING:0"]);
+        GetDefaultCdnPath(hs, Csv[nSelected]["CDN Path!STRING:0"]);
 
         // If we found version, extract a build number
         const CASC_CSV_COLUMN & VerColumn = Csv[nSelected]["Version!STRING:0"];

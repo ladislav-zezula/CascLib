@@ -70,6 +70,7 @@ typedef struct _STORAGE_INFO
     LPCSTR szNameHash;                      // MD5 of all file names extracted sequentially
     LPCSTR szDataHash;                      // MD5 of all file data extracted sequentially
     LPCSTR szFileName;                      // file in the storage
+    DWORD  dwFeatures;                      // Storage features
 } STORAGE_INFO, *PSTORAGE_INFO;
 
 // For running tests on an open storage
@@ -882,6 +883,7 @@ static DWORD Storage_ReadFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
 
 static DWORD LocalStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO & StorInfo)
 {
+    CASC_OPEN_STORAGE_ARGS OpenArgs = {sizeof(CASC_OPEN_STORAGE_ARGS)};
     TLogHelper LogHelper(StorInfo.szPath);
     HANDLE hStorage;
     TCHAR szFullPath[MAX_PATH];
@@ -892,7 +894,8 @@ static DWORD LocalStorage_Test(PFN_RUN_TEST PfnRunTest, STORAGE_INFO & StorInfo)
 
     // Open the CASC storage
     LogHelper.PrintProgress("Opening storage ...");
-    if(CascOpenStorage(szFullPath, 0, &hStorage))
+    OpenArgs.dwFlags = StorInfo.dwFeatures;
+    if(CascOpenStorageEx(szFullPath, &OpenArgs, false, &hStorage))
     {
         TEST_PARAMS Params;
 
@@ -1129,6 +1132,7 @@ static STORAGE_INFO StorageInfo1[] =
 
     {"Diablo II Resurrected/71776",         "8518f7457729368bcbfc8db60203de78", "180984fc02ee90875d0504952f177f9a", "ENCODING"},
     {"Diablo II Resurrected/91636-steam",   "193ce6613e7c34fcf2384580653f0949", "575cb803f6889a3dec31c4327c7e60c9", "ENCODING"},
+    {"Diablo II Resurrected/92198-steam",   "ac5a1e752c3d0ad7d966ac5d3f90fc34", "7a6007d6844ee61d324254a886a036d4", "ENCODING", CASC_FEATURE_ALLOW_DOWNLOAD},
 
     {"Diablo III/30013",                    "86ba76b46c88eb7c6188d28a27d00f49", "19e37cc3c178ea0521369c09d67791ac", "ENCODING"},
     {"Diablo III/50649",                    "18cd3eb87a46e2d3aa0c57d1d8f8b8ff", "9225b3fa85dd958209ad20495ff6457e", "ENCODING"},
@@ -1243,7 +1247,7 @@ int main(int argc, char * argv[])
 
 #ifdef LOAD_STORAGES_SINGLE_DEV
     {
-
+/*
         CASC_OPEN_STORAGE_ARGS OpenArgs = {sizeof(CASC_OPEN_STORAGE_ARGS)};
         ULONGLONG FileSize = 0;
         HANDLE hStorage;
@@ -1251,9 +1255,10 @@ int main(int argc, char * argv[])
 
         // Prepare the callbacks
         OpenArgs.PfnProgressCallback = OnlineStorage_OpenCB;
+        OpenArgs.dwFlags = CASC_FEATURE_ALLOW_DOWNLOAD;
 
         // Open the online storage
-        if(CascOpenStorageEx(_T("e:\\Ladik\\Incoming\\diablo"), &OpenArgs, true, &hStorage))
+        if(CascOpenStorageEx(_T("e:\\Multimedia\\CASC\\Diablo II Resurrected\\92198-steam"), &OpenArgs, true, &hStorage))
         {
             if(CascOpenFile(hStorage, "ROOT", 0, CASC_OVERCOME_ENCRYPTED | CASC_OPEN_CKEY_ONCE, &hFile))
             {
@@ -1262,7 +1267,7 @@ int main(int argc, char * argv[])
             }
             CascCloseStorage(hStorage);
         }
-
+*/
 /*
         CASC_OPEN_STORAGE_ARGS OpenArgs = {sizeof(CASC_OPEN_STORAGE_ARGS)};
         //CASC_FIND_DATA cf;

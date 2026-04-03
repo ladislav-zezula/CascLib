@@ -565,6 +565,14 @@ class TLogHelper
         char * szBufferEnd = szBuffer + ccBuffer;
         bool bDividingOn = false;
 
+        // Special for zero
+        if(TotalBytes == 0)
+        {
+            szBuffer += TestStrPrintf(szBuffer, ccBuffer, "0");
+            return;
+        }
+
+        // Format bytes
         while((szBuffer + 4) < szBufferEnd && Divider > 0)
         {
             // Are we already dividing?

@@ -168,6 +168,19 @@ void * ProbeOutputBuffer(void * pvBuffer, size_t cbLength, size_t cbMinLength, s
     return pvBuffer;
 }
 
+static void SetFeatureBit(TCascStorage * hs, DWORD dwBitMask, DWORD dwBit)
+{
+    // If the feature bit was present before, set it to 1
+    if(dwBitMask & dwBit)
+    {
+        hs->dwFeatures |= dwBit;
+    }
+    else
+    {
+        hs->dwFeatures &= ~dwBit;
+    }
+}
+
 // Inserts an entry from the text build file
 static PCASC_CKEY_ENTRY InsertCKeyEntry(TCascStorage * hs, CASC_CKEY_ENTRY & CKeyEntry)
 {
@@ -439,79 +452,88 @@ static DWORD LoadEncodingManifest(TCascStorage * hs)
 {
     CASC_CKEY_ENTRY & CKeyEntry = hs->EncodingCKey;
     CASC_BLOB EncodingFile;
-    DWORD dwErrCode = ERROR_SUCCESS;
+    DWORD dwSaveFeatures = hs->dwFeatures;
+    DWORD dwErrCode = ERROR_FILE_NOT_FOUND;
 
     // Inform the user about what we are doing
     if(InvokeProgressCallback(hs, CascProgressLoadingManifest, "ENCODING", 0, 0))
         return ERROR_CANCELLED;
 
+    // Set online mode if downloading files is allowed
+    if(hs->dwFeatures & CASC_FEATURE_ALLOW_DOWNLOAD)
+        hs->dwFeatures |= CASC_FEATURE_ONLINE;
+
     // Fill-in the information from the index entry and insert it to the file tree
-    if(!CopyEKeyEntry(hs, &CKeyEntry))
-        return ERROR_FILE_NOT_FOUND;
-    InsertCKeyEntry(hs, CKeyEntry);
-
-    // Load the entire encoding file to memory
-    dwErrCode = LoadInternalFileToMemory(hs, &hs->EncodingCKey, EncodingFile);
-    if(dwErrCode == ERROR_SUCCESS && EncodingFile.cbData != 0)
+    if(CopyEKeyEntry(hs, &CKeyEntry))
     {
-        CASC_ENCODING_HEADER EnHeader;
+        // Insert the entry to the search table
+        InsertCKeyEntry(hs, CKeyEntry);
 
-        // Capture the header of the ENCODING file
-        dwErrCode = CaptureEncodingHeader(EnHeader, EncodingFile.pbData, EncodingFile.cbData);
-        if(dwErrCode == ERROR_SUCCESS)
+        // Load the entire encoding file to memory
+        dwErrCode = LoadInternalFileToMemory(hs, &hs->EncodingCKey, EncodingFile);
+        if(dwErrCode == ERROR_SUCCESS && EncodingFile.cbData != 0)
         {
-            // Get the CKey page header and the first page
-            PFILE_CKEY_PAGE pPageHeader = (PFILE_CKEY_PAGE)(EncodingFile.pbData + sizeof(FILE_ENCODING_HEADER) + EnHeader.ESpecBlockSize);
-            LPBYTE pbEncodingEnd = EncodingFile.pbData + EncodingFile.cbData;
-            LPBYTE pbCKeyPage = (LPBYTE)(pPageHeader + EnHeader.CKeyPageCount);
+            CASC_ENCODING_HEADER EnHeader;
 
-            // Go through all CKey pages and verify them
-            for(DWORD i = 0; i < EnHeader.CKeyPageCount; i++)
+            // Capture the header of the ENCODING file
+            dwErrCode = CaptureEncodingHeader(EnHeader, EncodingFile.pbData, EncodingFile.cbData);
+            if(dwErrCode == ERROR_SUCCESS)
             {
-                // Check if there is enough space in the buffer
-                if((pbCKeyPage + EnHeader.CKeyPageSize) > pbEncodingEnd)
+                // Get the CKey page header and the first page
+                PFILE_CKEY_PAGE pPageHeader = (PFILE_CKEY_PAGE)(EncodingFile.pbData + sizeof(FILE_ENCODING_HEADER) + EnHeader.ESpecBlockSize);
+                LPBYTE pbEncodingEnd = EncodingFile.pbData + EncodingFile.cbData;
+                LPBYTE pbCKeyPage = (LPBYTE)(pPageHeader + EnHeader.CKeyPageCount);
+
+                // Go through all CKey pages and verify them
+                for(DWORD i = 0; i < EnHeader.CKeyPageCount; i++)
                 {
-                    dwErrCode = ERROR_FILE_CORRUPT;
-                    break;
+                    // Check if there is enough space in the buffer
+                    if((pbCKeyPage + EnHeader.CKeyPageSize) > pbEncodingEnd)
+                    {
+                        dwErrCode = ERROR_FILE_CORRUPT;
+                        break;
+                    }
+
+                    // Check the hash of the entire segment
+                    // Note that verifying takes considerable time of the storage loading
+//                  if(!VerifyDataBlockHash(pbCKeyPage, EnHeader.CKeyPageSize, pEncodingSegment->SegmentHash))
+//                  {
+//                      dwErrCode = ERROR_FILE_CORRUPT;
+//                      break;
+//                  }
+
+                    // Check if the CKey matches with the expected first value
+                    if(memcmp(((PFILE_CKEY_ENTRY)pbCKeyPage)->CKey, pPageHeader[i].FirstKey, MD5_HASH_SIZE))
+                    {
+                        dwErrCode = ERROR_FILE_CORRUPT;
+                        break;
+                    }
+
+                    // Load the entire page of CKey entries.
+                    // This operation will never fail, because all memory is already pre-allocated
+                    dwErrCode = LoadEncodingCKeyPage(hs, EnHeader, pbCKeyPage, pbCKeyPage + EnHeader.CKeyPageSize);
+                    if(dwErrCode != ERROR_SUCCESS)
+                        break;
+
+                    // Move to the next CKey page
+                    pbCKeyPage += EnHeader.CKeyPageSize;
                 }
+            }
 
-                // Check the hash of the entire segment
-                // Note that verifying takes considerable time of the storage loading
-//              if(!VerifyDataBlockHash(pbCKeyPage, EnHeader.CKeyPageSize, pEncodingSegment->SegmentHash))
-//              {
-//                  dwErrCode = ERROR_FILE_CORRUPT;
-//                  break;
-//              }
-
-                // Check if the CKey matches with the expected first value
-                if(memcmp(((PFILE_CKEY_ENTRY)pbCKeyPage)->CKey, pPageHeader[i].FirstKey, MD5_HASH_SIZE))
-                {
-                    dwErrCode = ERROR_FILE_CORRUPT;
-                    break;
-                }
-
-                // Load the entire page of CKey entries.
-                // This operation will never fail, because all memory is already pre-allocated
-                dwErrCode = LoadEncodingCKeyPage(hs, EnHeader, pbCKeyPage, pbCKeyPage + EnHeader.CKeyPageSize);
-                if(dwErrCode != ERROR_SUCCESS)
-                    break;
-
-                // Move to the next CKey page
-                pbCKeyPage += EnHeader.CKeyPageSize;
+            // All CKey->EKey entries from the text build files need to be copied to the CKey array
+            if(dwErrCode == ERROR_SUCCESS)
+            {
+                dwErrCode = CopyBuildFileItemsToCKeyArray(hs);
             }
         }
-
-        // All CKey->EKey entries from the text build files need to be copied to the CKey array
-        if(dwErrCode == ERROR_SUCCESS)
+        else
         {
-            dwErrCode = CopyBuildFileItemsToCKeyArray(hs);
+            dwErrCode = GetCascError();
         }
     }
-    else
-    {
-        dwErrCode = GetCascError();
-    }
-
+    
+    // Restore features
+    SetFeatureBit(hs, dwSaveFeatures, CASC_FEATURE_ONLINE);
     return dwErrCode;
 }
 
@@ -750,11 +772,16 @@ static int LoadDownloadManifest(TCascStorage * hs)
 {
     PCASC_CKEY_ENTRY pCKeyEntry = FindCKeyEntry_CKey(hs, hs->DownloadCKey.CKey);
     CASC_BLOB DownloadFile;
+    DWORD dwSaveFeatures = hs->dwFeatures;
     DWORD dwErrCode = ERROR_SUCCESS;
 
     // Inform the user about what we are doing
     if(InvokeProgressCallback(hs, CascProgressLoadingManifest, "DOWNLOAD", 0, 0))
         return ERROR_CANCELLED;
+
+    // Set online mode if downloading files is allowed
+    if(hs->dwFeatures & CASC_FEATURE_ALLOW_DOWNLOAD)
+        hs->dwFeatures |= CASC_FEATURE_ONLINE;
 
     // Load the entire DOWNLOAD file to memory
     dwErrCode = LoadInternalFileToMemory(hs, pCKeyEntry, DownloadFile);
@@ -772,6 +799,7 @@ static int LoadDownloadManifest(TCascStorage * hs)
     }
 
     // If the DOWNLOAD manifest is not present, we won't abort the downloading process.
+    SetFeatureBit(hs, dwSaveFeatures, CASC_FEATURE_ONLINE);
     return dwErrCode;
 }
 
@@ -847,6 +875,7 @@ static int LoadBuildManifest(TCascStorage * hs, DWORD dwLocaleMask)
     TRootHandler * pOldRootHandler = NULL;
     CASC_BLOB RootFile;
     PDWORD FileSignature;
+    DWORD dwSaveFeatures = hs->dwFeatures;
     DWORD dwErrCode = ERROR_BAD_FORMAT;
 
     // Sanity checks
@@ -865,6 +894,10 @@ static int LoadBuildManifest(TCascStorage * hs, DWORD dwLocaleMask)
         pCKeyEntry = &hs->VfsRoot;
 
 __LoadRootFile:
+
+    // Allow downloading the ROOT manifest
+    if(hs->dwFeatures & CASC_FEATURE_ALLOW_DOWNLOAD)
+        hs->dwFeatures |= CASC_FEATURE_ONLINE;
 
     // Load the entire ROOT file to memory
     pCKeyEntry = FindCKeyEntry_CKey(hs, pCKeyEntry->CKey);
@@ -944,6 +977,9 @@ __LoadRootFile:
         hs->pRootHandler->Copy(pOldRootHandler);
         delete pOldRootHandler;
     }
+
+    // Restore the storage features
+    SetFeatureBit(hs, dwSaveFeatures, CASC_FEATURE_ONLINE);
     return dwErrCode;
 }
 
@@ -1121,7 +1157,7 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs, L
         hs->szBuildKey = CascNewStrT2A(szBuildKey);
 
     // Merge features
-    hs->dwFeatures |= (dwFeatures & (CASC_FEATURE_DATA_ARCHIVES | CASC_FEATURE_DATA_FILES | CASC_FEATURE_ONLINE));
+    hs->dwFeatures |= (dwFeatures & (CASC_FEATURE_DATA_ARCHIVES | CASC_FEATURE_DATA_FILES | CASC_FEATURE_ONLINE | CASC_FEATURE_ALLOW_DOWNLOAD));
     hs->dwFeatures |= (pArgs->dwFlags & CASC_FEATURE_FORCE_DOWNLOAD);
     hs->dwFeatures |= (BuildFileType == CascVersions) ? CASC_FEATURE_ONLINE : 0;
     hs->BuildFileType = BuildFileType;
@@ -1411,23 +1447,24 @@ bool WINAPI CascOpenStorageEx(LPCTSTR szParams, PCASC_OPEN_STORAGE_ARGS pArgs, b
         if((hs = new TCascStorage()) != NULL)
         {
             CASC_BUILD_FILE BuildFile = {NULL};
+            DWORD dwFeatures = (pArgs->dwFlags & CASC_FEATURE_ALLOW_DOWNLOAD);
 
             // Check for one of the supported main files (.build.info, .build.db, versions)
             if((dwErrCode = CheckCascBuildFileExact(BuildFile, pArgs->szLocalPath)) == ERROR_SUCCESS)
             {
-                dwErrCode = LoadCascStorage(hs, pArgs, BuildFile.szFullPath, BuildFile.BuildFileType, CASC_FEATURE_DATA_ARCHIVES | CASC_FEATURE_DATA_FILES);
+                dwErrCode = LoadCascStorage(hs, pArgs, BuildFile.szFullPath, BuildFile.BuildFileType, dwFeatures | CASC_FEATURE_DATA_ARCHIVES | CASC_FEATURE_DATA_FILES);
             }
 
             // Search the folder and upper folders for the build file
             else if((dwErrCode = CheckCascBuildFileDirs(BuildFile, pArgs->szLocalPath)) == ERROR_SUCCESS)
             {
-                dwErrCode = LoadCascStorage(hs, pArgs, BuildFile.szFullPath, BuildFile.BuildFileType, CASC_FEATURE_DATA_ARCHIVES | CASC_FEATURE_DATA_FILES);
+                dwErrCode = LoadCascStorage(hs, pArgs, BuildFile.szFullPath, BuildFile.BuildFileType, dwFeatures | CASC_FEATURE_DATA_ARCHIVES | CASC_FEATURE_DATA_FILES);
             }
 
             // If the caller requested an online storage, we must have the code name
             else if((dwErrCode = CheckOnlineStorage(pArgs, BuildFile, bOnlineStorage)) == ERROR_SUCCESS)
             {
-                dwErrCode = LoadCascStorage(hs, pArgs, BuildFile.szFullPath, BuildFile.BuildFileType, CASC_FEATURE_DATA_FILES);
+                dwErrCode = LoadCascStorage(hs, pArgs, BuildFile.szFullPath, BuildFile.BuildFileType, dwFeatures | CASC_FEATURE_DATA_FILES);
             }
         }
     }
