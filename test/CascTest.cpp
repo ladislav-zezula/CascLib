@@ -1251,9 +1251,10 @@ int main(int argc, char * argv[])
 
         // Prepare the callbacks
         OpenArgs.PfnProgressCallback = OnlineStorage_OpenCB;
+        OpenArgs.dwFlags = CASC_FEATURE_ONLINE;
 
         // Open the online storage
-        if(CascOpenStorageEx(_T("e:\\Ladik\\Incoming\\diablo"), &OpenArgs, true, &hStorage))
+        if(CascOpenStorageEx(_T("e:\\Multimedia\\CASC\\Diablo II Resurrected\\26662"), &OpenArgs, true, &hStorage))
         {
             if(CascOpenFile(hStorage, "ROOT", 0, CASC_OVERCOME_ENCRYPTED | CASC_OPEN_CKEY_ONCE, &hFile))
             {
