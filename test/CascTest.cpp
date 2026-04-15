@@ -1247,27 +1247,29 @@ int main(int argc, char * argv[])
 
 #ifdef LOAD_STORAGES_SINGLE_DEV
     {
-/*
         CASC_OPEN_STORAGE_ARGS OpenArgs = {sizeof(CASC_OPEN_STORAGE_ARGS)};
         ULONGLONG FileSize = 0;
         HANDLE hStorage;
         HANDLE hFile;
+        BYTE Buffer[0x100];
 
         // Prepare the callbacks
         OpenArgs.PfnProgressCallback = OnlineStorage_OpenCB;
         OpenArgs.dwFlags = CASC_FEATURE_ALLOW_DOWNLOAD;
 
         // Open the online storage
-        if(CascOpenStorageEx(_T("e:\\Multimedia\\CASC\\Diablo II Resurrected\\92198-steam"), &OpenArgs, true, &hStorage))
+        //if(CascOpenStorageEx(_T("d:\\Hry\\Diablo II Resurrected"), &OpenArgs, true, &hStorage))
+        if(CascOpenStorageEx(_T("e:\\Multimedia\\CASC\\\Diablo II Resurrected\\92198-steam"), &OpenArgs, true, &hStorage))
         {
-            if(CascOpenFile(hStorage, "ROOT", 0, CASC_OVERCOME_ENCRYPTED | CASC_OPEN_CKEY_ONCE, &hFile))
+            if(CascOpenFile(hStorage, "data:data\\local\\sfx\\common\\barbarian\\bar_datewithdeath.flac", 0, CASC_OVERCOME_ENCRYPTED | CASC_OPEN_CKEY_ONCE, &hFile))
             {
+                CascReadFile(hFile, Buffer, sizeof(Buffer), NULL);
                 CascGetFileSize64(hFile, &FileSize);
                 CascCloseFile(hFile);
             }
             CascCloseStorage(hStorage);
         }
-*/
+
 /*
         CASC_OPEN_STORAGE_ARGS OpenArgs = {sizeof(CASC_OPEN_STORAGE_ARGS)};
         //CASC_FIND_DATA cf;

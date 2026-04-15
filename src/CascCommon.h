@@ -391,7 +391,7 @@ struct TCascFile
     ULONGLONG FilePointer;                          // Current file pointer
     DWORD SpanCount;                                // Number of file spans. There is one CKey entry for each file span
     DWORD bVerifyIntegrity:1;                       // If true, then the data are validated more strictly when read
-    DWORD bDownloadFileIf:1;                        // If true, then the data will be downloaded from the online storage if missing
+    DWORD bAllowDownloading:1;                      // If true, then the data will be downloaded from the online storage if missing
     DWORD bCloseFileStream:1;                       // If true, file stream needs to be closed during CascCloseFile
     DWORD bOvercomeEncrypted:1;                     // If true, then CascReadFile will fill the part that is encrypted (and key was not found) with zeros
     DWORD bFreeCKeyEntries:1;                       // If true, destructor will free the array of CKey entries
