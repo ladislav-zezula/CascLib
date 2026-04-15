@@ -1259,7 +1259,7 @@ int main(int argc, char * argv[])
 
         // Open the online storage
         //if(CascOpenStorageEx(_T("d:\\Hry\\Diablo II Resurrected"), &OpenArgs, true, &hStorage))
-        if(CascOpenStorageEx(_T("e:\\Multimedia\\CASC\\\Diablo II Resurrected\\92198-steam"), &OpenArgs, true, &hStorage))
+        if(CascOpenStorageEx(_T("e:\\Multimedia\\CASC\\Diablo II Resurrected\\92198-steam"), &OpenArgs, true, &hStorage))
         {
             if(CascOpenFile(hStorage, "data:data\\local\\sfx\\common\\barbarian\\bar_datewithdeath.flac", 0, CASC_OVERCOME_ENCRYPTED | CASC_OPEN_CKEY_ONCE, &hFile))
             {

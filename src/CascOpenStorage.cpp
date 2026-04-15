@@ -451,7 +451,7 @@ static DWORD LoadEncodingCKeyPage(TCascStorage * hs, CASC_ENCODING_HEADER & EnHe
 static DWORD LoadEncodingManifest(TCascStorage * hs)
 {
     CASC_CKEY_ENTRY & CKeyEntry = hs->EncodingCKey;
-    CASC_BLOB EncodingFile;
+    CASC_BLOB FileData;
     DWORD dwErrCode = ERROR_FILE_NOT_FOUND;
     DWORD dwSaveFeatures;
 
@@ -463,7 +463,7 @@ static DWORD LoadEncodingManifest(TCascStorage * hs)
     if(CopyEKeyEntry(hs, &CKeyEntry))
     {
         InsertCKeyEntry(hs, CKeyEntry);
-        dwErrCode = LoadInternalFileToMemory(hs, &hs->EncodingCKey, EncodingFile);
+        dwErrCode = LoadInternalFileToMemory(hs, &hs->EncodingCKey, FileData);
     }
 
     // If not available, try to download it
@@ -477,7 +477,7 @@ static DWORD LoadEncodingManifest(TCascStorage * hs)
         if(CopyEKeyEntry(hs, &CKeyEntry))
         {
             InsertCKeyEntry(hs, CKeyEntry);
-            dwErrCode = LoadInternalFileToMemory(hs, &hs->EncodingCKey, EncodingFile);
+            dwErrCode = LoadInternalFileToMemory(hs, &hs->EncodingCKey, FileData);
         }
 
         // Restore features
@@ -485,17 +485,17 @@ static DWORD LoadEncodingManifest(TCascStorage * hs)
     }
 
     // Process the ENCODING manifest
-    if(dwErrCode == ERROR_SUCCESS && EncodingFile.cbData != 0)
+    if(dwErrCode == ERROR_SUCCESS && FileData.cbData != 0)
     {
         CASC_ENCODING_HEADER EnHeader;
 
         // Capture the header of the ENCODING file
-        dwErrCode = CaptureEncodingHeader(EnHeader, EncodingFile.pbData, EncodingFile.cbData);
+        dwErrCode = CaptureEncodingHeader(EnHeader, FileData.pbData, FileData.cbData);
         if(dwErrCode == ERROR_SUCCESS)
         {
             // Get the CKey page header and the first page
-            PFILE_CKEY_PAGE pPageHeader = (PFILE_CKEY_PAGE)(EncodingFile.pbData + sizeof(FILE_ENCODING_HEADER) + EnHeader.ESpecBlockSize);
-            LPBYTE pbEncodingEnd = EncodingFile.pbData + EncodingFile.cbData;
+            PFILE_CKEY_PAGE pPageHeader = (PFILE_CKEY_PAGE)(FileData.pbData + sizeof(FILE_ENCODING_HEADER) + EnHeader.ESpecBlockSize);
+            LPBYTE pbEncodingEnd = FileData.pbData + FileData.cbData;
             LPBYTE pbCKeyPage = (LPBYTE)(pPageHeader + EnHeader.CKeyPageCount);
 
             // Go through all CKey pages and verify them
@@ -777,7 +777,7 @@ static int LoadDownloadManifest(TCascStorage * hs, CASC_DOWNLOAD_HEADER & DlHead
 static int LoadDownloadManifest(TCascStorage * hs)
 {
     PCASC_CKEY_ENTRY pCKeyEntry = FindCKeyEntry_CKey(hs, hs->DownloadCKey.CKey);
-    CASC_BLOB DownloadFile;
+    CASC_BLOB FileData;
     DWORD dwSaveFeatures;
     DWORD dwErrCode = ERROR_SUCCESS;
 
@@ -786,7 +786,7 @@ static int LoadDownloadManifest(TCascStorage * hs)
         return ERROR_CANCELLED;
 
     // Attempt to load the DOWNLOAD manifest from the local storage
-    dwErrCode = LoadInternalFileToMemory(hs, pCKeyEntry, DownloadFile);
+    dwErrCode = LoadInternalFileToMemory(hs, pCKeyEntry, FileData);
 
     // If not available, try to download it
     if((dwErrCode != ERROR_SUCCESS) && (hs->dwFeatures & CASC_FEATURE_ALLOW_DOWNLOAD))
@@ -796,23 +796,23 @@ static int LoadDownloadManifest(TCascStorage * hs)
         hs->dwFeatures |= CASC_FEATURE_ONLINE;
 
         // Attempt to download the DOWNLOAD manifest from the CDNs
-        dwErrCode = LoadInternalFileToMemory(hs, pCKeyEntry, DownloadFile);
+        dwErrCode = LoadInternalFileToMemory(hs, pCKeyEntry, FileData);
 
         // Restore features
         SetFeatureBit(hs, dwSaveFeatures, CASC_FEATURE_ONLINE);
     }
 
     // Parse the DOWNLOAD manifest
-    if(dwErrCode == ERROR_SUCCESS && DownloadFile.cbData != 0)
+    if(dwErrCode == ERROR_SUCCESS && FileData.cbData != 0)
     {
         CASC_DOWNLOAD_HEADER DlHeader;
 
         // Capture the header of the DOWNLOAD file
-        dwErrCode = CaptureDownloadHeader(DlHeader, DownloadFile.pbData, DownloadFile.cbData);
+        dwErrCode = CaptureDownloadHeader(DlHeader, FileData.pbData, FileData.cbData);
         if(dwErrCode == ERROR_SUCCESS)
         {
             // Parse the entire download manifest
-            dwErrCode = LoadDownloadManifest(hs, DlHeader, DownloadFile.pbData, DownloadFile.pbData + DownloadFile.cbData);
+            dwErrCode = LoadDownloadManifest(hs, DlHeader, FileData.pbData, FileData.pbData + FileData.cbData);
         }
     }
     return dwErrCode;
@@ -825,7 +825,7 @@ static int LoadDownloadManifest(TCascStorage * hs)
 static int LoadInstallManifest(TCascStorage * hs)
 {
     PCASC_CKEY_ENTRY pCKeyEntry = FindCKeyEntry_CKey(hs, hs->InstallCKey.CKey);
-    CASC_BLOB InstallFile;
+    CASC_BLOB FileData;
     DWORD dwErrCode = ERROR_SUCCESS;
 
     // Inform the user about what we are doing
@@ -833,10 +833,10 @@ static int LoadInstallManifest(TCascStorage * hs)
         return ERROR_CANCELLED;
 
     // Load the entire DOWNLOAD file to memory
-    dwErrCode = LoadInternalFileToMemory(hs, pCKeyEntry, InstallFile);
-    if(dwErrCode == ERROR_SUCCESS && InstallFile.cbData != 0)
+    dwErrCode = LoadInternalFileToMemory(hs, pCKeyEntry, FileData);
+    if(dwErrCode == ERROR_SUCCESS && FileData.cbData != 0)
     {
-        dwErrCode = RootHandler_CreateInstall(hs, InstallFile);
+        dwErrCode = RootHandler_CreateInstall(hs, FileData);
     }
     else
     {
@@ -884,11 +884,11 @@ static bool InsertWellKnownFile(TCascStorage * hs, const char * szFileName, CASC
     return false;
 }
 
-static int LoadBuildManifest(TCascStorage * hs, DWORD dwLocaleMask)
+static DWORD LoadBuildManifest(TCascStorage * hs, DWORD dwLocaleMask)
 {
     PCASC_CKEY_ENTRY pCKeyEntry = &hs->RootFile;
     TRootHandler * pOldRootHandler = NULL;
-    CASC_BLOB RootFile;
+    CASC_BLOB FileData;
     PDWORD FileSignature;
     DWORD dwSaveFeatures = hs->dwFeatures;
     DWORD dwErrCode = ERROR_BAD_FORMAT;
@@ -912,7 +912,7 @@ static int LoadBuildManifest(TCascStorage * hs, DWORD dwLocaleMask)
 __LoadRootFile:
 
     // Download the local copy of the ROOT file
-    dwErrCode = LoadInternalFileToMemory(hs, pCKeyEntry, RootFile);
+    dwErrCode = LoadInternalFileToMemory(hs, pCKeyEntry, FileData);
 
     // If not available, try to download it
     if((dwErrCode != ERROR_SUCCESS) && (hs->dwFeatures & CASC_FEATURE_ALLOW_DOWNLOAD))
@@ -922,7 +922,7 @@ __LoadRootFile:
         hs->dwFeatures |= CASC_FEATURE_ONLINE;
 
         // Attempt to download the DOWNLOAD manifest from the CDNs
-        dwErrCode = LoadInternalFileToMemory(hs, pCKeyEntry, RootFile);
+        dwErrCode = LoadInternalFileToMemory(hs, pCKeyEntry, FileData);
 
         // Restore features
         SetFeatureBit(hs, dwSaveFeatures, CASC_FEATURE_ONLINE);
@@ -932,26 +932,26 @@ __LoadRootFile:
     if(dwErrCode == ERROR_SUCCESS)
     {
         // Ignore ROOT files that contain just a MD5 hash
-        if(RootFile.cbData > MD5_STRING_SIZE)
+        if(FileData.cbData > MD5_STRING_SIZE)
         {
             // Check the type of the ROOT file
-            FileSignature = (PDWORD)(RootFile.pbData);
+            FileSignature = (PDWORD)(FileData.pbData);
             switch(FileSignature[0])
             {
                 case CASC_MNDX_ROOT_SIGNATURE:
-                    dwErrCode = RootHandler_CreateMNDX(hs, RootFile);
+                    dwErrCode = RootHandler_CreateMNDX(hs, FileData);
                     break;
 
                 case CASC_DIABLO3_ROOT_SIGNATURE:
-                    dwErrCode = RootHandler_CreateDiablo3(hs, RootFile);
+                    dwErrCode = RootHandler_CreateDiablo3(hs, FileData);
                     break;
 
                 case CASC_TVFS_ROOT_SIGNATURE:
-                    dwErrCode = RootHandler_CreateTVFS(hs, RootFile);
+                    dwErrCode = RootHandler_CreateTVFS(hs, FileData);
                     break;
 
                 case CASC_WOW_ROOT_SIGNATURE:
-                    dwErrCode = RootHandler_CreateWoW(hs, RootFile, dwLocaleMask);
+                    dwErrCode = RootHandler_CreateWoW(hs, FileData, dwLocaleMask);
                     break;
 
                 default:
@@ -961,13 +961,13 @@ __LoadRootFile:
                     // If the format was not recognized, they need to return ERROR_BAD_FORMAT
                     //
 
-                    dwErrCode = RootHandler_CreateOverwatch(hs, RootFile);
+                    dwErrCode = RootHandler_CreateOverwatch(hs, FileData);
                     if(dwErrCode == ERROR_BAD_FORMAT)
                     {
-                        dwErrCode = RootHandler_CreateStarcraft1(hs, RootFile);
+                        dwErrCode = RootHandler_CreateStarcraft1(hs, FileData);
                         if(dwErrCode == ERROR_BAD_FORMAT)
                         {
-                            dwErrCode = RootHandler_CreateWoW(hs, RootFile, dwLocaleMask);
+                            dwErrCode = RootHandler_CreateWoW(hs, FileData, dwLocaleMask);
                         }
                     }
                     break;
