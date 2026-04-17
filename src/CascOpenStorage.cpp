@@ -907,11 +907,11 @@ static DWORD LoadBuildManifest(TCascStorage * hs, DWORD dwLocaleMask)
     // Prioritize the VFS root over legacy ROOT file, unless it's WoW
     if(hs->VfsRoot.ContentSize != CASC_INVALID_SIZE)
         pCKeyEntry = &hs->VfsRoot;
-    pCKeyEntry = FindCKeyEntry_CKey(hs, pCKeyEntry->CKey);
 
 __LoadRootFile:
 
     // Download the local copy of the ROOT file
+    pCKeyEntry = FindCKeyEntry_CKey(hs, pCKeyEntry->CKey);
     dwErrCode = LoadInternalFileToMemory(hs, pCKeyEntry, FileData);
 
     // If not available, try to download it

@@ -1132,7 +1132,7 @@ static STORAGE_INFO StorageInfo1[] =
 
     {"Diablo II Resurrected/71776",         "8518f7457729368bcbfc8db60203de78", "180984fc02ee90875d0504952f177f9a", "ENCODING"},
     {"Diablo II Resurrected/91636-steam",   "193ce6613e7c34fcf2384580653f0949", "575cb803f6889a3dec31c4327c7e60c9", "ENCODING"},
-    {"Diablo II Resurrected/92198-steam",   "ac5a1e752c3d0ad7d966ac5d3f90fc34", "7a6007d6844ee61d324254a886a036d4", "ENCODING", CASC_FEATURE_ALLOW_DOWNLOAD},
+    {"Diablo II Resurrected/92198-steam",   "8f99d5861027676ce1bf18546774d4b6", "7b2a5d372f5a9251c54470a46ab2cb06", "ENCODING", CASC_FEATURE_ALLOW_DOWNLOAD},
 
     {"Diablo III/30013",                    "86ba76b46c88eb7c6188d28a27d00f49", "19e37cc3c178ea0521369c09d67791ac", "ENCODING"},
     {"Diablo III/50649",                    "18cd3eb87a46e2d3aa0c57d1d8f8b8ff", "9225b3fa85dd958209ad20495ff6457e", "ENCODING"},
@@ -1209,10 +1209,10 @@ static STORAGE_INFO StorageInfo1[] =
 
 static STORAGE_INFO StorageInfo2[] =
 {
-    {"Hearthstone/160183/hearthstone-25.0.3.160183.159202.versions*hsb*us", "34b821747a7911eb98c9141153470fdd", "85096ab761616e1069a4fa5c1da28d9d"},
-    {"Hearthstone/160183*hsb*us",                                           "34b821747a7911eb98c9141153470fdd", "85096ab761616e1069a4fa5c1da28d9d"},
-    {"WoW/45745-custom-cdn*http://us.falloflordaeron.com:8000*wow*us",      "7bc4a3e55dbbd8096d3cd04dd865f905", "e5c03ef3dd196ec24054dbc370fb2fc5", "interface/framexml/localization.lua"},
-    {"WoW/45745-meta/wow-45745-custom-cdn.versions*wow*us",                 "7bc4a3e55dbbd8096d3cd04dd865f905", "e5c03ef3dd196ec24054dbc370fb2fc5", "interface/framexml/localization.lua"},
+    //{"Hearthstone/160183/hearthstone-25.0.3.160183.159202.versions*hsb*us", "34b821747a7911eb98c9141153470fdd", "85096ab761616e1069a4fa5c1da28d9d"},
+    //{"Hearthstone/160183*hsb*us",                                           "34b821747a7911eb98c9141153470fdd", "85096ab761616e1069a4fa5c1da28d9d"},
+    //{"WoW/45745-custom-cdn*http://us.falloflordaeron.com:8000*wow*us",      "7bc4a3e55dbbd8096d3cd04dd865f905", "e5c03ef3dd196ec24054dbc370fb2fc5", "interface/framexml/localization.lua"},
+    //{"WoW/45745-meta/wow-45745-custom-cdn.versions*wow*us",                 "7bc4a3e55dbbd8096d3cd04dd865f905", "e5c03ef3dd196ec24054dbc370fb2fc5", "interface/framexml/localization.lua"},
     {"WoW/45745-meta/wow-45779-tvfs.versions",                              "3a66cb8b3c51b754b264e2d46498c672", "dab6a1f3586a2a1408a8152ad7f9f1ad"},
     {"WoW/45745-meta/wow-46144-tvfs.versions",                              "327b3c655da26c83aad477934bd04e21", "24d04d1f9f516979a51102f479027c70"},
     {"WoW/45745-meta/wow-46902-classic.versions*wow_classic*us",            "92e498a7ed7fb6e6cc52b8292dd0864b", "3aae26808a5255477ab49df20b95fb18"},
@@ -1225,9 +1225,9 @@ static STORAGE_INFO StorageInfo2[] =
 //-----------------------------------------------------------------------------
 // Main
 
-#define LOAD_STORAGES_SINGLE_DEV
-#define LOAD_STORAGES_CMD_LINE
-#define LOAD_STORAGES_LOCAL
+//#define LOAD_STORAGES_SINGLE_DEV
+//#define LOAD_STORAGES_CMD_LINE
+//#define LOAD_STORAGES_LOCAL
 #define LOAD_STORAGES_ONLINE
 
 int main(int argc, char * argv[])
