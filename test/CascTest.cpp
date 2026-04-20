@@ -1209,16 +1209,16 @@ static STORAGE_INFO StorageInfo1[] =
 
 static STORAGE_INFO StorageInfo2[] =
 {
-    //{"Hearthstone/160183/hearthstone-25.0.3.160183.159202.versions*hsb*us", "34b821747a7911eb98c9141153470fdd", "85096ab761616e1069a4fa5c1da28d9d"},
-    //{"Hearthstone/160183*hsb*us",                                           "34b821747a7911eb98c9141153470fdd", "85096ab761616e1069a4fa5c1da28d9d"},
-    //{"WoW/45745-custom-cdn*http://us.falloflordaeron.com:8000*wow*us",      "7bc4a3e55dbbd8096d3cd04dd865f905", "e5c03ef3dd196ec24054dbc370fb2fc5", "interface/framexml/localization.lua"},
-    //{"WoW/45745-meta/wow-45745-custom-cdn.versions*wow*us",                 "7bc4a3e55dbbd8096d3cd04dd865f905", "e5c03ef3dd196ec24054dbc370fb2fc5", "interface/framexml/localization.lua"},
+    {"Hearthstone/160183/hearthstone-25.0.3.160183.159202.versions*hsb*us", "34b821747a7911eb98c9141153470fdd", "85096ab761616e1069a4fa5c1da28d9d"},
+    {"Hearthstone/160183*hsb*us",                                           "34b821747a7911eb98c9141153470fdd", "85096ab761616e1069a4fa5c1da28d9d"},
+    {"WoW/45745-custom-cdn*http://us.falloflordaeron.com:8000*wow*us",      "7bc4a3e55dbbd8096d3cd04dd865f905", "e5c03ef3dd196ec24054dbc370fb2fc5", "interface/framexml/localization.lua"},
+    {"WoW/45745-meta/wow-45745-custom-cdn.versions*wow*us",                 "7bc4a3e55dbbd8096d3cd04dd865f905", "e5c03ef3dd196ec24054dbc370fb2fc5", "interface/framexml/localization.lua"},
     {"WoW/45745-meta/wow-45779-tvfs.versions",                              "3a66cb8b3c51b754b264e2d46498c672", "dab6a1f3586a2a1408a8152ad7f9f1ad"},
     {"WoW/45745-meta/wow-46144-tvfs.versions",                              "327b3c655da26c83aad477934bd04e21", "24d04d1f9f516979a51102f479027c70"},
     {"WoW/45745-meta/wow-46902-classic.versions*wow_classic*us",            "92e498a7ed7fb6e6cc52b8292dd0864b", "3aae26808a5255477ab49df20b95fb18"},
     {"WoW/45745-meta/wow-47186-ptr.versions",                               "065f6ce7bfc89f783ee35e5411b88a8f", "e1fff62f0147dd079a0cf73890255863", "interface/framexml/localization.lua"},
     {"WoW/45745-meta*wowt*us",                                              "065f6ce7bfc89f783ee35e5411b88a8f", "e1fff62f0147dd079a0cf73890255863", "interface/framexml/localization.lua"},
-    {"WoW/5####-current*wow*us",                                            "a77b379e63ce2ec1a1c1a7068edb9677", "71632219a773858bbc410c49fe6254cc"},
+    {"WoW/5####-current*wow*us",                                            "154f5599fcc0ed01c88a0be0bbd9a23d", "68a93d3288da50e2a97e5d9ad0394161"},
     {"WoW/63728-new-tvfs*wow*us",                                           "36611c553b503f16f1ae4302c618f857", "c989df2962dc62199622757a9526e95b"},
 };
 
@@ -1227,7 +1227,7 @@ static STORAGE_INFO StorageInfo2[] =
 
 //#define LOAD_STORAGES_SINGLE_DEV
 //#define LOAD_STORAGES_CMD_LINE
-//#define LOAD_STORAGES_LOCAL
+#define LOAD_STORAGES_LOCAL
 #define LOAD_STORAGES_ONLINE
 
 int main(int argc, char * argv[])
