@@ -1132,7 +1132,7 @@ static STORAGE_INFO StorageInfo1[] =
 
     {"Diablo II Resurrected/71776",         "8518f7457729368bcbfc8db60203de78", "180984fc02ee90875d0504952f177f9a", "ENCODING"},
     {"Diablo II Resurrected/91636-steam",   "193ce6613e7c34fcf2384580653f0949", "575cb803f6889a3dec31c4327c7e60c9", "ENCODING"},
-    {"Diablo II Resurrected/92198-steam",   "ac5a1e752c3d0ad7d966ac5d3f90fc34", "7a6007d6844ee61d324254a886a036d4", "ENCODING", CASC_FEATURE_ALLOW_DOWNLOAD},
+    {"Diablo II Resurrected/92198-steam",   "8f99d5861027676ce1bf18546774d4b6", "7b2a5d372f5a9251c54470a46ab2cb06", "ENCODING", CASC_FEATURE_ALLOW_DOWNLOAD},
 
     {"Diablo III/30013",                    "86ba76b46c88eb7c6188d28a27d00f49", "19e37cc3c178ea0521369c09d67791ac", "ENCODING"},
     {"Diablo III/50649",                    "18cd3eb87a46e2d3aa0c57d1d8f8b8ff", "9225b3fa85dd958209ad20495ff6457e", "ENCODING"},
@@ -1218,15 +1218,15 @@ static STORAGE_INFO StorageInfo2[] =
     {"WoW/45745-meta/wow-46902-classic.versions*wow_classic*us",            "92e498a7ed7fb6e6cc52b8292dd0864b", "3aae26808a5255477ab49df20b95fb18"},
     {"WoW/45745-meta/wow-47186-ptr.versions",                               "065f6ce7bfc89f783ee35e5411b88a8f", "e1fff62f0147dd079a0cf73890255863", "interface/framexml/localization.lua"},
     {"WoW/45745-meta*wowt*us",                                              "065f6ce7bfc89f783ee35e5411b88a8f", "e1fff62f0147dd079a0cf73890255863", "interface/framexml/localization.lua"},
-    {"WoW/5####-current*wow*us",                                            "a77b379e63ce2ec1a1c1a7068edb9677", "71632219a773858bbc410c49fe6254cc"},
+    {"WoW/5####-current*wow*us",                                            "154f5599fcc0ed01c88a0be0bbd9a23d", "68a93d3288da50e2a97e5d9ad0394161"},
     {"WoW/63728-new-tvfs*wow*us",                                           "36611c553b503f16f1ae4302c618f857", "c989df2962dc62199622757a9526e95b"},
 };
 
 //-----------------------------------------------------------------------------
 // Main
 
-#define LOAD_STORAGES_SINGLE_DEV
-#define LOAD_STORAGES_CMD_LINE
+//#define LOAD_STORAGES_SINGLE_DEV
+//#define LOAD_STORAGES_CMD_LINE
 #define LOAD_STORAGES_LOCAL
 #define LOAD_STORAGES_ONLINE
 
@@ -1247,27 +1247,29 @@ int main(int argc, char * argv[])
 
 #ifdef LOAD_STORAGES_SINGLE_DEV
     {
-/*
         CASC_OPEN_STORAGE_ARGS OpenArgs = {sizeof(CASC_OPEN_STORAGE_ARGS)};
         ULONGLONG FileSize = 0;
         HANDLE hStorage;
         HANDLE hFile;
+        BYTE Buffer[0x100];
 
         // Prepare the callbacks
         OpenArgs.PfnProgressCallback = OnlineStorage_OpenCB;
         OpenArgs.dwFlags = CASC_FEATURE_ALLOW_DOWNLOAD;
 
         // Open the online storage
+        //if(CascOpenStorageEx(_T("d:\\Hry\\Diablo II Resurrected"), &OpenArgs, true, &hStorage))
         if(CascOpenStorageEx(_T("e:\\Multimedia\\CASC\\Diablo II Resurrected\\92198-steam"), &OpenArgs, true, &hStorage))
         {
-            if(CascOpenFile(hStorage, "ROOT", 0, CASC_OVERCOME_ENCRYPTED | CASC_OPEN_CKEY_ONCE, &hFile))
+            if(CascOpenFile(hStorage, "data:data\\local\\sfx\\common\\barbarian\\bar_datewithdeath.flac", 0, CASC_OVERCOME_ENCRYPTED | CASC_OPEN_CKEY_ONCE, &hFile))
             {
+                CascReadFile(hFile, Buffer, sizeof(Buffer), NULL);
                 CascGetFileSize64(hFile, &FileSize);
                 CascCloseFile(hFile);
             }
             CascCloseStorage(hStorage);
         }
-*/
+
 /*
         CASC_OPEN_STORAGE_ARGS OpenArgs = {sizeof(CASC_OPEN_STORAGE_ARGS)};
         //CASC_FIND_DATA cf;
