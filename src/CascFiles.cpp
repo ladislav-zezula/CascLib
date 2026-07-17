@@ -49,6 +49,7 @@ static const TBuildFileInfo BuildTypes[] =
 {
     {_T(".build.info"), 11, CascBuildInfo},         // Since HOTS build 30027, the game uses .build.info file for storage info
     {_T(".build.db"),   9,  CascBuildDb},           // Older CASC storages
+    {_T("data") _T(PATH_SEP_STRING) _T(".build.config"), 18, CascBuildConfig}, // Static CASC storage
     {_T("versions"),    8,  CascVersions},          // Online/cached CASC storages
 };
 
@@ -378,6 +379,14 @@ static DWORD LoadCKeyEntry(TCascStorage * hs, const char * szVariableName, const
     if(StringEndsWith(szVariableName, nLength, "-config", 7))
         return ERROR_SUCCESS;
 
+    // Static VFS manifests can be stored as raw ZLIB streams
+    if(hs->BuildFileType == CascBuildConfig && StringEndsWith(szVariableName, nLength, "-espec", 6))
+    {
+        if((szDataEnd - szDataPtr) == 1 && szDataPtr[0] == 'z')
+            pCKeyEntry->Flags |= CASC_CE_ZLIB_DATA;
+        return ERROR_SUCCESS;
+    }
+
     // If the variable ends at "-size", it means we need to capture the size
     if(StringEndsWith(szVariableName, nLength, "-size", 5))
     {
@@ -419,6 +428,13 @@ static DWORD LoadCKeyEntry(TCascStorage * hs, const char * szVariableName, const
                 if(szDataPtr == NULL)
                     return ERROR_BAD_FORMAT;
                 pCKeyEntry->Flags |= CASC_CE_HAS_EKEY;
+
+                // Static storages encode the data file and offset in the last 7 bytes
+                if(hs->BuildFileType == CascBuildConfig)
+                {
+                    pCKeyEntry->StorageOffset = ConvertBytesToInteger_7(pCKeyEntry->EKey + CASC_EKEY_SIZE);
+                    pCKeyEntry->Flags |= CASC_CE_FILE_IS_LOCAL;
+                }
 
                 // Increment the number of EKey entries loaded from text build file
                 hs->EKeyEntries++;
@@ -911,8 +927,26 @@ static DWORD ParseFile_CdnBuild(TCascStorage * hs, void * pvListFile)
     }
 
     // Both CKey and EKey of ENCODING file is required
-    if((hs->EncodingCKey.Flags & (CASC_CE_HAS_CKEY | CASC_CE_HAS_EKEY)) != (CASC_CE_HAS_CKEY | CASC_CE_HAS_EKEY))
+    if(hs->BuildFileType != CascBuildConfig &&
+       (hs->EncodingCKey.Flags & (CASC_CE_HAS_CKEY | CASC_CE_HAS_EKEY)) != (CASC_CE_HAS_CKEY | CASC_CE_HAS_EKEY))
         dwErrCode = ERROR_BAD_FORMAT;
+    if(hs->BuildFileType == CascBuildConfig &&
+       (hs->VfsRoot.Flags & (CASC_CE_HAS_CKEY | CASC_CE_HAS_EKEY)) != (CASC_CE_HAS_CKEY | CASC_CE_HAS_EKEY))
+        dwErrCode = ERROR_BAD_FORMAT;
+    return dwErrCode;
+}
+
+static DWORD LoadBuildConfigFile(TCascStorage * hs)
+{
+    void * pvListFile;
+    DWORD dwErrCode = ERROR_FILE_NOT_FOUND;
+
+    pvListFile = ListFile_OpenExternal(hs->szMainFile);
+    if(pvListFile != NULL)
+    {
+        dwErrCode = ParseFile_CdnBuild(hs, pvListFile);
+        CASC_FREE(pvListFile);
+    }
     return dwErrCode;
 }
 
@@ -1518,6 +1552,9 @@ DWORD CheckCascBuildFileExact(CASC_BUILD_FILE & BuildFile, LPCTSTR szLocalPath)
     // Check every type of the build file
     for(size_t i = 0; i < _countof(BuildTypes); i++)
     {
+        if(nLength < BuildTypes[i].nLength)
+            continue;
+
         // We support any file name with the appropriate ending,
         // for example wow-19342.build.info or wow-47186.versions
         szFileType = szLocalPath + nLength - BuildTypes[i].nLength;
@@ -1698,6 +1735,10 @@ DWORD LoadMainFile(TCascStorage * hs)
 
         case CascBuildInfo:     // Current storages have "build.db"
             dwErrCode = LoadCsvFile(hs, hs->szMainFile, ParseFile_BuildInfo, true);
+            break;
+
+        case CascBuildConfig:   // Static storages have "data\.build.config"
+            dwErrCode = LoadBuildConfigFile(hs);
             break;
 
         case CascVersions:      // Online storages have "versions+cdns"

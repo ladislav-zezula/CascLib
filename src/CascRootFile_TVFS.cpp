@@ -183,7 +183,9 @@ struct TRootHandler_TVFS : public TFileTreeRoot
 
         // Capture the other four integers 
         pbDataPtr = CaptureByteArray(pbDataPtr, pbDataEnd, 4, &DirHeader.FormatVersion);
-        if(pbDataPtr == NULL || DirHeader.FormatVersion != 1 || DirHeader.EKeySize != 9 || DirHeader.PatchKeySize != 9 || DirHeader.HeaderSize < 8)
+        if(pbDataPtr == NULL || DirHeader.FormatVersion != 1 ||
+           (DirHeader.EKeySize != CASC_EKEY_SIZE && DirHeader.EKeySize != MD5_HASH_SIZE) ||
+           DirHeader.PatchKeySize != DirHeader.EKeySize || DirHeader.HeaderSize < 8)
             return ERROR_BAD_FORMAT;
 
         // Capture the rest
@@ -246,7 +248,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         return (1 <= SpanCount && SpanCount <= 224) ? pbVfsFileEntry : NULL;
     }
 
-    LPBYTE CaptureVfsSpanEntries(TVFS_DIRECTORY_HEADER & DirHeader, LPBYTE pbVfsSpanEntry, PCASC_CKEY_ENTRY PtrSpanEntry, size_t SpanCount)
+    LPBYTE CaptureVfsSpanEntries(TCascStorage * hs, TVFS_DIRECTORY_HEADER & DirHeader, LPBYTE pbVfsSpanEntry, PCASC_CKEY_ENTRY PtrSpanEntry, size_t SpanCount)
     {
         LPBYTE pbCftFileTable;
         LPBYTE pbCftFileEntry;
@@ -263,6 +265,9 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         for(size_t i = 0; i < SpanCount; i++)
         {
             DWORD dwCftOffset = ConvertBytesToInteger_X(pbVfsSpanEntry + sizeof(DWORD) + sizeof(DWORD), DirHeader.CftOffsSize);
+
+            if(hs->BuildFileType == CascBuildConfig)
+                PtrSpanEntry->Init();
 
             //
             // Structure of the span entry:
@@ -283,6 +288,14 @@ struct TRootHandler_TVFS : public TFileTreeRoot
             // Copy the EKey and content size
             CaptureEncodedKey(PtrSpanEntry->EKey, pbCftFileEntry, DirHeader.EKeySize);
             PtrSpanEntry->ContentSize  = ConvertBytesToInteger_4(pbVfsSpanEntry + sizeof(DWORD));
+
+            // Static storages keep the data location in the full EKey
+            if(hs->BuildFileType == CascBuildConfig)
+            {
+                PtrSpanEntry->StorageOffset = ConvertBytesToInteger_7(PtrSpanEntry->EKey + CASC_EKEY_SIZE);
+                PtrSpanEntry->EncodedSize = ConvertBytesToInteger_4(pbCftFileEntry + DirHeader.EKeySize);
+                PtrSpanEntry->Flags = CASC_CE_HAS_EKEY | CASC_CE_FILE_IS_LOCAL;
+            }
 
             // Move to the next entry
             pbVfsSpanEntry += ItemSize;
@@ -422,7 +435,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         return dwErrCode;
     }
 
-    PCASC_CKEY_ENTRY InsertUnknownCKeyEntry(TCascStorage * hs, LPBYTE pbEKey, size_t cbEKey, DWORD ContentSize)
+    PCASC_CKEY_ENTRY InsertUnknownCKeyEntry(TCascStorage * hs, CASC_CKEY_ENTRY & SpanEntry, size_t cbEKey)
     {
         PCASC_CKEY_ENTRY pCKeyEntry;
 
@@ -431,15 +444,18 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         if(pCKeyEntry != NULL)
         {
             memset(pCKeyEntry, 0, sizeof(CASC_CKEY_ENTRY));
-            memcpy(pCKeyEntry->EKey, pbEKey, cbEKey);
-            pCKeyEntry->StorageOffset = CASC_INVALID_OFFS64;
-            pCKeyEntry->ContentSize = ContentSize;
-            pCKeyEntry->EncodedSize = CASC_INVALID_SIZE;
-            pCKeyEntry->Flags = CASC_CE_HAS_EKEY | CASC_CE_HAS_EKEY_PARTIAL;
+            memcpy(pCKeyEntry->EKey, SpanEntry.EKey, cbEKey);
+            pCKeyEntry->StorageOffset = SpanEntry.StorageOffset;
+            pCKeyEntry->ContentSize = SpanEntry.ContentSize;
+            pCKeyEntry->EncodedSize = SpanEntry.EncodedSize;
+            pCKeyEntry->Flags = SpanEntry.Flags | CASC_CE_HAS_EKEY;
+            if(cbEKey != MD5_HASH_SIZE)
+                pCKeyEntry->Flags |= CASC_CE_HAS_EKEY_PARTIAL;
             pCKeyEntry->SpanCount = 1;
 
             // Copy the information from index files to the CKey entry
-            CopyEKeyEntry(hs, pCKeyEntry);
+            if(hs->BuildFileType != CascBuildConfig)
+                CopyEKeyEntry(hs, pCKeyEntry);
 
             // Insert the item into EKey map
             hs->EKeyMap.InsertObject(pCKeyEntry, pCKeyEntry->EKey);
@@ -519,7 +535,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                         CASC_CKEY_ENTRY SpanEntry;
 
                         // Capture the single span entry
-                        pbVfsSpanEntry = CaptureVfsSpanEntries(DirHeader, pbVfsSpanEntry, &SpanEntry, 1);
+                        pbVfsSpanEntry = CaptureVfsSpanEntries(hs, DirHeader, pbVfsSpanEntry, &SpanEntry, 1);
                         if(pbVfsSpanEntry == NULL)
                             return ERROR_FILE_CORRUPT;
 
@@ -529,7 +545,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                         {
                             // Some files are in the ROOT manifest even if they are not in ENCODING and DOWNLOAD.
                             // Example: "2018 - New CASC\00001", file "DivideAndConquer.w3m:war3mapMap.blp"
-                            pCKeyEntry = InsertUnknownCKeyEntry(hs, SpanEntry.EKey, DirHeader.EKeySize, SpanEntry.ContentSize);
+                            pCKeyEntry = InsertUnknownCKeyEntry(hs, SpanEntry, DirHeader.EKeySize);
                             if(pCKeyEntry == NULL)
                             {
                                 return ERROR_NOT_ENOUGH_MEMORY;
@@ -602,7 +618,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                             return ERROR_NOT_ENOUGH_MEMORY;
 
                         // Capture all span entries
-                        pbVfsSpanEntry = CaptureVfsSpanEntries(DirHeader, pbVfsSpanEntry, pSpanEntries, dwSpanCount);
+                        pbVfsSpanEntry = CaptureVfsSpanEntries(hs, DirHeader, pbVfsSpanEntry, pSpanEntries, dwSpanCount);
                         if(pbVfsSpanEntry == NULL)
                             return ERROR_FILE_CORRUPT;
 
@@ -615,8 +631,17 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                             pCKeyEntry = FindCKeyEntry_EKey(hs, pSpanEntries[dwSpanIndex].EKey);
                             if(pCKeyEntry == NULL)
                             {
-                                bFilePresent = false;
-                                break;
+                                if(hs->BuildFileType == CascBuildConfig)
+                                {
+                                    pCKeyEntry = InsertUnknownCKeyEntry(hs, *pSpanEntry, DirHeader.EKeySize);
+                                    if(pCKeyEntry == NULL)
+                                        return ERROR_NOT_ENOUGH_MEMORY;
+                                }
+                                else
+                                {
+                                    bFilePresent = false;
+                                    break;
+                                }
                             }
 
                             // Supply the content size
