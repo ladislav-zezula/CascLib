@@ -119,112 +119,6 @@ typedef struct _TVFS_WOW_ENTRY
     BYTE  ContentKey[MD5_HASH_SIZE];
 } TVFS_WOW_ENTRY, *PTVFS_WOW_ENTRY;
 
-typedef struct _TVFS_D2R_STEAM_PATH_FIXUP
-{
-    const char * szPath;
-    DWORD SeparatorCount;
-} TVFS_D2R_STEAM_PATH_FIXUP, *PTVFS_D2R_STEAM_PATH_FIXUP;
-
-//-----------------------------------------------------------------------------
-// Local variables
-
-// Content key of the D2R 3.2.0.1 Steam VFS manifest
-static const BYTE D2RSteamVfsCKey[MD5_HASH_SIZE] =
-{
-    0x82, 0xDD, 0x01, 0x5C, 0x88, 0x59, 0x31, 0x4B,
-    0x13, 0xAC, 0xE5, 0x83, 0xB8, 0xD1, 0xDF, 0x64
-};
-
-// The Steam manifest omits empty-name directory nodes present in the Battle.net manifest.
-// Each entry gives the number of leading path-table branches that belonged to the omitted node.
-static const TVFS_D2R_STEAM_PATH_FIXUP D2RSteamPathFixups[] =
-{
-    {"data/global/sfx/monster/baal", 9},
-    {"data/global/sfx/monster/diablo", 6},
-    {"data/global/sfx/monster/fallen", 6},
-    {"data/global/sfx/monster/guard", 2},
-    {"data/global/sfx/monster/hawk", 4},
-    {"data/global/sfx/monster/pygmy", 6},
-    {"data/global/sfx/monster/sandmaggot", 7},
-    {"data/global/sfx/monster/tentacle", 3},
-    {"data/hd/env/model/act1/barracks/act1_barracks_props", 3},
-    {"data/hd/env/model/act1/barracks/act1_barracks_walls", 4},
-    {"data/hd/env/model/act1/catacomb/act1_catacomb_walls", 7},
-    {"data/hd/env/model/act1/court/act1_courtyard_walls", 5},
-    {"data/hd/env/model/act1/outdoors/act1_outdoors_stonewalls", 2},
-    {"data/hd/env/model/act2/palace/cell/act2_palace_cell_walls", 6},
-    {"data/hd/env/model/act2/palace/harem/act2_palace_harem_walls", 8},
-    {"data/hd/env/model/act2/tomb/act2_tomb_pillars", 3},
-    {"data/hd/env/model/act2/tomb/act2_tomb_walls", 5},
-    {"data/hd/env/model/act2/town/act2_town_shops", 2},
-    {"data/hd/env/model/act4/diab/act4_diab_cathedral", 6},
-    {"data/hd/env/model/act4/lava/act4_lava_fortress", 4},
-    {"data/hd/env/model/act4/mesa/act4_mesa_ruin_walls", 2},
-    {"data/hd/env/model/expansion/icecave/expansion_icecave_ledges", 2},
-    {"data/hd/env/model/expansion/icecave/expansion_icecave_walls", 2},
-    {"data/hd/env/model/expansion/siege/expansion_siege_cliffs", 3},
-    {"data/hd/env/model/expansion/siege/expansion_siege_forts", 3},
-    {"data/hd/env/model/expansion/siege/expansion_siege_hills", 2},
-    {"data/hd/env/model/expansion/town/expansion_town_cloth/awning_cloth01", 2},
-    {"data/hd/env/model/expansion/town/expansion_town_cloth/awning_cloth02", 2},
-    {"data/hd/env/model/expansion/town/expansion_town_details", 8},
-    {"data/hd/env/model/expansion/town/expansion_town_structures/expansion_town_structure09", 2},
-    {"data/hd/env/model/expansion/wildtemple/expansion_wildtemple_walls", 6},
-    {"data/hd/env/model/global/prop/act1/outdoors/act1_outdoors_rocks", 3},
-    {"data/hd/env/model/global/prop/act2/tomb/act2_tomb_stone_tiles", 2},
-    {"data/hd/env/model/global/prop/act3/jungle", 2},
-    {"data/hd/env/model/global/prop/expansion/siege/expansion_siege_debris", 3},
-    {"data/hd/env/texture/expansion/icecave/icecave_walls", 2},
-    {"data/hd/env/texture/expansion/town/town_structures/structure09", 2},
-    {"data/hd/global/sfx/monster/baal", 10},
-    {"data/hd/global/sfx/monster/diablo", 6},
-    {"data/hd/global/sfx/monster/fallen", 6},
-    {"data/hd/items/misc/gold/gold", 2},
-    {"data/hd/overlays/object", 2},
-    {"data/hd/vfx/meshes/character/enemy/nihlathak", 4},
-    {"data/hd/vfx/meshes/overlay", 2},
-    {"data/hd/vfx/particles/missiles/ice_icefrozenorb", 2},
-    {"data/local/font/latin", 3},
-    {"data/local/lng/strings", 13}
-};
-
-//-----------------------------------------------------------------------------
-// Local functions
-
-static bool IsD2RSteamVfs(TCascStorage * hs)
-{
-    PCASC_CKEY_ENTRY pCKeyEntry;
-
-    if(hs->BuildFileType == CascBuildConfig)
-    {
-        size_t ItemCount = hs->VfsRootList.ItemCount();
-
-        for(size_t i = 0; i < ItemCount; i++)
-        {
-            pCKeyEntry = (PCASC_CKEY_ENTRY)hs->VfsRootList.ItemAt(i);
-
-            if(pCKeyEntry != NULL && !memcmp(pCKeyEntry->CKey, D2RSteamVfsCKey, MD5_HASH_SIZE))
-                return true;
-        }
-    }
-    return false;
-}
-
-static DWORD GetD2RSteamSeparatorCount(const CASC_PATH<char> & PathBuffer)
-{
-    const char * szPath = strrchr(PathBuffer, ':');
-
-    // Ignore the virtual file system prefix (for example "data:")
-    szPath = (szPath != NULL) ? (szPath + 1) : PathBuffer;
-
-    for(size_t i = 0; i < _countof(D2RSteamPathFixups); i++)
-    {
-        if(!strcmp(szPath, D2RSteamPathFixups[i].szPath))
-            return D2RSteamPathFixups[i].SeparatorCount;
-    }
-    return 0;
-}
-
 //-----------------------------------------------------------------------------
 // Handler definition for TVFS root file
 
@@ -237,7 +131,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
     {
         // TVFS supports file names, but DOESN'T support CKeys.
         dwFeatures |= CASC_FEATURE_FILE_NAMES;
-        bD2RSteamVfs = false;
+        bParseVfsSubDirectories = true;
     }
 
     // Returns size of "container file table offset" field in the VFS.
@@ -584,6 +478,134 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         }
     }
 
+    DWORD CreateRootFileNameMap(CASC_BLOB & RootFile)
+    {
+        const char * szRootFileEnd = (const char *)RootFile.End();
+        const char * szRootFilePtr = (const char *)RootFile.pbData;
+        const char * szLineBegin;
+        const char * szLineEnd;
+        const char * szNameEnd;
+        const char * szNamePtr;
+        char * szRootNamePtr;
+        char * szLookupName;
+        size_t FileCount = 0;
+        size_t BufferSize;
+        DWORD dwErrCode;
+
+        // Count the number of file names in the text ROOT
+        for(size_t i = 0; i < RootFile.cbData; i++)
+        {
+            if(RootFile.pbData[i] == '\n')
+                FileCount++;
+        }
+        if(RootFile.cbData != 0 && RootFile.pbData[RootFile.cbData - 1] != '\n')
+            FileCount++;
+        if(FileCount == 0 || RootFile.cbData > ((SIZE_MAX - 1) / 2))
+            return ERROR_BAD_FORMAT;
+
+        // Each record contains the separator-less lookup name and the original name
+        BufferSize = RootFile.cbData * 2;
+        dwErrCode = RootFileNames.SetSize(BufferSize);
+        if(dwErrCode != ERROR_SUCCESS)
+            return dwErrCode;
+
+        dwErrCode = RootFileNameMap.Create(FileCount, 0, 0, KeyIsString);
+        if(dwErrCode != ERROR_SUCCESS)
+            return dwErrCode;
+
+        szRootNamePtr = (char *)RootFileNames.pbData;
+        while(szRootFilePtr < szRootFileEnd)
+        {
+            // Capture one line
+            while(szRootFilePtr < szRootFileEnd && (szRootFilePtr[0] == '\r' || szRootFilePtr[0] == '\n'))
+                szRootFilePtr++;
+            szLineBegin = szRootFilePtr;
+            while(szRootFilePtr < szRootFileEnd && szRootFilePtr[0] != '\r' && szRootFilePtr[0] != '\n')
+                szRootFilePtr++;
+            szLineEnd = szRootFilePtr;
+
+            // The file name is the first column in "name|md5|plugin"
+            for(szNameEnd = szLineBegin; szNameEnd < szLineEnd && szNameEnd[0] != '|'; szNameEnd++)
+                ;
+            if(szNameEnd == szLineBegin || szNameEnd == szLineEnd)
+                continue;
+
+            // Create the case-insensitive lookup name without path separators
+            szLookupName = szRootNamePtr;
+            for(szNamePtr = szLineBegin; szNamePtr < szNameEnd; szNamePtr++)
+            {
+                if(szNamePtr[0] != '/' && szNamePtr[0] != '\\')
+                    *szRootNamePtr++ = szNamePtr[0];
+            }
+            *szRootNamePtr++ = 0;
+
+            // Keep the original name immediately after the lookup name
+            memcpy(szRootNamePtr, szLineBegin, (szNameEnd - szLineBegin));
+            szRootNamePtr += (szNameEnd - szLineBegin);
+            *szRootNamePtr++ = 0;
+
+            // Ambiguous lookup names make this ROOT unsuitable for reconstruction
+            if(!RootFileNameMap.InsertString(szLookupName, false))
+            {
+                RootFileNameMap.Free();
+                RootFileNames.Free();
+                return ERROR_BAD_FORMAT;
+            }
+        }
+
+        RootFileNames.cbData = (szRootNamePtr - (char *)RootFileNames.pbData);
+        return ERROR_SUCCESS;
+    }
+
+    DWORD LoadRootFileNameMap(TCascStorage * hs)
+    {
+        PCASC_CKEY_ENTRY pCKeyEntry;
+        CASC_BLOB RootFile;
+        BYTE RootFileHash[MD5_HASH_SIZE];
+        DWORD dwErrCode;
+
+        // Static D2R storages expose their classic text ROOT as "index"
+        pCKeyEntry = GetFile(hs, "index");
+        if(pCKeyEntry == NULL || (hs->RootFile.Flags & CASC_CE_HAS_CKEY) == 0)
+            return ERROR_SUCCESS;
+
+        // Verify that this is the ROOT declared by the build configuration
+        dwErrCode = LoadInternalFileToMemory(hs, pCKeyEntry, RootFile);
+        if(dwErrCode != ERROR_SUCCESS)
+            return ERROR_SUCCESS;
+        CascHash_MD5(RootFile.pbData, RootFile.cbData, RootFileHash);
+        if(memcmp(RootFileHash, hs->RootFile.CKey, MD5_HASH_SIZE))
+            return ERROR_SUCCESS;
+
+        return CreateRootFileNameMap(RootFile);
+    }
+
+    const char * GetRootFileName(const CASC_PATH<char> & PathBuffer)
+    {
+        const char * szPath = (const char *)PathBuffer;
+        const char * szLookupName;
+        const char * szRootFileName;
+        CASC_PATH<char> LookupName;
+
+        if(RootFileNameMap.IsInitialized())
+        {
+            // The Steam TVFS may omit path separators. The text ROOT retains them.
+            while(szPath[0] != 0)
+            {
+                if(szPath[0] != '/' && szPath[0] != '\\')
+                    LookupName.AppendChar(szPath[0]);
+                szPath++;
+            }
+
+            szLookupName = (const char *)LookupName;
+            szRootFileName = RootFileNameMap.FindString(szLookupName, szLookupName + LookupName.Length());
+            if(szRootFileName != NULL)
+                return szRootFileName + strlen(szRootFileName) + 1;
+        }
+
+        return (const char *)PathBuffer;
+    }
+
     DWORD ParsePathFileTable(TCascStorage * hs, TVFS_DIRECTORY_HEADER & DirHeader, CASC_PATH<char> & PathBuffer, LPBYTE pbPathTablePtr, LPBYTE pbPathTableEnd)
     {
         TVFS_DIRECTORY_HEADER SubHeader;
@@ -591,11 +613,8 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         PCASC_CKEY_ENTRY pCKeyEntry;
         LPBYTE pbVfsSpanEntry;
         size_t  nSavePos = PathBuffer.Save();
-        DWORD dwSeparatorCount = bD2RSteamVfs ? GetD2RSteamSeparatorCount(PathBuffer) : 0;
-        DWORD dwPathIndex = 0;
         DWORD dwSpanCount;
         DWORD dwErrCode;
-        bool bPathStart = true;
 
         // Sanity check
         assert(SpanArray.IsInitialized());
@@ -607,10 +626,6 @@ struct TRootHandler_TVFS : public TFileTreeRoot
             pbPathTablePtr = CapturePathEntry(PathEntry, pbPathTablePtr, pbPathTableEnd);
             if(pbPathTablePtr == NULL)
                 return ERROR_BAD_FORMAT;
-
-            // Restore a directory separator omitted by the D2R Steam manifest
-            if(bPathStart && dwPathIndex < dwSeparatorCount)
-                PathEntry.NodeFlags |= TVFS_PTE_PATH_SEPARATOR_PRE;
 
             // Append the node name to the total path. Also add backslash, if it's a folder
             PathBuffer_AppendNode(PathBuffer, PathEntry);
@@ -674,17 +689,20 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                         // We need to check whether this is another TVFS directory file
                         if(IsVfsSubDirectory(hs, DirHeader, SubHeader, SpanEntry.EKey, SpanEntry.ContentSize) == ERROR_SUCCESS)
                         {
-                            // Add colon (':')
-                            PathBuffer.AppendChar(':');
+                            if(bParseVfsSubDirectories)
+                            {
+                                // Add colon (':')
+                                PathBuffer.AppendChar(':');
 
-                            // The file content size should already be there
-                            assert(pCKeyEntry->ContentSize == SpanEntry.ContentSize);
-                            FileTree.InsertByName(pCKeyEntry, PathBuffer);
+                                // The file content size should already be there
+                                assert(pCKeyEntry->ContentSize == SpanEntry.ContentSize);
+                                FileTree.InsertByName(pCKeyEntry, PathBuffer);
 
-                            // Parse the subdir. On error, stop the parsing
-                            dwErrCode = ParseDirectoryData(hs, SubHeader, PathBuffer);
-                            if(dwErrCode != ERROR_SUCCESS)
-                                return dwErrCode;
+                                // Parse the subdir. On error, stop the parsing
+                                dwErrCode = ParseDirectoryData(hs, SubHeader, PathBuffer);
+                                if(dwErrCode != ERROR_SUCCESS)
+                                    return dwErrCode;
+                            }
                         }
                         else
                         {
@@ -698,11 +716,12 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                             switch(dwErrCode = CheckWoWGenericName(PathBuffer, WowEntry))
                             {
                                 case ERROR_SUCCESS:         // The entry was recognized and has the right format
-                                    FileTree.InsertByName(pCKeyEntry, PathBuffer, WowEntry.FileDataId, WowEntry.LocaleFlags, WowEntry.ContentFlags);
+                                    FileTree.InsertByName(pCKeyEntry, GetRootFileName(PathBuffer), WowEntry.FileDataId,
+                                                          WowEntry.LocaleFlags, WowEntry.ContentFlags);
                                     break;
 
                                 case ERROR_BAD_FORMAT:      // The entry was not recognized as TVFS WoW name
-                                    FileTree.InsertByName(pCKeyEntry, PathBuffer);
+                                    FileTree.InsertByName(pCKeyEntry, GetRootFileName(PathBuffer));
                                     break;
 
                                 default:                    // The entry has a bad format - use classic ROOT file
@@ -786,7 +805,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                         {
                             // Insert a new file node that will contain pointer to the span entries
                             RefCount = pSpanEntries->RefCount;
-                            pFileNode = FileTree.InsertByName(pSpanEntries, PathBuffer);
+                            pFileNode = FileTree.InsertByName(pSpanEntries, GetRootFileName(PathBuffer));
                             pSpanEntries->RefCount = RefCount;
 
                             if(pFileNode == NULL)
@@ -797,11 +816,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
 
                 // Reset the position of the path buffer
                 PathBuffer.Restore(nSavePos);
-                dwPathIndex++;
-                bPathStart = true;
             }
-            else
-                bPathStart = false;
         }
 
         // Return the total number of entries
@@ -851,9 +866,6 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         CASC_PATH<char> PathBuffer;
         DWORD dwErrCode;
 
-        // Enable manifest-specific path reconstruction
-        bD2RSteamVfs = IsD2RSteamVfs(hs);
-
         // Save the length of the key
         FileTree.SetKeyLength(RootHeader.EKeySize);
 
@@ -864,6 +876,22 @@ struct TRootHandler_TVFS : public TFileTreeRoot
 
         // Insert the main VFS root file as named entry
         InsertRootVfsEntry(hs, hs->VfsRoot.CKey, "vfs-root", 0);
+
+        // Static storages may contain a text ROOT next to the mounted VFS.
+        // Parse the wrapper without its subdirectories first so we can use the
+        // original file names while parsing the main VFS.
+        if(hs->BuildFileType == CascBuildConfig)
+        {
+            bParseVfsSubDirectories = false;
+            dwErrCode = ParseDirectoryData(hs, RootHeader, PathBuffer);
+            bParseVfsSubDirectories = true;
+            if(dwErrCode != ERROR_SUCCESS)
+                return dwErrCode;
+
+            dwErrCode = LoadRootFileNameMap(hs);
+            if(dwErrCode != ERROR_SUCCESS && dwErrCode != ERROR_BAD_FORMAT)
+                return dwErrCode;
+        }
 
         // Insert all VFS roots folders as files
         //for(size_t i = 0; i < hs->VfsRootList.ItemCount(); i++)
@@ -931,7 +959,9 @@ struct TRootHandler_TVFS : public TFileTreeRoot
     }
 
     CASC_ARRAY SpanArray;           // Array of CASC_SPAN_ENTRY for all multi-span files
-    bool bD2RSteamVfs;              // The D2R Steam VFS needs path separators restored
+    CASC_BLOB RootFileNames;        // Separator-less lookup names followed by original names
+    CASC_MAP RootFileNameMap;       // Map of separator-less names to RootFileNames records
+    bool bParseVfsSubDirectories;   // False while locating the text ROOT in a VFS wrapper
 };
 
 //-----------------------------------------------------------------------------
