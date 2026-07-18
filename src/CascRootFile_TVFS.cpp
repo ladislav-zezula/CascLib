@@ -119,6 +119,112 @@ typedef struct _TVFS_WOW_ENTRY
     BYTE  ContentKey[MD5_HASH_SIZE];
 } TVFS_WOW_ENTRY, *PTVFS_WOW_ENTRY;
 
+typedef struct _TVFS_D2R_STEAM_PATH_FIXUP
+{
+    const char * szPath;
+    DWORD SeparatorCount;
+} TVFS_D2R_STEAM_PATH_FIXUP, *PTVFS_D2R_STEAM_PATH_FIXUP;
+
+//-----------------------------------------------------------------------------
+// Local variables
+
+// Content key of the D2R 3.2.0.1 Steam VFS manifest
+static const BYTE D2RSteamVfsCKey[MD5_HASH_SIZE] =
+{
+    0x82, 0xDD, 0x01, 0x5C, 0x88, 0x59, 0x31, 0x4B,
+    0x13, 0xAC, 0xE5, 0x83, 0xB8, 0xD1, 0xDF, 0x64
+};
+
+// The Steam manifest omits empty-name directory nodes present in the Battle.net manifest.
+// Each entry gives the number of leading path-table branches that belonged to the omitted node.
+static const TVFS_D2R_STEAM_PATH_FIXUP D2RSteamPathFixups[] =
+{
+    {"data/global/sfx/monster/baal", 9},
+    {"data/global/sfx/monster/diablo", 6},
+    {"data/global/sfx/monster/fallen", 6},
+    {"data/global/sfx/monster/guard", 2},
+    {"data/global/sfx/monster/hawk", 4},
+    {"data/global/sfx/monster/pygmy", 6},
+    {"data/global/sfx/monster/sandmaggot", 7},
+    {"data/global/sfx/monster/tentacle", 3},
+    {"data/hd/env/model/act1/barracks/act1_barracks_props", 3},
+    {"data/hd/env/model/act1/barracks/act1_barracks_walls", 4},
+    {"data/hd/env/model/act1/catacomb/act1_catacomb_walls", 7},
+    {"data/hd/env/model/act1/court/act1_courtyard_walls", 5},
+    {"data/hd/env/model/act1/outdoors/act1_outdoors_stonewalls", 2},
+    {"data/hd/env/model/act2/palace/cell/act2_palace_cell_walls", 6},
+    {"data/hd/env/model/act2/palace/harem/act2_palace_harem_walls", 8},
+    {"data/hd/env/model/act2/tomb/act2_tomb_pillars", 3},
+    {"data/hd/env/model/act2/tomb/act2_tomb_walls", 5},
+    {"data/hd/env/model/act2/town/act2_town_shops", 2},
+    {"data/hd/env/model/act4/diab/act4_diab_cathedral", 6},
+    {"data/hd/env/model/act4/lava/act4_lava_fortress", 4},
+    {"data/hd/env/model/act4/mesa/act4_mesa_ruin_walls", 2},
+    {"data/hd/env/model/expansion/icecave/expansion_icecave_ledges", 2},
+    {"data/hd/env/model/expansion/icecave/expansion_icecave_walls", 2},
+    {"data/hd/env/model/expansion/siege/expansion_siege_cliffs", 3},
+    {"data/hd/env/model/expansion/siege/expansion_siege_forts", 3},
+    {"data/hd/env/model/expansion/siege/expansion_siege_hills", 2},
+    {"data/hd/env/model/expansion/town/expansion_town_cloth/awning_cloth01", 2},
+    {"data/hd/env/model/expansion/town/expansion_town_cloth/awning_cloth02", 2},
+    {"data/hd/env/model/expansion/town/expansion_town_details", 8},
+    {"data/hd/env/model/expansion/town/expansion_town_structures/expansion_town_structure09", 2},
+    {"data/hd/env/model/expansion/wildtemple/expansion_wildtemple_walls", 6},
+    {"data/hd/env/model/global/prop/act1/outdoors/act1_outdoors_rocks", 3},
+    {"data/hd/env/model/global/prop/act2/tomb/act2_tomb_stone_tiles", 2},
+    {"data/hd/env/model/global/prop/act3/jungle", 2},
+    {"data/hd/env/model/global/prop/expansion/siege/expansion_siege_debris", 3},
+    {"data/hd/env/texture/expansion/icecave/icecave_walls", 2},
+    {"data/hd/env/texture/expansion/town/town_structures/structure09", 2},
+    {"data/hd/global/sfx/monster/baal", 10},
+    {"data/hd/global/sfx/monster/diablo", 6},
+    {"data/hd/global/sfx/monster/fallen", 6},
+    {"data/hd/items/misc/gold/gold", 2},
+    {"data/hd/overlays/object", 2},
+    {"data/hd/vfx/meshes/character/enemy/nihlathak", 4},
+    {"data/hd/vfx/meshes/overlay", 2},
+    {"data/hd/vfx/particles/missiles/ice_icefrozenorb", 2},
+    {"data/local/font/latin", 3},
+    {"data/local/lng/strings", 13}
+};
+
+//-----------------------------------------------------------------------------
+// Local functions
+
+static bool IsD2RSteamVfs(TCascStorage * hs)
+{
+    PCASC_CKEY_ENTRY pCKeyEntry;
+
+    if(hs->BuildFileType == CascBuildConfig)
+    {
+        size_t ItemCount = hs->VfsRootList.ItemCount();
+
+        for(size_t i = 0; i < ItemCount; i++)
+        {
+            pCKeyEntry = (PCASC_CKEY_ENTRY)hs->VfsRootList.ItemAt(i);
+
+            if(pCKeyEntry != NULL && !memcmp(pCKeyEntry->CKey, D2RSteamVfsCKey, MD5_HASH_SIZE))
+                return true;
+        }
+    }
+    return false;
+}
+
+static DWORD GetD2RSteamSeparatorCount(const CASC_PATH<char> & PathBuffer)
+{
+    const char * szPath = strrchr(PathBuffer, ':');
+
+    // Ignore the virtual file system prefix (for example "data:")
+    szPath = (szPath != NULL) ? (szPath + 1) : PathBuffer;
+
+    for(size_t i = 0; i < _countof(D2RSteamPathFixups); i++)
+    {
+        if(!strcmp(szPath, D2RSteamPathFixups[i].szPath))
+            return D2RSteamPathFixups[i].SeparatorCount;
+    }
+    return 0;
+}
+
 //-----------------------------------------------------------------------------
 // Handler definition for TVFS root file
 
@@ -131,6 +237,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
     {
         // TVFS supports file names, but DOESN'T support CKeys.
         dwFeatures |= CASC_FEATURE_FILE_NAMES;
+        bD2RSteamVfs = false;
     }
 
     // Returns size of "container file table offset" field in the VFS.
@@ -484,8 +591,11 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         PCASC_CKEY_ENTRY pCKeyEntry;
         LPBYTE pbVfsSpanEntry;
         size_t  nSavePos = PathBuffer.Save();
+        DWORD dwSeparatorCount = bD2RSteamVfs ? GetD2RSteamSeparatorCount(PathBuffer) : 0;
+        DWORD dwPathIndex = 0;
         DWORD dwSpanCount;
         DWORD dwErrCode;
+        bool bPathStart = true;
 
         // Sanity check
         assert(SpanArray.IsInitialized());
@@ -497,6 +607,10 @@ struct TRootHandler_TVFS : public TFileTreeRoot
             pbPathTablePtr = CapturePathEntry(PathEntry, pbPathTablePtr, pbPathTableEnd);
             if(pbPathTablePtr == NULL)
                 return ERROR_BAD_FORMAT;
+
+            // Restore a directory separator omitted by the D2R Steam manifest
+            if(bPathStart && dwPathIndex < dwSeparatorCount)
+                PathEntry.NodeFlags |= TVFS_PTE_PATH_SEPARATOR_PRE;
 
             // Append the node name to the total path. Also add backslash, if it's a folder
             PathBuffer_AppendNode(PathBuffer, PathEntry);
@@ -683,7 +797,11 @@ struct TRootHandler_TVFS : public TFileTreeRoot
 
                 // Reset the position of the path buffer
                 PathBuffer.Restore(nSavePos);
+                dwPathIndex++;
+                bPathStart = true;
             }
+            else
+                bPathStart = false;
         }
 
         // Return the total number of entries
@@ -732,6 +850,9 @@ struct TRootHandler_TVFS : public TFileTreeRoot
     {
         CASC_PATH<char> PathBuffer;
         DWORD dwErrCode;
+
+        // Enable manifest-specific path reconstruction
+        bD2RSteamVfs = IsD2RSteamVfs(hs);
 
         // Save the length of the key
         FileTree.SetKeyLength(RootHeader.EKeySize);
@@ -810,6 +931,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
     }
 
     CASC_ARRAY SpanArray;           // Array of CASC_SPAN_ENTRY for all multi-span files
+    bool bD2RSteamVfs;              // The D2R Steam VFS needs path separators restored
 };
 
 //-----------------------------------------------------------------------------
