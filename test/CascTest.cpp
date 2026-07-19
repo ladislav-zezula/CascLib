@@ -754,7 +754,8 @@ static DWORD Storage_EnumFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
     DWORD dwTotalFileCount = 0;
     DWORD dwFileIndex = 0;
     DWORD dwErrCode = ERROR_SUCCESS;
-    char szHashString[MD5_STRING_SIZE+1];
+    char szHashString1[MD5_STRING_SIZE+1];
+    char szHashString2[MD5_STRING_SIZE+1];
     char szTotalBytes[0x20];
 //  char szShortName[SHORT_NAME_SIZE];
     bool bFileFound = true;
@@ -842,13 +843,13 @@ static DWORD Storage_EnumFiles(TLogHelper & LogHelper, TEST_PARAMS & Params)
             }
 
             // Show the name hash
-            if((szNameHash = GetHash(NameHashCtx, szHashString)) != NULL)
+            if((szNameHash = GetHash(NameHashCtx, szHashString1)) != NULL)
             {
                 LogHelper.PrintMessage("Name Hash: %s%s", szNameHash, GetHashResult(Params.szExpectedNameHash, szNameHash));
             }
 
             // Show the data hash
-            if((szDataHash = GetHash(DataHashCtx, szHashString)) != NULL)
+            if((szDataHash = GetHash(DataHashCtx, szHashString2)) != NULL)
             {
                 LogHelper.PrintMessage("Data Hash: %s%s", szDataHash, GetHashResult(Params.szExpectedDataHash, szDataHash));
             }
@@ -1133,6 +1134,7 @@ static STORAGE_INFO StorageInfo1[] =
     {"Diablo II Resurrected/71776",         "8518f7457729368bcbfc8db60203de78", "180984fc02ee90875d0504952f177f9a", "ENCODING"},
     {"Diablo II Resurrected/91636-steam",   "193ce6613e7c34fcf2384580653f0949", "575cb803f6889a3dec31c4327c7e60c9", "ENCODING"},
     {"Diablo II Resurrected/92198-steam",   "8f99d5861027676ce1bf18546774d4b6", "7b2a5d372f5a9251c54470a46ab2cb06", "ENCODING", CASC_FEATURE_ALLOW_DOWNLOAD},
+    {"Diablo II Resurrected/93236-steam",   "3a26eafebb17df30b273bb8715081d18", "cf7452cd7236acd0dfdb506e038e7a84", "ENCODING"},
 
     {"Diablo III/30013",                    "86ba76b46c88eb7c6188d28a27d00f49", "19e37cc3c178ea0521369c09d67791ac", "ENCODING"},
     {"Diablo III/50649",                    "18cd3eb87a46e2d3aa0c57d1d8f8b8ff", "9225b3fa85dd958209ad20495ff6457e", "ENCODING"},
@@ -1174,6 +1176,7 @@ static STORAGE_INFO StorageInfo1[] =
     {"Warcraft III/13369",                  "3212bcad20f7c6ad0eb0864ca9444bb6", "4ac831db9bf0734f01b9d20455a68ab6", "ENCODING" },
     {"Warcraft III/14883",                  "773180e32ac2fac8bd4cd4dfc2ab30a6", "3fd108674117ad4f93885bdd1a525f30", NULL },
     {"Warcraft III/15801",                  "ad571ee968f77bbddc811fd215ee1d37", "f162cd3448219fd9956f9ff8fb5ba915", NULL },
+    {"Warcraft III/21230",                  "062d144ebba40177dc57053780f312cb", "5d8edf7af1fcbb438fec985200d9088e", NULL },
     {"Warcraft III/23175",                  "f142dc1aa5a9b64553d7f05d126cf72e", "0107f8037578bcd3419534ef092672ad", NULL },
 
     {"WoW/18125",                           "b31531af094f78f58592249c4d216a8e", "e5c9b3f0da7806d8b239c13bff1d836e", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
@@ -1204,7 +1207,6 @@ static STORAGE_INFO StorageInfo1[] =
     {"WoW/47067*wow_classic_era",           "10c8c72c16c55ee44c5554aabe4284da", "47071bdea7e593e5481e2775c4813626", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"WoW/47067*wow_classic_era_ptr",       "13792a23d629af232febfe9dc00a6958", "a0736b9aa5dfcd68dcc1fd2b3247ed1d", "Sound\\music\\Draenor\\MUS_60_FelWasteland_A.mp3"},
     {"WoW/51187*wowt",                      "1cfab6004e8528c4af971c8d183f43db", "e10061cb5cafbaf16926f898929a352a"},
-
 };
 
 static STORAGE_INFO StorageInfo2[] =
@@ -1225,7 +1227,7 @@ static STORAGE_INFO StorageInfo2[] =
 //-----------------------------------------------------------------------------
 // Main
 
-//#define LOAD_STORAGES_SINGLE_DEV
+//#define LOAD_STORAGES_PLAYING_SPACE
 //#define LOAD_STORAGES_CMD_LINE
 #define LOAD_STORAGES_LOCAL
 #define LOAD_STORAGES_ONLINE
@@ -1245,7 +1247,7 @@ int main(int argc, char * argv[])
     _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif  // defined(_MSC_VER) && defined(_DEBUG)
 
-#ifdef LOAD_STORAGES_SINGLE_DEV
+#ifdef LOAD_STORAGES_PLAYING_SPACE
     {
         CASC_OPEN_STORAGE_ARGS OpenArgs = {sizeof(CASC_OPEN_STORAGE_ARGS)};
         ULONGLONG FileSize = 0;
@@ -1259,7 +1261,7 @@ int main(int argc, char * argv[])
 
         // Open the online storage
         //if(CascOpenStorageEx(_T("d:\\Hry\\Diablo II Resurrected"), &OpenArgs, true, &hStorage))
-        if(CascOpenStorageEx(_T("e:\\Multimedia\\CASC\\Diablo II Resurrected\\92198-steam"), &OpenArgs, true, &hStorage))
+        if(CascOpenStorageEx(_T("e:\\Ladik\\Incoming\\Warcraft III"), &OpenArgs, true, &hStorage))
         {
             if(CascOpenFile(hStorage, "data:data\\local\\sfx\\common\\barbarian\\bar_datewithdeath.flac", 0, CASC_OVERCOME_ENCRYPTED | CASC_OPEN_CKEY_ONCE, &hFile))
             {
@@ -1269,35 +1271,6 @@ int main(int argc, char * argv[])
             }
             CascCloseStorage(hStorage);
         }
-
-/*
-        CASC_OPEN_STORAGE_ARGS OpenArgs = {sizeof(CASC_OPEN_STORAGE_ARGS)};
-        //CASC_FIND_DATA cf;
-        HANDLE hStorage;
-        //HANDLE hFind;
-        HANDLE hFile;
-        LPCSTR szFile = "interface/icons/inv_armor_explorer_d_01_helm.blp";     // FileDataId = 2965132
-        //LPCSTR szFile = "interface/icons/inv_helm_armor_explorer_d_01.blp";     // FileDataId = 2965132
-        BYTE Buffer[0x100];
-
-        //OpenArgs.PfnProgressCallback = OnlineStorage_OpenCB_Simple;
-        //OpenArgs.PtrProgressParam = NULL;
-
-        if(CascOpenStorageEx(_T("d:\\Hry\\World of Warcraft"), &OpenArgs, true, &hStorage))
-        {
-            //hFind = CascFindFirstFile(hStorage, szFile, &cf, szListFile_TXT);
-            //if(hFind != INVALID_HANDLE_VALUE)
-            {
-                if(CascOpenFile(hStorage, szFile, 0, CASC_OVERCOME_ENCRYPTED | CASC_OPEN_CKEY_ONCE, &hFile))
-                {
-                    CascReadFile(hFile, Buffer, sizeof(Buffer), NULL);
-                    CascCloseFile(hFile);
-                }
-                //CascFindClose(hFind);
-            }
-            CascCloseStorage(hStorage);
-        }
-*/
     }
 #endif
 

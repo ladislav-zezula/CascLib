@@ -1214,18 +1214,21 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs, L
     // Initialize variables for local CASC storages
     if(dwErrCode == ERROR_SUCCESS)
     {
-        // For local (game) storages, we need the data and indices subdirectory
-        if((hs->dwFeatures & CASC_FEATURE_DATA_ARCHIVES) && BuildFileType != CascBuildConfig)
+        if(BuildFileType != CascBuildConfig)
         {
-            if(CheckArchiveFilesDirectories(hs) != ERROR_SUCCESS)
-                hs->dwFeatures &= ~CASC_FEATURE_DATA_ARCHIVES;
-        }
+            // For local (game) storages, we need the data and indices subdirectory
+            if(hs->dwFeatures & CASC_FEATURE_DATA_ARCHIVES)
+            {
+                if(CheckArchiveFilesDirectories(hs) != ERROR_SUCCESS)
+                    hs->dwFeatures &= ~CASC_FEATURE_DATA_ARCHIVES;
+            }
 
-        // For data files storage, we need that folder
-        if((hs->dwFeatures & CASC_FEATURE_DATA_FILES) && BuildFileType != CascBuildConfig)
-        {
-            if(CheckDataFilesDirectory(hs) != ERROR_SUCCESS)
-                hs->dwFeatures &= ~CASC_FEATURE_DATA_FILES;
+            // For data files storage, we need that folder
+            if(hs->dwFeatures & CASC_FEATURE_DATA_FILES)
+            {
+                if(CheckDataFilesDirectory(hs) != ERROR_SUCCESS)
+                    hs->dwFeatures &= ~CASC_FEATURE_DATA_FILES;
+            }
         }
 
         // Enable caching of the sockets. This will add references
@@ -1271,27 +1274,33 @@ static DWORD LoadCascStorage(TCascStorage * hs, PCASC_OPEN_STORAGE_ARGS pArgs, L
     }
 
     // Static storages have no ENCODING manifest, so insert BUILD entries directly
-    if(dwErrCode == ERROR_SUCCESS && BuildFileType == CascBuildConfig)
+    if(BuildFileType != CascBuildConfig)
     {
-        dwErrCode = CopyBuildFileItemsToCKeyArray(hs);
-    }
+        // Pre-load the local index files
+        if(dwErrCode == ERROR_SUCCESS)
+        {
+            dwErrCode = LoadIndexFiles(hs);
+        }
 
-    // Pre-load the local index files
-    if(dwErrCode == ERROR_SUCCESS && BuildFileType != CascBuildConfig)
-    {
-        dwErrCode = LoadIndexFiles(hs);
-    }
+        // Load the ENCODING manifest
+        if(dwErrCode == ERROR_SUCCESS)
+        {
+            dwErrCode = LoadEncodingManifest(hs);
+        }
 
-    // Load the ENCODING manifest
-    if(dwErrCode == ERROR_SUCCESS && BuildFileType != CascBuildConfig)
-    {
-        dwErrCode = LoadEncodingManifest(hs);
+        // Load the DOWNLOAD manifest. We're tolerant if the manifest is not present in the storage
+        if(dwErrCode == ERROR_SUCCESS)
+        {
+            dwErrCode = LoadDownloadManifest(hs);
+            dwErrCode = (dwErrCode == ERROR_FILE_NOT_FOUND) ? ERROR_SUCCESS : dwErrCode;
+        }
     }
-
-    // We need to load the DOWNLOAD manifest
-    if(dwErrCode == ERROR_SUCCESS && BuildFileType != CascBuildConfig)
+    else
     {
-        dwErrCode = LoadDownloadManifest(hs);
+        if(dwErrCode == ERROR_SUCCESS)
+        {
+            dwErrCode = CopyBuildFileItemsToCKeyArray(hs);
+        }
     }
 
     // Load the build manifest ("ROOT" file)

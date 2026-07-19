@@ -32,6 +32,9 @@ static DWORD RibbitDownloadFile(LPCTSTR szCdnHostUrl, LPCTSTR szProduct, LPCTSTR
 //-----------------------------------------------------------------------------
 // Local structures
 
+#define _ROOT(name)  _T(name)
+#define _DATA(name)  _T("data") _T(PATH_SEP_STRING) _T(name)
+
 struct TBuildFileInfo
 {
     LPCTSTR szFileName;
@@ -39,29 +42,22 @@ struct TBuildFileInfo
     CBLD_TYPE BuildFileType;
 };
 
-struct TGameLocaleString
-{
-    const char * szLocale;
-    DWORD dwLocale;
-};
-
 static const TBuildFileInfo BuildTypes[] =
 {
-    {_T(".build.info"), 11, CascBuildInfo},         // Since HOTS build 30027, the game uses .build.info file for storage info
-    {_T(".build.db"),   9,  CascBuildDb},           // Older CASC storages
-    {_T("data") _T(PATH_SEP_STRING) _T(".build.config"), 18, CascBuildConfig}, // Static CASC storage
-    {_T("versions"),    8,  CascVersions},          // Online/cached CASC storages
+    {_ROOT(".build.info"),   11, CascBuildInfo},      // Since HOTS build 30027, the game uses .build.info file for storage info
+    {_ROOT(".build.db"),      9, CascBuildDb},        // Older CASC storages
+    {_DATA(".build.config"), 18, CascBuildConfig},    // Static CASC storages, since Diablo II Resurrected, Steam edition, build 93236
+    {_ROOT("versions"),       8, CascVersions},       // Online/cached CASC storages
 };
 
 static LPCTSTR DataDirs[] =
 {
-    _T("data") _T(PATH_SEP_STRING) _T("casc"),      // Overwatch. This item must be the first in the list
-    _T("data"),                                     // TACT casc (for Linux systems)
-    _T("Data"),                                     // World of Warcraft, Diablo
-    _T("SC2Data"),                                  // Starcraft II (Legacy of the Void) build 38749
-    _T("HeroesData"),                               // Heroes of the Storm
-    _T("BNTData"),                                  // Heroes of the Storm, until build 30414
-    NULL,
+    _DATA("casc"),                                    // Overwatch. This item must be the first in the list
+    _ROOT("data"),                                    // TACT casc (for Linux systems)
+    _ROOT("Data"),                                    // World of Warcraft, Diablo
+    _ROOT("SC2Data"),                                 // Starcraft II (Legacy of the Void) build 38749
+    _ROOT("HeroesData"),                              // Heroes of the Storm
+    _ROOT("BNTData"),                                 // Heroes of the Storm, until build 30414
 };
 
 // Dead as of September 2025
@@ -869,6 +865,7 @@ static DWORD ParseFile_CdnBuild(TCascStorage * hs, void * pvListFile)
     const char * szLineBegin;
     const char * szLineEnd = NULL;
     DWORD dwErrCode;
+    USHORT CheckedFlags;
 
     // Initialize the empty VFS array
     dwErrCode = hs->VfsRootList.Create<CASC_CKEY_ENTRY>(0x10);
@@ -927,11 +924,8 @@ static DWORD ParseFile_CdnBuild(TCascStorage * hs, void * pvListFile)
     }
 
     // Both CKey and EKey of ENCODING file is required
-    if(hs->BuildFileType != CascBuildConfig &&
-       (hs->EncodingCKey.Flags & (CASC_CE_HAS_CKEY | CASC_CE_HAS_EKEY)) != (CASC_CE_HAS_CKEY | CASC_CE_HAS_EKEY))
-        dwErrCode = ERROR_BAD_FORMAT;
-    if(hs->BuildFileType == CascBuildConfig &&
-       (hs->VfsRoot.Flags & (CASC_CE_HAS_CKEY | CASC_CE_HAS_EKEY)) != (CASC_CE_HAS_CKEY | CASC_CE_HAS_EKEY))
+    CheckedFlags = (hs->BuildFileType == CascBuildConfig) ? hs->VfsRoot.Flags : hs->EncodingCKey.Flags;
+    if((CheckedFlags & (CASC_CE_HAS_CKEY | CASC_CE_HAS_EKEY)) != (CASC_CE_HAS_CKEY | CASC_CE_HAS_EKEY))
         dwErrCode = ERROR_BAD_FORMAT;
     return dwErrCode;
 }
@@ -1815,10 +1809,16 @@ DWORD LoadInternalFileToMemory(TCascStorage * hs, PCASC_CKEY_ENTRY pCKeyEntry, C
             if((dwErrCode = FileData.SetSize(cbFileData)) == ERROR_SUCCESS)
             {
                 // Read the entire file to memory
-                CascReadFile(hFile, FileData.pbData, cbFileData, &dwBytesRead);
-                if(dwBytesRead != cbFileData)
+                if(CascReadFile(hFile, FileData.pbData, cbFileData, &dwBytesRead))
                 {
-                    dwErrCode = ERROR_FILE_CORRUPT;
+                    if(dwBytesRead != cbFileData)
+                    {
+                        dwErrCode = ERROR_FILE_CORRUPT;
+                    }
+                }
+                else
+                {
+                    dwErrCode = GetCascError();
                 }
             }
             else
