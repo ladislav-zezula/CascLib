@@ -131,6 +131,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
     {
         // TVFS supports file names, but DOESN'T support CKeys.
         dwFeatures |= CASC_FEATURE_FILE_NAMES;
+        bParseVfsSubDirectories = true;
     }
 
     // Returns size of "container file table offset" field in the VFS.
@@ -183,7 +184,9 @@ struct TRootHandler_TVFS : public TFileTreeRoot
 
         // Capture the other four integers 
         pbDataPtr = CaptureByteArray(pbDataPtr, pbDataEnd, 4, &DirHeader.FormatVersion);
-        if(pbDataPtr == NULL || DirHeader.FormatVersion != 1 || DirHeader.EKeySize != 9 || DirHeader.PatchKeySize != 9 || DirHeader.HeaderSize < 8)
+        if(pbDataPtr == NULL || DirHeader.FormatVersion != 1 ||
+           (DirHeader.EKeySize != CASC_EKEY_SIZE && DirHeader.EKeySize != MD5_HASH_SIZE) ||
+           DirHeader.PatchKeySize != DirHeader.EKeySize || DirHeader.HeaderSize < 8)
             return ERROR_BAD_FORMAT;
 
         // Capture the rest
@@ -246,7 +249,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         return (1 <= SpanCount && SpanCount <= 224) ? pbVfsFileEntry : NULL;
     }
 
-    LPBYTE CaptureVfsSpanEntries(TVFS_DIRECTORY_HEADER & DirHeader, LPBYTE pbVfsSpanEntry, PCASC_CKEY_ENTRY PtrSpanEntry, size_t SpanCount)
+    LPBYTE CaptureVfsSpanEntries(TCascStorage * hs, TVFS_DIRECTORY_HEADER & DirHeader, LPBYTE pbVfsSpanEntry, PCASC_CKEY_ENTRY PtrSpanEntry, size_t SpanCount)
     {
         LPBYTE pbCftFileTable;
         LPBYTE pbCftFileEntry;
@@ -263,6 +266,9 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         for(size_t i = 0; i < SpanCount; i++)
         {
             DWORD dwCftOffset = ConvertBytesToInteger_X(pbVfsSpanEntry + sizeof(DWORD) + sizeof(DWORD), DirHeader.CftOffsSize);
+
+            if(hs->BuildFileType == CascBuildConfig)
+                PtrSpanEntry->Init();
 
             //
             // Structure of the span entry:
@@ -283,6 +289,14 @@ struct TRootHandler_TVFS : public TFileTreeRoot
             // Copy the EKey and content size
             CaptureEncodedKey(PtrSpanEntry->EKey, pbCftFileEntry, DirHeader.EKeySize);
             PtrSpanEntry->ContentSize  = ConvertBytesToInteger_4(pbVfsSpanEntry + sizeof(DWORD));
+
+            // Static storages keep the data location in the full EKey
+            if(hs->BuildFileType == CascBuildConfig)
+            {
+                PtrSpanEntry->StorageOffset = ConvertBytesToInteger_7(PtrSpanEntry->EKey + CASC_EKEY_SIZE);
+                PtrSpanEntry->EncodedSize = ConvertBytesToInteger_4(pbCftFileEntry + DirHeader.EKeySize);
+                PtrSpanEntry->Flags = CASC_CE_HAS_EKEY | CASC_CE_FILE_IS_LOCAL;
+            }
 
             // Move to the next entry
             pbVfsSpanEntry += ItemSize;
@@ -422,7 +436,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         return dwErrCode;
     }
 
-    PCASC_CKEY_ENTRY InsertUnknownCKeyEntry(TCascStorage * hs, LPBYTE pbEKey, size_t cbEKey, DWORD ContentSize)
+    PCASC_CKEY_ENTRY InsertUnknownCKeyEntry(TCascStorage * hs, CASC_CKEY_ENTRY & SpanEntry, size_t cbEKey)
     {
         PCASC_CKEY_ENTRY pCKeyEntry;
 
@@ -431,15 +445,18 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         if(pCKeyEntry != NULL)
         {
             memset(pCKeyEntry, 0, sizeof(CASC_CKEY_ENTRY));
-            memcpy(pCKeyEntry->EKey, pbEKey, cbEKey);
-            pCKeyEntry->StorageOffset = CASC_INVALID_OFFS64;
-            pCKeyEntry->ContentSize = ContentSize;
-            pCKeyEntry->EncodedSize = CASC_INVALID_SIZE;
-            pCKeyEntry->Flags = CASC_CE_HAS_EKEY | CASC_CE_HAS_EKEY_PARTIAL;
+            memcpy(pCKeyEntry->EKey, SpanEntry.EKey, cbEKey);
+            pCKeyEntry->StorageOffset = SpanEntry.StorageOffset;
+            pCKeyEntry->ContentSize = SpanEntry.ContentSize;
+            pCKeyEntry->EncodedSize = SpanEntry.EncodedSize;
+            pCKeyEntry->Flags = SpanEntry.Flags | CASC_CE_HAS_EKEY;
+            if(cbEKey != MD5_HASH_SIZE)
+                pCKeyEntry->Flags |= CASC_CE_HAS_EKEY_PARTIAL;
             pCKeyEntry->SpanCount = 1;
 
             // Copy the information from index files to the CKey entry
-            CopyEKeyEntry(hs, pCKeyEntry);
+            if(hs->BuildFileType != CascBuildConfig)
+                CopyEKeyEntry(hs, pCKeyEntry);
 
             // Insert the item into EKey map
             hs->EKeyMap.InsertObject(pCKeyEntry, pCKeyEntry->EKey);
@@ -459,6 +476,134 @@ struct TRootHandler_TVFS : public TFileTreeRoot
             CascStrPrintf(szFileName, _countof(szFileName), szFormat, nIndex);
             Insert(szFileName, pCKeyEntry);
         }
+    }
+
+    DWORD CreateRootFileNameMap(CASC_BLOB & RootFile)
+    {
+        const char * szRootFileEnd = (const char *)RootFile.End();
+        const char * szRootFilePtr = (const char *)RootFile.pbData;
+        const char * szLineBegin;
+        const char * szLineEnd;
+        const char * szNameEnd;
+        const char * szNamePtr;
+        char * szRootNamePtr;
+        char * szLookupName;
+        size_t FileCount = 0;
+        size_t BufferSize;
+        DWORD dwErrCode;
+
+        // Count the number of file names in the text ROOT
+        for(size_t i = 0; i < RootFile.cbData; i++)
+        {
+            if(RootFile.pbData[i] == '\n')
+                FileCount++;
+        }
+        if(RootFile.cbData != 0 && RootFile.pbData[RootFile.cbData - 1] != '\n')
+            FileCount++;
+        if(FileCount == 0 || RootFile.cbData > ((SIZE_MAX - 1) / 2))
+            return ERROR_BAD_FORMAT;
+
+        // Each record contains the separator-less lookup name and the original name
+        BufferSize = RootFile.cbData * 2;
+        dwErrCode = RootFileNames.SetSize(BufferSize);
+        if(dwErrCode != ERROR_SUCCESS)
+            return dwErrCode;
+
+        dwErrCode = RootFileNameMap.Create(FileCount, 0, 0, KeyIsString);
+        if(dwErrCode != ERROR_SUCCESS)
+            return dwErrCode;
+
+        szRootNamePtr = (char *)RootFileNames.pbData;
+        while(szRootFilePtr < szRootFileEnd)
+        {
+            // Capture one line
+            while(szRootFilePtr < szRootFileEnd && (szRootFilePtr[0] == '\r' || szRootFilePtr[0] == '\n'))
+                szRootFilePtr++;
+            szLineBegin = szRootFilePtr;
+            while(szRootFilePtr < szRootFileEnd && szRootFilePtr[0] != '\r' && szRootFilePtr[0] != '\n')
+                szRootFilePtr++;
+            szLineEnd = szRootFilePtr;
+
+            // The file name is the first column in "name|md5|plugin"
+            for(szNameEnd = szLineBegin; szNameEnd < szLineEnd && szNameEnd[0] != '|'; szNameEnd++)
+                ;
+            if(szNameEnd == szLineBegin || szNameEnd == szLineEnd)
+                continue;
+
+            // Create the case-insensitive lookup name without path separators
+            szLookupName = szRootNamePtr;
+            for(szNamePtr = szLineBegin; szNamePtr < szNameEnd; szNamePtr++)
+            {
+                if(szNamePtr[0] != '/' && szNamePtr[0] != '\\')
+                    *szRootNamePtr++ = szNamePtr[0];
+            }
+            *szRootNamePtr++ = 0;
+
+            // Keep the original name immediately after the lookup name
+            memcpy(szRootNamePtr, szLineBegin, (szNameEnd - szLineBegin));
+            szRootNamePtr += (szNameEnd - szLineBegin);
+            *szRootNamePtr++ = 0;
+
+            // Ambiguous lookup names make this ROOT unsuitable for reconstruction
+            if(!RootFileNameMap.InsertString(szLookupName, false))
+            {
+                RootFileNameMap.Free();
+                RootFileNames.Free();
+                return ERROR_BAD_FORMAT;
+            }
+        }
+
+        RootFileNames.cbData = (szRootNamePtr - (char *)RootFileNames.pbData);
+        return ERROR_SUCCESS;
+    }
+
+    DWORD LoadRootFileNameMap(TCascStorage * hs)
+    {
+        PCASC_CKEY_ENTRY pCKeyEntry;
+        CASC_BLOB RootFile;
+        BYTE RootFileHash[MD5_HASH_SIZE];
+        DWORD dwErrCode;
+
+        // Static D2R storages expose their classic text ROOT as "index"
+        pCKeyEntry = GetFile(hs, "index");
+        if(pCKeyEntry == NULL || (hs->RootFile.Flags & CASC_CE_HAS_CKEY) == 0)
+            return ERROR_SUCCESS;
+
+        // Verify that this is the ROOT declared by the build configuration
+        dwErrCode = LoadInternalFileToMemory(hs, pCKeyEntry, RootFile);
+        if(dwErrCode != ERROR_SUCCESS)
+            return ERROR_SUCCESS;
+        CascHash_MD5(RootFile.pbData, RootFile.cbData, RootFileHash);
+        if(memcmp(RootFileHash, hs->RootFile.CKey, MD5_HASH_SIZE))
+            return ERROR_SUCCESS;
+
+        return CreateRootFileNameMap(RootFile);
+    }
+
+    const char * GetRootFileName(const CASC_PATH<char> & PathBuffer)
+    {
+        const char * szPath = (const char *)PathBuffer;
+        const char * szLookupName;
+        const char * szRootFileName;
+        CASC_PATH<char> LookupName;
+
+        if(RootFileNameMap.IsInitialized())
+        {
+            // The Steam TVFS may omit path separators. The text ROOT retains them.
+            while(szPath[0] != 0)
+            {
+                if(szPath[0] != '/' && szPath[0] != '\\')
+                    LookupName.AppendChar(szPath[0]);
+                szPath++;
+            }
+
+            szLookupName = (const char *)LookupName;
+            szRootFileName = RootFileNameMap.FindString(szLookupName, szLookupName + LookupName.Length());
+            if(szRootFileName != NULL)
+                return szRootFileName + strlen(szRootFileName) + 1;
+        }
+
+        return (const char *)PathBuffer;
     }
 
     DWORD ParsePathFileTable(TCascStorage * hs, TVFS_DIRECTORY_HEADER & DirHeader, CASC_PATH<char> & PathBuffer, LPBYTE pbPathTablePtr, LPBYTE pbPathTableEnd)
@@ -519,7 +664,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                         CASC_CKEY_ENTRY SpanEntry;
 
                         // Capture the single span entry
-                        pbVfsSpanEntry = CaptureVfsSpanEntries(DirHeader, pbVfsSpanEntry, &SpanEntry, 1);
+                        pbVfsSpanEntry = CaptureVfsSpanEntries(hs, DirHeader, pbVfsSpanEntry, &SpanEntry, 1);
                         if(pbVfsSpanEntry == NULL)
                             return ERROR_FILE_CORRUPT;
 
@@ -529,7 +674,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                         {
                             // Some files are in the ROOT manifest even if they are not in ENCODING and DOWNLOAD.
                             // Example: "2018 - New CASC\00001", file "DivideAndConquer.w3m:war3mapMap.blp"
-                            pCKeyEntry = InsertUnknownCKeyEntry(hs, SpanEntry.EKey, DirHeader.EKeySize, SpanEntry.ContentSize);
+                            pCKeyEntry = InsertUnknownCKeyEntry(hs, SpanEntry, DirHeader.EKeySize);
                             if(pCKeyEntry == NULL)
                             {
                                 return ERROR_NOT_ENOUGH_MEMORY;
@@ -544,17 +689,20 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                         // We need to check whether this is another TVFS directory file
                         if(IsVfsSubDirectory(hs, DirHeader, SubHeader, SpanEntry.EKey, SpanEntry.ContentSize) == ERROR_SUCCESS)
                         {
-                            // Add colon (':')
-                            PathBuffer.AppendChar(':');
+                            if(bParseVfsSubDirectories)
+                            {
+                                // Add colon (':')
+                                PathBuffer.AppendChar(':');
 
-                            // The file content size should already be there
-                            assert(pCKeyEntry->ContentSize == SpanEntry.ContentSize);
-                            FileTree.InsertByName(pCKeyEntry, PathBuffer);
+                                // The file content size should already be there
+                                assert(pCKeyEntry->ContentSize == SpanEntry.ContentSize);
+                                FileTree.InsertByName(pCKeyEntry, PathBuffer);
 
-                            // Parse the subdir. On error, stop the parsing
-                            dwErrCode = ParseDirectoryData(hs, SubHeader, PathBuffer);
-                            if(dwErrCode != ERROR_SUCCESS)
-                                return dwErrCode;
+                                // Parse the subdir. On error, stop the parsing
+                                dwErrCode = ParseDirectoryData(hs, SubHeader, PathBuffer);
+                                if(dwErrCode != ERROR_SUCCESS)
+                                    return dwErrCode;
+                            }
                         }
                         else
                         {
@@ -568,11 +716,12 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                             switch(dwErrCode = CheckWoWGenericName(PathBuffer, WowEntry))
                             {
                                 case ERROR_SUCCESS:         // The entry was recognized and has the right format
-                                    FileTree.InsertByName(pCKeyEntry, PathBuffer, WowEntry.FileDataId, WowEntry.LocaleFlags, WowEntry.ContentFlags);
+                                    FileTree.InsertByName(pCKeyEntry, GetRootFileName(PathBuffer), WowEntry.FileDataId,
+                                                          WowEntry.LocaleFlags, WowEntry.ContentFlags);
                                     break;
 
                                 case ERROR_BAD_FORMAT:      // The entry was not recognized as TVFS WoW name
-                                    FileTree.InsertByName(pCKeyEntry, PathBuffer);
+                                    FileTree.InsertByName(pCKeyEntry, GetRootFileName(PathBuffer));
                                     break;
 
                                 default:                    // The entry has a bad format - use classic ROOT file
@@ -602,7 +751,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                             return ERROR_NOT_ENOUGH_MEMORY;
 
                         // Capture all span entries
-                        pbVfsSpanEntry = CaptureVfsSpanEntries(DirHeader, pbVfsSpanEntry, pSpanEntries, dwSpanCount);
+                        pbVfsSpanEntry = CaptureVfsSpanEntries(hs, DirHeader, pbVfsSpanEntry, pSpanEntries, dwSpanCount);
                         if(pbVfsSpanEntry == NULL)
                             return ERROR_FILE_CORRUPT;
 
@@ -615,8 +764,17 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                             pCKeyEntry = FindCKeyEntry_EKey(hs, pSpanEntries[dwSpanIndex].EKey);
                             if(pCKeyEntry == NULL)
                             {
-                                bFilePresent = false;
-                                break;
+                                if(hs->BuildFileType == CascBuildConfig)
+                                {
+                                    pCKeyEntry = InsertUnknownCKeyEntry(hs, *pSpanEntry, DirHeader.EKeySize);
+                                    if(pCKeyEntry == NULL)
+                                        return ERROR_NOT_ENOUGH_MEMORY;
+                                }
+                                else
+                                {
+                                    bFilePresent = false;
+                                    break;
+                                }
                             }
 
                             // Supply the content size
@@ -647,7 +805,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                         {
                             // Insert a new file node that will contain pointer to the span entries
                             RefCount = pSpanEntries->RefCount;
-                            pFileNode = FileTree.InsertByName(pSpanEntries, PathBuffer);
+                            pFileNode = FileTree.InsertByName(pSpanEntries, GetRootFileName(PathBuffer));
                             pSpanEntries->RefCount = RefCount;
 
                             if(pFileNode == NULL)
@@ -719,6 +877,22 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         // Insert the main VFS root file as named entry
         InsertRootVfsEntry(hs, hs->VfsRoot.CKey, "vfs-root", 0);
 
+        // Static storages may contain a text ROOT next to the mounted VFS.
+        // Parse the wrapper without its subdirectories first so we can use the
+        // original file names while parsing the main VFS.
+        if(hs->BuildFileType == CascBuildConfig)
+        {
+            bParseVfsSubDirectories = false;
+            dwErrCode = ParseDirectoryData(hs, RootHeader, PathBuffer);
+            bParseVfsSubDirectories = true;
+            if(dwErrCode != ERROR_SUCCESS)
+                return dwErrCode;
+
+            dwErrCode = LoadRootFileNameMap(hs);
+            if(dwErrCode != ERROR_SUCCESS && dwErrCode != ERROR_BAD_FORMAT)
+                return dwErrCode;
+        }
+
         // Insert all VFS roots folders as files
         //for(size_t i = 0; i < hs->VfsRootList.ItemCount(); i++)
         //{
@@ -785,6 +959,9 @@ struct TRootHandler_TVFS : public TFileTreeRoot
     }
 
     CASC_ARRAY SpanArray;           // Array of CASC_SPAN_ENTRY for all multi-span files
+    CASC_BLOB RootFileNames;        // Separator-less lookup names followed by original names
+    CASC_MAP RootFileNameMap;       // Map of separator-less names to RootFileNames records
+    bool bParseVfsSubDirectories;   // False while locating the text ROOT in a VFS wrapper
 };
 
 //-----------------------------------------------------------------------------

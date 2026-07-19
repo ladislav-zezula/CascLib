@@ -77,6 +77,7 @@ typedef enum _CBLD_TYPE
     CascBuildNone = 0,                              // No build type found
     CascBuildDb,                                    // .build.db (older storages)
     CascBuildInfo,                                  // .build.info
+    CascBuildConfig,                                // data\.build.config
     CascVersions                                    // versions (cached or online)
 } CBLD_TYPE, *PCBLD_TYPE;
 

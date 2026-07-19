@@ -72,6 +72,7 @@ typedef struct _CASC_EKEY_ENTRY
 #define CASC_CE_FILE_PATCH         0x0400           // The file is in PATCH subfolder in remote storage
 #define CASC_CE_PLAIN_DATA         0x0800           // The file data is not BLTE encoded, but in plain format
 #define CASC_CE_OPEN_CKEY_ONCE     0x1000           // Used by CascLib test program - only opens a file with given CKey once, regardless on how many file names does it have
+#define CASC_CE_ZLIB_DATA          0x2000           // The file data is a raw ZLIB stream
 
 // In-memory representation of a single entry. 
 struct CASC_CKEY_ENTRY
@@ -256,6 +257,22 @@ inline ULONGLONG ConvertBytesToInteger_5(LPBYTE ValueAsBytes)
     Value = (Value << 0x08) | ValueAsBytes[2];
     Value = (Value << 0x08) | ValueAsBytes[3];
     Value = (Value << 0x08) | ValueAsBytes[4];
+
+    return Value;
+}
+
+// Read the 56-bit big-endian offset into ULONGLONG
+inline ULONGLONG ConvertBytesToInteger_7(LPBYTE ValueAsBytes)
+{
+    ULONGLONG Value = 0;
+
+    Value = (Value << 0x08) | ValueAsBytes[0];
+    Value = (Value << 0x08) | ValueAsBytes[1];
+    Value = (Value << 0x08) | ValueAsBytes[2];
+    Value = (Value << 0x08) | ValueAsBytes[3];
+    Value = (Value << 0x08) | ValueAsBytes[4];
+    Value = (Value << 0x08) | ValueAsBytes[5];
+    Value = (Value << 0x08) | ValueAsBytes[6];
 
     return Value;
 }
