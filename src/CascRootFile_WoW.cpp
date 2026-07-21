@@ -151,7 +151,7 @@ struct TRootHandler_WoW : public TFileTreeRoot
     {
         PCASC_FILE_NODE pFileNode;
         ULONGLONG FileNameHash = CalcFileNameHash(szFileName);
-        
+
         if((pFileNode = FileTree.Find(FileNameHash)) != NULL)
         {
             if(pFileNode->FileNameHash == FileNameHash)
@@ -274,7 +274,7 @@ struct TRootHandler_WoW : public TFileTreeRoot
         else if(dwRootVersion == 2)
         {
             PFILE_ROOT_GROUPHEADER_58221 pRootGroupHeader;
-            
+
             // Get pointer to the root group header
             if((pbRootPtr + sizeof(FILE_ROOT_GROUPHEADER_58221)) >= pbRootEnd)
                 return NULL;

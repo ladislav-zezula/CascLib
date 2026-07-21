@@ -45,7 +45,7 @@ PCASC_CKEY_ENTRY TFileTreeRoot::GetFile(TCascStorage * /* hs */, const char * sz
 {
     PCASC_FILE_NODE pFileNode;
     ULONGLONG FileNameHash = CalcFileNameHash(szFileName);
-    
+
     pFileNode = FileTree.Find(FileNameHash);
     return (pFileNode != NULL) ? pFileNode->pCKeyEntry : NULL;
 }

@@ -43,16 +43,16 @@ typedef struct _FILE_INDEX_GUARDED_BLOCK
 // Structure of the header of the index files version 1
 typedef struct _FILE_INDEX_HEADER_V1
 {
-    USHORT IndexVersion;                            // Must be 0x05
-    BYTE  BucketIndex;                              // The bucket index of this file; should be the same as the first byte of the hex filename. 
+    USHORT Revision;                                // Must be 0x05
+    BYTE  BucketIndex;                              // The bucket index of this file; should be the same as the first byte of the hex filename.
     BYTE  align_3;
     DWORD field_4;
     ULONGLONG field_8;
-    ULONGLONG SegmentSize;                          // Size of one data segment (aka data.### file)
-    BYTE  EncodedSizeLength;                        // Length, in bytes, of the EncodedSize in the EKey entry
-    BYTE  StorageOffsetLength;                      // Length, in bytes, of the StorageOffset field in the EKey entry
-    BYTE  EKeyLength;                               // Length of the encoded key (bytes)
-    BYTE  FileOffsetBits;                           // Number of bits of the archive file offset in StorageOffset field. Rest is data segment index
+    ULONGLONG MaxFileOffset;                        // Size of one data segment (aka data.### file)
+    BYTE  SpanSizeBytes;                            // Length, in bytes, of the EncodedSize in the EKey entry
+    BYTE  SpanOffsetBytes;                          // Length, in bytes, of the StorageOffset field in the EKey entry
+    BYTE  KeyBytes;                                 // Length of the encoded key (bytes)
+    BYTE  SegmentBits;                              // Number of bits of the archive file offset in StorageOffset field. Rest is data segment index
     DWORD EKeyCount1;
     DWORD EKeyCount2;
     DWORD KeysHash1;
@@ -60,16 +60,17 @@ typedef struct _FILE_INDEX_HEADER_V1
     DWORD HeaderHash;
 } FILE_INDEX_HEADER_V1, *PFILE_INDEX_HEADER_V1;
 
+// Original name: tact::KeyMappingTable::DiskFileHeader
 typedef struct _FILE_INDEX_HEADER_V2
 {
-    USHORT IndexVersion;                            // Must be 0x07
-    BYTE   BucketIndex;                             // The bucket index of this file; should be the same as the first byte of the hex filename. 
-    BYTE   ExtraBytes;                              // Unknown; must be 0
-    BYTE   EncodedSizeLength;                       // Length, in bytes, of the EncodedSize in the EKey entry
-    BYTE   StorageOffsetLength;                     // Length, in bytes, of the StorageOffset field in the EKey entry
-    BYTE   EKeyLength;                              // Length of the encoded key (bytes)
-    BYTE   FileOffsetBits;                          // Number of bits of the archive file offset in StorageOffset field. Rest is data segment index
-    ULONGLONG SegmentSize;                          // Size of one data segment (aka data.### file)
+    USHORT Revision;                                // Must be 0x07
+    BYTE   BucketIndex;                             // The bucket index of this file; should be the same as the first byte of the hex filename.
+    BYTE   Flags;                                   //
+    BYTE   SpanSizeBytes;                           // Length, in bytes, of the EncodedSize in the EKey entry
+    BYTE   SpanOffsetBytes;                         // Length, in bytes, of the StorageOffset field in the EKey entry
+    BYTE   KeyBytes;                                // Length of the encoded key (bytes)
+    BYTE   SegmentBits;                             // Number of bits of the archive file offset in StorageOffset field. Rest is data segment index
+    ULONGLONG MaxFileOffset;                        // Size of one data segment (aka data.### file)
 
 } FILE_INDEX_HEADER_V2, *PFILE_INDEX_HEADER_V2;
 

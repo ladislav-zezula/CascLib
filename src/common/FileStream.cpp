@@ -251,7 +251,7 @@ static bool BaseFile_Read(
             SetCascError(ERROR_HANDLE_EOF);
         }
     }
-        
+
     return (dwBytesRead == dwBytesToRead);
 }
 

@@ -97,7 +97,7 @@ class CASC_CSV
     size_t GetHeaderColumns() const;
     size_t GetColumnIndex(const char * szColumnName) const;
 
-    void * GetUserData() const 
+    void * GetUserData() const
     {
         return m_pvUserData;
     }

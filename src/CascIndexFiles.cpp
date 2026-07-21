@@ -172,7 +172,7 @@ static LPBYTE CaptureGuardedBlock1(LPBYTE pbFileData, LPBYTE pbFileEnd)
         return NULL;
     if((pbFileData + sizeof(FILE_INDEX_GUARDED_BLOCK) + pBlock->BlockSize) > pbFileEnd)
         return NULL;
-    
+
     // Verify the hash
     if(hashlittle(pbFileData + sizeof(FILE_INDEX_GUARDED_BLOCK), pBlock->BlockSize, 0) != pBlock->BlockHash)
         return NULL;
@@ -298,9 +298,9 @@ static DWORD CaptureIndexHeader_V1(CASC_INDEX_HEADER & InHeader, LPBYTE pbFileDa
     // Check the available size. Note that the index file can be just a header.
     if((pbFileData + sizeof(FILE_INDEX_HEADER_V1)) > pbFileEnd)
         return ERROR_BAD_FORMAT;
-    if(pIndexHeader->IndexVersion != 0x05 || pIndexHeader->BucketIndex != (BYTE)BucketIndex || pIndexHeader->field_8 == 0)
+    if(pIndexHeader->Revision != 0x05 || pIndexHeader->BucketIndex != (BYTE)BucketIndex || pIndexHeader->field_8 == 0)
         return ERROR_BAD_FORMAT;
-    if(pIndexHeader->EncodedSizeLength != 0x04 || pIndexHeader->StorageOffsetLength != 0x05 || pIndexHeader->EKeyLength != 0x09)
+    if(pIndexHeader->SpanSizeBytes != 0x04 || pIndexHeader->SpanOffsetBytes != 0x05 || pIndexHeader->KeyBytes != 0x09)
         return ERROR_NOT_SUPPORTED;
 
     // Verify the header hash
@@ -313,19 +313,19 @@ static DWORD CaptureIndexHeader_V1(CASC_INDEX_HEADER & InHeader, LPBYTE pbFileDa
     pIndexHeader->HeaderHash = HeaderHash;
 
     // Copy the fields
-    InHeader.IndexVersion        = pIndexHeader->IndexVersion;
-    InHeader.BucketIndex         = pIndexHeader->BucketIndex;
-    InHeader.StorageOffsetLength = pIndexHeader->StorageOffsetLength;
-    InHeader.EncodedSizeLength   = pIndexHeader->EncodedSizeLength;
-    InHeader.EKeyLength          = pIndexHeader->EKeyLength;
-    InHeader.FileOffsetBits      = pIndexHeader->FileOffsetBits;
-    InHeader.Alignment           = 0;
-    InHeader.SegmentSize         = pIndexHeader->SegmentSize;
+    InHeader.Revision        = pIndexHeader->Revision;
+    InHeader.BucketIndex     = pIndexHeader->BucketIndex;
+    InHeader.SpanOffsetBytes = pIndexHeader->SpanOffsetBytes;
+    InHeader.SpanSizeBytes   = pIndexHeader->SpanSizeBytes;
+    InHeader.KeyBytes        = pIndexHeader->KeyBytes;
+    InHeader.SegmentBits     = pIndexHeader->SegmentBits;
+    InHeader.Alignment       = 0;
+    InHeader.MaxFileOffset   = pIndexHeader->MaxFileOffset;
 
     // Determine the size of the header
     InHeader.HeaderLength = sizeof(FILE_INDEX_HEADER_V1);
     InHeader.HeaderPadding = 0;
-    InHeader.EntryLength = pIndexHeader->EKeyLength + pIndexHeader->StorageOffsetLength + pIndexHeader->EncodedSizeLength;
+    InHeader.EntryLength = pIndexHeader->KeyBytes + pIndexHeader->SpanOffsetBytes + pIndexHeader->SpanSizeBytes;
     InHeader.EKeyCount = pIndexHeader->EKeyCount1 + pIndexHeader->EKeyCount2;
 
     // Verify the entries hash - 1st block
@@ -358,35 +358,35 @@ static DWORD CaptureIndexHeader_V2(CASC_INDEX_HEADER & InHeader, LPBYTE pbFileDa
     pIndexHeader = (PFILE_INDEX_HEADER_V2)pbFileData;
 
     // Verify the content of the index header
-    if(pIndexHeader->IndexVersion != 0x07 || pIndexHeader->BucketIndex != (BYTE)BucketIndex || pIndexHeader->ExtraBytes != 0x00)
+    if(pIndexHeader->Revision != 0x07 || pIndexHeader->BucketIndex != (BYTE)BucketIndex || pIndexHeader->Flags != 0x00)
         return ERROR_BAD_FORMAT;
-    if(pIndexHeader->EncodedSizeLength != 0x04 || pIndexHeader->StorageOffsetLength != 0x05 || pIndexHeader->EKeyLength != 0x09)
+    if(pIndexHeader->SpanSizeBytes != 0x04 || pIndexHeader->SpanOffsetBytes != 0x05 || pIndexHeader->KeyBytes != 0x09)
         return ERROR_BAD_FORMAT;
 
     // Capture the values from the index header
-    InHeader.IndexVersion        = pIndexHeader->IndexVersion;
-    InHeader.BucketIndex         = pIndexHeader->BucketIndex;
-    InHeader.StorageOffsetLength = pIndexHeader->StorageOffsetLength;
-    InHeader.EncodedSizeLength   = pIndexHeader->EncodedSizeLength;
-    InHeader.EKeyLength          = pIndexHeader->EKeyLength;
-    InHeader.FileOffsetBits      = pIndexHeader->FileOffsetBits;
-    InHeader.Alignment           = 0;
-    InHeader.SegmentSize         = pIndexHeader->SegmentSize;
+    InHeader.Revision        = pIndexHeader->Revision;
+    InHeader.BucketIndex     = pIndexHeader->BucketIndex;
+    InHeader.SpanOffsetBytes = pIndexHeader->SpanOffsetBytes;
+    InHeader.SpanSizeBytes   = pIndexHeader->SpanSizeBytes;
+    InHeader.KeyBytes        = pIndexHeader->KeyBytes;
+    InHeader.SegmentBits     = pIndexHeader->SegmentBits;
+    InHeader.Alignment       = 0;
+    InHeader.MaxFileOffset   = pIndexHeader->MaxFileOffset;
 
     // Supply the lengths
     InHeader.HeaderLength = sizeof(FILE_INDEX_GUARDED_BLOCK) + sizeof(FILE_INDEX_HEADER_V2);
     InHeader.HeaderPadding = 8;
-    InHeader.EntryLength = pIndexHeader->EKeyLength + pIndexHeader->StorageOffsetLength + pIndexHeader->EncodedSizeLength;
+    InHeader.EntryLength = pIndexHeader->KeyBytes + pIndexHeader->SpanOffsetBytes + pIndexHeader->SpanSizeBytes;
     InHeader.EKeyCount = 0;
     return ERROR_SUCCESS;
-}    
+}
 
 static DWORD LoadIndexFile_V1(TCascStorage * hs, CASC_INDEX_HEADER & InHeader, EKEY_ENTRY_CALLBACK PfnEKeyEntry, LPBYTE pbFileData, size_t cbFileData)
 {
     LPBYTE pbEKeyEntries = pbFileData + InHeader.HeaderLength + InHeader.HeaderPadding;
 
     // Remember the values from the index header
-    SaveFileOffsetBitsAndEKeyLength(hs, InHeader.FileOffsetBits, InHeader.EKeyLength);
+    SaveFileOffsetBitsAndEKeyLength(hs, InHeader.SegmentBits, InHeader.KeyBytes);
 
     // Load the entries from a continuous array
     return LoadIndexItems(hs, InHeader, PfnEKeyEntry, pbEKeyEntries, pbFileData + cbFileData);
@@ -402,7 +402,7 @@ static DWORD LoadIndexFile_V2(TCascStorage * hs, CASC_INDEX_HEADER & InHeader, E
     DWORD dwErrCode = ERROR_NOT_SUPPORTED;
 
     // Remember the values from the index header
-    SaveFileOffsetBitsAndEKeyLength(hs, InHeader.FileOffsetBits, InHeader.EKeyLength);
+    SaveFileOffsetBitsAndEKeyLength(hs, InHeader.SegmentBits, InHeader.KeyBytes);
 
     // Get the pointer to the first block of EKey entries
     if((pbEKeyEntry = CaptureGuardedBlock2(pbFilePtr, pbFileEnd, InHeader.EntryLength, &BlockSize)) != NULL)
@@ -427,7 +427,7 @@ static DWORD LoadIndexFile_V2(TCascStorage * hs, CASC_INDEX_HEADER & InHeader, E
         while(pbStartPage < pbFileEnd)
         {
             pbEKeyEntry = pbStartPage;
-            
+
             while(pbEKeyEntry < pbEndPage)
             {
                 // Check the EKey entry protected by 32-bit hash
