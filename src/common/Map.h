@@ -328,7 +328,7 @@ class CASC_MAP
     size_t GetNearestPowerOfTwo(size_t MaxItems)
     {
         size_t PowerOfTwo = MIN_HASH_TABLE_SIZE;
-        
+
         // Round the hash table size up to the nearest power of two
         while(PowerOfTwo < MaxItems)
         {

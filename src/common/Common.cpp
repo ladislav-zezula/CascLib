@@ -108,7 +108,7 @@ LPBYTE CaptureInteger16_BE(LPBYTE pbDataPtr, LPBYTE pbDataEnd, PDWORD PtrValue)
     if((pbDataPtr + sizeof(USHORT)) > pbDataEnd)
         return NULL;
 
-    // Convert data from Little endian to 
+    // Convert data from Little endian to
     PtrValue[0] = ConvertBytesToInteger_2(pbDataPtr);
 
     // Return the pointer to data following after the integer
@@ -134,7 +134,7 @@ LPBYTE CaptureInteger32_BE(LPBYTE pbDataPtr, LPBYTE pbDataEnd, PDWORD PtrValue)
     if((pbDataPtr + sizeof(DWORD)) > pbDataEnd)
         return NULL;
 
-    // Convert data from Little endian to 
+    // Convert data from Little endian to
     PtrValue[0] = ConvertBytesToInteger_4(pbDataPtr);
 
     // Return the pointer to data following after the integer

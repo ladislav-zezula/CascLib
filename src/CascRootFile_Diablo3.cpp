@@ -523,7 +523,7 @@ struct TDiabloRoot : public TFileTreeRoot
 
     // Parse the named entries of all folders
     DWORD ParseDirectory_Phase1(
-        TCascStorage * hs, 
+        TCascStorage * hs,
         DIABLO3_DIRECTORY & Directory,
         CASC_PATH<char> & PathBuffer,
         bool bIsRootDirectory)

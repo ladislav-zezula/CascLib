@@ -123,14 +123,14 @@ typedef struct _CASC_INDEX
 // Both version 1 and version 2 are converted to this structure
 typedef struct _CASC_INDEX_HEADER
 {
-    USHORT IndexVersion;                            // 5 for index v 1.0, 7 for index version 2.0
+    USHORT Revision;                                // 5 for index v 1.0, 7 for index version 2.0
     BYTE   BucketIndex;                             // Should be the same as the first byte of the hex filename.
-    BYTE   StorageOffsetLength;                     // Length, in bytes, of the StorageOffset field in the EKey entry
-    BYTE   EncodedSizeLength;                       // Length, in bytes, of the EncodedSize in the EKey entry
-    BYTE   EKeyLength;                              // Length, in bytes, of the (trimmed) EKey in the EKey entry
-    BYTE   FileOffsetBits;                          // Number of bits of the archive file offset in StorageOffset field. Rest is data segment index
+    BYTE   SpanOffsetBytes;                         // Length, in bytes, of the StorageOffset field in the EKey entry
+    BYTE   SpanSizeBytes;                           // Length, in bytes, of the EncodedSize in the EKey entry
+    BYTE   KeyBytes;                                // Length, in bytes, of the (trimmed) EKey in the EKey entry
+    BYTE   SegmentBits;                             // Number of bits of the archive file offset in StorageOffset field. Rest is data segment index
     BYTE   Alignment;
-    ULONGLONG SegmentSize;                          // Size of one data segment (aka data.### file)
+    ULONGLONG MaxFileOffset;                        // Size of one data segment (aka data.### file)
     size_t HeaderLength;                            // Length of the on-disk header structure, in bytes
     size_t HeaderPadding;                           // Length of padding after the header
     size_t EntryLength;                             // Length of the on-disk EKey entry structure, in bytes

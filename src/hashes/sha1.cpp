@@ -114,7 +114,7 @@ static void SHA1Transform(u32 state[5], const unsigned char buffer[64])
 		unsigned char c[64];
 		u32 l[16];
 	} CHAR64LONG16;
-	
+
 	CHAR64LONG16 * block = (CHAR64LONG16 *) buffer;
 
 	/* Copy context->state[] to working vars */

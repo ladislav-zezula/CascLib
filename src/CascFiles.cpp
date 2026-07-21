@@ -96,7 +96,7 @@ static LPCTSTR GetSubFolder(CPATH_TYPE PathType)
         case PathTypeConfig: return _T("config");
         case PathTypeData:   return _T("data");
         case PathTypePatch:  return _T("patch");
-        
+
         default:
             assert(false);
             return _T("");
@@ -116,7 +116,7 @@ static bool CheckForTwoDigitFolder(LPCTSTR szPathName, void * pvContext)
             return false;
         }
     }
-    
+
     // Keep searching
     return true;
 }
@@ -333,7 +333,7 @@ static DWORD LoadHashArray(
             // Move buffer
             pbBuffer += MD5_HASH_SIZE;
         }
-        
+
         dwErrCode = ERROR_SUCCESS;
     }
 
@@ -495,7 +495,7 @@ static DWORD LoadVfsRootEntry(TCascStorage * hs, const char * szVariableName, co
                     pCKeyEntry = (PCASC_CKEY_ENTRY)pArray->InsertAt(VfsRootIndex - 1);
                     if(pCKeyEntry == NULL)
                         return ERROR_NOT_ENOUGH_MEMORY;
-                    
+
                     // Initialize the new entry
                     pCKeyEntry->Init();
                 }
@@ -664,7 +664,7 @@ static DWORD ParseFile_BuildInfo(TCascStorage * hs, CASC_CSV & Csv)
                 nDefault = i;
             }
         }
-        
+
         // Only if there is more than one active products
         if(nProductCount > 1)
         {
@@ -839,7 +839,7 @@ static DWORD ParseFile_CdnConfig(TCascStorage * hs, void * pvListFile)
         if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "archives", LoadQueryKey, &hs->ArchivesKey))
             continue;
 
-        // CDN keys of patch archives (needs research) 
+        // CDN keys of patch archives (needs research)
         if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "patch-archives", LoadQueryKey, &hs->PatchArchivesKey))
             continue;
 
@@ -896,7 +896,7 @@ static DWORD ParseFile_CdnBuild(TCascStorage * hs, void * pvListFile)
             continue;
 
         // Content key + encoded key of the ENCODING file. Contains CKey+EKey
-        // If either none or 1 is found, the game (at least Wow) switches to plain-data(?). Seen in build 20173 
+        // If either none or 1 is found, the game (at least Wow) switches to plain-data(?). Seen in build 20173
         if(CheckConfigFileVariable(hs, szLineBegin, szLineEnd, "encoding*", LoadCKeyEntry, &hs->EncodingCKey))
             continue;
 
@@ -1363,7 +1363,7 @@ DWORD FetchCascFile(
             if(dwErrCode == ERROR_SUCCESS || dwErrCode == ERROR_NOT_ENOUGH_MEMORY)
                 return dwErrCode;
         }
-        
+
         // Sorry, the file was not found
         dwErrCode = ERROR_FILE_NOT_FOUND;
     }
@@ -1390,7 +1390,7 @@ DWORD FetchCascFile(TCascStorage * hs, CPATH_TYPE PathType, LPBYTE pbEKey, LPCTS
             // Fill-in the archive key
             pbArchiveKey = pbEKey = hs->ArchivesKey.pbData + (MD5_HASH_SIZE * pArchiveInfo->ArchiveIndex);
             memcpy(pArchiveInfo->ArchiveKey, pbArchiveKey, MD5_HASH_SIZE);
-            
+
             // Remap the path type to "data"
             PathType = PathTypeData;
         }
@@ -1574,7 +1574,7 @@ DWORD CheckCascBuildFileDirs(CASC_BUILD_FILE & BuildFile, LPCTSTR szLocalPath)
 {
     CASC_PATH<TCHAR> WorkPath(szLocalPath, NULL);
     DWORD dwLevelCount = 0;
-    
+
     // Clear the build file structure
     memset(&BuildFile, 0, sizeof(CASC_BUILD_FILE));
 
@@ -1889,7 +1889,7 @@ DWORD LoadFileToMemory(LPCTSTR szFileName, CASC_BLOB & FileData)
     {
         dwErrCode = GetCascError();
     }
-    
+
     return dwErrCode;
 }
 

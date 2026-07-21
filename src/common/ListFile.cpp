@@ -271,7 +271,7 @@ size_t ListFile_GetNext(void * pvListFile, char * szBuffer, size_t nMaxChars, PD
             dwErrCode = ListFile_GetFileDataId(pCache, &FileDataId);
             if(dwErrCode == ERROR_NO_MORE_FILES)
                 break;
-            
+
             // If there was an error, skip the current line
             if(dwErrCode != ERROR_SUCCESS || FileDataId == CASC_INVALID_ID)
             {

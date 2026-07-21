@@ -73,7 +73,7 @@ static bool CopyCKeyEntryToFindData(PCASC_FIND_DATA pFindData, PCASC_CKEY_ENTRY 
 
     // Supply the tag mask
     pFindData->TagBitMask = pCKeyEntry->TagBitMask;
-    
+
     // Supply the plain name. Only do that if the found name is not a CKey/EKey
     if(pFindData->szFileName[0] != 0)
         pFindData->szPlainName = (char *)GetPlainFileName(pFindData->szFileName);
@@ -85,7 +85,7 @@ static bool CopyCKeyEntryToFindData(PCASC_FIND_DATA pFindData, PCASC_CKEY_ENTRY 
     {
         if(ContentSize != CASC_INVALID_SIZE64)
             pFindData->FileSize = ContentSize;
-        else 
+        else
             pFindData->FileSize = EncodedSize;
     }
 

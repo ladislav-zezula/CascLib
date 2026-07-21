@@ -22,7 +22,7 @@ struct CASC_PATH
         va_list argList;
 
         Initialize(PATH_SEP_CHAR);
-        
+
         va_start(argList, szRoot);
         Create(szRoot, argList);
         va_end(argList);
@@ -229,7 +229,7 @@ struct CASC_PATH
             m_szBufferBegin = szNewBuffer;
             m_szBufferPtr = m_szBufferBegin + nLength;
             m_szBufferEnd = m_szBufferBegin + nToAllocate;
-            
+
             // Free the old buffer
             if(szOldBuffer != m_Buffer)
                 CASC_FREE(szOldBuffer);

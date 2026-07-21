@@ -89,7 +89,7 @@ DWORD TCascFile::OpenFileSpans(LPCTSTR szSpanList)
             break;
         }
 
-        // If succeeded, we assign the span to the 
+        // If succeeded, we assign the span to the
         FileStream_GetSize(pStream, &FileSize);
         if((FileSize >> 0x1E) != 0)
         {

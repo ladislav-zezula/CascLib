@@ -366,20 +366,20 @@ namespace KeyCMF_036859
             switch (kidx % 3)
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = 4 * kidx % header.m_buildVersion;
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
             buffer[i] ^= digest[(kidx + header.m_buildVersion) % SHA1_DIGESTSIZE];
         }
@@ -526,20 +526,20 @@ namespace KeyCMF_037130
             switch (kidx % 3)
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = 4 * kidx % header.m_buildVersion;
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
             buffer[i] ^= digest[(kidx + header.m_buildVersion) % SHA1_DIGESTSIZE];
         }
@@ -615,20 +615,20 @@ namespace KeyCMF_037218
             switch (kidx % 3)
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = 4 * kidx % header.m_buildVersion;
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
             buffer[i] ^= digest[(kidx + header.m_buildVersion) % SHA1_DIGESTSIZE];
         }
@@ -995,20 +995,20 @@ namespace KeyCMF_037636
             switch (kidx % 3)
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = 4 * kidx % header.m_buildVersion;
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
             buffer[i] ^= digest[(kidx + header.m_buildVersion) % SHA1_DIGESTSIZE];
         }
@@ -1281,20 +1281,20 @@ namespace KeyCMF_037734
             switch (kidx % 3)
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = 4 * kidx % header.m_buildVersion;
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
         }
         return buffer;
@@ -2232,20 +2232,20 @@ namespace KeyCMF_039023
             switch (kidx % 3)
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = 4 * kidx % header.m_buildVersion;
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
         }
         return buffer;
@@ -2767,20 +2767,20 @@ namespace KeyCMF_039484
             switch (kidx % 3)
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = 4 * kidx % header.m_buildVersion;
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
             buffer[i] ^= digest[(kidx + header.m_buildVersion) % SHA1_DIGESTSIZE];
         }
@@ -2926,20 +2926,20 @@ namespace KeyCMF_039935
             switch (kidx % 3)
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = 4 * kidx % header.m_buildVersion;
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
             buffer[i] ^= digest[(kidx + header.m_buildVersion) % SHA1_DIGESTSIZE];
         }
@@ -3145,20 +3145,20 @@ namespace KeyCMF_040570
             switch (kidx % 3)
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = 4 * kidx % header.m_buildVersion;
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
         }
         return buffer;
@@ -3305,20 +3305,20 @@ namespace KeyCMF_040990
             switch (kidx % 3)
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = 4 * kidx % header.m_buildVersion;
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
         }
         return buffer;
@@ -3894,20 +3894,20 @@ namespace KeyCMF_042936
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (uint) SignedMod(kidx * 4, header.m_buildVersion);
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
         }
         return buffer;
@@ -4698,20 +4698,20 @@ namespace KeyCMF_046510
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (uint)SignedMod(4 * kidx, header.m_buildVersion);
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
         }
         return buffer;
@@ -5221,20 +5221,20 @@ namespace KeyCMF_049656
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (uint)SignedMod(4 * kidx, header.m_buildVersion);
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
         }
         return buffer;
@@ -5611,20 +5611,20 @@ namespace KeyCMF_052717
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (4 * kidx) % header.m_buildVersion;
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
             buffer[i] ^= digest[SignedMod(kidx + header.m_buildVersion, SHA1_DIGESTSIZE)];
         }
@@ -5700,20 +5700,20 @@ namespace KeyCMF_052926
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (4 * kidx) % header.m_buildVersion;
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
             buffer[i] ^= digest[SignedMod(kidx + header.m_buildVersion, SHA1_DIGESTSIZE)];
         }
@@ -5917,20 +5917,20 @@ namespace KeyCMF_054052
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (uint)SignedMod(4 * kidx, header.m_buildVersion);
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
         }
         return buffer;
@@ -6005,20 +6005,20 @@ namespace KeyCMF_054255
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (uint)SignedMod(4 * kidx, header.m_buildVersion);
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
         }
         return buffer;
@@ -6093,20 +6093,20 @@ namespace KeyCMF_054983
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (uint)SignedMod(4 * kidx, header.m_buildVersion);
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
         }
         return buffer;
@@ -6123,20 +6123,20 @@ namespace KeyCMF_054983
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (uint)SignedMod(4 * kidx, header.m_buildVersion);
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
             buffer[i] ^= digest[SignedMod(header.m_buildVersion + kidx, SHA1_DIGESTSIZE)];
         }
@@ -6284,20 +6284,20 @@ namespace KeyCMF_055918
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (uint)SignedMod(4 * kidx, header.m_buildVersion);
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
             buffer[i] ^= digest[SignedMod(header.m_buildVersion + kidx, SHA1_DIGESTSIZE)];
         }
@@ -6359,20 +6359,20 @@ namespace KeyCMF_056957
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (uint)SignedMod(4 * kidx, header.m_buildVersion);
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
         }
         return buffer;
@@ -6447,20 +6447,20 @@ namespace KeyCMF_057230
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (uint)SignedMod(4 * kidx, header.m_buildVersion);
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
         }
         return buffer;
@@ -6607,20 +6607,20 @@ namespace KeyCMF_057979
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = 4 * kidx % header.m_buildVersion;
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
         }
         return buffer;
@@ -6843,20 +6843,20 @@ namespace KeyCMF_059008
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (uint)SignedMod(4 * kidx, header.m_buildVersion);
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
         }
         return buffer;
@@ -7289,20 +7289,20 @@ namespace KeyCMF_061542
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (uint) SignedMod(kidx * 4, header.m_buildVersion);
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
         }
         return buffer;
@@ -8167,20 +8167,20 @@ namespace KeyCMF_066302
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (uint)SignedMod(kidx * 4, header.m_buildVersion);
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
         }
         return buffer;
@@ -8198,20 +8198,20 @@ namespace KeyCMF_066302
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (uint)SignedMod(kidx * 4, header.m_buildVersion);
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
             buffer[i] ^= digest[SignedMod(kidx + header.m_buildVersion, SHA1_DIGESTSIZE)];
         }
@@ -8564,20 +8564,20 @@ namespace KeyCMF_068780
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (uint)SignedMod(kidx * 4, header.m_buildVersion);
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
         }
         return buffer;
@@ -8654,20 +8654,20 @@ namespace KeyCMF_069340
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (uint)SignedMod(kidx * 4, header.m_buildVersion);
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
         }
         return buffer;
@@ -8817,20 +8817,20 @@ namespace KeyCMF_070250
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (uint)SignedMod(kidx * 4, header.m_buildVersion);
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
         }
         return buffer;
@@ -9486,20 +9486,20 @@ namespace KeyCMF_076333
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (uint)SignedMod(kidx * 4, header.m_buildVersion);
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
         }
         return buffer;
@@ -10160,20 +10160,20 @@ namespace KeyCMF_082920
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (uint)SignedMod(kidx * 4, header.m_buildVersion);
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
         }
         return buffer;
@@ -10775,20 +10775,20 @@ namespace KeyCMF_088423
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (uint)SignedMod(kidx * 4, header.m_buildVersion);
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
             buffer[i] ^= digest[SignedMod(kidx + header.m_buildVersion, SHA1_DIGESTSIZE)];
         }
@@ -10865,20 +10865,20 @@ namespace KeyCMF_088742
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (uint)SignedMod(kidx * 4, header.m_buildVersion);
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
             buffer[i] ^= digest[SignedMod(kidx + header.m_buildVersion, SHA1_DIGESTSIZE)];
         }
@@ -10941,20 +10941,20 @@ namespace KeyCMF_089353
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (uint)SignedMod(kidx * 4, header.m_buildVersion);
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
         }
         return buffer;
@@ -11031,20 +11031,20 @@ namespace KeyCMF_090193
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (uint)SignedMod(kidx * 4, header.m_buildVersion);
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
         }
         return buffer;
@@ -11121,20 +11121,20 @@ namespace KeyCMF_090774
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (uint)SignedMod(kidx * 4, header.m_buildVersion);
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
         }
         return buffer;
@@ -11211,20 +11211,20 @@ namespace KeyCMF_092111
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (uint)SignedMod(kidx * 4, header.m_buildVersion);
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
         }
         return buffer;
@@ -11680,20 +11680,20 @@ namespace KeyCMF_098576
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (uint)SignedMod(kidx * 4, header.m_buildVersion);
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
             buffer[i] ^= digest[SignedMod(kidx + header.m_buildVersion, SHA1_DIGESTSIZE)];
         }
@@ -11756,20 +11756,20 @@ namespace KeyCMF_098845
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (uint)SignedMod(kidx * 4, header.m_buildVersion);
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
         }
         return buffer;
@@ -11919,20 +11919,20 @@ namespace KeyCMF_100672
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (uint)SignedMod(kidx * 4, header.m_buildVersion);
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
         }
         return buffer;
@@ -12228,20 +12228,20 @@ namespace KeyCMF_104319
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (uint)SignedMod(kidx * 4, header.m_buildVersion);
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
         }
         return buffer;
@@ -12975,20 +12975,20 @@ namespace KeyCMF_109912
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (uint)SignedMod(kidx * 4, header.m_buildVersion);
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
         }
         return buffer;
@@ -13211,20 +13211,20 @@ namespace KeyCMF_111774
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (uint)SignedMod(kidx * 4, header.m_buildVersion);
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
         }
         return buffer;
@@ -13520,20 +13520,20 @@ namespace KeyCMF_114357
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (uint)SignedMod(kidx * 4, header.m_buildVersion);
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
         }
         return buffer;
@@ -13683,20 +13683,20 @@ namespace KeyCMF_115001
             switch (SignedMod(kidx, 3))
             {
                 case 0:
-                
+
                     kidx += 103;
                     break;
-                
+
                 case 1:
-                
+
                     kidx = (uint)SignedMod(kidx * 4, header.m_buildVersion);
                     break;
-                
+
                 case 2:
-                
+
                     --kidx;
                     break;
-                
+
             }
         }
         return buffer;

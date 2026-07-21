@@ -70,7 +70,7 @@ struct TVFS_DIRECTORY_HEADER
     DWORD  EstOffsSize;                             // Byte length of the offset in the Encoding Specifier Table entry
 
     CASC_BLOB Data;                                 // The complete directory data
-    
+
 //  LPBYTE pbPathFileTable;                         // Begin and end of the path table
 //  LPBYTE pbPathTableEnd;
 
@@ -87,7 +87,7 @@ struct TVFS_DIRECTORY_HEADER
 #define TVFS_HEADER_LENGTH FIELD_OFFSET(TVFS_DIRECTORY_HEADER, CftOffsSize)
 
 // Minimum size of a valid path table entry. 1 byte + 1-byte name + 1 byte + DWORD
-#define TVFS_MIN_PATH_ENTRY (1 + 1 + 1 + sizeof(DWORD)) 
+#define TVFS_MIN_PATH_ENTRY (1 + 1 + 1 + sizeof(DWORD))
 
 // Minimum size of the VFS entry (SpanCount + FileOffset + SpanLength + CftOffset)
 #define TVFS_MIN_VFS_ENTRY (1 + sizeof(DWORD) + sizeof(DWORD) + 1)
@@ -182,7 +182,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         if(pbDataPtr == NULL || DirHeader.Signature != CASC_TVFS_ROOT_SIGNATURE)
             return ERROR_BAD_FORMAT;
 
-        // Capture the other four integers 
+        // Capture the other four integers
         pbDataPtr = CaptureByteArray(pbDataPtr, pbDataEnd, 4, &DirHeader.FormatVersion);
         if(pbDataPtr == NULL || DirHeader.FormatVersion != 1 ||
            (DirHeader.EKeySize != CASC_EKEY_SIZE && DirHeader.EKeySize != MD5_HASH_SIZE) ||
@@ -846,7 +846,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
                 // Get the NodeValue and check its highest bit
                 if(CaptureInteger32_BE(pbRootDirPtr + 1, pbRootDirEnd, &dwNodeValue) == NULL || (dwNodeValue & TVFS_FOLDER_NODE) == 0)
                     return ERROR_BAD_FORMAT;
-                
+
                 // Get the range of the root directory
                 pbRootDirEnd = pbRootDirPtr + 1 + (dwNodeValue & TVFS_FOLDER_SIZE_MASK);
                 pbRootDirPtr = pbRootDirPtr + 1 + sizeof(DWORD);
@@ -912,7 +912,7 @@ struct TRootHandler_TVFS : public TFileTreeRoot
         // WoW Build 45779: 000000020000:000C472F02BA924C604A670B253AA02DBCD9441  (Bug: Missing last digit of the CKey)
         // WoW Build 46144: 000000020000:000C472F02BA924C604A670B253AA02DBCD9441C
         //                  LLLLLLLLCCCC IIIIIIIIKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK
-        // 
+        //
         // WoW Build 63728: 0000000200000000:005096B78ECBF6630B7A282B01358857C6DDF2B2
         //                  LLLLLLLLCCCCCCCC IIIIIIIIKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK
         //
