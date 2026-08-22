@@ -243,7 +243,7 @@ def build_cmf_cpp(file_content_cs, key_table, key_function, iv_function, build_n
     # Build the header
     cmf_cpp.append("//")
     cmf_cpp.append("// Key+IV provider for build %u. Created automatically, DO NOT EDIT." % build_number)
-    cmf_cpp.append("// Source: .\TACTLib\TACTLib\Core\Product\Tank\CMF\ProCMF_%s.cs" % build_number)
+    cmf_cpp.append("// Source: .\\TACTLib\\TACTLib\\Core\\Product\\Tank\\CMF\\ProCMF_%s.cs" % build_number)
     cmf_cpp.append("//\n")
 
     # Append the begin of the namespace
@@ -372,7 +372,7 @@ def update_CascLib_repository():
         print("[*] Updating git repository ...")
 
         # Run git clone
-        process = subprocess.Popen(["git", "add", ".\cmf"], stderr=subprocess.PIPE, stdout=None)
+        process = subprocess.Popen(["git", "add", ".\\cmf"], stderr=subprocess.PIPE, stdout=None)
         process_output = process.communicate()[1].decode("ascii")
         return True
     except subprocess.CalledProcessError as e:
