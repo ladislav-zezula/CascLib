@@ -171,6 +171,7 @@
   typedef unsigned int   LCID;
   typedef LONG         * PLONG;
   typedef DWORD        * PDWORD;
+  typedef DWORD        * LPDWORD;
   typedef BYTE         * LPBYTE;
   typedef char         * LPSTR;
   typedef const char   * LPCSTR;
